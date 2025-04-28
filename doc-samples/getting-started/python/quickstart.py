@@ -29,7 +29,7 @@ print(response.choices[0].message.content)
 
 # <create_and_run_agent>
 agent = project.agents.create_agent(
-    model="gpt-4o"
+    model="gpt-4o",
     name="my-agent",
     instructions="You are a helpful writing assistant")
 
