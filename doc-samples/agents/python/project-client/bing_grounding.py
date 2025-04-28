@@ -24,10 +24,9 @@ USAGE:
     
 """
 # <create a project client>
-import os
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects.onedp import AIProjectClient
-from azure.ai.agents.models import MessageRole, BingGroundingTool
+from azure.ai.agents.models import BingGroundingTool
 
 
 # Create an Azure AI Client from a connection string, copied from your AI Studio project.

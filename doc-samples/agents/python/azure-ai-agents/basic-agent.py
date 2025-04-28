@@ -21,7 +21,8 @@ USAGE:
        the "Models + endpoints" tab in your Azure AI Foundry project.
 """
 
-import os, time
+import os
+import time
 from azure.ai.agents import AgentsClient
 from azure.identity import DefaultAzureCredential
 from azure.ai.agents.models import ListSortOrder, MessageTextContent
