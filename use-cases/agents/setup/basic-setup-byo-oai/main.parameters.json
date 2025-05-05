@@ -12,7 +12,7 @@
       "value": "project"
     },
     "existingAoaiResourceId": {
-      "value": "/subscriptions/4d042dc6-fe17-4698-a23f-ec6a8d1e98f4/resourceGroups/vivazque-bsic-byo-aoi/providers/Microsoft.AI/aiServices/existing-aoai"
+      "value": "byo-oai-resource-id"
     }
   }
 }
