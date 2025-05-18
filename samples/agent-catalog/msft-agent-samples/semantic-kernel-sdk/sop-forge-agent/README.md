@@ -3,6 +3,8 @@
 
 This code sample enables creation of a SOP Forge agent that can convert short demonstration video into a clean Standard Operating Procedure. It enables functionality that allows automatic transcription of the footage, detects each procedural step, selects clear images, and can fill preferred Markdown templates, delivering a numbered, well‑formatted document that can help for training and shop‑floor distribution.
 
+[![Watch the video](assets/readme/thumbnail.png)](https://learn-video.azurefd.net/vod/player?id=c152d19d-0603-4ba0-ac55-ffc242f1987c)
+
 **IMPORTANT NOTE:** Starter templates, instructions, code samples and resources in this msft-agent-samples file (“samples”) are designed to assist in accelerating development of agents for specific scenarios. It is important that you review all provided resources and carefully test Agent behavior in the context of your use case: ([Learn More](https://learn.microsoft.com/en-us/legal/cognitive-services/agents/transparency-note?context=%2Fazure%2Fai-services%2Fagents%2Fcontext%2Fcontext)). 
 
 Certain Agent offerings may be subject to legal and regulatory requirements, may require licenses, or may not be suitable for all industries, scenarios, or use cases. By using any sample, you are acknowledging that Agents or other output created using that sample are solely your responsibility, and that you will comply with all applicable laws, regulations, and relevant safety standards, terms of service, and codes of conduct.  

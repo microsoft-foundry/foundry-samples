@@ -4,6 +4,8 @@
 
 This code sample enables created of a contract analysis agent, implemented with Azure AI Agent Service and Semantic Kernel, which reviews multiple versions of a contract and generates a detailed and structured report that highlights the differences. The markdown report mirrors the structure of the contracts to ensure readability and makes it easy for the reviewer to understand the differences.
 
+[![Watch the video](assets/readme/thumbnail.png)](https://learn-video.azurefd.net/vod/player?id=d6354bf3-fd80-4836-8fc7-faf13659cfa7)
+
 The agent's capabilities include: 
 
 * **Contract Comparison**: Compares two versions of a contract to identify changes in key fields and clauses. Uses specialized tools and techniques to extract relevant information from them. 
