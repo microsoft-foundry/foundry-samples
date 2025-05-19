@@ -1,6 +1,6 @@
 # Voice Live API for real-time voice agents
 
-This sample showcases how to voice-enable any agents built with Azure AI Foundry Agent Service, utilizing Azure AI Speech Voice Live API.  
+This sample showcases how to voice-enable any agents built with Azure AI Foundry Agent Service, utilizing Azure AI Voice Live API.  
 
 **IMPORTANT NOTE:** Starter templates, instructions, code samples and resources in this msft-agent-samples file (“samples”) are designed to assist in accelerating development of agents for specific scenarios. It is important that you review all provided resources and carefully test Agent behavior in the context of your use case: ([Learn More](https://learn.microsoft.com/en-us/legal/cognitive-services/agents/transparency-note?context=%2Fazure%2Fai-services%2Fagents%2Fcontext%2Fcontext)). 
 
@@ -49,7 +49,7 @@ The system consists of:
 
 ## Voice Live API introduction  
 
-Azure AI Speech Voice Live API (preview) is an innovative, unified single API that enables streaming interactions with the foundation model of your choice, for both speech input and output. It includes advanced features such as customizable speech recognition, diverse text-to-speech options, brand voices, avatars, audio enhancement, among other functionalities. With Voice Live API, you can add real-time speech interaction capabilities to any agent built with the Azure AI Agent Service.
+Azure AI Voice Live API (preview) is an innovative, unified single API that enables streaming interactions with the foundation model of your choice, for both speech input and output. It includes advanced features such as customizable speech recognition, diverse text-to-speech options, brand voices, avatars, audio enhancement, among other functionalities. With Voice Live API, you can add real-time speech interaction capabilities to any agent built with the Azure AI Agent Service.
 
 Learn more about Voice Live API (preview) here.
 
