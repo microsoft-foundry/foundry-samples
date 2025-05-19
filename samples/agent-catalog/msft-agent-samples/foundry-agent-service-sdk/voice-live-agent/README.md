@@ -1,6 +1,6 @@
-# Voice Live Agent
+# Voice Live API for real-time voice agents
 
-This sample showcases how to voice-enable any agents built with Azure AI Agent Service, utilizing Azure AI Voice Live API.  
+This sample showcases how to voice-enable any agents built with Azure AI Foundry Agent Service, utilizing Azure AI Speech Voice Live API.  
 
 **IMPORTANT NOTE:** Starter templates, instructions, code samples and resources in this msft-agent-samples file (“samples”) are designed to assist in accelerating development of agents for specific scenarios. It is important that you review all provided resources and carefully test Agent behavior in the context of your use case: ([Learn More](https://learn.microsoft.com/en-us/legal/cognitive-services/agents/transparency-note?context=%2Fazure%2Fai-services%2Fagents%2Fcontext%2Fcontext)). 
 
@@ -49,7 +49,7 @@ The system consists of:
 
 ## Voice Live API introduction  
 
-Azure AI Voice Live API (preview) is an innovative, unified single API that enables streaming interactions with the foundation model of your choice, for both speech input and output. It includes advanced features such as customizable speech recognition, diverse text-to-speech options, brand voices, avatars, audio enhancement, among other functionalities. With Voice Live API, you can add real-time speech interaction capabilities to any agent built with the Azure AI Agent Service.
+Azure AI Speech Voice Live API (preview) is an innovative, unified single API that enables streaming interactions with the foundation model of your choice, for both speech input and output. It includes advanced features such as customizable speech recognition, diverse text-to-speech options, brand voices, avatars, audio enhancement, among other functionalities. With Voice Live API, you can add real-time speech interaction capabilities to any agent built with the Azure AI Agent Service.
 
 Learn more about Voice Live API (preview) here.
 
@@ -63,11 +63,11 @@ A live demo (<https://aka.ms/voice-agent/demo>) is also available to experience 
 
 **Set up an agent**. Follow the templates provided in agent-catalog/azure-ai-agent-service-blueprints at main · microsoft/agent-catalog to create your agent.
 
-**Resource and authentication**. An Azure AI Services resource is required to access the Voice Live API. To learn how to create an Azure AI Services resource, please see: <https://learn.microsoft.com/azure/ai-services/multi-service-resource>.
+**Resource and authentication**. An Azure AI Foundry resource is required to access the Voice Live API. To learn how to create an Azure AI Foundry resource, please see: <https://learn.microsoft.com/azure/ai-services/multi-service-resource>.
 
 Note: The resource must be in the `eastus2` or `swedencentral` regions at this time. Other regions are not supported.
 
-	@@ -31,25 +87,24 @@ We support two authentication methods for the VA WebSocket service:
+	@@ -31,25 +87,24 @@ We support two authentication methods for the Voice Live API:
 
 For the recommended keyless authentication with Microsoft Entra ID, you need to:
 
@@ -92,4 +92,4 @@ A sample endpoint is `wss://<custom-domain>.cognitiveservices.azure.com/voice-ag
 
 ## Interact with the Voice Live API
 
-Refer to the [full documentation of Voice Live API](https://learn.microsoft.com/en-us/azure/ai-services/<placeholder>) for more details on how to interact with the Voice Live API.
+Refer to the [full documentation of Voice Live API](https://learn.microsoft.com/azure/ai-services/speech-service/voice-live) for more details on how to interact with the Voice Live API.
