@@ -81,4 +81,4 @@ The Nimble tool provides two main capabilities:
 
 ## Customer Support Contact
 
-For any issues with the Nimble APIs, please contact support@nimbleway.com or visit our [help center](https://support.nimbleway.com).
+For any issues with the Nimble APIs, please contact support@nimbleway.com or visit our [help center](https://docs.nimbleway.com).
