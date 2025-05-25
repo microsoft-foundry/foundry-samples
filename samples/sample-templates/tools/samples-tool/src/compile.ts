@@ -1,10 +1,9 @@
-import _, { template } from "lodash";
+import _ from "lodash";
 import fs from "fs";
 import { parse } from "yaml";
 import path from "path";
 import { Sample } from "./interfaces";
-import { usings, valueOrEnvironment } from "./csharp";
-
+import * as csharp from "./csharp";
 
 function parseData(dataPath: string) {
   const dataContent = fs.readFileSync(dataPath, "utf-8");
@@ -46,18 +45,20 @@ function createOutputDirectory(outputPath: string) {
 }
 
 function isObject(value: any): value is Record<string, any> {
-  console.log(value, typeof value);
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function fillInputObject(sample: Sample, dataPath: string): Record<string, any> {
+function fillInputObject(
+  sample: Sample,
+  dataPath: string,
+): Record<string, any> {
   const inputData = parseData(dataPath);
   if (!isObject(inputData)) {
     console.error("Input data must be an object.");
     process.exit(1);
   }
   const inputObject: Record<string, any> = {};
-  for(const {name, required, default: defaultValue} of sample.input) {
+  for (const { name, required, default: defaultValue } of sample.input) {
     if (name in inputData) {
       /* TODO: Check type */
       inputObject[name] = inputData[name];
@@ -73,68 +74,142 @@ function fillInputObject(sample: Sample, dataPath: string): Record<string, any> 
   return inputObject;
 }
 
+function readTemplateFile(templatePath: string): string {
+  const template = fs.readFileSync(templatePath, "utf-8");
+  return template.replace(/\n(\s*(?:<%(?!=).*?%>\s*)+)/g, "$1");
+}
 
-function getProjectFileTemplate(sample: Sample, options: { useGradle?: boolean, usePoetry?: boolean }): { targetFileName: string, template: string } {
+function getProjectFileTemplate(
+  sample: Sample,
+  options: { useGradle?: boolean; usePoetry?: boolean },
+): { targetFileName: string; template: string } {
   const language = sample.type;
   switch (language) {
     case "csharp":
-      return { targetFileName: `Sample.csproj`, template: fs.readFileSync(path.join(__dirname, "../project-templates", `Sample.csproj.template`), "utf-8") };
+      return {
+        targetFileName: `Sample.csproj`,
+        template: readTemplateFile(
+          path.join(
+            __dirname,
+            "../project-templates",
+            `Sample.csproj.template`,
+          ),
+        ),
+      };
     case "go":
-      return { targetFileName: `go.mod`, template: fs.readFileSync(path.join(__dirname, "../project-templates", `go.mod.template`), "utf-8") };
+      return {
+        targetFileName: `go.mod`,
+        template: readTemplateFile(
+          path.join(__dirname, "../project-templates", `go.mod.template`),
+        ),
+      };
     case "javascript":
-      return { targetFileName: `package.json`, template: fs.readFileSync(path.join(__dirname, "../project-templates", `package.json.template`), "utf-8") };
+      return {
+        targetFileName: `package.json`,
+        template: readTemplateFile(
+          path.join(__dirname, "../project-templates", `package.json.template`),
+        ),
+      };
     case "java":
       if (options.useGradle) {
-        return { targetFileName: `build.gradle`, template: fs.readFileSync(path.join(__dirname, "../project-templates", `build.gradle.template`), "utf-8") };
+        return {
+          targetFileName: `build.gradle`,
+          template: readTemplateFile(
+            path.join(
+              __dirname,
+              "../project-templates",
+              `build.gradle.template`,
+            ),
+          ),
+        };
       }
-      return { targetFileName: `pom.xml`, template: fs.readFileSync(path.join(__dirname, "../project-templates", `pom.xml.template`), "utf-8") };
+      return {
+        targetFileName: `pom.xml`,
+        template: readTemplateFile(
+          path.join(__dirname, "../project-templates", `pom.xml.template`),
+        ),
+      };
     case "python":
       if (options.usePoetry) {
-        return { targetFileName: `pyproject.toml`, template: fs.readFileSync(path.join(__dirname, "../project-templates", `pyproject.toml.template`), "utf-8") };
+        return {
+          targetFileName: `pyproject.toml`,
+          template: readTemplateFile(
+            path.join(
+              __dirname,
+              "../project-templates",
+              `pyproject.toml.template`,
+            ),
+          ),
+        };
       }
-      return { targetFileName: `setup.py`, template: fs.readFileSync(path.join(__dirname, "../project-templates", `setup.py.template`), "utf-8") };
+      return {
+        targetFileName: `setup.py`,
+        template: readTemplateFile(
+          path.join(__dirname, "../project-templates", `setup.py.template`),
+        ),
+      };
     default:
       console.error(`Unsupported language: ${language}`);
       process.exit(1);
   }
 }
 
-function generateProjectFile(sample: Sample, outputPath: string, options: { useGradle?: boolean, usePoetry?: boolean }) {
-  const {targetFileName, template } = getProjectFileTemplate(sample, options);
+function generateProjectFile(
+  sample: Sample,
+  outputPath: string,
+  options: { useGradle?: boolean; usePoetry?: boolean },
+) {
+  const { targetFileName, template } = getProjectFileTemplate(sample, options);
   const projectFileName = path.join(outputPath, targetFileName);
   const compiledTemplate = _.template(template);
-  fs.writeFileSync(projectFileName, compiledTemplate({
-    dependencies: sample.dependencies,
-  }));
+  fs.writeFileSync(
+    projectFileName,
+    compiledTemplate({
+      dependencies: sample.dependencies,
+    }),
+  );
   console.log(`Generated project file: ${projectFileName}`);
 }
 
-function getSampleTemplate(samplePath: string, sample: Sample): {targetFileName: string, template: string} {
+function getTargetFileName(sample: Sample): string {
   const language = sample.type;
   switch (language) {
     case "csharp":
-      return { targetFileName: `Sample.cs`, template: fs.readFileSync(path.join(samplePath, sample.template), "utf-8") };
+      return "Sample.cs";
     case "go":
-      return { targetFileName: `sample.go`, template: fs.readFileSync(path.join(samplePath, sample.template), "utf-8") };
+      return "sample.go";
     case "javascript":
-      return { targetFileName: `sample.js`, template: fs.readFileSync(path.join(samplePath, sample.template), "utf-8") };
+      return "sample.js";
     case "java":
-      return { targetFileName: `Sample.java`, template: fs.readFileSync(path.join(samplePath, sample.template), "utf-8") };
+      return "Sample.java";
     case "python":
-      return { targetFileName: `sample.py`, template: fs.readFileSync(path.join(samplePath, sample.template), "utf-8") };
+      return "sample.py";
     default:
       console.error(`Unsupported language: ${language}`);
       process.exit(1);
   }
 }
 
-const templateControlLine = /\n^\s*<%.*%>\s*$/;
+function getSampleTemplate(
+  samplePath: string,
+  sample: Sample,
+): { targetFileName: string; template: string } {
+  const language = sample.type;
+  if (!language) {
+    console.error("Sample type is not defined in the sample file.");
+    process.exit(1);
+  }
+  return {
+    targetFileName: getTargetFileName(sample),
+    template: readTemplateFile(path.join(samplePath, sample.template)),
+  };
+}
 
 export function compileSample(
   samplePath: string,
   dataPath: string,
   outputPath: string,
-  options: { project: boolean, useGradle: boolean, usePoetry: boolean },
+  options: { project: boolean; useGradle: boolean; usePoetry: boolean },
 ) {
   const sample = readSample(samplePath);
   createOutputDirectory(outputPath);
@@ -149,13 +224,13 @@ export function compileSample(
     process.exit(1);
   }
 
-  const {targetFileName, template}  = getSampleTemplate(samplePath, sample);
+  const { targetFileName, template } = getSampleTemplate(samplePath, sample);
   const outputFilePath = path.join(outputPath, targetFileName);
-   const processedTemplate = template.replace(/\n(\s*(?:<%(?!=).*?%>\s*)+)/g, '$1');
-  const compiledTemplate = _.template(processedTemplate, { imports: { "csharp": {
-    valueOrEnvironment,
-    usings,
-  }}});
+  const compiledTemplate = _.template(template, {
+    imports: {
+      csharp: csharp,
+    },
+  });
   fs.writeFileSync(outputFilePath, compiledTemplate(inputObject));
   console.log(`Generated sample file: ${outputFilePath}`);
 }

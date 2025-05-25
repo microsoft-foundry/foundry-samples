@@ -30,3 +30,5 @@ ChatCompletion completion = await chatClient.CompleteChatAsync([
 <% } else { %>
 ]);
 <% } %>
+
+Console.WriteLine(completion.Content[0].Text);
