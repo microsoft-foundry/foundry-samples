@@ -22,8 +22,8 @@ func main() {
 		fmt.Println("Error creating credential:", err)
 		os.Exit(1)
 	}
-	<% } %>
 
+	<% } %>
 	client := openai.NewClient(
 		azure.WithEndpoint(endpoint, api_version),
 		<% if (useTokenCredentials) { %>

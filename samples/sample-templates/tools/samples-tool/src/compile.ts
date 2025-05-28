@@ -75,9 +75,11 @@ function fillInputObject(
   return inputObject;
 }
 
+const regex = /\n[ \t]*(<%(?!=)[^%]+%>)/g;
+
 function readTemplateFile(templatePath: string): string {
   const template = fs.readFileSync(templatePath, "utf-8");
-  return template.replace(/\n(\s*(?:<%(?!=).*?%>\s*)+)/g, "$1");
+  return template.replace(regex, "$1");
 }
 
 function getProjectFileTemplate(
