@@ -15,12 +15,12 @@ from termcolor import colored
 from datetime import datetime, timedelta
 from typing import Optional, Callable
 from urllib3.util import Url
-from video_translation_enum import *
-from video_translation_dataclass import *
-from video_translation_util import *
-import time
 from azure.core.credentials import TokenCredential
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+
+from src.video_translation_enum import *
+from src.video_translation_dataclass import *
+from src.video_translation_util import *
 
 logger = logging.getLogger(__name__)
 

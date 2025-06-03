@@ -13,8 +13,8 @@ from azure.storage.blob.aio import BlobServiceClient
 
 from semantic_kernel.functions import kernel_function
 
-from video_translation_client import VideoTranslationClient
-from video_translation_enum import VoiceKind, WebvttFileKind
+from src.video_translation_client import VideoTranslationClient
+from src.video_translation_enum import VoiceKind, WebvttFileKind
 
 logging.basicConfig(
     level=logging.ERROR,

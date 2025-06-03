@@ -1,6 +1,5 @@
 # Video Translation Agent
 
-
 This code sample supports building agents for multilingual video localization with translation, subtitles, and speech generation. It leverages Azure AI Foundry, Azure AI Cognitive Services, and Azure Blob Storage to provide high-quality video translations between languages with customizable speech and subtitle options.
 
 **IMPORTANT NOTE:** Starter templates, instructions, code samples and resources in this msft-agent-samples file (“samples”) are designed to assist in accelerating development of agents for specific scenarios. It is important that you review all provided resources and carefully test Agent behavior in the context of your use case: ([Learn More](https://learn.microsoft.com/en-us/legal/cognitive-services/agents/transparency-note?context=%2Fazure%2Fai-services%2Fagents%2Fcontext%2Fcontext)). 
@@ -9,14 +8,7 @@ Certain Agent offerings may be subject to legal and regulatory requirements, may
 
 ## Demo
 
-<div align="center">
-  <video width="800" controls>
-    <source src="./assets/demo.mp4" type="video/mp4">
-    Your browser does not support the video tag.
-  </video>
-</div>
-
-You can find the demo video at `./assets/demo.mp4` in the repository.
+You can view the demo video [here](https://learn-video.azurefd.net/vod/player?id=24cc69cb-8e6a-4c1b-a3b5-7000dc81919f)!
 
 ## Use Cases
 
@@ -31,7 +23,7 @@ You can find the demo video at `./assets/demo.mp4` in the repository.
 The Video Translation Agent uses:
 - **Azure AI Agents** - For conversation management and orchestration
 - **Semantic Kernel** - For creating the AI Agent and managing plugins
-- **Azure AI's Cognitive Services Video Translation API** - For the core video translation functionality
+- **Azure AI Speech's Video Translation API** - For the core video translation functionality
 - **Azure Blob Storage** - For secure file storage and retrieval
 
 <div align="center">
@@ -45,7 +37,7 @@ The Video Translation Agent uses:
 - [Python > 3.11.10](https://www.python.org/downloads/)
 - [Git](https://git-scm.com/downloads)
 - Azure resources:
-  - **Azure subscription**: [Create a free account](https://azure.microsoft.com/free/) if you don't already have one
+  - **Azure subscription**: [Create an account](https://azure.microsoft.com/free/) if you don't already have one
   - **Azure AI Speech Services**: 
     - Create a [Speech resource](https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices) in a [supported region for video translation](https://learn.microsoft.com/azure/ai-services/speech-service/regions#speech-service)
   - **Azure Blob Storage**:
@@ -61,7 +53,7 @@ Follow the [official Azure AI Agent Service documentation](https://learn.microso
 
 ### Quickstart
 
-1. Clone the repository and navigate to the `video-translation-agent` folder using the "cd" command in the terminal.
+1. Clone the repository and navigate to the `video-translation-agent` folder.
 
 2. Create and activate a virtual environment:
 
