@@ -21,7 +21,7 @@ param resourceGroupLocation string = resourceGroup().location
 param location string = resourceGroupLocation
 
 @description('Name for your AI Services resource.')
-param aiServices string = 'aiservices'
+param aiServices string = 'aif'
 
 // Model deployment parameters
 @description('The name of the model you want to deploy')
@@ -37,17 +37,20 @@ param modelCapacity int = 1
 
 // Create a short, unique suffix, that will be unique to each resource group
 param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
-var uniqueSuffix = substring(uniqueString('${resourceGroup().id}-${deploymentTimestamp}'), 0, 4)
-var accountName = toLower('${aiServices}${uniqueSuffix}')
+//var uniqueSuffix = substring(uniqueString('${resourceGroup().id}-${deploymentTimestamp}'), 0, 4)
+var environmentName = toLower('dev2')
+var uniqueSuffix = 'eus-t4-v2'
+var accountName = toLower('${aiServices}-${uniqueSuffix}-${environmentName}')
+
 
 @description('Name for your project resource.')
-param firstProjectName string = 'project'
+param firstProjectName string = 'project-ig88'
 
 @description('This project will be a sub-resource of your account')
 param projectDescription string = 'A project for the AI Foundry account with network secured deployed Agent'
 
 @description('The display name of the project')
-param displayName string = 'project'
+param displayName string = 'project-ig88'
 
 //Existing standard Agent required resources
 @description('The AI Search Service full ARM Resource ID. This is an optional field, and if not provided, the resource will be created.')
@@ -57,10 +60,11 @@ param azureStorageAccountResourceId string = ''
 @description('The Cosmos DB Account full ARM Resource ID. This is an optional field, and if not provided, the resource will be created.')
 param azureCosmosDBAccountResourceId string = ''
 
-var projectName = toLower('${firstProjectName}${uniqueSuffix}')
-var cosmosDBName = toLower('${aiServices}${uniqueSuffix}cosmosdb')
-var aiSearchName = toLower('${aiServices}${uniqueSuffix}search')
-var azureStorageName = toLower('${aiServices}${uniqueSuffix}storage')
+var projectName = toLower('${firstProjectName}-${uniqueSuffix}-${environmentName}')
+var cosmosDBName = toLower('cosmo-${aiServices}-${uniqueSuffix}-${environmentName}')
+var aiSearchName = toLower('srch-${aiServices}-${uniqueSuffix}-${environmentName}')
+var azureStorageName = replace(toLower('st-${aiServices}-${uniqueSuffix}-${environmentName}'), '-', '')
+
 
 // Check if existing resources have been passed in
 var storagePassedIn = azureStorageAccountResourceId != ''
@@ -82,7 +86,7 @@ var azureStorageResourceGroupName = storagePassedIn ? storageParts[4] : resource
 
 // Create Virtual Network and Subnets
 module vnet 'modules-network-secured/vnet.bicep' = {
-    name: '${uniqueSuffix}-vnet'
+    name: 'vnet-${uniqueSuffix}${environmentName}'
     params: {
       location: location
     }
