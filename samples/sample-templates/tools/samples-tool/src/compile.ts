@@ -4,6 +4,7 @@ import { parse } from "yaml";
 import path from "path";
 import { Sample } from "./interfaces";
 import * as csharp from "./csharp";
+import * as java from "./java";
 import * as go from "./go";
 import * as python from "./python";
 
@@ -237,6 +238,7 @@ export function compileSample(
   const compiledTemplate = _.template(template, {
     imports: {
       csharp: csharp,
+      java: java,
       go: go,
       python: python,
     },
