@@ -209,6 +209,12 @@ PublishScripts/
 *.nuget.props
 *.nuget.targets
 
+# Java Files
+*.properties 
+*.class
+*.lst
+*.jar
+
 # Microsoft Azure Build Output
 csx/
 *.build.csdef

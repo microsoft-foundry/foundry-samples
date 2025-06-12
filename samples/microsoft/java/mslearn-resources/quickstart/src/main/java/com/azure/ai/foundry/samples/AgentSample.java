@@ -1,69 +1,76 @@
 package com.azure.ai.foundry.samples;
 
-import com.azure.ai.foundry.samples.utils.ConfigLoader;
-import com.azure.ai.projects.AIProjectClient;
-import com.azure.ai.projects.AIProjectClientBuilder;
-import com.azure.ai.projects.models.Agent;
-import com.azure.ai.projects.models.AgentMessage;
-import com.azure.ai.projects.models.AgentOptions;
-import com.azure.ai.projects.models.AgentRun;
-import com.azure.ai.projects.models.AgentRunStatus;
-import com.azure.ai.projects.models.AgentThread;
-import com.azure.identity.DefaultAzureCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
-
-import java.util.List;
+import com.azure.core.credential.TokenCredential;
+import com.azure.ai.agents.persistent.PersistentAgentsAdministrationClient;
+import com.azure.ai.agents.persistent.PersistentAgentsAdministrationClientBuilder;
+import com.azure.ai.agents.persistent.models.CreateAgentOptions;
+import com.azure.ai.agents.persistent.models.CreateThreadAndRunOptions;
+import com.azure.ai.agents.persistent.models.PersistentAgent;
+import com.azure.ai.agents.persistent.models.ThreadRun;
 
 /**
- * Demonstrates how to create and run an agent using the new AIProjectClient API.
+ * Sample demonstrating using Azure AI Agents Persistent SDK with Java.
  */
 public class AgentSample {
     public static void main(String[] args) {
-        var endpoint = ConfigLoader.getAzureEndpoint();
-        var deploymentName = ConfigLoader.getAzureDeployment();
+        // Load environment variables
+        String endpoint = System.getenv("PROJECT_ENDPOINT");
+        String modelName = System.getenv("MODEL_DEPLOYMENT_NAME");
+        String agentName = System.getenv("AGENT_NAME");
+        String instructions = System.getenv("AGENT_INSTRUCTIONS");
 
-        var credential = new DefaultAzureCredentialBuilder().build();
+        // Validate required environment variables
+        if (endpoint == null) {
+            System.err.println("ERROR: Set PROJECT_ENDPOINT, e.g. https://<your>.services.ai.azure.com/api/projects/<project>");
+            return;
+        }
+        if (modelName == null) {
+            modelName = "gpt4o";  // Default if not provided
+            System.out.println("MODEL_DEPLOYMENT_NAME not set, using default: " + modelName);
+        }
+        if (agentName == null) {
+            agentName = "java-quickstart-agent";  // Default if not provided
+            System.out.println("AGENT_NAME not set, using default: " + agentName);
+        }
+        if (instructions == null) {
+            instructions = "You are a helpful assistant that provides clear and concise information.";  // Default if not provided
+            System.out.println("AGENT_INSTRUCTIONS not set, using default instructions");
+        }
 
-        var project = new AIProjectClientBuilder()
+        TokenCredential cred = new DefaultAzureCredentialBuilder().build();
+
+        // Create admin client
+        PersistentAgentsAdministrationClient adminClient = new PersistentAgentsAdministrationClientBuilder()
             .endpoint(endpoint)
-            .credential(credential)
+            .credential(cred)
             .buildClient();
 
-        System.out.println("Creating agent...");
-        var agent = project.agents().createAgent(new AgentOptions()
-            .setModel(deploymentName)
-            .setName("Research Assistant")
-            .setInstructions("You are a research assistant. Help users find information and summarize content."));
-        System.out.println("Agent created: " + agent.getId());
+        // Create an agent
+        System.out.println("\nCreating an agent...");
+        PersistentAgent agent = adminClient.createAgent(new CreateAgentOptions(modelName)
+            .setName(agentName)
+            .setInstructions(instructions)
+        );
+        System.out.println("Agent created with ID: " + agent.getId());
+        System.out.println("Agent name: " + agent.getName());
 
-        var thread = project.agents().threads().create();
-        System.out.println("Thread created: " + thread.getId());
-
-        var userMessage = new AgentMessage()
-            .setRole("user")
-            .setContent("Explain what cloud computing is and list three benefits.");
-
-        var run = project.agents().runs().createAndProcess(thread.getId(), agent.getId(), userMessage);
-        var completedRun = waitForRunCompletion(project, thread.getId(), run.getId());
-        System.out.println("Run completed with status: " + completedRun.getStatus());
-
-        var messages = project.agents().messages().list(thread.getId());
-        for (var message : messages) {
-            System.out.println(message.getRole() + ": " + message.getContent());
-        }
-    }
-
-    private static AgentRun waitForRunCompletion(AIProjectClient project, String threadId, String runId) {
-        var run = project.agents().runs().get(threadId, runId);
-        while (run.getStatus() == AgentRunStatus.QUEUED || run.getStatus() == AgentRunStatus.IN_PROGRESS) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException("Thread interrupted", e);
+        // Create a thread and run
+        System.out.println("\nCreating thread and run...");
+        ThreadRun runResult = adminClient.createThreadAndRun(new CreateThreadAndRunOptions(agent.getId()));
+        
+        // Print available ThreadRun information
+        System.out.println("Thread and Run created");
+        System.out.println("Thread ID: " + runResult.getThreadId());
+        
+        // Use reflection to see available methods on ThreadRun
+        System.out.println("\nAvailable methods on ThreadRun class:");
+        for (java.lang.reflect.Method method : ThreadRun.class.getMethods()) {
+            if (method.getName().startsWith("get")) {
+                System.out.println("- " + method.getName());
             }
-            run = project.agents().runs().get(threadId, runId);
         }
-        return run;
+        
+        System.out.println("\nDemo completed successfully!");
     }
 }
