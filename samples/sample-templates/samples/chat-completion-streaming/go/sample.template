@@ -1,0 +1,102 @@
+package main
+
+<%= go.includes(
+	"context",
+	"fmt",
+	"log",
+	"os",
+	{ module: "github.com/Azure/azure-sdk-for-go/sdk/azidentity", condition: useTokenCredentials },
+	"github.com/openai/openai-go",
+	"github.com/openai/openai-go/azure",
+) %>
+
+const DefaultAPIVersion = "2025-03-01-preview"
+
+func main() {
+	<%= go.valueOrEnvironment(useEnvVars, "endpoint", "AZURE_OPENAI_ENDPOINT", endpoint) %>
+	<%	if (useTokenCredentials) { %>
+	<% } else { %>
+	<%= go.valueOrEnvironment(useEnvVars, "apiKey", "AZURE_OPENAI_API_KEY", apiKey) %><% } %>
+	
+	<%=	go.valueOrEnvironment(useEnvVars, "deploymentName", "AZURE_OPENAI_DEPLOYMENT", deploymentName) %>
+
+	<% if (useTokenCredentials) { %>
+	token_credential, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		fmt.Println("Error creating credential:", err)
+		os.Exit(1)
+	}
+	client := openai.NewClient(
+		azure.WithEndpoint(endpoint, DefaultAPIVersion),
+		azure.WithTokenCredential(token_credential),
+	)
+	<% } else { %>
+		client := openai.NewClient(
+		azure.WithEndpoint(endpoint, DefaultAPIVersion),
+		azure.WithAPIKey(apiKey),
+		)
+	<% } %>
+
+	stream := client.Chat.Completions.NewStreaming(context.Background(), openai.ChatCompletionNewParams{
+		Model: openai.ChatModel(deploymentName),
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			{
+				OfSystem: &openai.ChatCompletionSystemMessageParam{
+					Content: openai.ChatCompletionSystemMessageParamContentUnion{
+						OfString: openai.String("You are a helpful assistant. You will talk like a pirate."),
+					},
+				},
+			},
+			// The user asks a question
+			{
+				OfUser: &openai.ChatCompletionUserMessageParam{
+					Content: openai.ChatCompletionUserMessageParamContentUnion{
+						OfString: openai.String("Can you help me?"),
+					},
+				},
+			},
+			{
+				OfAssistant: &openai.ChatCompletionAssistantMessageParam{
+					Content: openai.ChatCompletionAssistantMessageParamContentUnion{
+						OfString: openai.String("Arrrr! Of course, me hearty! What can I do for ye?"),
+					},
+				},
+			},
+			{
+				OfUser: &openai.ChatCompletionUserMessageParam{
+					Content: openai.ChatCompletionUserMessageParamContentUnion{
+						OfString: openai.String("What's the best way to train a parrot?"),
+					},
+				},
+			},
+		},
+	})
+
+	var choices []openai.ChatCompletionChunkChoice
+	for stream.Next() {
+		chunk := stream.Current()
+		azureChunk := azopenai.ChatCompletionChunk(chunk)
+		_, err := azureChunk.PromptFilterResults()
+
+		if err != nil {
+			log.Printf("ERROR: %s", err)
+			return
+		}
+
+		if len(chunk.Choices) == 0 {
+			continue
+		}
+		choices = append(choices, chunk.Choices[0])
+	}
+
+	var message string
+	var role constant.Assistant
+	for _, choice := range choices {
+		message += choice.Delta.Content
+		if len(choice.Delta.Role) > 0 {
+			role = constant.Assistant(choice.Delta.Role)
+		}
+	}
+	fmt.Fprintf(os.Stderr, "Role:%s \n", role)
+	fmt.Fprintf(os.Stderr, "%s\n", message)
+}
