@@ -48,18 +48,26 @@ func main() {
 	)
 
 	fmt.Fprintf(os.Stderr, "Streaming response:\n")
-
-	for stream.Next() {
-		event := stream.Current()
-		if event.Type == "response.output_text.delta" && event.Delta.OfString != "" {
-			fmt.Fprintf(os.Stderr, "%s", event.Delta.OfString)
+	
+	// Channel to signal when the stream is done
+	done := make(chan struct{})
+	
+	// Handle the stream in a goroutine
+	go func() {
+		defer close(done)
+		for stream.Next() {
+			event := stream.Current()
+			if event.Type == "response.output_text.delta" && event.Delta.OfString != "" {
+				fmt.Fprintf(os.Stderr, "%s", event.Delta.OfString)
+			}
 		}
-	}
+		if err := stream.Err(); err != nil {
+			fmt.Fprintf(os.Stderr, "\nStreaming error: %s\n", err)
+		} else {
+			fmt.Fprintln(os.Stderr, "\nDone.")
+		}
+	}()
 
-	if err := stream.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "\nStreaming error: %s\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Fprintln(os.Stderr, "\nDone.")
+	// Wait for the goroutine to finish
+	<-done
 }
