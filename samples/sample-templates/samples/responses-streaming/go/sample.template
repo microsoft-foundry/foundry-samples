@@ -48,7 +48,8 @@ func main() {
 	)
 
 	fmt.Fprintf(os.Stderr, "Streaming response:\n")
-
+	
+	// Handle the stream synchronously (blocking)
 	for stream.Next() {
 		event := stream.Current()
 		if event.Type == "response.output_text.delta" && event.Delta.OfString != "" {
