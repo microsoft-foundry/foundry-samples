@@ -55,7 +55,7 @@ func main() {
 		},
 	}
 
-	done := make(chan []openai.ChatCompletionMessageParamUnion)
+	done := make(chan struct{})
 
 	go func() {
 		defer close(done)
@@ -103,8 +103,6 @@ func main() {
 				},
 			)
 		}
-
-		done <- messages
 	}()
 
 	<-done
