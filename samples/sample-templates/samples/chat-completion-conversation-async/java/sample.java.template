@@ -20,12 +20,10 @@ public class Main {
     public static void main(String[] args) {
 
         String endpoint = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_ENDPOINT", endpoint)%>;
-        <%if (useTokenCredentials) { %>
-        <%} else {%>
+        <%if (!useTokenCredentials) { %>
         String azureOpenaiKey = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_API_KEY", apiKey)%>;
         <%}%>
-        String deploymentName = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_DEPLOYMENT", deploymentName)%>;        
-
+        
         OpenAIOkHttpClientAsync.Builder clientBuilder = OpenAIOkHttpClientAsync.builder();
         <% if (!useTokenCredentials) { %>
         clientBuilder
