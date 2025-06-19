@@ -23,6 +23,7 @@ public class Main {
         <%if (!useTokenCredentials) { %>
         String azureOpenaiKey = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_API_KEY", apiKey)%>;
         <%}%>
+        String deploymentName = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_DEPLOYMENT", deploymentName)%>;
         
         OpenAIOkHttpClientAsync.Builder clientBuilder = OpenAIOkHttpClientAsync.builder();
         <% if (!useTokenCredentials) { %>
@@ -39,7 +40,7 @@ public class Main {
         OpenAIClientAsync client = clientBuilder.build();
 
         ChatCompletionCreateParams.Builder createParamsBuilder = ChatCompletionCreateParams.builder()
-                .model(ChatModel.GPT_4O)
+                .model(ChatModel.of(deploymentName))
                 .maxCompletionTokens(2048)
                 .addDeveloperMessage("Make sure you mention Stainless!")
                 .addUserMessage("Tell me a story about building the best SDK!");
