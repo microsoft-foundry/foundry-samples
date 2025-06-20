@@ -10,7 +10,7 @@ This module deploys the core network infrastructure with security controls:
 2. Security Features:
    - Network isolation
    - Subnet delegation
-   - Private endpoint subnet 
+   - Private endpoint subnet
 */
 
 @description('Azure region for the deployment')
@@ -26,20 +26,29 @@ param agentSubnetName string = 'agent-subnet'
 param peSubnetName string = 'pe-subnet'
 
 
+@description('Address space for the VNet')
+param vnetAddressPrefix string = '192.168.0.0/16'
+
+@description('Address prefix for the agent subnet')
+param agentSubnetPrefix string = '192.168.0.0/24'
+
+@description('Address prefix for the private endpoint subnet')
+param peSubnetPrefix string = '192.168.1.0/24'
+
 resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
   name: vnetName
   location: location
   properties: {
     addressSpace: {
       addressPrefixes: [
-        '192.168.0.0/16'
+        vnetAddressPrefix
       ]
     }
     subnets: [
       {
         name: agentSubnetName
         properties: {
-          addressPrefix: '192.168.0.0/24'
+          addressPrefix: agentSubnetPrefix
           delegations: [
             {
               name: 'Microsoft.app/environments'
@@ -53,7 +62,7 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
       {
         name: peSubnetName
         properties: {
-          addressPrefix: '192.168.1.0/24'
+          addressPrefix: peSubnetPrefix
         }
       }
     ]
@@ -63,4 +72,8 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
 output peSubnetName string = peSubnetName
 output agentSubnetName string = agentSubnetName
 output agentSubnetId string = '${virtualNetwork.id}/subnets/${agentSubnetName}'
+output peSubnetId string = '${virtualNetwork.id}/subnets/${peSubnetName}'
 output virtualNetworkName string = virtualNetwork.name
+output virtualNetworkId string = virtualNetwork.id
+output virtualNetworkResourceGroup string = resourceGroup().name
+output virtualNetworkSubscriptionId string = subscription().subscriptionId
