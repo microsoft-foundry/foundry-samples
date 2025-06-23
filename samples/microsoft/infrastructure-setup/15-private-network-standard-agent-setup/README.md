@@ -16,9 +16,14 @@ This infrastructure-as-code (IaC) solution deploys a network-secured Azure AI ag
 
 [![Deploy To Azure](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/deploytoazure.svg?sanitize=true)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fmeerakurup%2Ffoundry-samples%2Fdharkumar%2Fbyo-vnet-update%2Fsamples%2Fmicrosoft%2Finfrastructure-setup%2F15-private-network-standard-agent-setup%2Fmain.json)
 
-## Steps to Deploy
+## Prerequisites
 
-1. **Register Resource Providers**
+1. **Active Azure subscription with appropriate permissions**
+  - **Azure AI Account Owner**: Needed to create a cognitive services account and project 
+  - **Owner or Role Based Access Administrator**: Needed to assign RBAC to the required resources (Cosmos DB, Azure AI Search, Storage) 
+  - **Azure AI User**: Needed to create and edit agents 
+
+2. **Register Resource Providers**
 
    Make sure you have an active Azure subscription that allows registering resource providers. For example, subnet delegation requires the Microsoft.App provider to be registered in your subscription. If it's not already registered, run the commands below:
 
@@ -33,7 +38,68 @@ This infrastructure-as-code (IaC) solution deploys a network-secured Azure AI ag
    az provider register --namespace 'Microsoft.ContainerService'
    ```
 
-2. **Create a New (or Use Existing) Resource Group**
+3. Network administrator permissions (if operating in a restricted or enterprise environment) 
+
+4. Sufficient quota for all resources in your target Azure region 
+
+5. Azure CLI installed and configured on your local workstation or deployment pipeline server 
+
+## Pre-Deployment Steps
+
+1. Review network requirements and plan Virtual Network address space (e.g., 192.168.0.0/16 or an alternative non-overlapping address space) 
+
+2. Two subnets are needed as well:  
+  - **Agent Subnet** (e.g., 192.168.0.0/24): Hosts Agent client for Agent workloads 
+  - **Private endpoint Subnet** (e.g. 192.168.1.0/24): Hosts private endpoints 
+    - Ensure that the address spaces for these subnets do not overlap with any existing networks in your Azure environment 
+  
+  > **Note:** If you do not provide an existing virtual network, the template will create a new virtual network with the address spaces and subnets described above. If you use an existing virtual network, make sure it already contains two subnets (Agent and Private Endpoint) before deploying the template.
+
+  **Limitations:**
+  - Class A subnet support is only available in a limited number of regions and requires your subscription id be allowlisted. Please reach out to fosteramanda@microsoft.com if you are interested in getting access.
+    - Regions with class A support: westus, eastus us, eastus 2, and central us 
+
+---
+
+## Template Customization
+
+Note: If not provided, the following resources will be created automatically for you: 
+- VNet and two subnets 
+- Azure Cosmos DB for NoSQL  
+- Azure AI Search 
+- Azure Storage 
+
+### Parameters
+
+1. Use Existing Virtual Network and Subnets 
+To use an existing VNet and subnets, set the existingVnetResourceId parameter to the full Azure Resource ID of the target VNet, and provide the names of the two required subnets. Example: 
+- param ExistingVnetResourceI = "/subscriptions/<subscription-id>/resourceGroups/<resource-group-name>/providers/Microsoft.Network/virtualNetworks/<vnet-name>" 
+- param agentSubnetName string = 'agent-subnet' 
+- param peSubnetName string = 'pe-subnet' 
+
+💡 Ensure both subnets already exist within the specified VNet. If they do not, you must also set createAgentSubnet and/or createPeSubnet to true and provide valid CIDR prefixes for creation. 
+
+2. Use an existing Azure Cosmos DB for NoSQL 
+To use an existing Cosmos DB for NoSQL resource, set cosmosDBResourceId parameter to the full Azure Resource ID of the target Cosmos DB. 
+- param cosmosDBResourceId string = /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DocumentDB/databaseAccounts/{cosmosDbAccountName} 
+
+3. Use an existing Azure AI Search resource 
+To use an existing Azure AI Search resource, set aiSearchServiceResourceId parameter to the full Azure resource Id of the target Azure AI Search resource. 
+- param aiSearchServiceResourceId string = /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Search/searchServices/{searchServiceName} 
+
+
+4. Use an existing Azure Storage account 
+To use an existing Azure Storage account, set aiStorageAccountResourceId parameter to the full Azure resource Id of the target Azure Storage account resource. 
+- param aiStorageAccountResourceId string = /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Storage/storageAccounts/{storageAccountName} 
+
+ 
+## Deploy the bicep template
+
+1. Option 1: Click the deploy to Azure button above to open the Azure portal and deploy the template directly.
+  - Fill in the parameters as needed, including the existing VNet and subnets if applicable. 
+
+2. Option 2: Manually deploy the bicep template
+**Create a New (or Use Existing) Resource Group**
 
    ```bash
    az group create --name <new-rg-name> --location <your-rg-region>
@@ -47,23 +113,57 @@ This infrastructure-as-code (IaC) solution deploys a network-secured Azure AI ag
 
 > **Note:** To access your Foundry resource securely, use either a VM, VPN, or ExpressRoute.
 
-> **Note:** If you would like to bring your existing deployed resources such as CosmosDB, AI Search, Storage, and virtual network, update the following lines of the Bicep template in the `main.bicep` file with your resource ID:
-> - For existing AI Search, line 77.
-> - For existing Storage, line 79.
-> - For existing CosmosDB, line 81.
-> - For existing virtual network, line 65.
-
----
-
 ## Architecture Overview
 
 For more details on the networking set-up, see our documentation on [Microsoft Learn](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/how-to/virtual-networks).
 
-### Network Security Design
+### Step by Step Provisioning Process
+Standard Setup Network Secured Steps for main.bicep
+-----------------------------------
+1. Create dependent resources for standard setup:
+   - Create new (or pass in resource ID of existing) Cosmos DB resource
+   - Create new (or pass in resource ID of existing) Azure Storage resource
+   - Create new (or pass in resource ID of existing) Azure AI Search resource
+   - Create new (or pass in resource ID of existing) Virtual Network resource
+   - [Optional] Create a new Key Vault resource
+   - [Optional] Create new Application Insights resource
+   - [Optional] Pass in resource ID of existing AI Foundry resource
+
+
+2. Create Azure AI Foundry Resource (Cognitive Services/accounts, kind=AIServices)
+
+3. Create account-level connections:
+   - Create account connection to Application Insights resource
+   - Deploy GPT-4o or other agent-compatible model
+
+4. Create Project (Cognitive Services/accounts/project)
+
+5. Create project connections:
+   - Create project connection to Azure Storage account
+   - Create project connection to Azure AI Search account
+   - Create project connection to Cosmos DB account
+
+6. Assign the project-managed identity (including for SMI) the following roles:
+   - Cosmos DB Operator at the scope of the account level for the Cosmos DB account resource
+   - Storage Account Contributor at the scope of the account level for the Storage Account resource
+
+7. Set Account capability host with empty properties section.
+
+8. Set Project capability host with properties: Cosmos DB, Azure Storage, AI Search connections
+
+9. Assign the Project Managed Identity (both for SMI and UMI) the following roles on the specified resource scopes:
+   - Azure AI Search: Search Index Data Contributor, Search Service Contributor
+   - Azure Blob Storage Container: <workspaceId>-azureml-blobstore: Storage Blob Data Contributor
+   - Azure Blob Storage Container: <workspaceId>-agents-blobstore: Storage Blob Data Owner
+   - Cosmos DB for NoSQL container: <'${projectWorkspaceId}>-thread-message-store: Cosmos DB Built-in Data Contributor
+   - Cosmos DB for NoSQL container: <'${projectWorkspaceId}>-system-thread-message-store: Cosmos DB Built-in Data Contributor
+   - Cosmos DB for NoSQL container: <'${projectWorkspaceId}>-agent-entity-store: Cosmos DB Built-in Data Contributor
+
+10. Once all resources are provisioned, assign all developers who want to create/edit agents in the project the role: Azure AI User on the project scope.
 
 The deployment creates an isolated network environment:
 
-- **Virtual Network (192.168.0.0/16):**
+- If you don't bring an existing virtual network, the following will be created for you **Virtual Network (192.168.0.0/16):**
   - Agent Subnet (192.168.0.0/24): Hosts Agent client for Agent workloads
   - Private endpoint Subnet (192.168.1.0/24): Hosts private endpoints
 
