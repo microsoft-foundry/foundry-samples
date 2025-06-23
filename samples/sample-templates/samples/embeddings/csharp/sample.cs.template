@@ -18,7 +18,7 @@ AzureOpenAIClient azureClient = new(new Uri(endpoint), new DefaultAzureCredentia
 AzureOpenAIClient azureClient = new(new Uri(endpoint), new AzureKeyCredential(apiKey));
 <% } %>EmbeddingClient embeddingClient = azureClient.GetEmbeddingClient(deploymentName);
 
-ClientResult<OpenAIEmbedding> embeddingResult = await embeddingClient.GenerateEmbeddingAsync("The quick brown fox jumped over the lazy dog");
+ClientResult<OpenAIEmbedding> embeddingResult = embeddingClient.GenerateEmbedding("The quick brown fox jumped over the lazy dog");
 
 if (embeddingResult?.Value != null)
 {

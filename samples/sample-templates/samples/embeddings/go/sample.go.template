@@ -1,0 +1,64 @@
+package main
+
+<%= go.includes(
+	"context",
+	"fmt",
+	"log",
+	"os",
+	{ module: "github.com/Azure/azure-sdk-for-go/sdk/azidentity", condition: useTokenCredentials },
+	"github.com/openai/openai-go",
+	"github.com/openai/openai-go/azure"
+) %>
+
+func main() {
+	<%= go.valueOrEnvironment(useEnvVars, "endpoint", "AZURE_OPENAI_ENDPOINT", endpoint) %>
+	<%= go.valueOrEnvironment(useEnvVars, "api_version", "AZURE_OPENAI_API_VERSION", apiVersion) %>
+	<%	if (useTokenCredentials) { %>
+	<% } else { %>
+	<%= go.valueOrEnvironment(useEnvVars, "apiKey", "AZURE_OPENAI_API_KEY", apiKey) %>
+	<% } %>	
+	<%=	go.valueOrEnvironment(useEnvVars, "deploymentName", "AZURE_OPENAI_DEPLOYMENT", deploymentName) %>
+
+	<% if (useTokenCredentials) { %>
+	token_credential, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		fmt.Println("Error creating credential:", err)
+		os.Exit(1)
+	}
+	client := openai.NewClient(
+		azure.WithEndpoint(endpoint, api_version),
+		azure.WithTokenCredential(token_credential),
+	)
+	<% } else { %>
+	client := openai.NewClient(
+		azure.WithEndpoint(endpoint, api_version),
+		azure.WithAPIKey(apiKey),
+	)
+	<% } %>
+
+	inputText := "The quick brown fox jumped over the lazy dog"
+
+	// Make the embedding request synchronously
+	resp, err := client.Embeddings.New(context.Background(), openai.EmbeddingNewParams{
+		Model: openai.EmbeddingModel(deploymentName),
+		Input: openai.EmbeddingNewParamsInputUnion{
+			OfArrayOfStrings: []string{inputText},
+		},
+	})
+	if err != nil {
+		log.Fatalf("Failed to get embedding: %v", err)
+	}
+
+	if len(resp.Data) == 0 {
+		fmt.Println("No embedding data returned.")
+		return
+	}
+
+	embedding := resp.Data[0].Embedding
+	fmt.Printf("Embedding Length: %d\n", len(embedding))
+	fmt.Println("Embedding Values:")
+	for _, value := range embedding {
+		fmt.Printf("%f, ", value)
+	}
+	fmt.Println()
+}

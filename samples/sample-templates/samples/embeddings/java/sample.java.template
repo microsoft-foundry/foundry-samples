@@ -1,0 +1,42 @@
+import com.openai.client.OpenAIClient;
+import com.openai.client.okhttp.OpenAIOkHttpClient;
+
+<% if (useTokenCredentials) { %>import com.azure.identity.AuthenticationUtil;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.openai.credential.BearerTokenCredential; <% 
+} else { %>import com.openai.azure.credential.AzureApiKeyCredential; 
+<% } %>
+
+import com.openai.models.embeddings.EmbeddingCreateParams;
+import com.openai.models.embeddings.EmbeddingModel;
+
+public class Main {
+    public static void main(String[] args) {
+        String endpoint = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_ENDPOINT", endpoint)%>;
+        <%if (!useTokenCredentials) { %>
+        String azureOpenaiKey = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_API_KEY", apiKey)%>;
+        <%}%>
+        String deploymentName = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_DEPLOYMENT", deploymentName)%>;
+        
+        OpenAIOkHttpClient.Builder clientBuilder = OpenAIOkHttpClient.builder();
+        <% if (!useTokenCredentials) { %>
+        clientBuilder
+                .baseUrl(endpoint)
+                .credential(AzureApiKeyCredential.create(azureOpenaiKey));        
+        <% 
+        } else { %>
+        clientBuilder
+                .baseUrl(endpoint)
+                .credential(BearerTokenCredential.create(AuthenticationUtil.getBearerTokenSupplier(
+                        new DefaultAzureCredentialBuilder().build(), "https://cognitiveservices.azure.com/.default")));
+        <%} %>
+        OpenAIClient client = clientBuilder.build();
+
+        EmbeddingCreateParams createParams = EmbeddingCreateParams.builder()
+                .input("The quick brown fox jumped over the lazy dog")
+                .model(EmbeddingModel.of(deploymentName))
+                .build();
+
+        System.out.println(client.embeddings().create(createParams));
+    }
+}

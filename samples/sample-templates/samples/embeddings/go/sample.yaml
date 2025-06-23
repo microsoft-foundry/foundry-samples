@@ -1,0 +1,38 @@
+template: sample.go.template
+type: go
+dependencies:
+  - name: github.com/Azure/azure-sdk-for-go/sdk/azidentity
+    version: v1.10.0
+  - name: github.com/openai/openai-go
+    version: v1.1.0
+input:
+  - name: useTokenCredentials
+    type: boolean
+    default: true
+    description: "Use token credentials for authentication"
+  - name: endpoint
+    type: string
+    required: false
+    description: "Endpoint URL for the OpenAI API"
+  - name: apiVersion
+    type: string
+    required: false
+    default: "2025-03-01-preview"
+    description: "API version to use for the request"
+  - name: apiKey
+    type: string
+    required: false
+    description: "API key for authentication"
+  - name: deploymentName
+    type: string
+    required: true
+    description: "Model to use for chat completion"
+  - name: useEnvVars
+    type: boolean
+    required: false
+    default: false
+    description: "Use environment variables for configuration"
+  - name: extraParams
+    type: object
+    required: false
+    description: "Additional parameters for the request"
