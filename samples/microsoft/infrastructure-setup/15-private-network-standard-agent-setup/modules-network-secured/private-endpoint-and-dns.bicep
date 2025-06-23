@@ -38,6 +38,30 @@ param peSubnetName string
 @description('Suffix for unique resource names')
 param suffix string
 
+
+@description('Resource Group name for existing Virtual Network (if different from current resource group)')
+param vnetResourceGroupName string = resourceGroup().name
+
+@description('Subscription ID for Virtual Network')
+param vnetSubscriptionId string = subscription().subscriptionId
+
+@description('Resource Group name for Storage Account')
+param storageAccountResourceGroupName string = resourceGroup().name
+
+@description('Subscription ID for Storage account')
+param storageAccountSubscriptionId string = subscription().subscriptionId
+
+@description('Subscription ID for AI Search service')
+param aiSearchSubscriptionId string = subscription().subscriptionId
+
+@description('Resource Group name for AI Search service')
+param aiSearchResourceGroupName string = resourceGroup().name
+
+@description('Subscription ID for Cosmos DB account')
+param cosmosDBSubscriptionId string = subscription().subscriptionId
+
+@description('Resource group name for Cosmos DB account')
+param cosmosDBResourceGroupName string = resourceGroup().name
 // Reference existing services that need private endpoints
 resource aiAccount 'Microsoft.CognitiveServices/accounts@2023-05-01' existing = {
   name: aiAccountName
@@ -46,23 +70,23 @@ resource aiAccount 'Microsoft.CognitiveServices/accounts@2023-05-01' existing = 
 
 resource aiSearch 'Microsoft.Search/searchServices@2023-11-01' existing = {
   name: aiSearchName
-  scope: resourceGroup()
+  scope: resourceGroup(aiSearchSubscriptionId, aiSearchResourceGroupName)
 }
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: storageName
-  scope: resourceGroup()
+  scope: resourceGroup(storageAccountSubscriptionId, storageAccountResourceGroupName)
 }
 
 resource cosmosDBAccount 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' existing = {
   name: cosmosDBName
-  scope: resourceGroup()
+  scope: resourceGroup(cosmosDBSubscriptionId, cosmosDBResourceGroupName)
 }
 
 // Reference existing network resources
 resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' existing = {
   name: vnetName
-  scope: resourceGroup()
+  scope: resourceGroup(vnetSubscriptionId, vnetResourceGroupName)
 }
 
 resource peSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existing = {
@@ -178,7 +202,7 @@ resource cosmosDBPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01'
 //         3) Create DNS Zone Group for Private Endpoint
 
 // Private DNS Zone for AI Services (Account)
-// 1) Enables custom DNS resolution for AI Services private endpoint  
+// 1) Enables custom DNS resolution for AI Services private endpoint
 
 resource aiServicesPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: 'privatelink.services.ai.azure.com'
@@ -259,7 +283,7 @@ resource aiServicesDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGr
     ]
   }
   dependsOn: [
-    aiServicesLink 
+    aiServicesLink
     cognitiveServicesLink
     aiOpenAILink
   ]
