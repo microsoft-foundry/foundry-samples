@@ -108,7 +108,7 @@ param existingVnetResourceId string = ''
 @description('Address space for the VNet (only used for new VNet)')
 param vnetAddressPrefix string = '192.168.0.0/16'
 
-@description('Address prefix for the agent subnet')
+@description('Address prefix for the agent subnet. The default value is 192.168.0.0/24 but you can choose any size /26 or any class like 10.0.0.0 or 172.168.0.0')
 param agentSubnetPrefix string = '192.168.0.0/24'
 
 @description('Address prefix for the private endpoint subnet')

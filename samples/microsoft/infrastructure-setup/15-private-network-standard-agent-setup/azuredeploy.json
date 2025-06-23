@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.1.42791",
-      "templateHash": "13245092421627449410"
+      "templateHash": "16863136885272343844"
     }
   },
   "parameters": {
@@ -137,7 +137,7 @@
       "type": "string",
       "defaultValue": "192.168.0.0/24",
       "metadata": {
-        "description": "Address prefix for the agent subnet"
+        "description": "Address prefix for the agent subnet. The default value is 192.168.0.0/24 but you can choose any size /26 or any class like 10.0.0.0 or 172.168.0.0"
       }
     },
     "peSubnetPrefix": {
