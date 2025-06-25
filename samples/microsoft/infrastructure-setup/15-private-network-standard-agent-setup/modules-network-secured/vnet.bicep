@@ -27,13 +27,17 @@ param peSubnetName string = 'pe-subnet'
 
 
 @description('Address space for the VNet')
-param vnetAddressPrefix string = '192.168.0.0/16'
+param vnetAddressPrefix string = ''
 
 @description('Address prefix for the agent subnet')
-param agentSubnetPrefix string = '192.168.0.0/24'
+param agentSubnetPrefix string = ''
 
 @description('Address prefix for the private endpoint subnet')
-param peSubnetPrefix string = '192.168.1.0/24'
+param peSubnetPrefix string = ''
+
+var vnetAddress = empty(vnetAddressPrefix) ? '192.168.0.0/16' : vnetAddressPrefix
+var agentSubnet = empty(agentSubnetPrefix) ? cidrSubnet(vnetAddress, 8, 0) : agentSubnetPrefix
+var peSubnet = empty(peSubnetPrefix) ? cidrSubnet(vnetAddress, 8, 1) : peSubnetPrefix
 
 resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
   name: vnetName
@@ -41,14 +45,14 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
   properties: {
     addressSpace: {
       addressPrefixes: [
-        vnetAddressPrefix
+        vnetAddress
       ]
     }
     subnets: [
       {
         name: agentSubnetName
         properties: {
-          addressPrefix: agentSubnetPrefix
+          addressPrefix: agentSubnet
           delegations: [
             {
               name: 'Microsoft.app/environments'
@@ -62,7 +66,7 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
       {
         name: peSubnetName
         properties: {
-          addressPrefix: peSubnetPrefix
+          addressPrefix: peSubnet
         }
       }
     ]

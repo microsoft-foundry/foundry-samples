@@ -20,13 +20,13 @@ param agentSubnetName string = 'agent-subnet'
 param peSubnetName string = 'pe-subnet'
 
 @description('Address space for the VNet (only used for new VNet)')
-param vnetAddressPrefix string = '192.168.0.0/16'
+param vnetAddressPrefix string = ''
 
 @description('Address prefix for the agent subnet')
-param agentSubnetPrefix string = cidrSubnet(vnetAddressPrefix, 8, 0) // 192.168.0.0/24
+param agentSubnetPrefix string = ''
 
 @description('Address prefix for the private endpoint subnet')
-param peSubnetPrefix string = cidrSubnet(vnetAddressPrefix, 8, 1) // 192.168.1.0/24
+param peSubnetPrefix string = ''
 
 // Create new VNet if needed
 module newVNet 'vnet.bicep' = if (!useExistingVnet) {

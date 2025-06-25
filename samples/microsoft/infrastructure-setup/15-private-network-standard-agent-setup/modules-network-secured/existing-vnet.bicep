@@ -35,6 +35,12 @@ param agentSubnetPrefix string = ''
 @description('Address prefix for the private endpoint subnet (only needed if creating new subnet)')
 param peSubnetPrefix string = ''
 
+// Get the address space (array of CIDR strings)
+var vnetAddressSpace = existingVNet.properties.addressSpace.addressPrefixes[0]
+
+var agentSubnetSpaces = empty(agentSubnetPrefix) ? cidrSubnet(vnetAddressSpace, 8, 0) : agentSubnetPrefix
+var peSubnetSpaces = empty(peSubnetPrefix) ? cidrSubnet(vnetAddressSpace, 8, 1) : peSubnetPrefix
+
 // Reference the existing virtual network
 resource existingVNet 'Microsoft.Network/virtualNetworks@2024-05-01' existing = {
   name: vnetName
@@ -48,7 +54,7 @@ module agentSubnet 'subnet.bicep' = {
   params: {
     vnetName: vnetName
     subnetName: agentSubnetName
-    addressPrefix: agentSubnetPrefix
+    addressPrefix: agentSubnetSpaces
     delegations: [
       {
         name: 'Microsoft.App/environments'
@@ -67,7 +73,7 @@ module peSubnet 'subnet.bicep' = {
   params: {
     vnetName: vnetName
     subnetName: peSubnetName
-    addressPrefix: peSubnetPrefix
+    addressPrefix: peSubnetSpaces
     delegations: []
   }
 }
