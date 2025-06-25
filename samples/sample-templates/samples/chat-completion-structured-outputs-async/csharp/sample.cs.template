@@ -1,0 +1,52 @@
+<% if (useTokenCredentials) { %>
+using Azure.Identity; 
+<%} else { %>using Azure; 
+<% } %>
+using Azure.AI.OpenAI;
+using OpenAI.Chat;
+
+<%= csharp.valueOrEnvironment(useEnvVars, "endpoint", "AZURE_OPENAI_ENDPOINT", endpoint) %>;
+<%if (useTokenCredentials) { %>
+<% } else { %>
+<%= csharp.valueOrEnvironment(useEnvVars, "apiKey", "AZURE_OPENAI_API_KEY", apiKey) %>;
+<% } %>
+<%= csharp.valueOrEnvironment(useEnvVars, "deploymentName", "AZURE_OPENAI_DEPLOYMENT", deploymentName) %>;
+<% if (useTokenCredentials) { %>
+AzureOpenAIClient azureClient = new(new Uri(endpoint), new DefaultAzureCredential());
+<% } else { %> 
+AzureOpenAIClient azureClient = new(new Uri(endpoint), new AzureKeyCredential(apiKey));
+<% } %>ChatClient client = azureClient.GetChatClient(deploymentName);
+
+IEnumerable<ChatMessage> messages = [
+    new UserChatMessage("What's heavier, a pound of feathers or sixteen ounces of steel?")
+];
+ChatCompletionOptions options = new ChatCompletionOptions()
+{
+    ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
+        "test_schema",
+        BinaryData.FromString("""
+            {
+                "type": "object",
+                "properties": {
+                "answer": {
+                    "type": "string"
+                },
+                "steps": {
+                    "type": "array",
+                    "items": {
+                    "type": "string"
+                    }
+                }
+                },
+                "required": [
+                "answer",
+                "steps"
+                ],
+                "additionalProperties": false
+            }
+            """),
+        "a single final answer with a supporting collection of steps",
+        jsonSchemaIsStrict: true)
+};
+ChatCompletion completion = await client.CompleteChatAsync(messages, options)!;
+Console.WriteLine(completion!.Content![0].Text);
