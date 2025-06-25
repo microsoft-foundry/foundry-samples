@@ -24,7 +24,7 @@ param azureCosmosDBAccountResourceId = ''
 // Network configuration: only used when existingVnetResourceId is not provided
 // These addresses are only used when creating a new VNet and subnets
 // If you provide existingVnetResourceId, these values will be ignored
-param vnetAddressPrefix = '192.168.0.0/16'
-param agentSubnetPrefix = '192.168.0.0/24'
-param peSubnetPrefix = '192.168.1.0/24'
+param vnetAddressPrefix = ''
+param agentSubnetPrefix = ''
+param peSubnetPrefix = ''
 

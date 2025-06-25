@@ -34,10 +34,10 @@ param agentSubnetPrefix string = ''
 
 @description('Address prefix for the private endpoint subnet')
 param peSubnetPrefix string = ''
-
-var vnetAddress = empty(vnetAddressPrefix) ? '192.168.0.0/16' : vnetAddressPrefix
-var agentSubnet = empty(agentSubnetPrefix) ? cidrSubnet(vnetAddress, 8, 0) : agentSubnetPrefix
-var peSubnet = empty(peSubnetPrefix) ? cidrSubnet(vnetAddress, 8, 1) : peSubnetPrefix
+var defaultVnetAddressPrefix = '192.168.0.0/16'
+var vnetAddress = empty(vnetAddressPrefix) ? defaultVnetAddressPrefix : vnetAddressPrefix
+var agentSubnet = empty(agentSubnetPrefix) ? cidrSubnet(vnetAddress, 24, 0) : agentSubnetPrefix
+var peSubnet = empty(peSubnetPrefix) ? cidrSubnet(vnetAddress, 24, 1) : peSubnetPrefix
 
 resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
   name: vnetName
