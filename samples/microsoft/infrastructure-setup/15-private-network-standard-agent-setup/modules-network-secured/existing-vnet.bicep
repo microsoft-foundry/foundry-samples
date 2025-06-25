@@ -29,12 +29,6 @@ param agentSubnetName string = 'agent-subnet'
 @description('The name of Private Endpoint subnet')
 param peSubnetName string = 'pe-subnet'
 
-@description('Flag to determine if agent subnet should be created or is existing')
-param createAgentSubnet bool = false
-
-@description('Flag to determine if PE subnet should be created or is existing')
-param createPeSubnet bool = false
-
 @description('Address prefix for the agent subnet (only needed if creating new subnet)')
 param agentSubnetPrefix string = ''
 
@@ -48,7 +42,7 @@ resource existingVNet 'Microsoft.Network/virtualNetworks@2024-05-01' existing = 
 }
 
 // Create the agent subnet if requested
-module agentSubnet 'subnet.bicep' = if (createAgentSubnet && !empty(agentSubnetPrefix)) {
+module agentSubnet 'subnet.bicep' = {
   name: 'agent-subnet-${uniqueString(deployment().name, agentSubnetName)}'
   scope: resourceGroup(vnetResourceGroupName)
   params: {
@@ -67,7 +61,7 @@ module agentSubnet 'subnet.bicep' = if (createAgentSubnet && !empty(agentSubnetP
 }
 
 // Create the private endpoint subnet if requested
-module peSubnet 'subnet.bicep' = if (createPeSubnet && !empty(peSubnetPrefix)) {
+module peSubnet 'subnet.bicep' = {
   name: 'pe-subnet-${uniqueString(deployment().name, peSubnetName)}'
   scope: resourceGroup(vnetResourceGroupName)
   params: {

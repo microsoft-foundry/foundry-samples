@@ -23,16 +23,10 @@ param peSubnetName string = 'pe-subnet'
 param vnetAddressPrefix string = '192.168.0.0/16'
 
 @description('Address prefix for the agent subnet')
-param agentSubnetPrefix string = '192.168.0.0/24'
+param agentSubnetPrefix string = cidrSubnet(vnetAddressPrefix, 8, 0) // 192.168.0.0/24
 
 @description('Address prefix for the private endpoint subnet')
-param peSubnetPrefix string = '192.168.1.0/24'
-
-@description('Create agent subnet in existing VNet')
-param createAgentSubnet bool = false
-
-@description('Create PE subnet in existing VNet')
-param createPeSubnet bool = false
+param peSubnetPrefix string = cidrSubnet(vnetAddressPrefix, 8, 1) // 192.168.1.0/24
 
 // Create new VNet if needed
 module newVNet 'vnet.bicep' = if (!useExistingVnet) {
@@ -57,8 +51,6 @@ module existingVNet 'existing-vnet.bicep' = if (useExistingVnet) {
     vnetSubscriptionId: existingVnetSubscriptionId
     agentSubnetName: agentSubnetName
     peSubnetName: peSubnetName
-    createAgentSubnet: createAgentSubnet
-    createPeSubnet: createPeSubnet
     agentSubnetPrefix: agentSubnetPrefix
     peSubnetPrefix: peSubnetPrefix
   }

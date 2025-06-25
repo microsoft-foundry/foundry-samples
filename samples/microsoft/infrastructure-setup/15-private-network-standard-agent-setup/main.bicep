@@ -67,10 +67,10 @@ param existingVnetResourceId string = ''
 param vnetAddressPrefix string = '192.168.0.0/16'
 
 @description('Address prefix for the agent subnet. The default value is 192.168.0.0/24 but you can choose any size /26 or any class like 10.0.0.0 or 172.168.0.0')
-param agentSubnetPrefix string = '192.168.0.0/24'
+param agentSubnetPrefix string = cidrSubnet(vnetAddressPrefix, 8, 0) // 192.168.0.0/24
 
 @description('Address prefix for the private endpoint subnet')
-param peSubnetPrefix string = '192.168.1.0/24'
+param peSubnetPrefix string = cidrSubnet(vnetAddressPrefix, 8, 1) // 192.168.1.0/24
 
 @description('The AI Search Service full ARM Resource ID. This is an optional field, and if not provided, the resource will be created.')
 param aiSearchResourceId string = ''

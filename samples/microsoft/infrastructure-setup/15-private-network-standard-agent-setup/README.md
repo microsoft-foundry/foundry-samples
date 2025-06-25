@@ -79,9 +79,11 @@ Note: If not provided, the following resources will be created automatically for
 To use an existing VNet and subnets, set the existingVnetResourceId parameter to the full Azure Resource ID of the target VNet, and provide the names of the two required subnets. Example:
 - param ExistingVnetResourceId = "/subscriptions/<subscription-id>/resourceGroups/<resource-group-name>/providers/Microsoft.Network/virtualNetworks/<vnet-name>" 
 - param agentSubnetName string = 'agent-subnet'
+- param agentSubnetPrefix string = '192.168.0.0/24'
 - param peSubnetName string = 'pe-subnet'
+- param peSubnetPrefix string = '192.168.1.0/24'
 
-💡 Ensure both subnets already exist within the specified VNet. If they do not, you must also set createAgentSubnet and/or createPeSubnet to true and provide valid CIDR prefixes for creation. 
+💡 If subnets information is provided then make sure it exist within the specified VNet to avoid errors. If subnet information is not provided, the template will create subnets with the default address space.
 
 2. **Use an existing Azure Cosmos DB for NoSQL**
    
