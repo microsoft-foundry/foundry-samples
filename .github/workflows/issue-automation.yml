@@ -14,7 +14,7 @@ jobs:
           ADO_ORG: ${{ secrets.ADO_ORG }}
           ADO_PROJECT: ${{ secrets.ADO_PROJECT }}
           ADO_PAT: ${{ secrets.ADO_PAT }}
-          DRI_EMAIL: ${{ secrets.DRI_CONTACT }}
+          DRI_CONTACT: ${{ secrets.DRI_CONTACT }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
           ISSUE_URL:  ${{ github.event.issue.html_url }}
