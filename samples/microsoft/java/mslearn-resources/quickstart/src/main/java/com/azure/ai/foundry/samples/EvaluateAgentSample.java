@@ -1,132 +1,182 @@
 package com.azure.ai.foundry.samples;
 
-import com.azure.ai.foundry.samples.utils.ConfigLoader;
+import java.util.List;
+import java.util.ArrayList;
+import java.lang.reflect.Method;
+
+import com.azure.ai.agents.persistent.PersistentAgentsClient;
+import com.azure.ai.agents.persistent.PersistentAgentsClientBuilder;
 import com.azure.ai.agents.persistent.PersistentAgentsAdministrationClient;
-import com.azure.ai.agents.persistent.PersistentAgentsAdministrationClientBuilder;
 import com.azure.ai.agents.persistent.models.CreateAgentOptions;
 import com.azure.ai.agents.persistent.models.CreateThreadAndRunOptions;
 import com.azure.ai.agents.persistent.models.PersistentAgent;
 import com.azure.ai.agents.persistent.models.ThreadRun;
-import com.azure.identity.DefaultAzureCredential;
+import com.azure.core.credential.TokenCredential;
+import com.azure.core.exception.HttpResponseException;
+import com.azure.core.util.logging.ClientLogger;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * Example demonstrating agent creation and run.
- * This class also explores the available API surface to identify evaluation capabilities.
+ * Sample demonstrating agent evaluation features in Azure AI Agents.
+ * 
+ * This sample shows how to:
+ * - Create a persistent agent
+ * - Start a thread and run
+ * - Find evaluation-related methods in the SDK clients
  */
 public class EvaluateAgentSample {
+    private static final ClientLogger logger = new ClientLogger(EvaluateAgentSample.class);
+    
     public static void main(String[] args) {
-        // Load environment variables
-        String endpoint = ConfigLoader.getAzureEndpoint();
+        // Load environment variables with proper error handling
+        String endpoint = System.getenv("AZURE_ENDPOINT");
         String projectEndpoint = System.getenv("PROJECT_ENDPOINT");
         String modelName = System.getenv("MODEL_DEPLOYMENT_NAME");
+        String agentName = System.getenv("AGENT_NAME");
+        String instructions = System.getenv("AGENT_INSTRUCTIONS");
         
-        // Validate required environment variables
-        if (projectEndpoint == null) {
-            System.err.println("ERROR: Set PROJECT_ENDPOINT environment variable");
+        // Check for required endpoint configuration
+        if (projectEndpoint == null && endpoint == null) {
+            String errorMessage = "Environment variables not configured. Required: either PROJECT_ENDPOINT or AZURE_ENDPOINT must be set.";
+            logger.error("ERROR: {}", errorMessage);
+            logger.error("Please set your environment variables or create a .env file. See README.md for details.");
             return;
         }
+        
+        // Use AZURE_ENDPOINT as fallback if PROJECT_ENDPOINT not set
+        if (projectEndpoint == null) {
+            projectEndpoint = endpoint;
+            logger.info("Using AZURE_ENDPOINT as PROJECT_ENDPOINT: {}", projectEndpoint);
+        }
+        
+        // Set defaults for optional parameters with informative logging
         if (modelName == null) {
-            modelName = "gpt4o";  // Default if not provided
-            System.out.println("MODEL_DEPLOYMENT_NAME not set, using default: " + modelName);
-        }
-
-        DefaultAzureCredential credential = new DefaultAzureCredentialBuilder().build();
-
-        // Create agent administration client
-        System.out.println("Creating agent administration client...");
-        PersistentAgentsAdministrationClient agentClient = new PersistentAgentsAdministrationClientBuilder()
-            .endpoint(projectEndpoint)
-            .credential(credential)
-            .buildClient();
-
-        // Create an agent
-        System.out.println("\nCreating weather assistant agent...");
-        PersistentAgent agent = agentClient.createAgent(new CreateAgentOptions(modelName)
-            .setName("Weather Assistant")
-            .setInstructions("You are a weather assistant. Provide accurate information about weather conditions.")
-        );
-        System.out.println("Agent created with ID: " + agent.getId());
-
-        // Create thread and run
-        System.out.println("\nCreating thread and run...");
-        ThreadRun threadRun = agentClient.createThreadAndRun(new CreateThreadAndRunOptions(agent.getId()));
-        String threadId = threadRun.getThreadId();
-        System.out.println("Thread created with ID: " + threadId);
-        
-        // Use reflection to explore API surface for evaluation capabilities
-        System.out.println("\n=== API EXPLORATION ===");
-        
-        // Check for evaluation methods in PersistentAgentsAdministrationClient
-        List<String> evaluationMethods = findEvaluationMethods(PersistentAgentsAdministrationClient.class);
-        System.out.println("\nPersistentAgentsAdministrationClient evaluation methods:");
-        if (evaluationMethods.isEmpty()) {
-            System.out.println("No evaluation-related methods found.");
-        } else {
-            evaluationMethods.forEach(method -> System.out.println("- " + method));
+            modelName = "gpt-4o";
+            logger.info("No MODEL_DEPLOYMENT_NAME provided, using default: {}", modelName);
         }
         
-        // Check for evaluation classes
-        System.out.println("\nLooking for evaluation-related model classes:");
-        List<Class<?>> evaluationClasses = findEvaluationClasses("com.azure.ai.agents.persistent.models");
-        if (evaluationClasses.isEmpty()) {
-            System.out.println("No evaluation-related model classes found.");
-        } else {
-            evaluationClasses.forEach(cls -> System.out.println("- " + cls.getName()));
+        if (agentName == null) {
+            agentName = "evaluation-agent";
+            logger.info("No AGENT_NAME provided, using default: {}", agentName);
         }
         
-        // Print ThreadRun methods
-        System.out.println("\nAll methods on ThreadRun class:");
-        for (Method method : ThreadRun.class.getMethods()) {
-            if (method.getDeclaringClass() != Object.class) {
-                System.out.println("- " + method.getName() +
-                        "(" + getParameterTypes(method) + ")");
+        if (instructions == null) {
+            instructions = "You are a helpful assistant that provides clear and concise information about the weather.";
+            logger.info("No AGENT_INSTRUCTIONS provided, using default instructions: {}", instructions);
+        }
+
+        // Create Azure credential with DefaultAzureCredentialBuilder
+        logger.info("Building DefaultAzureCredential");
+        TokenCredential credential = new DefaultAzureCredentialBuilder().build();
+
+        try {
+            // Build the top-level client with proper configuration
+            logger.info("Creating PersistentAgentsClient with endpoint: {}", projectEndpoint);
+            System.out.println("\nCreating PersistentAgentsClient...");
+            PersistentAgentsClient agentsClient = new PersistentAgentsClientBuilder()
+                .endpoint(projectEndpoint)
+                .credential(credential)
+                .buildClient();
+            
+            // Derive the administration client for agent-management operations
+            logger.info("Getting PersistentAgentsAdministrationClient");
+            PersistentAgentsAdministrationClient agentClient = 
+                agentsClient.getPersistentAgentsAdministrationClient();
+            
+            // Create an agent with proper error handling
+            logger.info("Creating agent with name: {}, model: {}", agentName, modelName);
+            System.out.println("\nCreating an agent...");
+            PersistentAgent agent = agentClient.createAgent(new CreateAgentOptions(modelName)
+                .setName(agentName)
+                .setInstructions(instructions)
+            );
+            logger.info("Agent created successfully with ID: {}", agent.getId());
+            System.out.println("Agent created with ID: " + agent.getId());
+            System.out.println("Agent name: " + agent.getName());
+            
+            // Create a thread and run with the agent
+            logger.info("Creating thread and run with agent ID: {}", agent.getId());
+            System.out.println("\nCreating thread and run...");
+            ThreadRun runResult = agentsClient.createThreadAndRun(new CreateThreadAndRunOptions(agent.getId()));
+            
+            // Log and display thread information
+            logger.info("ThreadRun created with ThreadId: {}", runResult.getThreadId());
+            System.out.println("Thread and Run created");
+            System.out.println("Thread ID: " + runResult.getThreadId());
+            
+            // Use reflection to check for evaluation methods in the SDK clients
+            logger.info("Checking for evaluation methods in PersistentAgentsAdministrationClient");
+            System.out.println("\nPersistentAgentsAdministrationClient evaluation methods:");
+            List<String> evaluationMethods = findEvaluationMethods(PersistentAgentsAdministrationClient.class);
+            if (evaluationMethods.isEmpty()) {
+                logger.info("No evaluation methods found in PersistentAgentsAdministrationClient");
+                System.out.println("No evaluation methods found in PersistentAgentsAdministrationClient.");
+            } else {
+                for (String method : evaluationMethods) {
+                    System.out.println("- " + method);
+                }
             }
+            
+            // Check for evaluation methods in the general client
+            logger.info("Checking for evaluation methods in PersistentAgentsClient");
+            System.out.println("\nPersistentAgentsClient evaluation methods:");
+            evaluationMethods = findEvaluationMethods(PersistentAgentsClient.class);
+            if (evaluationMethods.isEmpty()) {
+                logger.info("No evaluation methods found in PersistentAgentsClient");
+                System.out.println("No evaluation methods found in PersistentAgentsClient.");
+            } else {
+                for (String method : evaluationMethods) {
+                    System.out.println("- " + method);
+                }
+            }
+            
+            logger.info("Demo completed successfully");
+            System.out.println("\nAgent creation and evaluation check completed successfully!");
+            
+        } catch (HttpResponseException e) {
+            // Handle service-specific errors with detailed information
+            int statusCode = e.getResponse().getStatusCode();
+            logger.error("Service returned error: Status code {}, Error message: {}", 
+                statusCode, e.getMessage());
+            logger.error("Refer to the Azure AI Agents documentation for troubleshooting information.");
+            
+            // Still print error to console for user visibility
+            System.err.printf("Service error %d: %s%n", statusCode, e.getMessage());
+            System.err.println("Refer to the Azure AI Agents documentation for troubleshooting information.");
+            
+        } catch (Exception e) {
+            // Handle general exceptions
+            logger.error("Error in evaluation agent sample: {}", e.getMessage(), e);
+            
+            // Print simplified error to console
+            System.err.println("Error: " + e.getMessage());
         }
-        
-        System.out.println("\nDemo completed!");
-        System.out.println("Note: For evaluation capabilities, please contact the SDK developers.");
     }
     
-    // Helper method to find evaluation-related methods in a class
+    /**
+     * Helper method to find evaluation-related methods in a class using reflection.
+     * 
+     * @param cls The class to inspect for evaluation-related methods
+     * @return A list of method names related to evaluation functionality
+     */
     private static List<String> findEvaluationMethods(Class<?> cls) {
         List<String> methods = new ArrayList<>();
-        for (Method method : cls.getMethods()) {
-            String name = method.getName().toLowerCase();
-            if (name.contains("evaluat") || name.contains("score") || name.contains("assess") ||
-                    name.contains("metric") || name.contains("measure")) {
-                methods.add(method.getName() + "(" + getParameterTypes(method) + ")");
+        logger.info("Searching for evaluation methods in class: {}", cls.getName());
+        
+        try {
+            for (Method method : cls.getMethods()) {
+                String name = method.getName().toLowerCase();
+                if (name.contains("evaluat") || name.contains("assess") || name.contains("score") || 
+                        name.contains("grade") || name.contains("measure") || name.contains("benchmark")) {
+                    methods.add(method.getName());
+                    logger.info("Found evaluation method: {}", method.getName());
+                }
             }
+        } catch (Exception e) {
+            logger.error("Error searching for evaluation methods: {}", e.getMessage(), e);
         }
+        
+        logger.info("Found {} evaluation methods in class {}", methods.size(), cls.getName());
         return methods;
-    }
-    
-    // Helper method to find evaluation-related classes in a package
-    private static List<Class<?>> findEvaluationClasses(String packageName) {
-        List<Class<?>> classes = new ArrayList<>();
-        
-        // This is just a template - actual implementation would require
-        // scanning the classpath, which is complex. Instead, we'll
-        // mention what to look for.
-        
-        System.out.println("  (Note: This method would need classpath scanning, but you should look for classes with 'Evaluat'");
-        System.out.println("   in their names in the " + packageName + " package.)");
-        
-        return classes;
-    }
-    
-    // Helper method to get parameter types as a readable string
-    private static String getParameterTypes(Method method) {
-        StringBuilder sb = new StringBuilder();
-        Class<?>[] types = method.getParameterTypes();
-        for (int i = 0; i < types.length; i++) {
-            if (i > 0) sb.append(", ");
-            sb.append(types[i].getSimpleName());
-        }
-        return sb.toString();
     }
 }

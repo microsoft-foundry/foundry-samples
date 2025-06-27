@@ -44,13 +44,60 @@ You can also use other IDEs such as:
 - [IntelliJ IDEA](https://www.jetbrains.com/idea/) (Community or Ultimate edition)
 - [Eclipse](https://www.eclipse.org/downloads/) with the Maven plugin
 
-### Rename .env.template to .env
+### Set Environment Variables
 
-Rename the `.env.template` file to `.env` and fill in your Azure credentials:
+You need to set up environment variables for authentication and configuration. Below are instructions for different environments.
 
-```properties
-AZURE_ENDPOINT=your_endpoint_here
-AZURE_DEPLOYMENT=your_deployment_name_here
+#### Bash/Linux/macOS
+
+```bash
+# Azure AI Foundry Core Variables
+export AZURE_ENDPOINT="https://your-resource-name.region.ai.azure.com"
+export MODEL_DEPLOYMENT_NAME="your-model-deployment-name"  # e.g., "gpt-4"
+
+# Optional: Alternative endpoint for specific projects
+export PROJECT_ENDPOINT="https://your-project-endpoint.region.ai.azure.com"  # Only if different from AZURE_ENDPOINT
+
+# Azure OpenAI (Inference SDK) Variables
+export AZURE_OPENAI_API_KEY="your-azure-openai-api-key"
+export AZURE_OPENAI_DEPLOYMENT_NAME="your-azure-openai-deployment"  # e.g., "gpt-4o"
+
+# OpenAI Client Variables (for OpenAI SDK samples)
+export OPENAI_API_KEY="your-openai-api-key"
+export OPENAI_MODEL="gpt-3.5-turbo"  # or gpt-4, gpt-4o
+
+# Agent Configuration
+export AGENT_NAME="My Research Assistant"
+export AGENT_INSTRUCTIONS="You are a helpful AI assistant that provides concise, accurate information."
+
+# Sample Input
+export CHAT_PROMPT="Explain the benefits of Azure AI Foundry"
+```
+
+#### Windows Command Prompt
+
+```cmd
+REM Azure AI Foundry Core Variables
+set AZURE_ENDPOINT=https://your-resource-name.region.ai.azure.com
+set MODEL_DEPLOYMENT_NAME=your-model-deployment-name
+
+REM Optional: Alternative endpoint for specific projects
+set PROJECT_ENDPOINT=https://your-project-endpoint.region.ai.azure.com
+
+REM Azure OpenAI (Inference SDK) Variables
+set AZURE_OPENAI_API_KEY=your-azure-openai-api-key
+set AZURE_OPENAI_DEPLOYMENT_NAME=your-azure-openai-deployment
+
+REM OpenAI Client Variables (for OpenAI SDK samples)
+set OPENAI_API_KEY=your-openai-api-key
+set OPENAI_MODEL=gpt-3.5-turbo
+
+REM Agent Configuration
+set AGENT_NAME=My Research Assistant
+set AGENT_INSTRUCTIONS=You are a helpful AI assistant that provides concise, accurate information.
+
+REM Sample Input
+set CHAT_PROMPT=Explain the benefits of Azure AI Foundry
 ```
 
 ### Authentication Setup

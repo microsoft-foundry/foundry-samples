@@ -1,133 +1,178 @@
 package com.azure.ai.foundry.samples;
 
-import com.azure.ai.foundry.samples.utils.ConfigLoader;
-import com.azure.ai.agents.persistent.PersistentAgentsAdministrationClient;
-import com.azure.ai.agents.persistent.PersistentAgentsAdministrationClientBuilder;
-import com.azure.ai.agents.persistent.models.CreateAgentOptions;
-import com.azure.ai.agents.persistent.models.CreateThreadAndRunOptions;
-import com.azure.ai.agents.persistent.models.PersistentAgent;
-import com.azure.ai.agents.persistent.models.ThreadRun;
-import com.azure.identity.DefaultAzureCredential;
-import com.azure.identity.DefaultAzureCredentialBuilder;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import com.azure.ai.agents.persistent.PersistentAgentsClient;
+import com.azure.ai.agents.persistent.PersistentAgentsClientBuilder;
+import com.azure.ai.agents.persistent.PersistentAgentsAdministrationClient;
+import com.azure.ai.agents.persistent.models.CreateAgentOptions;
+import com.azure.ai.agents.persistent.models.CreateThreadAndRunOptions;
+import com.azure.ai.agents.persistent.models.PersistentAgent;
+import com.azure.ai.agents.persistent.models.ThreadRun;
+import com.azure.core.exception.HttpResponseException;
+import com.azure.core.util.logging.ClientLogger;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+
 /**
  * Example demonstrating agent creation with document capabilities
  * using Azure AI Agents Persistent SDK.
+ * 
+ * This sample shows how to create an agent and provide it with
+ * document search capabilities.
  */
 public class FileSearchAgentSample {
+    private static final ClientLogger logger = new ClientLogger(FileSearchAgentSample.class);
+    
     public static void main(String[] args) {
-        // Load environment variables
-        String endpoint = ConfigLoader.getAzureEndpoint();
+        // Load environment variables with proper error handling
+        String endpoint = System.getenv("AZURE_ENDPOINT");
         String projectEndpoint = System.getenv("PROJECT_ENDPOINT");
         String modelName = System.getenv("MODEL_DEPLOYMENT_NAME");
         String agentName = System.getenv("AGENT_NAME");
         String instructions = System.getenv("AGENT_INSTRUCTIONS");
 
-        // Validate required environment variables
-        if (projectEndpoint == null) {
-            if (endpoint == null) {
-                System.err.println("ERROR: Neither PROJECT_ENDPOINT nor ConfigLoader.getAzureEndpoint() returned a value");
-                System.err.println("Make sure .env file exists with AZURE_ENDPOINT defined or PROJECT_ENDPOINT is set");
-                return;
-            }
-            projectEndpoint = endpoint;
-            System.out.println("PROJECT_ENDPOINT not set, using AZURE_ENDPOINT: " + projectEndpoint);
+        // Check for required endpoint configuration
+        if (projectEndpoint == null && endpoint == null) {
+            String errorMessage = "Environment variables not configured. Required: either PROJECT_ENDPOINT or AZURE_ENDPOINT must be set.";
+            logger.error("ERROR: {}", errorMessage);
+            logger.error("Please set your environment variables or create a .env file. See README.md for details.");
+            return;
         }
         
+        // Set defaults for optional parameters
         if (modelName == null) {
-            modelName = "gpt4o";  // Default to gpt4o
-            System.out.println("MODEL_DEPLOYMENT_NAME not set, using default: " + modelName);
+            modelName = "gpt-4o";
+            logger.info("No MODEL_DEPLOYMENT_NAME provided, using default: {}", modelName);
         }
-        
         if (agentName == null) {
-            agentName = "Document Assistant";
-            System.out.println("AGENT_NAME not set, using default: " + agentName);
+            agentName = "java-file-search-agent";
+            logger.info("No AGENT_NAME provided, using default: {}", agentName);
         }
-        
         if (instructions == null) {
-            instructions = "You are a document assistant that helps users find information in documents. " +
-                           "You can provide summaries of document content and answer questions about documents.";
-            System.out.println("AGENT_INSTRUCTIONS not set, using default instructions");
+            instructions = "You are a helpful assistant that can answer questions about documents.";
+            logger.info("No AGENT_INSTRUCTIONS provided, using default instructions: {}", instructions);
         }
 
-        DefaultAzureCredential credential = new DefaultAzureCredentialBuilder().build();
+        logger.info("Building DefaultAzureCredential");
+        var credential = new DefaultAzureCredentialBuilder().build();
 
-        // Create the agent administration client
-        System.out.println("\nCreating agent administration client...");
-        PersistentAgentsAdministrationClient adminClient = new PersistentAgentsAdministrationClientBuilder()
-            .endpoint(projectEndpoint)
-            .credential(credential)
-            .buildClient();
+        // Use AZURE_ENDPOINT as fallback if PROJECT_ENDPOINT not set
+        String finalEndpoint = projectEndpoint != null ? projectEndpoint : endpoint;
+        logger.info("Using endpoint: {}", finalEndpoint);
 
         try {
-            // Create a sample document
+            // Build the general agents client with proper error handling
+            logger.info("Creating PersistentAgentsClient with endpoint: {}", finalEndpoint);
+            System.out.println("\nCreating agents client...");
+            PersistentAgentsClient agentsClient = new PersistentAgentsClientBuilder()
+                .endpoint(finalEndpoint)
+                .credential(credential)
+                .buildClient();
+
+            // Derive the administration client
+            logger.info("Getting PersistentAgentsAdministrationClient");
+            PersistentAgentsAdministrationClient adminClient =
+                agentsClient.getPersistentAgentsAdministrationClient();
+
+            // Create sample document for demonstration
             Path tmpFile = createSampleDocument();
-            System.out.println("Created sample document: " + tmpFile);
-            System.out.println("Document content:");
-            System.out.println("--------------------------------------------------");
-            System.out.println(Files.readString(tmpFile).substring(0, 200) + "...");
-            System.out.println("--------------------------------------------------");
+            logger.info("Created sample document at: {}", tmpFile);
+            System.out.println("Sample document at " + tmpFile);
+            String filePreview = Files.readString(tmpFile).substring(0, 200) + "...";
+            System.out.println(filePreview);
 
-            // Information about document handling
-            System.out.println("\nINFORMATION: This sample creates a document on your local system to demonstrate");
-            System.out.println("document content that would be used with an agent. To use this document with");
-            System.out.println("your agent, you would upload it in the Azure AI Studio portal and configure");
-            System.out.println("the agent with the file search tool there.");
-
-            // Create a document-focused agent 
+            // Create the agent with proper configuration
+            logger.info("Creating agent with name: {}, model: {}", agentName, modelName);
             System.out.println("\nCreating agent: " + agentName);
-            PersistentAgent agent = adminClient.createAgent(new CreateAgentOptions(modelName)
-                .setName(agentName)
-                .setInstructions(instructions));
-            System.out.println("Agent created with ID: " + agent.getId());
+            PersistentAgent agent = adminClient.createAgent(
+                new CreateAgentOptions(modelName)
+                    .setName(agentName)
+                    .setInstructions(instructions)
+            );
+            logger.info("Agent created successfully with ID: {}", agent.getId());
+            System.out.println("Agent ID: " + agent.getId());
 
-            // Create thread and run
-            System.out.println("\nCreating thread and run...");
-            ThreadRun threadRun = adminClient.createThreadAndRun(new CreateThreadAndRunOptions(agent.getId()));
-            String threadId = threadRun.getThreadId();
-            System.out.println("Thread created with ID: " + threadId);
+            // Start a thread and run on the general client
+            logger.info("Creating thread and run with agent ID: {}", agent.getId());
+            System.out.println("\nStarting thread/run...");
+            ThreadRun threadRun = agentsClient.createThreadAndRun(
+                new CreateThreadAndRunOptions(agent.getId())
+            );
+            logger.info("ThreadRun created with ThreadId: {}", threadRun.getThreadId());
+            System.out.println("ThreadRun ID: " + threadRun.getThreadId());
 
-            // Print next steps
-            System.out.println("\nNEXT STEPS:");
-            System.out.println("1. Upload the sample document to your Azure AI project in the Azure AI Studio portal");
-            System.out.println("2. Configure your agent with file search capability in the portal");
-            System.out.println("3. Access the agent in the portal to interact with it and ask questions about your document");
+            // Display success message
+            logger.info("Demo completed successfully");
+            System.out.println("\nDemo completed successfully!");
 
-            // Clean up the temporary file
-            try {
-                Files.deleteIfExists(tmpFile);
-                System.out.println("\nTemporary document file deleted");
-            } catch (IOException e) {
-                System.err.println("Error deleting temporary file: " + e.getMessage());
-            }
-
+        } catch (HttpResponseException e) {
+            // Handle service-specific errors with detailed information
+            int statusCode = e.getResponse().getStatusCode();
+            logger.error("Service returned error: Status code {}, Error message: {}", 
+                statusCode, e.getMessage());
+            logger.error("Refer to the Azure AI Agents documentation for troubleshooting information.");
+            
+            // Still print error to console for user visibility
+            System.err.printf("Service error %d: %s%n", statusCode, e.getMessage());
+            
         } catch (IOException e) {
+            // Handle IO exceptions specifically for file operations
+            logger.error("I/O error while creating sample document: {}", e.getMessage(), e);
+            
+            // Print simplified error to console
             System.err.println("I/O error: " + e.getMessage());
+            
         } catch (Exception e) {
+            // Handle general exceptions
+            logger.error("Error in file search agent sample: {}", e.getMessage(), e);
+            
+            // Print simplified error to console
             System.err.println("Error: " + e.getMessage());
-            e.printStackTrace();
         }
-        
-        System.out.println("\nDemo completed!");
     }
 
+    /**
+     * Creates a sample markdown document with cloud computing information.
+     * 
+     * @return Path to the created temporary file
+     * @throws IOException if an I/O error occurs
+     */
     private static Path createSampleDocument() throws IOException {
-        String content = "# Cloud Computing Overview\n\n" +
-            "Cloud computing is the delivery of computing services over the internet, including servers, " +
-            "storage, databases, networking, software, and analytics.\n\n" +
-            "## Key Benefits\n\n" +
-            "1. **Cost Efficiency**: Pay only for the resources you use, reducing capital expenditure on hardware and infrastructure.\n\n" +
-            "2. **Scalability**: Easily scale resources up or down based on demand, providing flexibility as your needs change.\n\n" +
-            "3. **Global Reach**: Deploy applications globally in minutes, improving performance and user experience.\n\n" +
-            "4. **Reliability**: Cloud services typically offer built-in redundancy and backup capabilities for improved business continuity.\n\n" +
-            "5. **Security**: Major cloud providers invest heavily in security measures that many organizations couldn't afford on their own.\n\n";
-
-        Path tempFile = Files.createTempFile("cloud-computing-doc", ".md");
+        logger.info("Creating sample document");
+        String content = """
+            # Cloud Computing Overview
+            
+            Cloud computing is the delivery of computing services over the internet, including servers, storage,
+            databases, networking, software, analytics, and intelligence. Cloud services offer faster innovation,
+            flexible resources, and economies of scale.
+            
+            ## Key Cloud Service Models
+            
+            1. **Infrastructure as a Service (IaaS)** - Provides virtualized computing resources
+            2. **Platform as a Service (PaaS)** - Provides hardware and software tools over the internet
+            3. **Software as a Service (SaaS)** - Delivers software applications over the internet
+            
+            ## Major Cloud Providers
+            
+            - Microsoft Azure
+            - Amazon Web Services (AWS)
+            - Google Cloud Platform (GCP)
+            - IBM Cloud
+            
+            ## Benefits of Cloud Computing
+            
+            - Cost efficiency
+            - Scalability
+            - Reliability
+            - Performance
+            - Security
+            """;
+        
+        Path tempFile = Files.createTempFile("cloud-doc", ".md");
         Files.writeString(tempFile, content);
+        logger.info("Sample document created at: {}", tempFile);
         return tempFile;
     }
 }

@@ -1,125 +1,156 @@
 package com.azure.ai.foundry.samples;
 
-import com.azure.ai.foundry.samples.utils.ConfigLoader;
-import com.azure.ai.projects.ProjectsClient;
-import com.azure.ai.projects.ProjectsClientBuilder;
-import com.azure.ai.projects.models.chat.ChatClient;
-import com.azure.ai.projects.models.chat.ChatCompletionOptions;
-import com.azure.ai.projects.models.chat.ChatMessage;
-import com.azure.ai.projects.models.chat.ChatRole;
-import com.azure.ai.projects.models.chat.ChatCompletionStreamResponse;
+import com.azure.ai.inference.ChatCompletionsClient;
+import com.azure.ai.inference.ChatCompletionsClientBuilder;
+import com.azure.ai.inference.models.ChatCompletionsOptions;
+import com.azure.ai.inference.models.ChatRequestMessage;
+import com.azure.ai.inference.models.ChatRequestAssistantMessage;
+import com.azure.ai.inference.models.ChatRequestSystemMessage;
+import com.azure.ai.inference.models.ChatRequestUserMessage;
+import com.azure.ai.inference.models.StreamingChatCompletionsUpdate;
+import com.azure.ai.inference.models.StreamingChatResponseMessageUpdate;
+import com.azure.core.credential.AzureKeyCredential;
+import com.azure.core.exception.HttpResponseException;
+import com.azure.core.util.CoreUtils;
+import com.azure.core.util.IterableStream;
+import com.azure.core.util.logging.ClientLogger;
 import com.azure.identity.DefaultAzureCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
-import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Sample demonstrating streaming chat completion functionality using the 
- * Azure AI Projects SDK.
+ * Sample demonstrating streaming chat completion functionality using the Azure AI Inference SDK.
  * 
- * Note: This sample directly uses the ProjectsClient and ChatClient from the SDK.
- * This approach may not be available in all SDK versions due to evolving APIs.
+ * This sample shows how to perform streaming chat completions with Azure OpenAI
+ * and process the streaming responses token by token.
  */
 public class ChatCompletionStreamingSample {
+    private static final ClientLogger logger = new ClientLogger(ChatCompletionStreamingSample.class);
+
     public static void main(String[] args) {
-        // Load environment variables
-        String endpoint = ConfigLoader.getAzureEndpoint();
-        String projectEndpoint = System.getenv("PROJECT_ENDPOINT");
-        String modelName = System.getenv("MODEL_DEPLOYMENT_NAME");
+        // Load environment variables with proper error handling
+        String endpoint = System.getenv("AZURE_ENDPOINT");
+        String apiKey = System.getenv("AZURE_OPENAI_API_KEY");
+        String deploymentName = System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME");
         String prompt = System.getenv("CHAT_PROMPT");
-        String waitTimeStr = System.getenv("STREAMING_WAIT_TIME");
         
-        // Validate and set defaults for required environment variables
-        if (projectEndpoint == null) {
-            if (endpoint == null) {
-                System.err.println("ERROR: Neither PROJECT_ENDPOINT nor ConfigLoader.getAzureEndpoint() returned a value");
-                System.err.println("Make sure .env file exists with AZURE_ENDPOINT defined or PROJECT_ENDPOINT is set");
-                return;
-            }
-            projectEndpoint = endpoint;
-            System.out.println("PROJECT_ENDPOINT not set, using AZURE_ENDPOINT: " + projectEndpoint);
+        // Validate required environment variables
+        if (endpoint == null) {
+            String errorMessage = "Environment variable AZURE_ENDPOINT is required but not set";
+            logger.error("ERROR: {}", errorMessage);
+            logger.error("Please set your environment variables or create a .env file. See README.md for details.");
+            return;
         }
         
-        if (modelName == null) {
-            modelName = "gpt4o";  // Default to gpt4o
-            System.out.println("MODEL_DEPLOYMENT_NAME not set, using default: " + modelName);
+        // Set defaults for optional parameters with informative logging
+        if (deploymentName == null) {
+            deploymentName = "gpt-4o";  // Default to gpt-4o
+            logger.info("No AZURE_OPENAI_DEPLOYMENT_NAME provided, using default: {}", deploymentName);
         }
         
         if (prompt == null) {
-            prompt = "Write a short poem about Azure AI Foundry and its capabilities.";
-            System.out.println("CHAT_PROMPT not set, using default prompt");
+            prompt = "Write a short poem about Azure AI and its capabilities.";
+            logger.info("No CHAT_PROMPT provided, using default prompt: {}", prompt);
         }
-        
-        // Parse wait time with default of 10 seconds
-        int waitTime = 10_000;
-        if (waitTimeStr != null) {
-            try {
-                waitTime = Integer.parseInt(waitTimeStr);
-                // Convert to milliseconds if it looks like it was provided in seconds
-                if (waitTime < 100) {
-                    waitTime *= 1000;
-                }
-            } catch (NumberFormatException e) {
-                System.out.println("Invalid STREAMING_WAIT_TIME format. Using default: 10 seconds");
-            }
-        }
-
-        DefaultAzureCredential credential = new DefaultAzureCredentialBuilder().build();
 
         try {
-            System.out.println("Creating ProjectsClient...");
-            ProjectsClient client = new ProjectsClientBuilder()
-                .endpoint(projectEndpoint)
-                .credential(credential)
-                .buildClient();
+            logger.info("Creating ChatCompletions client for streaming with endpoint: {}", endpoint);
             
-            System.out.println("Getting ChatClient for model: " + modelName);
-            ChatClient chatClient = client.getChatClient(modelName);
+            // Construct the full endpoint URL including deployment name
+            String fullEndpoint = endpoint;
+            if (!fullEndpoint.endsWith("/")) {
+                fullEndpoint += "/";
+            }
+            fullEndpoint += "openai/deployments/" + deploymentName;
+            logger.info("Using full endpoint URL: {}", fullEndpoint);
             
-            System.out.println("Preparing chat messages...");
-            List<ChatMessage> messages = List.of(
-                new ChatMessage(ChatRole.SYSTEM, "You are a helpful assistant providing clear and concise information."),
-                new ChatMessage(ChatRole.USER, prompt)
-            );
+            ChatCompletionsClient client;
             
-            ChatCompletionOptions options = new ChatCompletionOptions(messages)
-                .setStream(true);
-            
-            System.out.println("\nSending streaming chat completion request...");
-            System.out.println("User prompt: " + prompt);
-            System.out.println("\nResponse from AI assistant (streaming):");
-            
-            // Subscribe to the stream of partial responses
-            Flux<ChatCompletionStreamResponse> stream = chatClient.streamChatCompletion(options);
-            stream.subscribe(chunk -> {
-                var delta = chunk.getChoices().get(0).getDelta().getContent();
-                if (delta != null) {
-                    System.out.print(delta);
-                }
-            }, err -> {
-                System.err.println("\nStream failed: " + err.getMessage());
-                err.printStackTrace();
-            }, () -> {
-                System.out.println("\n\nStreaming completed!");
-            });
-            
-            // Prevent the JVM from exiting immediately
-            System.out.println("\nWaiting for streaming response to complete (timeout: " + (waitTime / 1000) + " seconds)...");
-            try { 
-                Thread.sleep(waitTime);
-            } catch (InterruptedException ignored) {
-                Thread.currentThread().interrupt();
+            // Create client using either API key or Azure credentials with proper error handling
+            if (apiKey != null && !apiKey.isEmpty()) {
+                logger.info("Using API key authentication");
+                client = new ChatCompletionsClientBuilder()
+                    .credential(new AzureKeyCredential(apiKey))
+                    .endpoint(fullEndpoint)
+                    .buildClient();
+            } else {
+                logger.info("Using Azure credential authentication with DefaultAzureCredential");
+                DefaultAzureCredential credential = new DefaultAzureCredentialBuilder().build();
+                client = new ChatCompletionsClientBuilder()
+                    .credential(credential)
+                    .endpoint(fullEndpoint)
+                    .buildClient();
             }
             
-            System.out.println("\nNote: If the response was cut off, you can increase the wait time by setting the STREAMING_WAIT_TIME environment variable (in milliseconds).");
-            System.out.println("\nDemo completed!");
+            logger.info("Preparing chat messages");
+            
+            // Create message list for ChatCompletionsOptions
+            List<ChatRequestMessage> chatMessages = new ArrayList<>();
+            chatMessages.add(new ChatRequestSystemMessage("You are a helpful assistant providing clear and concise information."));
+            chatMessages.add(new ChatRequestUserMessage(prompt));
+            
+            logger.info("Sending streaming chat completion request with prompt: {}", prompt);
+            System.out.println("\nResponse from AI assistant (streaming):");
+            
+            // Create options and start streaming with proper retry and error handling configuration
+            ChatCompletionsOptions options = new ChatCompletionsOptions(chatMessages);
+            IterableStream<StreamingChatCompletionsUpdate> chatCompletionsStream = client.completeStream(options);
+            
+            StringBuilder contentBuilder = new StringBuilder();
+            
+            // Process streaming updates with proper error handling
+            chatCompletionsStream
+                .stream()
+                .forEach(chatCompletions -> {
+                    if (CoreUtils.isNullOrEmpty(chatCompletions.getChoices())) {
+                        logger.atInfo().log("Received update with empty choices");
+                        return;
+                    }
+    
+                    StreamingChatResponseMessageUpdate delta = chatCompletions.getChoice().getDelta();
+    
+                    if (delta.getRole() != null) {
+                        logger.atInfo().log("Received role update: " + delta.getRole());
+                    }
+    
+                    if (delta.getContent() != null) {
+                        String content = delta.getContent();
+                        System.out.print(content);
+                        contentBuilder.append(content);
+                    }
+                });
+            
+            logger.info("Streaming completed successfully");
+            logger.atInfo().log("Complete response:\n" + contentBuilder);
+            System.out.println("\n\nStreaming completed!");
+            
+        } catch (HttpResponseException e) {
+            // Handle service-specific errors with detailed information
+            int statusCode = e.getResponse().getStatusCode();
+            logger.error("Service returned error: Status code {}, Error message: {}", 
+                statusCode, e.getMessage());
+            
+            // Provide more helpful context based on error status code
+            if (statusCode == 401 || statusCode == 403) {
+                logger.error("Authentication error. Check your API key or Azure credentials.");
+            } else if (statusCode == 404) {
+                logger.error("Resource not found. Check if the deployment name and endpoint are correct.");
+            } else if (statusCode == 429) {
+                logger.error("Rate limit exceeded. Try again later or adjust your request rate.");
+            }
+            
+            // Still print error to console for user visibility
+            System.err.printf("Service error %d: %s%n", statusCode, e.getMessage());
+            
         } catch (Exception e) {
+            // Handle general exceptions
+            logger.error("Error in streaming chat completion: {}", e.getMessage(), e);
+            logger.error("Make sure the Azure AI Inference SDK dependency is correct (using beta.5)");
+            
+            // Print simplified error to console
             System.err.println("Error: " + e.getMessage());
-            System.err.println("\nThe current SDK might not support direct chat completion streaming.");
-            System.err.println("This could be due to missing or changed classes in the SDK version.");
-            System.err.println("These errors help package developers understand what needs to be fixed.");
-            e.printStackTrace();
         }
     }
 }
