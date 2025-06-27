@@ -46,24 +46,31 @@ The agent is configured through a Python script (`browser_automation.py`) and au
 1. Azure subscription with the following permissions
    - Contributor or Cognitive Services Contributor role (for resource deployment)
    - Azure AI Developer and Cognitive Services user role (for agent creation)
-2. Agent setup: deploy the latest agent setup using this ([custom deployment](https://www.aka.ms/basic-agent-deployment)).
+2. Agent setup: deploy the latest agent setup using this ([Agents Set Up](https://learn.microsoft.com/en-us/azure/ai-services/agents/overview#get-started-with-foundry-agent-service)).
    - The above creates:
       - AI Services resource
       - AI Project
       - Model deployment
-3. Python 3.8+
-4. Azure CLI
-   
-### Template specific requirements:
-- Playwright connection (optional, see below)
+3. Playwright Resource setup: 
+   - Create a Microsoft Playwright Resource: https://learn.microsoft.com/en-us/azure/playwright-testing/how-to-manage-playwright-workspace?tabs=playwright
+   - Generate an API Key for the Playwright resource: https://learn.microsoft.com/en-us/azure/playwright-testing/how-to-manage-access-tokens
+   - Access the Workspace region endpoint from the Workspace Details. 
+4. Create a serverless connection in the Azure AI Foundry project with the Playwright workspace region endpoint and the Playwright Access Key. 
+   - Go to the Azure AI Foundry portal and select your AI Project. Go to the Management center and Click connected resources.
+   - Create a new connection of type Serverless Model and enter the following information.
+      - Target URI - Playwright Workspace Region Endpoint (example - wss://eastus.api.playwright.microsoft.com/accounts/eastus_xxxxxxxxxxxxxxxxxxxxxxx/browsers).
+      - Key - Playwright Access Key
+   - For more info to create a connection, see [Create a connection](https://learn.microsoft.com/azure/ai-foundry/how-to/connections-add)
+5. Python 3.8+
+6. Azure CLI
 
 ### Environment Variables
 
 Set the following environment variables before running the sample:
 
 ```bash
-PROJECT_CONNECTION_STRING=<your_project_connection_string>
+PROJECT_ENDPOINT=<your_project_endpoint>
 MODEL_DEPLOYMENT_NAME=<your_model_deployment_name>
-PLAYWRIGHT_CONNECTION_ID=<optional_serverless_connection_id>
+PLAYWRIGHT_CONNECTION_ID=<serverless_connection_id>
 
 

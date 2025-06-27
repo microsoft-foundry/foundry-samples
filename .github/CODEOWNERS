@@ -1,21 +1,22 @@
 # See for instructions on this file https://help.github.com/articles/about-codeowners/
 
 #### files referenced in docs (DO NOT EDIT, except for Docs team!!!) #############################################################################
-/samples/microsoft/java/mslearn-resources/quickstart/.env.template @sdgilley
-/samples/microsoft/javascript/mslearn-resources/quickstart/.env.template @sdgilley
-/samples/microsoft/csharp/mslearn-resources/quickstart/Samples/.env.example @sdgilley
-/samples/microsoft/python/mslearn-resources/quickstart/quickstart.py @sdgilley
-/samples/microsoft/java/mslearn-resources/quickstart/src/main/java/com/azure/ai/foundry/samples/ChatCompletionSample.java @sdgilley
-/samples/microsoft/javascript/mslearn-resources/quickstart/src/quickstart.js @sdgilley
-/samples/microsoft/csharp/mslearn-resources/quickstart/Samples/SimpleInference.cs @sdgilley
-/samples/microsoft/REST/mslearn-resources/quickstart/quickstart.sh @sdgilley
-/samples/microsoft/python/mslearn-resources/quickstart/quickstart.py @sdgilley
-/samples/microsoft/java/mslearn-resources/quickstart/src/main/java/com/azure/ai/foundry/samples/AgentSample.java @sdgilley
-/samples/microsoft/javascript/mslearn-resources/quickstart/src/quickstart.js @sdgilley
-/samples/microsoft/csharp/mslearn-resources/quickstart/Samples/AgentService.cs @sdgilley
-/samples/microsoft/REST/mslearn-resources/quickstart/quickstart.sh @sdgilley
+/samples/microsoft/java/mslearn-resources/quickstart/.env.template @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/javascript/mslearn-resources/quickstart/.env.template @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/csharp/mslearn-resources/quickstart/Samples/.env.example @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/python/mslearn-resources/quickstart/create_project.py @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/python/mslearn-resources/quickstart/quickstart.py @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/java/mslearn-resources/quickstart/src/main/java/com/azure/ai/foundry/samples/ChatCompletionSample.java @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/javascript/mslearn-resources/quickstart/src/quickstart.js @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/csharp/mslearn-resources/quickstart/Samples/SimpleInference.cs @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/REST/mslearn-resources/quickstart/quickstart.sh @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/python/mslearn-resources/quickstart/quickstart.py @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/java/mslearn-resources/quickstart/src/main/java/com/azure/ai/foundry/samples/AgentSample.java @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/javascript/mslearn-resources/quickstart/src/quickstart.js @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/csharp/mslearn-resources/quickstart/Samples/AgentService.cs @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/REST/mslearn-resources/quickstart/quickstart.sh @azure-ai-foundry/ai-platform-docs
 /samples/microsoft/python/mslearn-resources/quickstart/quickstart.py 
-/samples/microsoft/java/mslearn-resources/quickstart/src/main/java/com/azure/ai/foundry/samples/FileSearchAgentSample.java @sdgilley
-/samples/microsoft/javascript/mslearn-resources/quickstart/src/quickstart.js @sdgilley
-/samples/microsoft/csharp/mslearn-resources/quickstart/Samples/AgentFileSearch.cs @sdgilley
-/samples/microsoft/REST/mslearn-resources/quickstart/quickstart.sh @sdgilley
+/samples/microsoft/java/mslearn-resources/quickstart/src/main/java/com/azure/ai/foundry/samples/FileSearchAgentSample.java @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/javascript/mslearn-resources/quickstart/src/quickstart.js @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/csharp/mslearn-resources/quickstart/Samples/AgentFileSearch.cs @azure-ai-foundry/ai-platform-docs
+/samples/microsoft/REST/mslearn-resources/quickstart/quickstart.sh @azure-ai-foundry/ai-platform-docs

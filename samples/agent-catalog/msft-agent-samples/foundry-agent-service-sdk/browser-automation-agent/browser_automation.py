@@ -24,10 +24,7 @@ USAGE:
     3) PLAYWRIGHT_CONNECTION_ID - The connection ID of the Serverless connection containing the details
          of the Playwright browser.
          Format: <AI Project resource ID>/connections/<Serverless connection name>
-         - Creating a Microsoft Playwright Resource: https://learn.microsoft.com/en-us/azure/playwright-testing/how-to-manage-playwright-workspace?tabs=playwright
-         - Give the Project Identity a "Contributor" role on the Playwright resource.
-         - Generate an API Key for the Playwright resource: https://learn.microsoft.com/en-us/azure/playwright-testing/how-to-manage-access-tokens
-         - Create a serverless connection in the Azure AI Foundry project with the Playwright endpoint and Access Key. 
+         Example: /subscriptions/<subscription-id>/resourceGroups/<resource_group_name>/providers/Microsoft.CognitiveServices/accounts/<account_name>/projects/<project_name>/connections/<connection-name>
 """
 
 # <imports>
