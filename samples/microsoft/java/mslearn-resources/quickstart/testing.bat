@@ -1,6 +1,11 @@
 @echo off
 REM Automated testing script for Azure AI Foundry Java Samples
 REM Usage: testing.bat [SampleName]
+REM This script tests samples that use:
+REM  - Azure AI Agents Persistent SDK (com.azure:azure-ai-agents-persistent:1.0.0-beta.2)
+REM  - Azure AI Projects SDK (com.azure:azure-ai-projects:1.0.0-beta.2)
+REM  - Azure AI Inference SDK (com.azure:azure-ai-inference:1.0.0-beta.5)
+REM  - OpenAI Java SDK (com.openai:openai-java:2.7.0)
 
 setlocal enabledelayedexpansion
 
@@ -47,6 +52,16 @@ if "%PROJECT_ENDPOINT%"=="" (
         call :print_color 36 "Using AZURE_ENDPOINT as fallback for PROJECT_ENDPOINT"
     )
 ) 
+
+REM Add informational output about which SDKs will be tested
+call :print_color 36 "=============================================================="
+call :print_color 36 "   TESTING WITH AZURE AI SDKS"
+call :print_color 36 "=============================================================="
+call :print_color 36 "Azure AI Agents Persistent SDK v1.0.0-beta.2"
+call :print_color 36 "Azure AI Projects SDK v1.0.0-beta.2"
+call :print_color 36 "Azure AI Inference SDK v1.0.0-beta.5"
+call :print_color 36 "OpenAI Java SDK v2.7.0"
+call :print_color 36 "==============================================================
 
 REM Build the project first
 call :print_color 36 "=============================================================="

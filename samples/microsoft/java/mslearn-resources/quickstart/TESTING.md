@@ -1,6 +1,17 @@
 # Testing Azure AI Foundry Java Samples
 
-This document provides instructions for running and testing the Java samples for Azure AI Foundry.
+This document provides instructions for running and testing the Java samples for Azure AI Foundry. These samples demonstrate the capabilities of the Azure AI SDKs for Java developers.
+
+## Azure AI SDKs Used
+
+These samples utilize the following Azure AI SDKs:
+
+| SDK | Version | Description |
+|-----|---------|-------------|
+| Azure AI Agents Persistent SDK | 1.0.0-beta.2 | Provides APIs for creating, managing, and interacting with persistent agents |
+| Azure AI Projects SDK | 1.0.0-beta.2 | Enables project creation and management for AI applications |
+| Azure AI Inference SDK | 1.0.0-beta.5 | Offers direct access to AI model inference capabilities |
+| OpenAI Java SDK | 2.7.0 | Provides direct access to OpenAI models (used in some samples) |
 
 ## Prerequisites
 
@@ -95,31 +106,118 @@ testing.bat ChatCompletionSample
 | `FileSearchAgentSample` | Demonstrates file search with agents | PROJECT_ENDPOINT or AZURE_ENDPOINT, optionally MODEL_DEPLOYMENT_NAME |
 | `EvaluateAgentSample` | Shows agent evaluation | PROJECT_ENDPOINT or AZURE_ENDPOINT, optionally MODEL_DEPLOYMENT_NAME |
 
+## SDK Features Overview
+
+### Azure AI Projects SDK
+
+The Azure AI Projects SDK (`com.azure:azure-ai-projects:1.0.0-beta.2`) enables developers to:
+
+- Create and manage AI projects programmatically
+- Organize AI resources within logical containers
+- Deploy models and services within projects
+- Manage settings and configurations for AI applications
+- Track resource usage and quotas
+
+The `CreateProject` sample demonstrates the basic usage of this SDK, showing how to establish the foundation for other AI services.
+
+### Azure AI Agents Persistent SDK
+
+The Azure AI Agents Persistent SDK (`com.azure:azure-ai-agents-persistent:1.0.0-beta.2`) provides capabilities to:
+
+- Create intelligent agents that maintain conversation context
+- Configure agent capabilities, tools, and instructions
+- Send queries to agents and receive responses
+- Enable file search and processing within agent conversations
+- Evaluate agent performance on specific tasks
+
+The `AgentSample`, `FileSearchAgentSample`, and `EvaluateAgentSample` demonstrate various aspects of this SDK.
+
+### Azure AI Inference SDK
+
+The Azure AI Inference SDK (`com.azure:azure-ai-inference:1.0.0-beta.5`) allows developers to:
+
+- Access AI models directly for inference
+- Send custom prompts to deployed models
+- Control generation parameters like temperature and max tokens
+- Stream responses for real-time applications
+- Leverage advanced model capabilities
+
+The `ChatCompletionSample`, `ChatCompletionStreamingSample`, and other chat completion samples showcase this SDK's functionality.
+
+### OpenAI Java SDK
+
+Some samples also demonstrate direct integration with the OpenAI Java SDK (`com.openai:openai-java:2.7.0`), which provides:
+
+- Direct access to OpenAI models without Azure middleware
+- Alternative APIs for specific use cases
+- Comparison point for Azure-integrated solutions
+
+The `ChatCompletionOpenAISample` demonstrates this integration.
+
 ## Troubleshooting
 
 ### SDK Version Issues
 
-Some samples might fail due to missing classes or methods in the current SDK version. These errors are intentionally not handled with reflection or workarounds to highlight API gaps for package developers.
+The samples use specific versions of Azure AI SDKs as specified at the top of this document. Some features demonstrated might require newer SDK versions as the Azure AI services evolve.
+
+- Azure AI Agents Persistent SDK v1.0.0-beta.2
+- Azure AI Projects SDK v1.0.0-beta.2
+- Azure AI Inference SDK v1.0.0-beta.5
+- OpenAI Java SDK v2.7.0
+
+> **Note for First-time Users**: These SDKs are in active development. If you encounter method or class not found errors, it's likely due to API changes between versions. Check the latest documentation for updated API signatures.
 
 ### Common Errors and Solutions
 
 1. **Authentication Errors**:
-   - Make sure you're logged in with `az login`
-   - Verify your Azure AD credentials have appropriate permissions
+   - Make sure you're logged in with `az login` using the Azure CLI
+   - Verify your Azure AD credentials have appropriate permissions for Azure AI resources
+   - Check that your subscription has access to Azure AI services
+   - For OpenAI samples, ensure your API key is correctly configured
 
 2. **Missing API Methods**:
-   - Check for updated SDK versions
-   - Some features may not be available in the current SDK version
+   - Check for updated SDK versions in the Maven Central Repository
+   - Review the Java SDK documentation for renamed or relocated methods
+   - Some features may be in preview and not available in the current SDK version
 
 3. **Connection Timeouts**:
-   - Increase the STREAMING_WAIT_TIME for streaming samples
+   - Increase the `STREAMING_WAIT_TIME` environment variable (default: 10000ms)
    - Check your network connection and firewall settings
+   - Verify VPN configurations aren't blocking Azure endpoints
+   - Ensure Azure resource availability in your region
 
 4. **Environment Variable Issues**:
-   - Verify that at least PROJECT_ENDPOINT or AZURE_ENDPOINT is set
-   - For specific samples like ChatCompletionOpenAISample, make sure OPENAI_API_KEY is set
+   - Verify that at least `PROJECT_ENDPOINT` or `AZURE_ENDPOINT` is set
+   - For OpenAI samples, make sure `OPENAI_API_KEY` is set
+   - Variables are case-sensitive - double check spelling
+   - On Windows, environment variables set in one command prompt won't be available in others
+
+5. **Maven Build Issues**:
+   - Ensure your Maven version is 3.9.0 or higher
+   - Run `mvn clean compile` before testing to refresh dependencies
+   - Check for Java version compatibility (Java 21+ recommended)
+
+### For First-time Users
+
+1. **Setting Up Your Environment**:
+   - Start with the `CreateProject` sample to verify basic connectivity
+   - Use the testing scripts (`testing.bat` or `testing.sh`) to quickly validate your setup
+   - Check the console output for SDK version information and connection status
+
+2. **Understanding the Samples**:
+   - Each sample demonstrates different aspects of the Azure AI SDKs
+   - Review the Javadoc comments in the source code for detailed explanations
+   - The samples progress from basic connectivity to more advanced features
+
+3. **Azure AI Studio Integration**:
+   - Many samples interact with resources in the Azure AI Studio
+   - You can view created agents, projects, and resources in the Azure AI Studio portal
 
 ### Reporting Issues
 
-If you encounter issues that aren't related to SDK limitations, please report them through the appropriate channels.
+If you encounter issues that aren't related to SDK limitations, please report them through the GitHub Issues page for this repository. Include:
+- SDK versions used
+- Error messages (including stack traces)
+- Steps to reproduce the issue
+- Environment details (OS, Java version, etc.)
 

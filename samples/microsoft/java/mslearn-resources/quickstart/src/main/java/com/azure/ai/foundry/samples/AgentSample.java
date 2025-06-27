@@ -14,10 +14,35 @@ import com.azure.identity.DefaultAzureCredentialBuilder;
 
 
 /**
- * Sample demonstrating using Azure AI Agents Persistent SDK with Java.
+ * Sample demonstrating how to work with Azure AI Agents using the Azure AI Agents Persistent SDK.
+ * 
  * This sample shows how to:
- * - Create a persistent agent
+ * - Set up authentication with Azure credentials
+ * - Create a persistent agent with custom instructions
  * - Start a thread and run with the agent
+ * - Access various properties of the agent and thread run
+ * - Work with the PersistentAgentsClient and PersistentAgentsAdministrationClient
+ * 
+ * Environment variables:
+ * - AZURE_ENDPOINT: Optional fallback. The base endpoint for your Azure AI service if PROJECT_ENDPOINT is not provided.
+ * - PROJECT_ENDPOINT: Required. The endpoint for your Azure AI Project.
+ * - MODEL_DEPLOYMENT_NAME: Optional. The model deployment name (defaults to "gpt-4o").
+ * - AGENT_NAME: Optional. The name to give to the created agent (defaults to "java-quickstart-agent").
+ * - AGENT_INSTRUCTIONS: Optional. The instructions for the agent (defaults to a helpful assistant).
+ * 
+ * Note: This sample requires proper Azure authentication. It uses DefaultAzureCredential which supports
+ * multiple authentication methods including environment variables, managed identities, and interactive login.
+ * 
+ * SDK Features Demonstrated:
+ * - Using the Azure AI Agents Persistent SDK (com.azure:azure-ai-agents-persistent:1.0.0-beta.2)
+ * - Creating an authenticated client with DefaultAzureCredential
+ * - Using the PersistentAgentsClientBuilder pattern for client instantiation
+ * - Working with the PersistentAgentsAdministrationClient for agent management
+ * - Creating agents with specific configurations (name, model, instructions)
+ * - Starting threads and runs for agent conversations
+ * - Working with agent state and thread management
+ * - Accessing agent and thread run properties
+ * - Implementing proper error handling for Azure service interactions
  */
 public class AgentSample {
     private static final ClientLogger logger = new ClientLogger(AgentSample.class);
@@ -48,7 +73,7 @@ public class AgentSample {
 
         // Set defaults for optional parameters with informative logging
         if (modelName == null) {
-            modelName = "gpt4o";
+            modelName = "gpt-4o";
             logger.info("No MODEL_DEPLOYMENT_NAME provided, using default: {}", modelName);
         }
         if (agentName == null) {
@@ -69,7 +94,6 @@ public class AgentSample {
         try {
             // Build the general agents client
             logger.info("Creating PersistentAgentsClient with endpoint: {}", projectEndpoint);
-            System.out.println("Creating PersistentAgentsClient...");
             PersistentAgentsClient agentsClient = new PersistentAgentsClientBuilder()
                 .endpoint(projectEndpoint)
                 .credential(credential)
@@ -77,52 +101,44 @@ public class AgentSample {
 
             // Derive the administration client
             logger.info("Getting PersistentAgentsAdministrationClient");
-            System.out.println("Deriving PersistentAgentsAdministrationClient...");
             PersistentAgentsAdministrationClient adminClient =
                 agentsClient.getPersistentAgentsAdministrationClient();
 
             // Create an agent
             logger.info("Creating agent with name: {}, model: {}", agentName, modelName);
-            System.out.println("\nCreating an agent...");
             PersistentAgent agent = adminClient.createAgent(
                 new CreateAgentOptions(modelName)
                     .setName(agentName)
                     .setInstructions(instructions)
             );
-            logger.info("Agent created successfully with ID: {}", agent.getId());
-            System.out.printf("Agent created: ID=%s, Name=%s%n", agent.getId(), agent.getName());
+            logger.info("Agent created: ID={}, Name={}", agent.getId(), agent.getName());
+            logger.info("Agent model: {}", agent.getModel());
 
             // Start a thread/run on the general client
             logger.info("Creating thread and run with agent ID: {}", agent.getId());
-            System.out.println("\nCreating thread and run...");
             ThreadRun runResult = agentsClient.createThreadAndRun(
                 new CreateThreadAndRunOptions(agent.getId())
             );
-            logger.info("ThreadRun created with ThreadId: {}", runResult.getThreadId());
-            System.out.printf("ThreadRun created: ThreadId=%s%n", runResult.getThreadId());
+            logger.info("ThreadRun created: ThreadId={}", runResult.getThreadId());
 
             // List available getters on ThreadRun for informational purposes
-            System.out.println("\nAvailable getters on ThreadRun:");
+            logger.info("\nAvailable getters on ThreadRun:");
             for (var method : ThreadRun.class.getMethods()) {
                 if (method.getName().startsWith("get")) {
-                    System.out.println(" - " + method.getName());
+                    logger.info(" - {}", method.getName());
                 }
             }
 
-            logger.info("Demo completed successfully");
-            System.out.println("\nDemo completed successfully!");
+            logger.info("\nDemo completed successfully!");
             
         } catch (HttpResponseException e) {
             // Handle service-specific errors with detailed information
             int statusCode = e.getResponse().getStatusCode();
-            logger.error("Service returned error: Status code {}, Error message: {}", 
-                statusCode, e.getMessage());
-            System.err.printf("Service error %d: %s%n", statusCode, e.getMessage());
-            System.err.println("Refer to the Azure AI Agents documentation for troubleshooting information.");
+            logger.error("Service error {}: {}", statusCode, e.getMessage());
+            logger.error("Refer to the Azure AI Agents documentation for troubleshooting information.");
         } catch (Exception e) {
             // Handle general exceptions
             logger.error("Error in agent sample: {}", e.getMessage(), e);
-            System.err.println("Error: " + e.getMessage());
         }
     }
 }

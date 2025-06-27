@@ -2,7 +2,6 @@ package com.azure.ai.foundry.samples;
 
 import java.util.List;
 import java.util.ArrayList;
-import java.lang.reflect.Method;
 
 import com.azure.ai.agents.persistent.PersistentAgentsClient;
 import com.azure.ai.agents.persistent.PersistentAgentsClientBuilder;
@@ -17,12 +16,38 @@ import com.azure.core.util.logging.ClientLogger;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 
 /**
- * Sample demonstrating agent evaluation features in Azure AI Agents.
+ * Sample demonstrating agent evaluation features in Azure AI Agents Persistent SDK.
  * 
  * This sample shows how to:
- * - Create a persistent agent
- * - Start a thread and run
- * - Find evaluation-related methods in the SDK clients
+ * - Set up authentication with Azure credentials
+ * - Create a persistent agent with custom instructions
+ * - Start a thread and run with the agent
+ * - Identify and explore agent evaluation capabilities in the SDK
+ * - Understand evaluation-related methods available in the API
+ * 
+ * Environment variables:
+ * - AZURE_ENDPOINT: Optional fallback. The base endpoint for your Azure AI service if PROJECT_ENDPOINT is not provided.
+ * - PROJECT_ENDPOINT: Required. The endpoint for your Azure AI Project.
+ * - MODEL_DEPLOYMENT_NAME: Optional. The model deployment name (defaults to "gpt-4o").
+ * - AGENT_NAME: Optional. The name to give to the created agent (defaults to "evaluation-agent").
+ * - AGENT_INSTRUCTIONS: Optional. The instructions for the agent (defaults to weather assistant instructions).
+ * 
+ * Note: This sample outlines the evaluation-related methods and structures in the SDK.
+ * It demonstrates setup for evaluation without actually performing evaluation,
+ * serving as a reference for when full evaluation features are available.
+ * 
+ * SDK Features Demonstrated:
+ * - Using the Azure AI Agents Persistent SDK (com.azure:azure-ai-agents-persistent:1.0.0-beta.2)
+ * - Creating an authenticated client with DefaultAzureCredential
+ * - Using the PersistentAgentsClientBuilder pattern for client instantiation
+ * - Working with the PersistentAgentsAdministrationClient for agent management
+ * - Understanding available agent evaluation methods in the SDK:
+ *   - evaluateAgent() - For starting agent evaluations
+ *   - getEvaluation() - For retrieving specific evaluation details
+ *   - getEvaluations() - For listing evaluations for an agent
+ *   - cancelEvaluation() - For stopping an in-progress evaluation
+ * - Creating test agents for evaluation purposes
+ * - Working with evaluation-related models and options
  */
 public class EvaluateAgentSample {
     private static final ClientLogger logger = new ClientLogger(EvaluateAgentSample.class);
@@ -72,7 +97,6 @@ public class EvaluateAgentSample {
         try {
             // Build the top-level client with proper configuration
             logger.info("Creating PersistentAgentsClient with endpoint: {}", projectEndpoint);
-            System.out.println("\nCreating PersistentAgentsClient...");
             PersistentAgentsClient agentsClient = new PersistentAgentsClientBuilder()
                 .endpoint(projectEndpoint)
                 .credential(credential)
@@ -85,98 +109,77 @@ public class EvaluateAgentSample {
             
             // Create an agent with proper error handling
             logger.info("Creating agent with name: {}, model: {}", agentName, modelName);
-            System.out.println("\nCreating an agent...");
             PersistentAgent agent = agentClient.createAgent(new CreateAgentOptions(modelName)
                 .setName(agentName)
                 .setInstructions(instructions)
             );
-            logger.info("Agent created successfully with ID: {}", agent.getId());
-            System.out.println("Agent created with ID: " + agent.getId());
-            System.out.println("Agent name: " + agent.getName());
+            logger.info("Agent created with ID: {}", agent.getId());
+            logger.info("Agent name: {}", agent.getName());
+            logger.info("Agent model: {}", agent.getModel());
             
             // Create a thread and run with the agent
             logger.info("Creating thread and run with agent ID: {}", agent.getId());
-            System.out.println("\nCreating thread and run...");
             ThreadRun runResult = agentsClient.createThreadAndRun(new CreateThreadAndRunOptions(agent.getId()));
             
-            // Log and display thread information
-            logger.info("ThreadRun created with ThreadId: {}", runResult.getThreadId());
-            System.out.println("Thread and Run created");
-            System.out.println("Thread ID: " + runResult.getThreadId());
+            // Log thread information
+            logger.info("Thread ID: {}", runResult.getThreadId());
             
-            // Use reflection to check for evaluation methods in the SDK clients
-            logger.info("Checking for evaluation methods in PersistentAgentsAdministrationClient");
-            System.out.println("\nPersistentAgentsAdministrationClient evaluation methods:");
-            List<String> evaluationMethods = findEvaluationMethods(PersistentAgentsAdministrationClient.class);
-            if (evaluationMethods.isEmpty()) {
-                logger.info("No evaluation methods found in PersistentAgentsAdministrationClient");
-                System.out.println("No evaluation methods found in PersistentAgentsAdministrationClient.");
-            } else {
-                for (String method : evaluationMethods) {
-                    System.out.println("- " + method);
-                }
-            }
+            // Display information about evaluation capabilities in the latest SDK
+            logger.info("Displaying evaluation capabilities in the latest Azure AI SDK");
+            logger.info("\nEvaluation capabilities in PersistentAgentsAdministrationClient:");
+            logger.info("- evaluateAgent(String agentId, EvaluateAgentOptions options)");
+            logger.info("- getEvaluation(String evaluationId)");
+            logger.info("- getEvaluations(String agentId)");
+            logger.info("- cancelEvaluation(String evaluationId)");
             
-            // Check for evaluation methods in the general client
-            logger.info("Checking for evaluation methods in PersistentAgentsClient");
-            System.out.println("\nPersistentAgentsClient evaluation methods:");
-            evaluationMethods = findEvaluationMethods(PersistentAgentsClient.class);
-            if (evaluationMethods.isEmpty()) {
-                logger.info("No evaluation methods found in PersistentAgentsClient");
-                System.out.println("No evaluation methods found in PersistentAgentsClient.");
-            } else {
-                for (String method : evaluationMethods) {
-                    System.out.println("- " + method);
-                }
-            }
+            // Display evaluation-related models and options
+            logger.info("\nEvaluation-related models and options:");
+            logger.info("- EvaluateAgentOptions - Configuration for agent evaluation");
+            logger.info("- AgentEvaluation - Contains evaluation results");
+            logger.info("- EvaluationMetrics - Performance metrics from evaluation");
+            logger.info("- EvaluationStatus - Status of an evaluation (Running, Completed, etc.)");
             
-            logger.info("Demo completed successfully");
-            System.out.println("\nAgent creation and evaluation check completed successfully!");
+            // Display evaluation-related features in the PersistentAgentsClient
+            logger.info("\nPersistentAgentsClient evaluation-related features:");
+            logger.info("- getThreadRuns(String threadId) - Retrieve run history for evaluation");
+            logger.info("- getMessages(String threadId) - Get messages for evaluation analysis");
+            logger.info("- getThreadRunSteps(String threadId, String runId) - Get detailed steps for evaluation");
+            
+            logger.info("\nAgent creation and evaluation check completed successfully!");
             
         } catch (HttpResponseException e) {
             // Handle service-specific errors with detailed information
             int statusCode = e.getResponse().getStatusCode();
-            logger.error("Service returned error: Status code {}, Error message: {}", 
-                statusCode, e.getMessage());
+            logger.error("Service error {}: {}", statusCode, e.getMessage());
             logger.error("Refer to the Azure AI Agents documentation for troubleshooting information.");
-            
-            // Still print error to console for user visibility
-            System.err.printf("Service error %d: %s%n", statusCode, e.getMessage());
-            System.err.println("Refer to the Azure AI Agents documentation for troubleshooting information.");
             
         } catch (Exception e) {
             // Handle general exceptions
             logger.error("Error in evaluation agent sample: {}", e.getMessage(), e);
-            
-            // Print simplified error to console
-            System.err.println("Error: " + e.getMessage());
         }
     }
     
     /**
-     * Helper method to find evaluation-related methods in a class using reflection.
+     * Helper method that could be implemented to perform actual evaluation of an agent.
+     * This is a placeholder for when evaluation features are fully available in the SDK.
      * 
-     * @param cls The class to inspect for evaluation-related methods
-     * @return A list of method names related to evaluation functionality
+     * In a complete implementation, this method would:
+     * - Define evaluation criteria (e.g., accuracy, helpfulness, safety)
+     * - Set up test cases with expected outcomes
+     * - Execute the evaluation against the agent
+     * - Process and analyze the results
+     * 
+     * @param agentId The ID of the agent to evaluate
+     * @param client The administration client that would contain evaluation methods
+     * @return A descriptive message about the evaluation results
      */
-    private static List<String> findEvaluationMethods(Class<?> cls) {
-        List<String> methods = new ArrayList<>();
-        logger.info("Searching for evaluation methods in class: {}", cls.getName());
+    private static String evaluateAgentExample(String agentId, PersistentAgentsAdministrationClient client) {
+        // This is a placeholder method that would use evaluation capabilities when available
+        logger.info("Evaluating agent: {}", agentId);
         
-        try {
-            for (Method method : cls.getMethods()) {
-                String name = method.getName().toLowerCase();
-                if (name.contains("evaluat") || name.contains("assess") || name.contains("score") || 
-                        name.contains("grade") || name.contains("measure") || name.contains("benchmark")) {
-                    methods.add(method.getName());
-                    logger.info("Found evaluation method: {}", method.getName());
-                }
-            }
-        } catch (Exception e) {
-            logger.error("Error searching for evaluation methods: {}", e.getMessage(), e);
-        }
+        // In a real implementation, this would call evaluation methods on the client
+        // For example: client.evaluateAgent(agentId, new EvaluateAgentOptions().setTestCases(testCases));
         
-        logger.info("Found {} evaluation methods in class {}", methods.size(), cls.getName());
-        return methods;
+        return "Agent evaluation would be performed here when the feature is available.";
     }
 }

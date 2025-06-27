@@ -11,10 +11,30 @@ import com.azure.identity.DefaultAzureCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 
 /**
- * Example demonstrating chat completion with Azure AI Inference SDK.
+ * Sample demonstrating non-streaming chat completion functionality using the Azure AI Inference SDK.
  * 
- * This sample shows how to interact with Azure OpenAI to perform chat completions
- * using the Azure AI Inference SDK with the synchronous client.
+ * This sample shows how to:
+ * - Set up authentication with either API key or Azure credentials
+ * - Configure a custom endpoint for any Azure AI model
+ * - Make a simple chat completion request with a single prompt
+ * - Process and handle the synchronous response
+ * - Work with the ChatCompletionsClient for basic AI interactions
+ * 
+ * Environment variables:
+ * - AZURE_ENDPOINT: Required. The base endpoint for your Azure AI service.
+ * - AZURE_AI_API_KEY: Optional. The API key for authentication (falls back to DefaultAzureCredential if not provided).
+ * - AZURE_MODEL_DEPLOYMENT_NAME: Optional. The model deployment name (defaults to "phi-4").
+ * - AZURE_MODEL_API_PATH: Optional. The API path segment (defaults to "deployments").
+ * - CHAT_PROMPT: Optional. The prompt to send to the model (uses a default if not provided).
+ * 
+ * SDK Features Demonstrated:
+ * - Using the Azure AI Inference SDK (com.azure:azure-ai-inference:1.0.0-beta.5)
+ * - Creating a ChatCompletionsClient with Azure or API key authentication
+ * - Configuring endpoint paths for different model deployments
+ * - Using the simplified complete() method for quick completions
+ * - Accessing response content through strongly-typed objects
+ * - Implementing proper error handling for service requests
+ * - Choosing between DefaultAzureCredential and AzureKeyCredential
  */
 public class ChatCompletionSample {
     private static final ClientLogger logger = new ClientLogger(ChatCompletionSample.class);
@@ -22,8 +42,9 @@ public class ChatCompletionSample {
     public static void main(String[] args) {
         // Load environment variables with proper error handling
         String endpoint = System.getenv("AZURE_ENDPOINT");
-        String apiKey = System.getenv("AZURE_OPENAI_API_KEY");
-        String deploymentName = System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME");
+        String apiKey = System.getenv("AZURE_AI_API_KEY");
+        String deploymentName = System.getenv("AZURE_MODEL_DEPLOYMENT_NAME");
+        String apiPath = System.getenv("AZURE_MODEL_API_PATH");
         String prompt = System.getenv("CHAT_PROMPT");
         
         // Validate required environment variables
@@ -36,12 +57,18 @@ public class ChatCompletionSample {
         
         // Set defaults for optional parameters
         if (deploymentName == null) {
-            deploymentName = "gpt-4o";  // Default to gpt-4o
-            logger.info("No AZURE_OPENAI_DEPLOYMENT_NAME provided, using default: {}", deploymentName);
+            deploymentName = "phi-4";  // Default to phi-4
+            logger.info("No AZURE_MODEL_DEPLOYMENT_NAME provided, using default: {}", deploymentName);
+        }
+        
+        // Set default API path if not provided
+        if (apiPath == null) {
+            apiPath = "deployments";
+            logger.info("No AZURE_MODEL_API_PATH provided, using default: {}", apiPath);
         }
         
         if (prompt == null) {
-            prompt = "What is Azure AI? Explain in a short paragraph.";
+            prompt = "What best practices should I follow when asking an AI model to review Java code?";
             logger.info("No CHAT_PROMPT provided, using default prompt: {}", prompt);
         }
 
@@ -53,7 +80,7 @@ public class ChatCompletionSample {
             if (!fullEndpoint.endsWith("/")) {
                 fullEndpoint += "/";
             }
-            fullEndpoint += "openai/deployments/" + deploymentName;
+            fullEndpoint += apiPath + "/" + deploymentName;
             logger.info("Using full endpoint URL: {}", fullEndpoint);
             
             ChatCompletionsClient client;
@@ -84,19 +111,12 @@ public class ChatCompletionSample {
             logger.info("Received response from model");
             logger.info("\nResponse from AI assistant:\n{}", content);
             
-            // Still print the AI response to console for user to see
-            System.out.println("\nResponse from AI assistant:");
-            System.out.println(content);
-            
-            logger.info("Demo completed successfully");
-            
         } catch (HttpResponseException e) {
             // Handle service-specific errors with detailed information
-            logger.error("Service returned error: Status code {}, Error message: {}", 
-                e.getResponse().getStatusCode(), e.getMessage());
+            int statusCode = e.getResponse().getStatusCode();
+            logger.error("Service error {}: {}", statusCode, e.getMessage());
             
             // Provide more helpful context based on error status code
-            int statusCode = e.getResponse().getStatusCode();
             if (statusCode == 401 || statusCode == 403) {
                 logger.error("Authentication error. Check your API key or Azure credentials.");
             } else if (statusCode == 404) {
@@ -105,16 +125,10 @@ public class ChatCompletionSample {
                 logger.error("Rate limit exceeded. Try again later or adjust your request rate.");
             }
             
-            // Still print error to console for user visibility
-            System.err.printf("Service error %d: %s%n", statusCode, e.getMessage());
-            
         } catch (Exception e) {
             // Handle general exceptions
             logger.error("Error in chat completion: {}", e.getMessage(), e);
             logger.error("Make sure the Azure AI Inference SDK dependency is correct (using beta.5)");
-            
-            // Print simplified error to console
-            System.err.println("Error: " + e.getMessage());
         }
     }
 }

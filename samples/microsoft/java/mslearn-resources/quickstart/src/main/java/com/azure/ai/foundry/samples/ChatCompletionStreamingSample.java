@@ -23,17 +23,41 @@ import java.util.List;
 /**
  * Sample demonstrating streaming chat completion functionality using the Azure AI Inference SDK.
  * 
- * This sample shows how to perform streaming chat completions with Azure OpenAI
- * and process the streaming responses token by token.
+ * This sample shows how to:
+ * - Set up authentication with either API key or Azure credentials
+ * - Configure a custom endpoint for any Azure AI model
+ * - Create a chat completion request with system and user messages
+ * - Process and display streaming responses token by token
+ * - Collect the complete response in a StringBuilder
+ * - Work with streaming API patterns for responsive UI experiences
+ * 
+ * Environment variables:
+ * - AZURE_ENDPOINT: Required. The base endpoint for your Azure AI service.
+ * - AZURE_AI_API_KEY: Optional. The API key for authentication (falls back to DefaultAzureCredential if not provided).
+ * - AZURE_MODEL_DEPLOYMENT_NAME: Optional. The model deployment name (defaults to "phi-4").
+ * - AZURE_MODEL_API_PATH: Optional. The API path segment (defaults to "deployments").
+ * - CHAT_PROMPT: Optional. The prompt to send to the model (uses a default if not provided).
+ * 
+ * SDK Features Demonstrated:
+ * - Using the Azure AI Inference SDK (com.azure:azure-ai-inference:1.0.0-beta.5)
+ * - Creating a ChatCompletionsClient with Azure or API key authentication
+ * - Configuring endpoint paths for different model deployments
+ * - Creating ChatRequestMessage objects for conversation history
+ * - Using completeStream() method for streaming responses
+ * - Processing IterableStream<StreamingChatCompletionsUpdate> for token-by-token responses
+ * - Incrementally building responses with StringBuilder
+ * - Handling streaming responses with proper resource management
+ * - Using the functional stream() API for processing streaming content
  */
 public class ChatCompletionStreamingSample {
     private static final ClientLogger logger = new ClientLogger(ChatCompletionStreamingSample.class);
 
     public static void main(String[] args) {
-        // Load environment variables with proper error handling
+        // Load configuration from environment variables
         String endpoint = System.getenv("AZURE_ENDPOINT");
-        String apiKey = System.getenv("AZURE_OPENAI_API_KEY");
-        String deploymentName = System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME");
+        String apiKey = System.getenv("AZURE_AI_API_KEY");
+        String deploymentName = System.getenv("AZURE_MODEL_DEPLOYMENT_NAME");
+        String apiPath = System.getenv("AZURE_MODEL_API_PATH");
         String prompt = System.getenv("CHAT_PROMPT");
         
         // Validate required environment variables
@@ -44,31 +68,44 @@ public class ChatCompletionStreamingSample {
             return;
         }
         
-        // Set defaults for optional parameters with informative logging
+        // Set defaults for optional parameters
         if (deploymentName == null) {
-            deploymentName = "gpt-4o";  // Default to gpt-4o
-            logger.info("No AZURE_OPENAI_DEPLOYMENT_NAME provided, using default: {}", deploymentName);
+            deploymentName = "phi-4";  // A lightweight but capable model
+            logger.info("No AZURE_MODEL_DEPLOYMENT_NAME provided, using default: {}", deploymentName);
+        }
+        
+        // Set default API path - this may be different based on your Azure AI service type
+        if (apiPath == null) {
+            apiPath = "deployments";  // Standard path for Azure OpenAI
+            logger.info("No AZURE_MODEL_API_PATH provided, using default: {}", apiPath);
         }
         
         if (prompt == null) {
-            prompt = "Write a short poem about Azure AI and its capabilities.";
+            prompt = "What best practices should I follow when asking an AI model to review Java code?";
             logger.info("No CHAT_PROMPT provided, using default prompt: {}", prompt);
         }
 
         try {
             logger.info("Creating ChatCompletions client for streaming with endpoint: {}", endpoint);
             
-            // Construct the full endpoint URL including deployment name
+            // Construct the full endpoint URL by combining:
+            // 1. Base endpoint (e.g., https://your-resource.openai.azure.com)
+            // 2. API path (e.g., "deployments")
+            // 3. Deployment name (e.g., "phi-4")
             String fullEndpoint = endpoint;
             if (!fullEndpoint.endsWith("/")) {
                 fullEndpoint += "/";
             }
-            fullEndpoint += "openai/deployments/" + deploymentName;
+            fullEndpoint += apiPath + "/" + deploymentName;
             logger.info("Using full endpoint URL: {}", fullEndpoint);
             
             ChatCompletionsClient client;
             
-            // Create client using either API key or Azure credentials with proper error handling
+            // Create client using either API key or Azure credentials
+            // The SDK supports two authentication methods:
+            // 1. API key - simpler but less secure for production environments
+            // 2. DefaultAzureCredential - supports multiple authentication methods including 
+            //    environment variables, managed identities, and interactive browser login
             if (apiKey != null && !apiKey.isEmpty()) {
                 logger.info("Using API key authentication");
                 client = new ChatCompletionsClientBuilder()
@@ -86,24 +123,34 @@ public class ChatCompletionStreamingSample {
             
             logger.info("Preparing chat messages");
             
-            // Create message list for ChatCompletionsOptions
+            // Create message list for the chat conversation
+            // 1. SystemMessage - Sets the behavior and context for the AI assistant
+            // 2. UserMessage - Contains the actual query from the user
+            // You can also add multiple messages to create a conversation history
             List<ChatRequestMessage> chatMessages = new ArrayList<>();
             chatMessages.add(new ChatRequestSystemMessage("You are a helpful assistant providing clear and concise information."));
             chatMessages.add(new ChatRequestUserMessage(prompt));
             
             logger.info("Sending streaming chat completion request with prompt: {}", prompt);
-            System.out.println("\nResponse from AI assistant (streaming):");
+            logger.info("\nResponse from AI assistant (streaming):");
             
-            // Create options and start streaming with proper retry and error handling configuration
+            // Configure and start the streaming completion request
+            // You can customize options like temperature, max_tokens, etc. here
             ChatCompletionsOptions options = new ChatCompletionsOptions(chatMessages);
+            // options.setTemperature(0.7); // Uncomment to adjust creativity (0.0-1.0)
+            // options.setMaxTokens(1000);  // Uncomment to limit response length
+            
             IterableStream<StreamingChatCompletionsUpdate> chatCompletionsStream = client.completeStream(options);
             
+            // We'll collect the complete response here for later use
             StringBuilder contentBuilder = new StringBuilder();
             
-            // Process streaming updates with proper error handling
+            // Process streaming updates as they arrive
+            // The response comes in small chunks (tokens) that we process one by one
             chatCompletionsStream
                 .stream()
                 .forEach(chatCompletions -> {
+                    // Skip any empty updates
                     if (CoreUtils.isNullOrEmpty(chatCompletions.getChoices())) {
                         logger.atInfo().log("Received update with empty choices");
                         return;
@@ -111,26 +158,26 @@ public class ChatCompletionStreamingSample {
     
                     StreamingChatResponseMessageUpdate delta = chatCompletions.getChoice().getDelta();
     
+                    // The first update usually contains just the role (assistant)
                     if (delta.getRole() != null) {
                         logger.atInfo().log("Received role update: " + delta.getRole());
                     }
     
+                    // Process content tokens as they arrive
                     if (delta.getContent() != null) {
                         String content = delta.getContent();
-                        System.out.print(content);
-                        contentBuilder.append(content);
+                        logger.info(content); // Log each token
+                        contentBuilder.append(content); // Append to our complete response
                     }
                 });
             
             logger.info("Streaming completed successfully");
             logger.atInfo().log("Complete response:\n" + contentBuilder);
-            System.out.println("\n\nStreaming completed!");
             
         } catch (HttpResponseException e) {
             // Handle service-specific errors with detailed information
             int statusCode = e.getResponse().getStatusCode();
-            logger.error("Service returned error: Status code {}, Error message: {}", 
-                statusCode, e.getMessage());
+            logger.error("Service error {}: {}", statusCode, e.getMessage());
             
             // Provide more helpful context based on error status code
             if (statusCode == 401 || statusCode == 403) {
@@ -141,16 +188,10 @@ public class ChatCompletionStreamingSample {
                 logger.error("Rate limit exceeded. Try again later or adjust your request rate.");
             }
             
-            // Still print error to console for user visibility
-            System.err.printf("Service error %d: %s%n", statusCode, e.getMessage());
-            
         } catch (Exception e) {
             // Handle general exceptions
             logger.error("Error in streaming chat completion: {}", e.getMessage(), e);
             logger.error("Make sure the Azure AI Inference SDK dependency is correct (using beta.5)");
-            
-            // Print simplified error to console
-            System.err.println("Error: " + e.getMessage());
         }
     }
 }

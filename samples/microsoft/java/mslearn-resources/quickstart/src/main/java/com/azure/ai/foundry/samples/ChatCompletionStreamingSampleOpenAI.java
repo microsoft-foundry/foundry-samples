@@ -7,6 +7,34 @@ import com.openai.core.http.StreamResponse;
 import com.openai.models.chat.completions.ChatCompletionChunk;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 
+/**
+ * Sample demonstrating streaming chat completion functionality using the OpenAI Java SDK.
+ * 
+ * This sample shows how to:
+ * - Set up authentication with OpenAI API key
+ * - Create a streaming chat completion request with a user message
+ * - Process and display streaming tokens as they arrive
+ * - Handle the stream with proper resource management using try-with-resources
+ * - Work with functional programming patterns for stream processing
+ * 
+ * Environment variables:
+ * - OPENAI_API_KEY: Required. The API key for OpenAI authentication.
+ * - OPENAI_MODEL: Required. The model name to use (e.g., "gpt-4o", "gpt-4-turbo").
+ * - CHAT_PROMPT: Optional. The prompt to send to the model (uses a default if not provided).
+ * 
+ * Note: This sample uses the official OpenAI Java client library (com.openai:openai-java:2.7.0), 
+ * which is different from the Azure AI Inference SDK used in other samples. It demonstrates streaming
+ * interaction with OpenAI models rather than Azure-hosted models.
+ * 
+ * SDK Features Demonstrated:
+ * - Creating an OpenAI client with API key authentication
+ * - Using the StreamResponse<T> interface for handling streaming responses
+ * - Processing token-by-token streaming responses in real time
+ * - Proper resource management with try-with-resources pattern
+ * - Using Java Stream API with functional programming for token processing
+ * - Error handling for streaming connections
+ */
+
 public class ChatCompletionStreamingSampleOpenAI {
     private static final ClientLogger logger = new ClientLogger(ChatCompletionStreamingSampleOpenAI.class);
 
@@ -30,7 +58,7 @@ public class ChatCompletionStreamingSampleOpenAI {
         logger.info("Using model: {}", modelEnv);
 
         if (prompt == null || prompt.isBlank()) {
-            prompt = "Write a short poem about AI in Java.";
+            prompt = "What best practices should I follow when asking an AI model to review Java code?";
             logger.info("No CHAT_PROMPT provided, using default: {}", prompt);
         }
 
@@ -45,22 +73,28 @@ public class ChatCompletionStreamingSampleOpenAI {
                 .build();
 
             logger.info("Starting streaming chat completion...");
-            System.out.println("\nResponse from AI assistant (streaming):");
+            logger.info("\nResponse from AI assistant (streaming):");
 
             // Stream tokens as they arrive
+            // Use try-with-resources to ensure the stream is properly closed
+            // This is important for resource management with streaming responses
             try (StreamResponse<ChatCompletionChunk> stream = 
                      client.chat().completions().createStreaming(params)) {
+                
+                // Process the stream using Java Stream API:
+                // 1. Convert to a stream of chunks
+                // 2. Extract all choices from each chunk
+                // 3. Extract content deltas from each choice
+                // 4. Print each token as it arrives
                 stream.stream()
                       .flatMap(ch -> ch.choices().stream())
                       .flatMap(choice -> choice.delta().content().stream())
-                      .forEach(System.out::print);
+                      .forEach(token -> logger.info("{}", token));
             }
 
-            System.out.println("\n\nStreaming completed!");
             logger.info("Streaming demo completed successfully");
         } catch (Exception e) {
             logger.error("Error during streaming chat completion", e);
-            System.err.println("Error: " + e.getMessage());
         }
     }
 }

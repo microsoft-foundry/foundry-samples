@@ -24,6 +24,16 @@ check_required_env() {
         fi
     fi
     
+    # Add informational output about which SDKs will be tested
+    print_color "36" "=============================================================="
+    print_color "36" "   TESTING WITH AZURE AI SDKS"
+    print_color "36" "=============================================================="
+    print_color "36" "Azure AI Agents Persistent SDK v1.0.0-beta.2"
+    print_color "36" "Azure AI Projects SDK v1.0.0-beta.2"
+    print_color "36" "Azure AI Inference SDK v1.0.0-beta.5"
+    print_color "36" "OpenAI Java SDK v2.7.0"
+    print_color "36" "=============================================================="
+    
     if [ ${#missing_vars[@]} -ne 0 ]; then
         print_color "31" "ERROR: Missing required environment variables:"
         for var in "${missing_vars[@]}"; do
