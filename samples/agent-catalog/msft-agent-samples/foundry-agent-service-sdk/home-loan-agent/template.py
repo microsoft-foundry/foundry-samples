@@ -1,7 +1,6 @@
 import os
 from azure.ai.projects import AIProjectClient
-from azure.ai.projects.models import FileSearchTool, CodeInterpreterTool
-from azure.ai.projects.models import FilePurpose
+from azure.ai.projects.models import FileSearchTool, CodeInterpreterTool, FilePurpose, ToolSet, MessageAttachment
 from azure.identity import DefaultAzureCredential
 from pathlib import Path
 
@@ -14,31 +13,38 @@ project_client = AIProjectClient.from_connection_string(
     conn_str=os.environ["PROJECT_CONNECTION_STRING"]
 )
 
+# Get the current directory path
+current_dir = Path(__file__).parent
+
 # Upload the loan checklist file
-checklist_file = project_client.agents.upload_file_and_poll(file_path='./data/contoso_bank_loan_checklist.md', purpose=FilePurpose.AGENTS)
+checklist_file = project_client.agents.upload_file_and_poll(file_path=str(current_dir / "Contoso_Loan_Documentation_Checklist.md"), purpose=FilePurpose.AGENTS)
 print(f"Uploaded file, file ID: {checklist_file.id}")
 
 # create a vector store with the file you uploaded
-vector_store = project_client.agents.create_vector_store_and_poll(file_ids=[file.id], name="my_vectorstore")
+vector_store = project_client.agents.create_vector_store_and_poll(file_ids=[checklist_file.id], name="my_vectorstore")
 print(f"Created vector store, vector store ID: {vector_store.id}")
 
 # create a file search tool
 file_search_tool = FileSearchTool(vector_store_ids=[vector_store.id])
 
-# create a code interpreter tool
-code_interpreter = CodeInterpreterTool(file_ids=[file.id])
-
 # Upload a file for use with Code Interpreter and add it to the client 
 file = project_client.agents.upload_file_and_poll(
-    file_path="loan_product_eligibility_dataset.csv", purpose=FilePurpose.AGENTS
+    file_path=str(current_dir / "loan_product_eligibility_dataset.csv"), purpose=FilePurpose.AGENTS
 )
 print(f"Uploaded file, file ID: {file.id}")
+
+toolset = ToolSet()
+
+# create a code interpreter tool
+code_interpreter = CodeInterpreterTool(file_ids=[file.id])
+toolset.add(code_interpreter)
+toolset.add(file_search_tool)
 
 # notices that FileSearchTool as tool and tool_resources must be added or the agent will be unable to search the file
 agent = project_client.agents.create_agent(
     model="gpt-4o-mini",
     name="home-loan-guide",
-    instructions="Home Loan Guide is your expert assistant with over 10 years of experienceexperienced in mortgage lending and loan processing. I am here to simplify the mortgage application process and support borrowers in making informed decisions about their home financing. 
+    instructions="""Home Loan Guide is your expert assistant with over 10 years of experienceexperienced in mortgage lending and loan processing. I am here to simplify the mortgage application process and support borrowers in making informed decisions about their home financing. 
 
 My primary responsibilities include:   
 
@@ -79,11 +85,8 @@ Be proactive in offering mortgage rate comparisons and product suggestions.
 
 Maintain a supportive and patient demeanor throughout the application process. 
 
-Follow up after application submissions to assist with documentation or next steps. ",
-    tools=file_search_tool.definitions,
-    tool_resources=file_search_tool.resources,
-    tools=code_interpreter.definitions,
-    tool_resources=code_interpreter.resources,
+Follow up after application submissions to assist with documentation or next steps. """,
+    toolset=toolset
 )
 print(f"Created agent, agent ID: {agent.id}")
 
@@ -92,7 +95,7 @@ thread = project_client.agents.create_thread()
 print(f"Created thread, thread ID: {thread.id}")
 
 # Upload the user provided file as a messsage attachment
-message_file = project_client.agents.upload_file_and_poll(file_path='contoso_bank_loan_checklist.md', purpose=FilePurpose.AGENTS)
+message_file = project_client.agents.upload_file_and_poll(file_path=str(current_dir / "Contoso_Loan_Documentation_Checklist.md"), purpose=FilePurpose.AGENTS)
 print(f"Uploaded file, file ID: {message_file.id}")
 
 # Create a message with the file search attachment
