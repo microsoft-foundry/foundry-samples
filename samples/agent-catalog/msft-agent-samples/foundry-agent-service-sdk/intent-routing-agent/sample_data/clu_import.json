@@ -1,0 +1,258 @@
+{
+    "projectFileVersion": "2023-04-01",
+    "stringIndexType": "Utf16CodeUnit",
+    "metadata": {
+        "projectKind": "Conversation",
+        "settings": {},
+        "projectName": "contoso-outdoors-clu",
+        "multilingual": false,
+        "language": "en-us",
+        "description": ""
+    },
+    "assets": {
+        "projectKind": "Conversation",
+        "intents": [
+            {
+                "category": "None"
+            },
+            {
+                "category": "OrderStatus"
+            },
+            {
+                "category": "RefundStatus"
+            },
+            {
+                "category": "CancelOrder"
+            }
+        ],
+        "entities": [
+            {
+                "category": "OrderId",
+                "compositionSetting": "combineComponents",
+                "prebuilts": [
+                    {
+                        "category": "Quantity.Number"
+                    }
+                ]
+            }
+        ],
+        "utterances": [
+            {
+                "text": "place order for water bottle",
+                "language": "en-us",
+                "intent": "None",
+                "entities": []
+            },
+            {
+                "text": "submit repair request for my bike",
+                "language": "en-us",
+                "intent": "None",
+                "entities": []
+            },
+            {
+                "text": "can my backpack be repaired",
+                "language": "en-us",
+                "intent": "None",
+                "entities": []
+            },
+            {
+                "text": "refund order 89765757",
+                "language": "en-us",
+                "intent": "None",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 13,
+                        "length": 8
+                    }
+                ]
+            },
+            {
+                "text": "please place order for tent",
+                "language": "en-us",
+                "intent": "None",
+                "entities": []
+            },
+            {
+                "text": "was i refunded for order 12344444",
+                "language": "en-us",
+                "intent": "RefundStatus",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 25,
+                        "length": 8
+                    }
+                ]
+            },
+            {
+                "text": "can i refund order 56784567",
+                "language": "en-us",
+                "intent": "RefundStatus",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 19,
+                        "length": 8
+                    }
+                ]
+            },
+            {
+                "text": "when will i be refunded for order 89089034",
+                "language": "en-us",
+                "intent": "RefundStatus",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 34,
+                        "length": 8
+                    }
+                ]
+            },
+            {
+                "text": "when will i get my refund for 89898989",
+                "language": "en-us",
+                "intent": "RefundStatus",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 30,
+                        "length": 8
+                    }
+                ]
+            },
+            {
+                "text": "did my refund for 12312344 go through",
+                "language": "en-us",
+                "intent": "RefundStatus",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 18,
+                        "length": 8
+                    }
+                ]
+            },
+            {
+                "text": "shipping status 09090909",
+                "language": "en-us",
+                "intent": "OrderStatus",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 16,
+                        "length": 8
+                    }
+                ]
+            },
+            {
+                "text": "has order 88889999 shipped",
+                "language": "en-us",
+                "intent": "OrderStatus",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 10,
+                        "length": 8
+                    }
+                ]
+            },
+            {
+                "text": "I placed order 44445555 last week, what is its status",
+                "language": "en-us",
+                "intent": "OrderStatus",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 15,
+                        "length": 8
+                    }
+                ]
+            },
+            {
+                "text": "did my order 12345555 go through",
+                "language": "en-us",
+                "intent": "OrderStatus",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 13,
+                        "length": 8
+                    }
+                ]
+            },
+            {
+                "text": "what is the status of 11112222",
+                "language": "en-us",
+                "intent": "OrderStatus",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 22,
+                        "length": 8
+                    }
+                ]
+            },
+            {
+                "text": "Undo 12334444",
+                "language": "en-us",
+                "intent": "CancelOrder",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 5,
+                        "length": 8
+                    }
+                ]
+            },
+            {
+                "text": "please stop order 55556666",
+                "language": "en-us",
+                "intent": "CancelOrder",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 18,
+                        "length": 8
+                    }
+                ]
+            },
+            {
+                "text": "Can you cancel 12345678",
+                "language": "en-us",
+                "intent": "CancelOrder",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 15,
+                        "length": 8
+                    }
+                ]
+            },
+            {
+                "text": "Cancel 888888",
+                "language": "en-us",
+                "intent": "CancelOrder",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 7,
+                        "length": 6
+                    }
+                ]
+            },
+            {
+                "text": "Please cancel order 27787724",
+                "language": "en-us",
+                "intent": "CancelOrder",
+                "entities": [
+                    {
+                        "category": "OrderId",
+                        "offset": 20,
+                        "length": 8
+                    }
+                ]
+            }
+        ]
+    }
+}

@@ -4,7 +4,7 @@ description: Summarizer
 model: gpt-4o
 instructions: |-
   We are working on the following task:
-  {task}
+  {{task}}
 
   We have completed the task.
 
@@ -17,11 +17,11 @@ temperature: 0
 tools: []
 tool_resources: {}
 events: []
-inputs: []
-outputs:
+inputs:
   - type: llm
-    schema:
-      type: string
-    name: Summary
-    description: Summarized response of the task outcome.
-id: asst_8QBPg1rcR2eIE3Iqqtqq18tn
+    name: task
+    description: The task that was completed.
+outputs: []
+system_prompts: {}
+response_format: auto
+id: asst_tNOYoCBajtxKcfgWJQfpDbAy

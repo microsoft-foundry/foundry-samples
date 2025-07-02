@@ -1,10 +1,14 @@
 import asyncio
 
 from agents.contract_analysis_agent import ContractAnalysisAgent
+from dotenv import find_dotenv, load_dotenv
 from tools.content_understanding_tool import ContentUnderstandingTool
 
 
 async def run_agent():
+    # Load environment variables from .env file
+    load_dotenv(find_dotenv())
+
     # Create the agent
     agent = ContractAnalysisAgent()
 

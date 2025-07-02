@@ -1,8 +1,14 @@
-# Basic Agent Setup with the Bing Search tool
+# Azure AI Foundry Agent Service: Basic Agent Setup with the Bing Search Tool
 
-# > **NOTE:** This template required the following workarounds to be performed after it is deployed:
-> 
-> 1. Assign the project system managed identity (SMI) the following role ‘Azure AI Developer’ on its parent AI Services resource.
+Use this template as a starting point for creating a basic agent project where you know you will want to create agents with the Grounding with Bing Search tool. For more information, see [Azure AI Services Agents Environment Setup](https://learn.microsoft.com/en-us/azure/ai-services/agents/environment-setup).
+
+> **Note:** Deploying the template does not create an agent; it only provisions the necessary resources to get started.
 
 
-**For instructions on how to test Agents on Foundry Developer Platform**, see here: https://microsoft-my.sharepoint.com/:w:/p/fosteramanda/ES-0A2WpCgVLrK3SH_7gT9YBBb8SZk639kKmU1AIpoeDJg?e=TE3JcO 
+## Getting started
+
+Creating your first agent with Azure AI Foundry Agent Service is a two-step process:
+
+1. **Set up your agent environment.**
+2. **Create and configure your agent** using either your preferred SDK or the Azure Foundry Portal.
+

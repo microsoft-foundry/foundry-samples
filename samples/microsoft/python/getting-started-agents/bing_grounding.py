@@ -31,7 +31,9 @@ from azure.ai.projects import AIProjectClient
 
 # Retrieve endpoint, connection ID, and model deployment name from environment variables
 project_endpoint = os.environ["PROJECT_ENDPOINT"]  # Ensure the PROJECT_ENDPOINT environment variable is set
-conn_id = os.environ["BING_CONNECTION_NAME"]  # Ensure the BING_CONNECTION_NAME environment variable is set
+# Ensure the BING_CONNECTION_ID environment variable is set, following the format:
+#"/subscriptions/<sub-id>/resourceGroups/<your-rg-name>/providers/Microsoft.CognitiveServices/accounts/<your-ai-services-name>/projects/<your-project-name>/connections/<your-bing-connection-name>"
+conn_id = os.environ["BING_CONNECTION_ID"]  
 model_deployment_name = os.environ["MODEL_DEPLOYMENT_NAME"]  # Ensure the MODEL_DEPLOYMENT_NAME environment variable is set
 
 # Initialize the AIProjectClient with the endpoint and credentials
@@ -43,7 +45,8 @@ project_client = AIProjectClient(
 
 with project_client:
     # Initialize the Bing Grounding tool with the connection ID
-    bing = BingGroundingTool(connection_id=conn_id)
+    # freshness, count, set_lang and market are optional parameters
+    bing = BingGroundingTool(connection_id=conn_id, freshness="day", count=5, set_lang="en", market="us")
 
     # Create an agent with the specified model, name, instructions, and tools
     agent = project_client.agents.create_agent(

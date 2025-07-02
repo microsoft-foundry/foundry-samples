@@ -1,4 +1,4 @@
-# Azure AI Agent Service: Basic Setup 1RP
+# Azure AI Foundry Agent Service: Basic Setup 
 
 ## Basic Agent Setup
    
@@ -9,8 +9,11 @@ All agents created in this project will automatically use Microsoft managed, mul
 
 ### Prerequisites
 1. To deploy the template, you must have the following roles:
-    * Cognitive Services Contributor or Contributor 
-1. To create your first agent you must have the permissions: Azure AI Developer and Cognitive Services User
+    * **Azure AI Account Owner** or **Contributor** 
+1. To create your first agent you must have the permissions:
+    * **Azure AI User**
+
+For more information, [see the getting started guide.](https://learn.microsoft.com/en-us/azure/ai-services/agents/environment-setup)
  
 ### Steps
 

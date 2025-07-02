@@ -10,7 +10,7 @@
 *.userosscache
 *.sln.docstates
 *.env
-
+venv/
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
@@ -209,6 +209,12 @@ PublishScripts/
 *.nuget.props
 *.nuget.targets
 
+# Java Files
+*.properties 
+*.class
+*.lst
+*.jar
+
 # Microsoft Azure Build Output
 csx/
 *.build.csdef
@@ -402,3 +408,8 @@ FodyWeavers.xsd
 
 # Ignore local deployment parameter fils
 *your.deployment.parameters.json
+samples/agent-catalog/msft-agent-samples/foundry-agent-service-sdk/exact-qna-agent/config.dev.yaml
+samples/agent-catalog/msft-agent-samples/foundry-agent-service-sdk/intent-routing-agent/config.dev.yaml
+
+# python environments
+.venv

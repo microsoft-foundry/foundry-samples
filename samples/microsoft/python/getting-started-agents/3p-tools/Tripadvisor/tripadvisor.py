@@ -6,90 +6,129 @@
 
 """
 DESCRIPTION:
-    This sample demonstrates how to use Tripadvisor from
-    the Azure AI Agent service using a synchronous client.
+    This sample demonstrates how to use agent operations with the 
+    OpenAPI tool from the Azure Agents service using a synchronous client.
+    To learn more about OpenAPI specs, visit https://learn.microsoft.com/openapi
 
 USAGE:
-    python tripadvisor.py
+    python openapi.py
 
     Before running the sample:
 
-    pip install azure-ai-projects azure-ai-agents azure-identity
+    pip install azure-ai-agents azure-identity jsonref
 
     Set these environment variables with your own values:
-    1) PROJECT_ENDPOINT - the Azure AI Agent endpoint.
-    2) MODEL_DEPLOYMENT_NAME - The deployment name of the AI model, as found under the "Name" column in 
+    1) PROJECT_ENDPOINT - the Azure AI Agents endpoint.
+    2) MODEL - The deployment name of the AI model, as found under the "Name" column in
        the "Models + endpoints" tab in your Azure AI Foundry project.
 """
-
-# <create a project client>
+# <initialization>
+# Import necessary libraries
 import os
 import jsonref
-from azure.identity import DefaultAzureCredential
-from pathlib import Path
 from azure.ai.projects import AIProjectClient
-from azure.ai.agents.models import MessageRole, OpenApiTool, OpenApiConnectionAuthDetails, OpenApiConnectionSecurityScheme
+from azure.identity import DefaultAzureCredential
+from azure.ai.agents.models import OpenApiTool, OpenApiConnectionAuthDetails, OpenApiConnectionSecurityScheme
 
+# endpoint should be in the format "https://<your-ai-services-resource-name>.services.ai.azure.com/api/projects/<your-project-name>"
+endpoint = os.environ["PROJECT_ENDPOINT"]
+model = os.environ["MODEL"]
+# connection id should be in the format "/subscriptions/<sub-id>/resourceGroups/<your-rg-name>/providers/Microsoft.CognitiveServices/accounts/<your-ai-services-name>/projects/<your-project-name>/connections/<your-connection-name>"
+conn_id = os.environ["CONNECTION_ID"]
 
-# Format of the project_endpoint is https://<your-ai-services-account-name>.services.ai.azure.com/api/projects/<your-project-name>
-project_endpoint = "YOUR_ENDPOINT"
-# Change if you deployed a different model
-model_deployment_name = "gpt-4o"
+# Initialize the project client using the endpoint and default credentials
+with AIProjectClient(
+    endpoint=endpoint,
+    credential=DefaultAzureCredential(exclude_interactive_browser_credential=False),
+) as project_client:
+    # </initialization>
 
-# 1RP update: create a project client in the following way
-project_client = AIProjectClient(
-    endpoint=project_endpoint,
-    credential=DefaultAzureCredential(),
-)
-
-with project_client:
-    agents_client = project_client.agents.get_client()
-  
-    # Upload OpenAPI spec and wait for it to be processed
-    # [START create_agent_with_openapi]
-    # Update the file path to the correct location
-    with open('./tripadvisor.json', 'r', encoding='utf-8') as f:
-        openapi_spec = jsonref.loads(f.read())  # Update this to your file path
+    # Load the OpenAPI specification for the service from a local JSON file using jsonref to handle references
+    with open("./tripadvisor.json", "r") as f:
+        openapi_spec = jsonref.loads(f.read())
 
     # Create Auth object for the OpenApiTool (note that connection or managed identity auth setup requires additional setup in Azure)
-    # Your connection id should be in this format if you created under project scope: /subscriptions/SUBSCRIPTION_ID/resourceGroups/RESOURCE_GROUP_NAME/providers/Microsoft.CognitiveServices/accounts/AI_SERVICE_NAME/projects/PROJECT_NAME/connections/CONNECTION_NAME
-    auth = OpenApiConnectionAuthDetails(security_scheme=OpenApiConnectionSecurityScheme(connection_id="YOUR_CONNECTION_ID"))
+    auth = OpenApiConnectionAuthDetails(security_scheme=OpenApiConnectionSecurityScheme(connection_id=conn_id))
 
-    # Initialize agent OpenApi tool using the read in OpenAPI spec
-    openapi = OpenApiTool(name="tripadvisor", spec=openapi_spec, description="get reviews for restaurants and hotels given locations", auth=auth)
-    
-    # Create agent th openapi spec tool
-    agent = agents_client.create_agent(
-        model=model_deployment_name,
-        name="my-agent",
-        instructions="You are helpful agent",
-        tools=openapi.definitions,
+    # Initialize the main OpenAPI tool definition for weather
+    openapi_tool = OpenApiTool(
+        name="tripadvisor", 
+        spec=openapi_spec, 
+        description="retrieve travel review, guidance and recommendation", 
+        auth=auth
     )
-    # [END create_agent_with_openapi]
-    print(f"Created agent, agent ID: {agent.id}")
 
-    thread = agents_client.create_thread()
-    print(f"Created thread, thread ID: {thread.id}")
+    # <agent_creation>
+    # --- Agent Creation ---
+    # Create an agent configured with the combined OpenAPI tool definitions
+    agent = project_client.agents.create_agent(
+        model=model, # Specify the model deployment
+        name="my-agent", # Give the agent a name
+        instructions="You are a helpful travel planning agent. Your job is to retrieve relevant travel reviews about hotels, restaurants from Tripadvisor and generate travel recommendations", # Define agent's role
+        tools=openapi_tool.definitions, # Provide the list of tool definitions
+    )
+    print(f"Created agent, ID: {agent.id}")
+    # </agent_creation>
 
-    # Create a message
-    message = agents_client.create_message(
+    # <thread_management>
+    # --- Thread Management ---
+    # Create a new conversation thread for the interaction
+    thread = project_client.agents.threads.create()
+    print(f"Created thread, ID: {thread.id}")
+
+    # Create the initial user message in the thread
+    message = project_client.agents.messages.create(
         thread_id=thread.id,
         role="user",
-        content="top 5 hotels in paris and their review links",
+        # give an example of a user message that the agent can respond to
+        content="top 5 hotels in Paris and their review links",
     )
-    print(f"Created message, message ID: {message.id}")
+    print(f"Created message, ID: {message.id}")
+    # </thread_management>
 
-    run = agents_client.create_and_process_run(thread_id=thread.id, agent_id=agent.id)
+    # <message_processing>
+    # --- Message Processing (Run Creation and Auto-processing) ---
+    # Create and automatically process the run, handling tool calls internally
+    # Note: This differs from the function_tool example where tool calls are handled manually
+    run = project_client.agents.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
     print(f"Run finished with status: {run.status}")
+    # </message_processing>
 
+    # <tool_execution_loop> # Note: This section now processes completed steps, as create_and_process_run handles execution
+    # --- Post-Run Step Analysis ---
     if run.status == "failed":
-        # Check if you got "Rate limit is exceeded.", then you want to get more quota
         print(f"Run failed: {run.last_error}")
 
-    # Delete the agent when done
-    agents_client.delete_agent(agent.id)
+    # Retrieve the steps taken during the run for analysis
+    run_steps = project_client.agents.run_steps.list(thread_id=thread.id, run_id=run.id)
+
+    # Loop through each step to display information
+    for step in run_steps:
+        print(f"Step {step['id']} status: {step['status']}")
+
+        # Check if there are tool calls recorded in the step details
+        step_details = step.get("step_details", {})
+        tool_calls = step_details.get("tool_calls", [])
+
+        if tool_calls:
+            print("  Tool calls:")
+            for call in tool_calls:
+                print(f"    Tool Call ID: {call.get('id')}")
+                print(f"    Type: {call.get('type')}")
+
+                function_details = call.get("function", {})
+                if function_details:
+                    print(f"    Function name: {function_details.get('name')}")
+        print() # Add an extra newline between steps for readability
+    # </tool_execution_loop>
+
+    # <cleanup>
+    # --- Cleanup ---
+    # Delete the agent resource to clean up
+    project_client.agents.delete_agent(agent.id)
     print("Deleted agent")
 
-    # Fetch and log all messages
-    messages = agents_client.list_messages(thread_id=thread.id)
+    # Fetch and log all messages exchanged during the conversation thread
+    messages = project_client.agents.messages.list(thread_id=thread.id)
     print(f"Messages: {messages}")
+    # </cleanup>

@@ -1,12 +1,16 @@
 import os
 import jsonref
-from azure.ai.projects import AIProjectClient
-from azure.identity import DefaultAzureCredential
-from azure.ai.projects.models import OpenApiTool,OpenApiConnectionAuthDetails, OpenApiConnectionSecurityScheme
-from dotenv import load_dotenv
-from datetime import datetime
-import requests
 import json
+from datetime import datetime
+from dotenv import load_dotenv
+from azure.identity import DefaultAzureCredential
+from azure.ai.agents import AgentsClient
+from azure.ai.agents.models import (
+    ListSortOrder,
+    OpenApiTool,
+    OpenApiConnectionAuthDetails,
+    OpenApiConnectionSecurityScheme,
+)
 
 
 """
@@ -40,6 +44,13 @@ load_dotenv()
 # Set the employee code for the user
 employeeCode = 1
 
+# Read config
+config = {
+    "project_endpoint": os.environ["PROJECT_ENDPOINT"],
+    "connection_id": os.environ["PROJECT_OPENAPI_CONNECTION_ID"],
+    "model_name": "gpt-4o"
+}
+
 #sample reuqests to test the agent
 
 # sample_requests = [
@@ -51,17 +62,14 @@ employeeCode = 1
 #     "list all my work items for today and yesterday"
 # ]
 
-# Create an Azure AI Client from a connection string, copied from your Azure AI Foundry project.
-project_client = AIProjectClient.from_connection_string(
+# Create agent client
+agents_client = AgentsClient(
+    endpoint=config["project_endpoint"],
     credential=DefaultAzureCredential(),
-    conn_str=os.environ["PROJECT_CONNECTION_STRING"],
+    api_version="2025-05-15-preview"
 )
 
-# create a connection object for the openapi tool's API key
-connection_name = os.environ["PROJECT_OPENAPI_CONNECTION_NAME"]
-connection = project_client.connections.get(connection_name=connection_name)
-
-# use with local openapi.json file
+# Load OpenAPI spec
 with open('./mihcmExternalAPI.json', 'r') as f:
     openapi_spec = jsonref.loads(f.read())
 
@@ -70,11 +78,18 @@ with open('./mihcmExternalAPI.json', 'r') as f:
 # response.raise_for_status()  # makes sure it raises an error if something goes wrong
 # openapi_spec = jsonref.loads(response.text)
 
-# Create Auth object for the OpenApiTool 
-auth = OpenApiConnectionAuthDetails(security_scheme=OpenApiConnectionSecurityScheme(connection_id=connection.id))
+# Set up the OpenAPI connection auth
+auth = OpenApiConnectionAuthDetails(
+    security_scheme=OpenApiConnectionSecurityScheme(connection_id=config["connection_id"])
+)
 
-# Initialize agent OpenAPI tool using the read in OpenAPI spec
-openapi = OpenApiTool(name="MiHCMAgent", spec=openapi_spec, description="Lets communicate with MiHCM agent to execute different tasks", auth=auth)
+# Define OpenAPI tool
+mihcm_tool = OpenApiTool(
+    name="MiHCMAgent",
+    spec=openapi_spec,
+    description="Lets communicate with MiHCM agent to execute different tasks",
+    auth=auth
+)
 
 #Agent instructions 
 instructions = f"""You are a helpful assistant.
@@ -92,40 +107,45 @@ If any of the mappings are wrong the response is considered wrong. And the task 
 
 agent_request = "list all my work items for today and yesterday"
 
-# Create agent with OpenAPI tool and process assistant run
-with project_client:
-    agent = project_client.agents.create_agent(
-        model="gpt-4o-mini",
+# Run the interaction with the agent
+with agents_client:
+    # Create agent
+    agent = agents_client.create_agent(
+        model=config["model_name"],
         name="mi-agent",
         instructions=instructions,
-        tools=openapi.definitions
+        tools=mihcm_tool.definitions
     )
     print(f"Created agent, ID: {agent.id}")
 
-    # Create thread for communication
-    thread = project_client.agents.create_thread()
+    # Create thread
+    thread = agents_client.threads.create()
     print(f"Created thread, ID: {thread.id}")
-    # Create message to thread
-    message = project_client.agents.create_message(
+
+    # Create message
+    message = agents_client.messages.create(
         thread_id=thread.id,
         role="user",
-        content=agent_request,
+        content=agent_request
     )
-    print(f"Created message, ID: {message.id}")
+    print(f"Created message: {message['id']}")
 
-    # Create and process agent run in thread with tools
-    run = project_client.agents.create_and_process_run(thread_id=thread.id, agent_id=agent.id)
+    # Run agent
+    run = agents_client.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
     print(f"Run finished with status: {run.status}")
 
     if run.status == "failed":
         print(f"Run failed: {run.last_error}")
 
-    # Delete the assistant when done
-    project_client.agents.delete_agent(agent.id)
-    print("Deleted agent")
+    # Read response
+    messages = agents_client.messages.list(thread_id=thread.id, order=ListSortOrder.ASCENDING)
+    for msg in messages:
+        if msg.text_messages:
+            last_text = msg.text_messages[-1]
+            print(f"{msg.role}: {last_text.text.value}")
 
-    # Fetch and log all messages
-    messages = project_client.agents.list_messages(thread_id=thread.id,after=message.id,order="asc")
-    print(f"Messages: {messages.data[0].content[0].text.value}")
+    # Cleanup
+    agents_client.delete_agent(agent.id)
+    print("Deleted agent")
 
  

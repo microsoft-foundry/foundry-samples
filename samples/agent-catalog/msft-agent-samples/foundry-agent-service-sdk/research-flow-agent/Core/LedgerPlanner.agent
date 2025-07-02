@@ -5,21 +5,21 @@ model: gpt-4o
 instructions: |-
   You are an helpful assistant help us create a plan to solve the following problem.
 
-  {task}
+  {{task}}
 
   We have collected the following facts so far.
 
-  {facts}
+  {{facts}}
 
   You have following team at your disposal. 
 
   Your team:
 
-  {team}
+  {{team}}
 
   You are also provided additional domain specific instructions:
 
-  {instructions}
+  {{instructions}}
 
   Please understand their individual capability and based on that provide a nice plan for us. You do not have to directly interact with your team. You just output the plan in the form of short bulletin we will pass it to executors.
 
@@ -30,15 +30,21 @@ top_p: 0
 temperature: 0
 tools: []
 tool_resources: {}
-semanticConditions: []
+events: []
 inputs:
-  - name: team
-    mode: llm
-  - name: instructions
-    mode: llm
-  - name: facts
-    mode: llm
-  - name: task
-    mode: llm
+  - type: llm
+    name: team
+    description: team
+  - type: llm
+    name: instructions
+    description: instructions
+  - type: llm
+    name: facts
+    description: facts
+  - type: llm
+    name: task
+    description: task
 outputs: []
-id: asst_tinGJZdUE0M1hreVq1zqCFP0
+system_prompts: {}
+response_format: auto
+id: asst_6jBa8H5pA9wxYj17giC6hIxw

@@ -1,31 +1,35 @@
+import os
 import traceback
 
 from azure.identity import DefaultAzureCredential
-from semantic_kernel.agents import (AzureAIAgent, AzureAIAgentThread)
+from dotenv import find_dotenv, load_dotenv
+from semantic_kernel.agents import AzureAIAgent, AzureAIAgentThread
 from semantic_kernel.contents import ChatHistory
 from semantic_kernel.functions import kernel_function
 from semantic_kernel.processes.kernel_process import KernelProcessStep
-
-from config.config import *
-from config.config_secrets import *
 from utils.logger import Logger
 
 
 # Claim Analysis Agent Step invokes an AI agent in Azure AI Agent service to analyze the claim data.
 # It assesses the eligibility, risk, and recommended action for the claim. It also provides a summary of the claim and the analysis.
 class ClaimAnalysisAgentStep(KernelProcessStep):
-    _agentName = "ClaimAnalysisAgentStep"
+    _stepName = "ClaimAnalysisAgentStep"
 
     @kernel_function
     async def execute(self, claim_data_to_analyze):
-        Logger.log_step_start(self._agentName)
+        Logger.log_step_start(self._stepName)
+        
+        AZURE_AI_AGENT_ENDPOINT = os.getenv("AZURE_AI_AGENT_ENDPOINT")
+        AZURE_AI_AGENT_AGENT_ID = os.getenv("AZURE_AI_AGENT_AGENT_ID")
+        AZURE_AI_AGENT_MODEL_DEPLOYMENT_NAME = os.getenv("AZURE_AI_AGENT_MODEL_DEPLOYMENT_NAME")
+        AGENT_INSTRUCTIONS_PATH = os.getenv("AGENT_INSTRUCTIONS_PATH")
 
         analysis_text = ""
 
         # Create an Azure AI agent client
         client = AzureAIAgent.create_client(
             credential=DefaultAzureCredential(),
-            conn_str=AZURE_AI_AGENT_PROJECT_CONNECTION_STRING)
+            endpoint=AZURE_AI_AGENT_ENDPOINT)
         
         agent_definition = None
 
@@ -74,17 +78,17 @@ class ClaimAnalysisAgentStep(KernelProcessStep):
             await client.close() if client else None
 
         Logger.log_step_result(analysis_text)
-        Logger.log_step_completion(self._agentName)
+        Logger.log_step_completion(self._stepName)
 
         return analysis_text
 
 # Mocked Claim Analysis Agent Step returns hardcoded data to simulate claim analysis.
 class MockClaimAnalysisAgentStep(KernelProcessStep):
-    _agentName = "MockClaimAnalysisAgentStep"
+    _stepName = "MockClaimAnalysisAgentStep"
 
     @kernel_function
     async def execute(self, claim_data_to_analyze):
-        Logger.log_step_start(self._agentName)
+        Logger.log_step_start(self._stepName)
 
         analysis_text = """
         {
@@ -97,6 +101,6 @@ class MockClaimAnalysisAgentStep(KernelProcessStep):
         """
 
         Logger.log_step_result(analysis_text)
-        Logger.log_step_completion(self._agentName)
+        Logger.log_step_completion(self._stepName)
 
         return analysis_text

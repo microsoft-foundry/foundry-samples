@@ -1,4 +1,3 @@
-param accountPrincipalId string 
 param azureStorageName string
 param projectPrincipalId string
 

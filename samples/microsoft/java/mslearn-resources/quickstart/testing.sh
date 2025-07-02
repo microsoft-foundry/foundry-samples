@@ -11,24 +11,38 @@ print_color() {
     echo -e "\033[${color_code}m$@\033[0m"
 }
 
-# Function to validate environment variables
-validate_env() {
+# Function to check required environment variables
+check_required_env() {
     missing_vars=()
     
-    if [ -z "$AZURE_TENANT_ID" ]; then missing_vars+=("AZURE_TENANT_ID"); fi
-    if [ -z "$AZURE_CLIENT_ID" ]; then missing_vars+=("AZURE_CLIENT_ID"); fi
-    if [ -z "$AZURE_CLIENT_SECRET" ]; then missing_vars+=("AZURE_CLIENT_SECRET"); fi
-    if [ -z "$AZURE_ENDPOINT" ]; then missing_vars+=("AZURE_ENDPOINT"); fi
-    if [ -z "$AZURE_DEPLOYMENT" ]; then missing_vars+=("AZURE_DEPLOYMENT"); fi
+    # Check for PROJECT_ENDPOINT (primary) or AZURE_ENDPOINT (fallback)
+    if [ -z "$PROJECT_ENDPOINT" ]; then
+        if [ -z "$AZURE_ENDPOINT" ]; then
+            missing_vars+=("PROJECT_ENDPOINT or AZURE_ENDPOINT")
+        else
+            print_color "36" "Using AZURE_ENDPOINT as fallback for PROJECT_ENDPOINT"
+        fi
+    fi
+    
+    # Add informational output about which SDKs will be tested
+    print_color "36" "=============================================================="
+    print_color "36" "   TESTING WITH AZURE AI SDKS"
+    print_color "36" "=============================================================="
+    print_color "36" "Azure AI Agents Persistent SDK v1.0.0-beta.2"
+    print_color "36" "Azure AI Projects SDK v1.0.0-beta.2"
+    print_color "36" "Azure AI Inference SDK v1.0.0-beta.5"
+    print_color "36" "OpenAI Java SDK v2.7.0"
+    print_color "36" "=============================================================="
     
     if [ ${#missing_vars[@]} -ne 0 ]; then
         print_color "31" "ERROR: Missing required environment variables:"
         for var in "${missing_vars[@]}"; do
             print_color "31" "  - $var"
         done
-        print_color "31" "Please create a .env file with these variables or set them in your environment."
-        exit 1
+        print_color "31" "Please set these variables in your environment before running tests."
+        return 1
     fi
+    return 0
 }
 
 # Function to run a test and track its result
@@ -59,18 +73,19 @@ if ! command -v mvn &> /dev/null; then
     exit 1
 fi
 
-# Check for .env file
-if [ ! -f .env ]; then
-    print_color "33" "Warning: .env file not found. Creating from template..."
-    if [ -f .env.template ]; then
-        cp .env.template .env
-        print_color "33" "Created .env file from template. Please edit it with your actual credentials before running tests."
-        exit 1
-    else
-        print_color "31" "Error: .env.template file not found. Cannot create .env file."
-        exit 1
-    fi
+# Check if user is logged in with Azure CLI
+print_color "36" "Checking Azure CLI login status..."
+if ! az account show > /dev/null 2>&1; then
+    print_color "31" "Error: You are not logged in with the Azure CLI. Please run 'az login' first."
+    exit 1
+else
+    print_color "32" "Azure CLI login validated."
 fi
+
+# Check for required environment variables
+print_color "36" "Validating environment variables..."
+check_required_env || exit 1
+print_color "32" "Environment variables validation passed."
 
 # Build the project first
 print_color "36" "\n=============================================================="
@@ -105,6 +120,16 @@ samples=(
     "FileSearchAgentSample"
     "EvaluateAgentSample"
 )
+
+# Conditionally add OpenAI sample if API key is set
+if [ ! -z "$OPENAI_API_KEY" ]; then
+    samples+=("ChatCompletionOpenAISample")
+else
+    print_color "33" "\nSkipping ChatCompletionOpenAISample (OPENAI_API_KEY not set)"
+fi
+
+# Always add the inference sample, even though it may fail due to SDK limitations
+samples+=("ChatCompletionInferenceSample")
 
 # Arrays to track results
 passed_tests=()
@@ -143,3 +168,13 @@ if [ ${#failed_tests[@]} -gt 0 ]; then
 else
     print_color "32" "\nAll tests passed successfully!"
 fi
+print_color "36" "\n=============================================================="
+print_color "36" "   TESTING COMPLETED"
+print_color "36" "==============================================================\n"
+# Exit with success status
+if $success; then
+    exit 0
+else
+    exit 1
+fi
+# End of testing script

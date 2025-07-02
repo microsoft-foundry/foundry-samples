@@ -1,6 +1,11 @@
 @echo off
 REM Automated testing script for Azure AI Foundry Java Samples
 REM Usage: testing.bat [SampleName]
+REM This script tests samples that use:
+REM  - Azure AI Agents Persistent SDK (com.azure:azure-ai-agents-persistent:1.0.0-beta.2)
+REM  - Azure AI Projects SDK (com.azure:azure-ai-projects:1.0.0-beta.2)
+REM  - Azure AI Inference SDK (com.azure:azure-ai-inference:1.0.0-beta.5)
+REM  - OpenAI Java SDK (com.openai:openai-java:2.7.0)
 
 setlocal enabledelayedexpansion
 
@@ -10,6 +15,7 @@ set "color=%~1"
 set "message=%~2"
 echo [%color%m%message%[0m
 exit /b
+
 
 REM Check for Java and Maven
 where java >nul 2>&1
@@ -24,61 +30,38 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-REM Check for .env file
-if not exist .env (
-    call :print_color 33 "Warning: .env file not found. Creating from template..."
-    if exist .env.template (
-        copy .env.template .env
-        call :print_color 33 "Created .env file from template. Please edit it with your actual credentials before running tests."
-        exit /b 1
-    ) else (
-        call :print_color 31 "Error: .env.template file not found. Cannot create .env file."
-        exit /b 1
-    )
+REM Check if user is logged in with Azure CLI
+call :print_color 36 "Checking Azure CLI login status..."
+az account show >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    call :print_color 31 "Error: You are not logged in with the Azure CLI. Please run 'az login' first."
+    exit /b 1
+) else (
+    call :print_color 32 "Azure CLI login validated."
 )
 
 REM Check for required environment variables
 call :print_color 36 "Validating environment variables..."
 set "missing_vars="
 
-for /f "tokens=1* delims==" %%a in (.env) do (
-    set "var_name=%%a"
-    set "var_name=!var_name: =!"
-    
-    if "!var_name!"=="AZURE_TENANT_ID" (
-        if "%%b"=="your_tenant_id_here" (
-            set "missing_vars=!missing_vars! AZURE_TENANT_ID"
-        )
+REM Check for PROJECT_ENDPOINT (primary) or AZURE_ENDPOINT (fallback)
+if "%PROJECT_ENDPOINT%"=="" (
+    if "%AZURE_ENDPOINT%"=="" (
+        set "missing_vars=!missing_vars! PROJECT_ENDPOINT or AZURE_ENDPOINT"
+    ) else (
+        call :print_color 36 "Using AZURE_ENDPOINT as fallback for PROJECT_ENDPOINT"
     )
-    if "!var_name!"=="AZURE_CLIENT_ID" (
-        if "%%b"=="your_client_id_here" (
-            set "missing_vars=!missing_vars! AZURE_CLIENT_ID"
-        )
-    )
-    if "!var_name!"=="AZURE_CLIENT_SECRET" (
-        if "%%b"=="your_client_secret_here" (
-            set "missing_vars=!missing_vars! AZURE_CLIENT_SECRET"
-        )
-    )
-    if "!var_name!"=="AZURE_ENDPOINT" (
-        if "%%b"=="your_endpoint_here" (
-            set "missing_vars=!missing_vars! AZURE_ENDPOINT"
-        )
-    )
-    if "!var_name!"=="AZURE_DEPLOYMENT" (
-        if "%%b"=="your_deployment_name_here" (
-            set "missing_vars=!missing_vars! AZURE_DEPLOYMENT"
-        )
-    )
-)
+) 
 
-if not "!missing_vars!"=="" (
-    call :print_color 31 "Error: The following environment variables need to be updated in .env file:!missing_vars!"
-    call :print_color 31 "Please edit the .env file with your actual credentials before running tests."
-    exit /b 1
-) else (
-    call :print_color 32 "Environment variables validation passed."
-)
+REM Add informational output about which SDKs will be tested
+call :print_color 36 "=============================================================="
+call :print_color 36 "   TESTING WITH AZURE AI SDKS"
+call :print_color 36 "=============================================================="
+call :print_color 36 "Azure AI Agents Persistent SDK v1.0.0-beta.2"
+call :print_color 36 "Azure AI Projects SDK v1.0.0-beta.2"
+call :print_color 36 "Azure AI Inference SDK v1.0.0-beta.5"
+call :print_color 36 "OpenAI Java SDK v2.7.0"
+call :print_color 36 "==============================================================
 
 REM Build the project first
 call :print_color 36 "=============================================================="
@@ -163,3 +146,5 @@ if %ERRORLEVEL% equ 0 (
     call :print_color 31 "✗ TEST FAILED: %sample%"
     exit /b 1
 )
+REM End of script
+:end

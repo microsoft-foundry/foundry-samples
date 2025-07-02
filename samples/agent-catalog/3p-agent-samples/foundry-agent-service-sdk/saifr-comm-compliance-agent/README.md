@@ -1,3 +1,9 @@
+**IMPORTANT NOTE FROM MICROSOFT:** The sample below was created by a third party, not Microsoft, and has not been tested or verified by Microsoft. Your use is subject to the terms provided by the relevant third party.  By using the third-party sample in this file, you are acknowledging that Microsoft has no responsibility to you or others with respect to this sample.  
+
+
+------
+
+
 # Saifr Communication Compliance Agent
 
 ## Description 
@@ -5,11 +11,12 @@
 This code sample helps create the Saifr Communication Compliance Agent that converts potentially noncompliant text to a more compliant, fair, and balanced version, helping end users better adhere to relevant regulatory guidelines.
 
 
-_Saifr Agent is not intended to replace the end user’s legal, compliance, business, or other functions, 
+**WARNING:** Saifr Agent is not intended to replace the end user’s legal, compliance, business, or other functions, 
 or to satisfy any legal or regulatory obligations.  Note that all compliance responsibilities remain solely 
 those of the end user and that certain communications may require review and approval by properly licensed 
 individuals.  Saifr is not responsible for determining compliance with rules and will not be liable for 
-actions taken or not taken based on Agent use._
+actions taken or not taken based on Agent use.
+
 
 ### Architecture Overview
 The Saifr Communication Compliance Agent uses gpt-40-mini (version:2024-07-18) as the agent orchestrator LLM. We chose 

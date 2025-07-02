@@ -1,19 +1,18 @@
 import json
+import os
 
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
 from azure.core.credentials import AzureKeyCredential
+from dotenv import find_dotenv, load_dotenv
 from semantic_kernel.functions import kernel_function
 from semantic_kernel.processes.kernel_process import KernelProcessStep
-
-from config.config import *
-from config.config_secrets import *
 from utils.logger import Logger
 
 
 # This step invokes Azure Document Ingelligence service to extract structured data from an image of a claim.
 class DocumentIntelligenceStep(KernelProcessStep):
-    _agentName = "DocumentIntelligenceStep"
+    _stepName = "DocumentIntelligenceStep"
 
     # Helper function to retrieve the value of a specific field from the document
     @staticmethod
@@ -25,7 +24,10 @@ class DocumentIntelligenceStep(KernelProcessStep):
 
     @kernel_function
     def execute(self, document_path): 
-        Logger.log_step_start(self._agentName)
+        Logger.log_step_start(self._stepName)
+
+        COGNITIVE_SERVICES_ENDPOINT = os.getenv("COGNITIVE_SERVICES_ENDPOINT")
+        COGNITIVE_SERVICES_KEY = os.getenv("COGNITIVE_SERVICES_KEY")
 
         # Define the query fields to extract
         query_fields = [
@@ -63,17 +65,17 @@ class DocumentIntelligenceStep(KernelProcessStep):
             extracted_text = json.dumps(extracted_fields, indent=4)
 
         Logger.log_step_result(extracted_text)
-        Logger.log_step_completion(self._agentName)
+        Logger.log_step_completion(self._stepName)
 
         return extracted_text
 
 # Document Intelligence step with mocked behavior for testing purposes
 class MockDocumentIntelligenceStep(KernelProcessStep):
-    _agentName = "MockDocumentIntelligenceStep"
+    _stepName = "MockDocumentIntelligenceStep"
 
     @kernel_function
     def execute(self, document_path):
-        Logger.log_step_start(self._agentName)
+        Logger.log_step_start(self._stepName)
         
         # Ensure the file can be opened and read
         with open(document_path, 'rb') as file:
@@ -99,6 +101,6 @@ class MockDocumentIntelligenceStep(KernelProcessStep):
         """
 
         Logger.log_step_result(extracted_text)
-        Logger.log_step_completion(self._agentName)
+        Logger.log_step_completion(self._stepName)
 
         return extracted_text

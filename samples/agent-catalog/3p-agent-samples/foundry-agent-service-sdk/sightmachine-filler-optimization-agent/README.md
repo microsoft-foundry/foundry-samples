@@ -1,3 +1,8 @@
+**IMPORTANT NOTE FROM MICROSOFT:** The sample below was created by a third party, not Microsoft, and has not been tested or verified by Microsoft. Your use is subject to the terms provided by the relevant third party.  By using the third-party sample in this file, you are acknowledging that Microsoft has no responsibility to you or others with respect to this sample.  
+
+
+------
+
 <h1>
 <span style="display: flex; align-items: center;">
   <picture>
@@ -11,7 +16,8 @@
 
 This repository provides templates for deploying and running the Sight Machine Filler Agent.  Sight Machine is a data and analytics platform for manufacturing.  We model data, provide basic visualization and analytics tools, and provide advanced AI analytics for manufacturing plant floor users.  For more information, see www.sightmachine.com.
 
-**IMPORTANT**: Full functionality of this agent, including advanced features, requires a subscription to Sight Machine. However, basic example data allows users to test and explore the core functionality of the agent.
+**WARNING**: Full functionality of this agent, including advanced features, requires a subscription to Sight Machine. However, basic example data allows users to test and explore the core functionality of the agent.
+
 
 ## Use Cases
 

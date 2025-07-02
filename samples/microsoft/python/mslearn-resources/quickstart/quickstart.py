@@ -7,11 +7,11 @@ from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
 
 project = AIProjectClient(
-    endpoint="https://your-foundry-resource-name.ai.azure.com/api/projects",
+    endpoint="https://your-foundry-resource-name.ai.azure.com/api/projects/project-name",
     credential=DefaultAzureCredential(),
 )
 
-models = project.inference.get_azure_openai_client(api_version="2025-04-01-preview")
+models = project.inference.get_azure_openai_client(api_version="2024-10-21")
 response = models.chat.completions.create(
     model="gpt-4o",
     messages=[
@@ -26,10 +26,10 @@ print(response.choices[0].message.content)
 # <create_and_run_agent>
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
-from azure.ai.agents.models import ListSortOrder
+from azure.ai.agents.models import ListSortOrder, FilePurpose
 
 project = AIProjectClient(
-    endpoint="https://your-foundry-resource-name.ai.azure.com/api/projects",
+    endpoint="https://your-foundry-resource-name.ai.azure.com/api/projects/project-name",
     credential=DefaultAzureCredential(),
 )
 
@@ -70,12 +70,12 @@ from azure.identity import DefaultAzureCredential
 from azure.ai.agents.models import ListSortOrder, FileSearchTool
 
 project = AIProjectClient(
-    endpoint="https://your-foundry-resource-name.ai.azure.com/api/projects",
+    endpoint="https://your-foundry-resource-name.ai.azure.com/api/projects/project-name",
     credential=DefaultAzureCredential(),
 )
 
 # Upload file and create vector store
-file = project.agents.files.upload(file_path="../../../data/product_info_1.md", purpose="assistants")
+file = project.agents.files.upload(file_path="./product_info_1.md", purpose=FilePurpose.AGENTS)
 vector_store = project.agents.vector_stores.create_and_poll(file_ids=[file.id], name="my_vectorstore")
 
 # Create file search tool and agent

@@ -21,7 +21,7 @@ states:
           facts: facts
           team: team
           instructions: instructions
-        messagesOut: plan
+        messagesOut: plannerMessages
         thread: Planning
         humanInLoopMode: never
         streamOutput: true
@@ -33,9 +33,9 @@ states:
           task: task
           team: team
           systemAgents: systemAgents
-        messagesOut: nextStep
+        messagesOut: nextStepMessages
         messagesIn:
-          - plan
+          - plannerMessages
         thread: Run
         humanInLoopMode: never
         streamOutput: true
@@ -44,17 +44,17 @@ states:
     actors:
       - agent: ActionRouterAgent
         messagesIn:
-          - nextStep
+          - nextStepMessages
         inputs:
           team: team
           systemAgents: systemAgents
         outputs:
-          targetAgentId: nextAgentId
+          targetAgent: nextAgent
         humanInLoopMode: never
         streamOutput: true
   - name: dynamicStepAgent
     actors:
-      - agentId: nextAgentId
+      - agent: nextAgent
         thread: Run
         humanInLoopMode: never
         streamOutput: true
@@ -62,6 +62,11 @@ states:
     actors:
       - agent: LedgerFactsUpdate
         thread: Run
+        inputs:
+          task: task
+          facts: facts
+        outputs:
+          updatedFacts: facts
         humanInLoopMode: never
         streamOutput: false
     isFinal: false
@@ -71,26 +76,20 @@ states:
         inputs:
           task: task
           facts: facts
-        messagesOut: plan
+          team: team
+        messagesOut: plannerMessages
         thread: Run
         humanInLoopMode: never
-        streamOutput: true
-    isFinal: false
-  - name: UserPrompt
-    actors:
-      - agent: UserAgent
-        thread: Run
-        humanInLoopMode: always
         streamOutput: true
     isFinal: false
   - name: Summarizer
     actors:
       - agent: FinalStepAgent
         thread: Run
+        inputs:
+          task: task
         humanInLoopMode: never
         streamOutput: true
-        outputs:
-          Summary: Summary
     isFinal: true
 transitions:
   - from: GatherFacts
@@ -102,26 +101,18 @@ transitions:
   - from: ProcessProgress
     to: actionRouter
   - from: actionRouter
-    to: ProcessProgress
-    condition: nextAgentId.Equals(UnknownAgent)
-  - from: actionRouter
-    to: UserPrompt
-    condition: nextAgentId.Equals(UserAgent)
-  - from: actionRouter
     to: UpdateLedgerFact
-    condition: nextAgentId.Equals(LedgerFactsUpdate)
+    condition: nextAgent.Equals(LedgerFactsUpdate)
   - from: actionRouter
     to: Summarizer
-    condition: nextAgentId.Equals(FinalStepAgent)
+    condition: nextAgent.Equals(FinalStepAgent)
   - from: actionRouter
     to: dynamicStepAgent
-    condition: nextAgentId.NotContains(FinalStepAgent)
+    condition: nextAgent.NotContains(FinalStepAgent)
   - from: dynamicStepAgent
     to: ProcessProgress
   - from: UpdateLedgerFact
     to: LedgerPlanUpdate
-  - from: UserPrompt
-    to: ProcessProgress
 variables:
   - Type: userDefined
     name: team
@@ -131,29 +122,24 @@ variables:
     name: task
   - Type: userDefined
     name: facts
-  - Type: messages
+  - Type: userDefined
     name: plan
+  - Type: messages
+    name: plannerMessages
   - Type: thread
     name: Planning
   - Type: thread
     name: Run
   - Type: messages
-    name: nextStep
+    name: nextStepMessages
   - Type: userDefined
-    name: nextAgentId
+    name: nextAgent
   - Type: userDefined
     name: systemAgents
     value:
-      - agentId: FinalStepAgent
-        agent: FinalStepAgent
+      - agent: FinalStepAgent
         description: Agent which summarizes the output after task is complete. When next speaker is none.
-      - agentId: UserAgent
-        agent: UserAgent
-        description: Agent which prompts user for additional information. When next speaker is User.
-      - agentId: LedgerFactsUpdate
-        agent: LedgerFactsUpdate
+      - agent: LedgerFactsUpdate
         description: Agent which can update the plan if we are looping without making progress or stall is detected.
-  - Type: userDefined
-    name: Summary
 startstate: GatherFacts
-id: wf_agent_w76wQ3FpgU2gBxzlNWxVO8R4
+id: wf_agent_tcqz3LaQfcH8YkVLMCBIwrCE

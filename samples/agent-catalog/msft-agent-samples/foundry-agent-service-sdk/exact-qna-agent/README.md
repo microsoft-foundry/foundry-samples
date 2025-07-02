@@ -2,12 +2,16 @@
 
 The **Exact Question Answering Agent** code sample supports building agents that answer predefined, high-value questions to ensure consistent and accurate responses. 
 
-Built using Azure AI Agent Service and Custom Question Answering in Azure AI Language, it provides deterministic, exact answers with human control options. Businesses can automate responses to their most common questions—often covering up to 90% of inquiries—using this exact answering approach. For less frequent or more nuanced questions, a fallback to an LLM-powered RAG system can handle the long tail, while truly complex queries are routed to human agents.
+Using Azure AI Agent Service and Custom Question Answering in Azure AI Language, it can provide deterministic, exact answers with human control options. Businesses can automate responses to their most common questions, using this exact answering approach. For less frequent or more nuanced questions, a fallback to an LLM-powered RAG system can handle the long tail, while truly complex queries are routed to human agents.
+
+**IMPORTANT NOTE:** Starter templates, instructions, code samples and resources in this msft-agent-samples file (“samples”) are designed to assist in accelerating development of agents for specific scenarios. It is important that you review all provided resources and carefully test Agent behavior in the context of your use case: ([Learn More](https://learn.microsoft.com/en-us/legal/cognitive-services/agents/transparency-note?context=%2Fazure%2Fai-services%2Fagents%2Fcontext%2Fcontext)). 
+
+Certain Agent offerings may be subject to legal and regulatory requirements, may require licenses, or may not be suitable for all industries, scenarios, or use cases. By using any sample, you are acknowledging that Agents or other output created using that sample are solely your responsibility, and that you will comply with all applicable laws, regulations, and relevant safety standards, terms of service, and codes of conduct.  
 
 ## Use Cases
-1. **Customer Support**: Automate deterministic humnan-controlled responses to frequently asked or high value questions such as “What is your return policy?”, “How do I reset my password?”, or “What’s the warranty coverage?” while routing complex queries to human agents.
-2. **IT Support**: Provide percise answers like “What is the VPN setup process?”, “Where do I download the latest security patch?”, or “How do I enroll in 2FA?” faithful to technical documentation and internal IT knowledge bases.
-3. **Education and Student Help**: Respond with percise and human-controlled answers to questions like “What’s the deadline to drop a course?”, “Where do I submit my financial aid application?”, or “What’s the grading policy for AP credits?” faithful to school and academic documentation.
+1. **Customer Support**: Automate deterministic human-controlled responses to frequently asked or high value questions such as “What is your return policy?”, “How do I reset my password?”, or “What’s the warranty coverage?” while routing complex queries to human agents.
+2. **IT Support**: Provide precise answers like “What is the VPN setup process?”, “Where do I download the latest security patch?”, or “How do I enroll in 2FA?” faithful to technical documentation and internal IT knowledge bases.
+3. **Education and Student Help**: Respond with precise and human-controlled answers to questions like “What’s the deadline to drop a course?”, “Where do I submit my financial aid application?”, or “What’s the grading policy for AP credits?” faithful to school and academic documentation.
 
 ## Architecture Overview
 The system consists of:
@@ -41,12 +45,17 @@ The system consists of:
 - Python 3.8+
 - Azure CLI
 - Azure subscription
-- Agent setup: deploy the latest agent setup using ([this custom deployment](https://github.com/azure-ai-foundry/foundry-samples/tree/main/use-cases/agents/setup/basic-setup)).
+- Agent setup: deploy the latest agent setup using ([this custom deployment](https://aka.ms/basic-agent-deployment)).
   - The above creates:
     1. AI Services resource (type: Microsoft.CognitiveServices/accounts),
     2. AI Project (type: Microsoft.CognitiveServices/accounts/projects),
-    3. Model deployment (type: Microsoft.CognitiveServices/accounts/deployments) 
-- CQA deployment see [CQA Overview](https://learn.microsoft.com/en-us/azure/ai-services/language-service/question-answering/overview)
+    3. Model deployment (type: Microsoft.CognitiveServices/accounts/deployments). 
+- Custom Question Answering (CQA) deployment, see [CQA Overview](https://learn.microsoft.com/azure/ai-services/language-service/question-answering/overview)
+- A custom connection of the resource used by your CQA project are added to the project of your Agent. 
+  - CQA projects can be created using an Azure AI Foundry resource, AI hub resource, or Azure AI Language resource. 
+  - In your agent project management center, use "Custom keys" connection when adding the custom connection in the connected resources page. 
+  - To add a "Custom keys" connection, add a key value pair with Ocp-Apim-Subscription-Key as the key name, and the resource key as the value. For Azure AI Foundry resource and AI hub resource, you can find the resource key value in the resource overview page in the Azure AI Foundry portal management center. You can also find the key of any type of resources in the Azure portal. 
+  - For more info to create a connection, see [Create a connection](https://learn.microsoft.com/azure/ai-foundry/how-to/connections-add)
 
 ### Steps
 1. **Clone the Repository**
@@ -61,20 +70,23 @@ The system consists of:
 ## ⚙️ Configuration Guide
 | Parameter Name                         | Description                                                       |
 |----------------------------------------|-------------------------------------------------------------------|
-| `language_resource_url`                | Endpoint for the language resource                                |
-| `language_resource_connection_name`    | Connection name for the language resource in the AI Foundry       |
-| `cqa_project_name`                     | Unique name for the CQA project this agent is using               |
-| `cqa_deployment_name`                  | Unique name for the CQA deployment this agent is using            |
-| `project_endpoint`                     | Endpoint for the project this agent is using                      |
-| `model_name`                           | name of the model to be used for the Agent                        |
-| `connection_id`                        | Connection ID for the language resource in the AI Foundry         |
-| `amlWorkspaceResourceName`             | Name of the AI Project or the AML workspace                       |
+| `project_endpoint`                     | Endpoint for the project this agent is using                                      |
+| `model_name`                           | Name of the model deployment to be used for the Agent                             |
+| `language_resource_url`                | Endpoint for the language resource where your CLU and CQA projects are created    |                                       |
+| `language_resource_connection_name`    | Name of the language resource connection added in the agent project               |
+| `connection_id`                        | Connection ID for the language resource connection added in the agent project     |
+| `cqa_project_name`                     | Name of the CQA project this agent will use                                       |
+| `cqa_deployment_name`                  | Name of the deployment in the CQA project this agent will use                     |
+
 
 ## Sample Data Instructions
 This repo contains a `sample_data/` directory with:
-- Product knowledge base of a fictional outdoor retail company, Contoso Outdoor.
+- cqa_import.json: A CQA project file with sample question-answer pairs that you can use to create a CQA project.
 
-You can test the interaction by invoking the agent with prompts like:
+The sample data are made up based on a fictional outdoor retail company, Contoso Outdoor.
+
+You can also use the sample data below and test the interaction by invoking the agent with prompts as listed in next section.
+
 ## Example Agent Interaction
 ### User: 
 what is your return policy
@@ -120,9 +132,6 @@ Good Traction: Features outstanding grip, suitable for challenging trails.
 Both options offer excellent features for casual climbing and hiking.
 
 ## Customization Tips
-- Modify the system instructions in `agent.py` to your needs or preferences (e.g., style of answering).
+- Modify the system instructions in `template.py` to your needs or preferences (e.g., style of answering).
 - Extend the agent with other useful tools or APIs (using OpenAPI spec).
-- Fine-tuning the associated CQA deployment, e.g. adding/modify/delete question-answer paires, or finetune questions, etc.
-
-## License
-This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
+- Fine-tuning the associated CQA deployment, e.g. adding/modify/delete question-answer pairs, or finetune questions, etc.

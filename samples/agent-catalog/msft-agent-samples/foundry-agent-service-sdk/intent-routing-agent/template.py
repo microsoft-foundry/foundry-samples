@@ -48,7 +48,7 @@ cqa_api_tool = OpenApiTool(
 with agents_client:
     instructions = """
         You are a triage agent. Your goal is to answer questions and redirect message according to their intent. You have at your disposition 2 tools:
-        1. cqa_api: to answer customer questions such as procedures and FAQs
+        1. cqa_api: to answer customer questions such as procedures and FAQs.
         2. clu_api: to extract the intent of the message.
         You must use the tools to perform your task. Only if the tools are not able to provide the information, you can answer according to your general knowledge.
         - When you return answers from the cqa_api return the exact answer without rewriting it.
@@ -64,7 +64,7 @@ with agents_client:
     # Create the agent
     agent = agents_client.create_agent(
         model=model_name,
-        name="My_CQA_Agent",
+        name="Intent Routing Agent",
         instructions=instructions,
         tools=cqa_api_tool.definitions + clu_api_tool.definitions
     )
@@ -100,10 +100,6 @@ with agents_client:
     if run.status == "failed":
         print(f"Run failed: {run.last_error}")
 
-    # Delete the Agent when done
-    agents_client.delete_agent(agent.id)
-    print("Deleted agent")
-
     # Fetch and log all messages
     messages = agents_client.messages.list(thread_id=thread.id, order=ListSortOrder.ASCENDING)
     for msg in messages:
@@ -111,4 +107,7 @@ with agents_client:
             last_text = msg.text_messages[-1]
             print(f"{msg.role}: {last_text.text.value}")
 
+    # Delete the Agent when done
+    agents_client.delete_agent(agent.id)
+    print("Deleted agent")
 

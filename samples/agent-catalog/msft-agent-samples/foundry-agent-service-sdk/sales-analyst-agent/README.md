@@ -2,6 +2,10 @@
 
 This code sample enables creating an agent that analyzes sales data. It empowers business analysts and sales teams to generate actionable insights from internal sales data, using conversational AI to simplify reporting, aggregation, and trend analysis.
 
+**IMPORTANT NOTE:** Starter templates, instructions, code samples and resources in this msft-agent-samples file (“samples”) are designed to assist in accelerating development of agents for specific scenarios. It is important that you review all provided resources and carefully test Agent behavior in the context of your use case: ([Learn More](https://learn.microsoft.com/en-us/legal/cognitive-services/agents/transparency-note?context=%2Fazure%2Fai-services%2Fagents%2Fcontext%2Fcontext)). 
+
+Certain Agent offerings may be subject to legal and regulatory requirements, may require licenses, or may not be suitable for all industries, scenarios, or use cases. By using any sample, you are acknowledging that Agents or other output created using that sample are solely your responsibility, and that you will comply with all applicable laws, regulations, and relevant safety standards, terms of service, and codes of conduct.  
+
 ---
 
 ## 💼 Use Cases
@@ -24,16 +28,21 @@ The agent can be customized via `template.py` and deployed with Azure infrastruc
 
 ---
 
-## ⚙️ Setup Instructions
+## Setup Instructions
 
 ### Prerequisites
-WIP
 
----
+1. Azure subscription with the following permissions
+   - Contributor or Cognitive Services Contributor role (for resource deployment)
+   - Azure AI Developer and Cognitive Services user role (for agent creation)
+2. Agent setup: deploy the latest agent setup using this ([custom deployment](https://www.aka.ms/basic-agent-deployment)).
+   - The above creates:
+      - AI Services resource
+      - AI Project
+      - Model deployment
+3. Python 3.8+
+4. Azure CLI
 
-## 🧠 Architecture Overview
-
-![Architecture Diagram](assets/architecture.png)
 
 ---
 

@@ -9,20 +9,15 @@ instructions: |-
 
   {{systemAgents}}
 
-  Here is the next step we must perform.
-
-  {{nextStep}}
-
-  Based on the next step, generate the targetAgentId value from the team. Ensure the targetAgentId is one of the agent provided to you from the list. If the target agent is not the one provided in the list produce "UnknownAgent" as a value for targetAgentId
+  Determine the next step based on the conversation history. 
+  Based on the next step, determine the targetAgent from the available teams and memorize it.
+  You MUST always select an agent from the team.
 top_p: 0
 temperature: 0
 tools: []
 tool_resources: {}
 events: []
 inputs:
-  - type: llm
-    name: nextStep
-    description: nextStep
   - type: llm
     name: team
     description: team
@@ -33,8 +28,8 @@ outputs:
   - type: llm
     schema:
       type: string
-    name: targetAgentId
-    description: Using the teams provided to you, extract the name of the agent who should be speaking next. The name should be the one provided from the list. If unable to pick use UnknownAgent as value.
+    name: targetAgent
+    description: The agent name of the next speaker.
 system_prompts: {}
 response_format: auto
-id: asst_H7VzH9csJ2BiRBmDAg8sQDW9
+id: asst_XDeaWgGCxUD6xVaQenvjWIYU

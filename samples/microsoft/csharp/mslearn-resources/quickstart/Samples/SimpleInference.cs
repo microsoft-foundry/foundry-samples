@@ -1,49 +1,26 @@
+//<chat_completion>
 using Azure;
 using Azure.Identity;
+using Azure.AI.Projects;
 using Azure.AI.Inference;
-using Azure.Core;
-using Azure.Core.Pipeline;
 
+var projectEndpoint = new Uri(System.Environment.GetEnvironmentVariable("AZURE_AI_ENDPOINT"));
+var modelDeploymentName = System.Environment.GetEnvironmentVariable("AZURE_AI_MODEL");
+var credential = new DefaultAzureCredential();
 
-namespace AiAgentsTests
+AIProjectClient client = new AIProjectClient(projectEndpoint, credential);
+
+ChatCompletionsClient chatClient = client.GetChatCompletionsClient();
+
+var requestOptions = new ChatCompletionsOptions()
 {
-    //<chat_completion>
-    public class SimpleInference
-    {
-        public static void Main(string[] args)
+    Messages =
         {
-            
-            var endpointUrl = Evironment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
-            var modelName = Evironment.GetEnvironmentVariable("AZURE_OPENAI_MODEL_NAME");
-
-            var endpoint = new Uri(endpointUrl);
-            var credential = new DefaultAzureCredential();
-            var model = modelName;
-
-            AzureAIInferenceClientOptions clientOptions = new AzureAIInferenceClientOptions();
-            BearerTokenAuthenticationPolicy tokenPolicy = new BearerTokenAuthenticationPolicy(credential, new string[] { "https://cognitiveservices.azure.com/.default" });
-            clientOptions.AddPolicy(tokenPolicy, HttpPipelinePosition.PerRetry);
-
-
-            var client = new ChatCompletionsClient(
-                endpoint,
-                credential,
-                clientOptions
-            );
-
-            var requestOptions = new ChatCompletionsOptions()
-            {
-                Messages =
-                {
-                    new ChatRequestSystemMessage("You are a helpful assistant."),
-                    new ChatRequestUserMessage("How many feet are in a mile?"),
-                },
-            };
-
-            Response<ChatCompletions> response = client.Complete(requestOptions);
-            Console.WriteLine(response.Value.Content);
- 
-        }
-    }
-    // </chat_completion>
-}
+            new ChatRequestSystemMessage("You are a helpful assistant."),
+            new ChatRequestUserMessage("How many feet are in a mile?"),
+        },
+    Model = modelDeploymentName
+};
+Response<ChatCompletions> response = chatClient.Complete(requestOptions);
+Console.WriteLine(response.Value.Content);
+// </chat_completion>

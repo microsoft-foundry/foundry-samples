@@ -3,15 +3,10 @@ name: LedgerFacts
 description: Agent which collects all the ledger fact.
 model: gpt-4o
 instructions: |-
-  Below I will present you a request. Before we begin addressing the request, please answer the following pre-survey to the best of your ability. Keep in mind that you are Ken Jennings-level with trivia, and Mensa-level with puzzles, so there should be a deep well to draw from.
+  {{instructions}}
 
-  Here is the request:
+  Before we begin addressing the request, please answer the following pre-survey to the best of your ability. Keep in mind that you are Ken Jennings-level with trivia, and Mensa-level with puzzles, so there should be a deep well to draw from.
 
-  {task}
-
-  Here is the additional instructions provided to you:
-
-  {instructions}  
 
   Here is the pre-survey:
 
@@ -32,15 +27,22 @@ top_p: 0
 temperature: 0
 tools: []
 tool_resources: {}
-semanticConditions: []
+events: []
 inputs:
-  - name: instructions
-    mode: llm
+  - type: llm
+    name: instructions
+    description: instructions
 outputs:
-  - name: task
-    mode: llm
-    expression: Summarize the task to solve based on user input.
-  - name: facts
-    mode: llm
-    expression: Capture the response generated for the provided survey.
-id: asst_4gDh7HIGlKzwwccikqhllnxB
+  - type: llm
+    schema:
+      type: string
+    name: task
+    description: Summarize the task to solve based on user input.
+  - type: llm
+    schema:
+      type: string
+    name: facts
+    description: Capture the response generated for the provided survey.
+system_prompts: {}
+response_format: auto
+id: asst_1WQ79aNJFdjOmzBkqPzsnaOn

@@ -1,3 +1,8 @@
+**IMPORTANT NOTE FROM MICROSOFT:** The sample below was created by a third party, not Microsoft, and has not been tested or verified by Microsoft. Your use is subject to the terms provided by the relevant third party.  By using the third-party sample in this file, you are acknowledging that Microsoft has no responsibility to you or others with respect to this sample.  
+
+
+------
+
 # Auquan Due Diligence Risk Analyst Agent
 
 This code sample for the Due Diligence Risk Analyst enables building an expert system designed to provide comprehensive risk analysis and timeline tracking for companies. It specializes in analyzing company risks across multiple dimensions including operational, financial, regulatory, and sustainability metrics. The agent processes structured risk data from Auquan's API, generates detailed timelines, and provides actionable insights through well-formatted reports with visual risk indicators.
@@ -6,22 +11,11 @@ This code sample for the Due Diligence Risk Analyst enables building an expert s
 
 ## 💼 Use Cases
 1. Comprehensive Risk Analysis
-   - "Do a risk analysis for Total energies"
-
 2. Specific Risk Assessment
-   - "What are the critical risks identified for TotalEnergies?"
-
 3. Sustainability Analysis
-   - "Generate a sustainability analysis for TotalEnergies"
-
 4. Risk Table Creation
-   - "Create a table indicating risks for TotalEnergies showing all categories and severity"
-
 5. Overall Risk Rating Analysis
-   - "What is the overall risk range of TotalEnergies?"
-
 6. Recent Theme Analysis
-   - "What are the recent themes around TotalEnergies and what are their impacts?"
 
 ---
 
@@ -76,22 +70,51 @@ The agent is configured via a `template.py` file and deployable with Bicep for e
 ## ⚙️ Setup Instructions
 
 ### Prerequisites
-Obtain an API key for your Auquan Risk Agent.
+1. Azure subscription with the following permissions
+   - Contributor or Cognitive Services Contributor role (for resource deployment)
+   - Azure AI Developer and Cognitive Services user role (for agent creation)
+2. Agent setup: deploy the latest agent setup using this ([custom deployment](https://www.aka.ms/basic-agent-deployment)).
+   - The above creates:
+      - AI Services resource
+      - AI Project
+      - Model deployment
+3. Python 3.8+
+4. Azure CLI
+5. An API key for your Auquan Risk Agent. Please contact support@auquan.com to request an API key based on your desired usage.
 
+---
+
+### Steps
+1. **Clone the Repository**
+
+2. **Set Environment Variables**
+```bash
+PROJECT_ENDPOINT="<your-project-endpoint>" # (https://<your-ai-services-account-name>.services.ai.azure.com/api/projects/<your-project-name>)
+MODEL_DEPLOYMENT_NAME="<your-model-deployment-name>"
+OPENAPI_CONNECTION_ID="<your-Auquantool-connection-id>"
+
+---
+
+3. **Deploy Resources**
+
+4. **Run the Agent Script**
+```bash
+template.py
+```
 ---
 ## 💬 Example Agent Interactions
 
-- "Do a risk analysis for Total energies"
+- "Do a risk analysis for Darktrace"
 
-- "What are the critical risks identified for TotalEnergies?"
+- "What are the critical risks identified for Openai"
 
-- "Generate a sustainability analysis for TotalEnergies"
+- "Generate a sustainability analysis for ClimatePartner"
 
-- "Create a table indicating risks for TotalEnergies showing all categories and severity"
+- "What is the overall risk range of Zoom?"
 
-- "What is the overall risk range of TotalEnergies?"
+- "What are the recent themes around Coursera and what are their impacts?"
 
-- "What are the recent themes around TotalEnergies and what are their impacts?"
+- "What are the recent risks for Autodesk ?"
 
  
 ## 🛠 Customization Tips
@@ -104,3 +127,7 @@ Obtain an API key for your Auquan Risk Agent.
 
 - **Connect with local files**  
   Add your local files to include your data in risk-analysis
+
+
+## Note : 
+If you encounter a "rate limit exceeded" error, navigate to the "Models + Endpoints" tab in the Foundry Portal and increase the TPM (tokens per minute) limit for your model. We recommend setting it to around 100,000 to start with.

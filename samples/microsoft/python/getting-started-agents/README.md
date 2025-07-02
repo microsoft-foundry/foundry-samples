@@ -1,52 +1,27 @@
-# Project SDK with Agents (Python) – Samples Tracker
+# Getting Started with Agents (Python)
 
-This table tracks the current status of code samples for each supported tool in the **Project SDK with Agents (Python)**.
+This directory contains various tools designed to demonstrate the use of the Azure AI Foundry Agent Service with different functionalities.
 
----
+## Tools
 
-## Code Sample Status
-
-| Sample               | Sample Description                               | Status                  | Notes / Known Issues                       |
-|--------------------|--------------------------------------------------|--------------------------|--------------------------------------------|
-| **Bing**           | Using Bing in an agent                           | ✅ Exists and works          |                                            |
-| **File Search**    | Uploading files                                  | ✅ Exists and works          |                                            |
-|                    | Using blob storage (project data assets)         | ✅ Exists and works          |                                            |
-|                    | Managing files                                   | ❌ Doesn't exist          |                                            |
-| **Azure AI Search**| Using a knowledge store                          | ✅ Exists and works          |                                            |
-| **Fabric**         | Grounding with Fabric data                       | ✅ Exists and works          |                                            |
-| **SharePoint**     | Grounding with SharePoint files                  | ✅ Exists and works           |                                            |
-| **TripAdvisor**    | Using licensed TripAdvisor data                  | ✅ Exists          |                                            |
-| **Function Calling**| Calling local functions                         | ✅ Exists and works  |                                            |
-| **Azure Functions**| Calling durable Azure Functions                  | ⚠️ Exists          |       To be tested                                     |
-| **Logic Apps**     | Calling Logic Apps workflows                     | ⚠️ Exists          |       To be tested                                     |
-| **Code Interpreter**| Using Code Interpreter                          | ❌ Doesn't exist          |                                            |
-| **OpenAPI**        | Calling external APIs with OpenAPI               | ❌ Doesn't exist          |                                            |
-| **Basic Agent**    | Using agent with no tools                        | ✅ Exists and works        |                                            |
-| **Quickstart**     | Basic setup and usage example                    | ✅ Exists and works        |                                            |
-
----
-
-## ✅ Status Legend
-
-- ❌ **Doesn't exist** – No sample created yet  
-- ⚠️ **Exists, but doesn't work** – Sample exists but is not functional  
-- ✅ **Exists and works** – Fully functional and validated
-
----
-
-## 📁 File Placement
-
-- **In-progress samples**  
-  Place all work-in-progress or testing versions here:  
-  `scenarios/agents/project-sdk-assistants/`
-
-- **Finalized samples**  
-  Once a sample is working and cleaned up, copy it to:  
-  `docs-samples/`  
-  These will serve as the official, published examples.
-
----
-
-> Update this file regularly as work progresses. Link sample files and include notes on functionality, limitations, or issues.
-
----
+| Tool Name | Link | Description |
+|-----------|------|-------------|
+| Quickstart | [quickstart.py](quickstart.py) | Provides a basic setup and usage example for getting started with agents. |
+| Agent Client | [agent-client](agent-client) | Client tools for interacting with agents. |
+| Agent Catalog | [agent-catalog](agent-catalog) | A catalog of available agents. |
+| Agent SharePoint | [agent_sharepoint.py](agent_sharepoint.py) | Demonstrates grounding with SharePoint files. |
+| Azure AI Search | [azure_ai_search.py](azure_ai_search.py) | Uses Azure AI Search for knowledge store integration. |
+| Azure Functions | [azure_functions.py](azure_functions.py) | Demonstrates calling durable Azure Functions. |
+| Basic Agent | [basic_agent.py](basic_agent.py) | A basic agent setup with no additional tools. |
+| Bing Grounding | [bing_grounding.py](bing_grounding.py) | Demonstrates the use of Bing for grounding data within an agent. |
+| Code Interpreter | [code_interpreter](code_interpreter) | Contains tools for using a code interpreter within an agent. |
+| Enterprise Search | [enterprise_search.py](enterprise_search.py) | Integrates enterprise search capabilities. |
+| Fabric Data Agent | [fabric_data_agent.py](fabric_data_agent.py) | Demonstrates grounding with Fabric data. |
+| File Search | [file_search.py](file_search.py) | Provides functionality for uploading and managing files. |
+| Functions Calling | [functions_calling.py](functions_calling.py) | Demonstrates calling local functions within an agent. |
+| Logic Apps | [logic_apps](logic_apps) | Tools and examples for integrating with Logic Apps. |
+| Logic Apps Script | [logic_apps.py](logic_apps.py) | Shows how to call Logic Apps workflows from an agent. |
+| Morningstar | [morningstar.py](morningstar.py) | Integrates Morningstar data for financial analysis. |
+| OpenAPI | [openapi](openapi) | Contains examples and tools for calling external APIs with OpenAPI. |
+| TripAdvisor | [tripadvisor.py](tripadvisor.py) | Utilizes licensed TripAdvisor data within an agent. |
+| 3P-tools | [3p-tools](3p-tools) | Contains third-party tools used by the agents. |x

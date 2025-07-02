@@ -15,13 +15,12 @@
   "type": "module",
   "main": "src/quickstart.js",
   "scripts": {
-    "start": "node src/quickstart.js"
+    "start": "node --no-deprecation src/quickstart.js"
   },
   "dependencies": {
-    "@azure/ai-agents": "^1.0.0-alpha.20250505.3",
-    "@azure/ai-projects": "^1.0.0-alpha.20250505.4",
-    "@azure/identity": "^4.9.1",
-    "@azure/opentelemetry-instrumentation-azure-sdk": "^1.0.0-beta.8",
+    "@azure/ai-projects": "1.0.0-beta.7",
+    "@azure/ai-agents": "1.0.0-beta.2",
+    "@azure/identity": "^4.10.0",
     "dotenv": "^16.5.0"
   }
 }

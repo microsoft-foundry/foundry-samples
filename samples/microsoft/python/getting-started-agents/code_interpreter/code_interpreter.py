@@ -45,7 +45,7 @@ with AIProjectClient(
     # Upload a file and wait for it to be processed
     # [START upload_file_and_create_agent_with_code_interpreter]
     # <file_upload>
-    file = project_client.agents.upload_file_and_poll(
+    file = project_client.agents.files.upload_file_and_poll(
         file_path=str(Path(__file__).parent / "nifty_500_quarterly_results.csv"), purpose=FilePurpose.AGENTS
     )
     print(f"Uploaded file, file ID: {file.id}")

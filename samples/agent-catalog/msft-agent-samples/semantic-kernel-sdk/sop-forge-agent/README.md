@@ -1,12 +1,15 @@
-# Standard Operating Procedure (SOP) Forge Agent Using Azure AI Agent Service And Semantic Kernel
-
+# Standard Operating Procedure (SOP) Forge Agent
 ## Overview 
 
-This code sample enables creation of a SOP Forge agent that converts any short demonstration video into a clean, production‑ready Standard Operating Procedure. 
+This code sample enables creation of a SOP Forge agent that can convert short demonstration video into a clean Standard Operating Procedure. It enables functionality that allows automatic transcription of the footage, detects each procedural step, selects clear images, and can fill preferred Markdown templates, delivering a numbered, well‑formatted document that can help for training and shop‑floor distribution.
 
-It automatically transcribes the footage, detects each procedural step, selects clear images, and fills your preferred Markdown template, delivering a numbered, well‑formatted document that's ready for training and shop‑floor distribution.
+**IMPORTANT NOTE:** Starter templates, instructions, code samples and resources in this msft-agent-samples file (“samples”) are designed to assist in accelerating development of agents for specific scenarios. It is important that you review all provided resources and carefully test Agent behavior in the context of your use case: ([Learn More](https://learn.microsoft.com/en-us/legal/cognitive-services/agents/transparency-note?context=%2Fazure%2Fai-services%2Fagents%2Fcontext%2Fcontext)). 
 
-The agent has the following capabilities:
+Certain Agent offerings may be subject to legal and regulatory requirements, may require licenses, or may not be suitable for all industries, scenarios, or use cases. By using any sample, you are acknowledging that Agents or other output created using that sample are solely your responsibility, and that you will comply with all applicable laws, regulations, and relevant safety standards, terms of service, and codes of conduct.  
+
+## Use Cases
+
+The agent built with this code sample has the following capabilities:
 
 * **Video Analysis**: Ingest a single video file, create a transcript, and segment the narrative into logical, ordered steps. 
 * **Image Selection & Enhancement**: Extract key frames for each step for illustrative purposes. 

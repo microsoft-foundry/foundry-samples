@@ -1,7 +1,7 @@
 param accountName string
 param location string
 param projectName string
-param projectDescription string  
+param projectDescription string
 param displayName string
 
 param aiSearchName string
@@ -12,7 +12,7 @@ param cosmosDBName string
 param cosmosDBSubscriptionId string
 param cosmosDBResourceGroupName string
 
-param azureStorageName string 
+param azureStorageName string
 param azureStorageSubscriptionId string
 param azureStorageResourceGroupName string
 
@@ -29,13 +29,11 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing 
   scope: resourceGroup(azureStorageSubscriptionId, azureStorageResourceGroupName)
 }
 
-#disable-next-line BCP081
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = {
   name: accountName
   scope: resourceGroup()
 }
 
-#disable-next-line BCP081
 resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
   parent: account
   name: projectName
@@ -48,7 +46,6 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
     displayName: displayName
   }
 
-  #disable-next-line BCP081
   resource project_connection_cosmosdb_account 'connections@2025-04-01-preview' = {
     name: cosmosDBName
     properties: {
@@ -63,7 +60,6 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
     }
   }
 
-  #disable-next-line BCP081
   resource project_connection_azure_storage 'connections@2025-04-01-preview' = {
     name: azureStorageName
     properties: {
@@ -78,7 +74,6 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
     }
   }
 
-  #disable-next-line BCP081
   resource project_connection_azureai_search 'connections@2025-04-01-preview' = {
     name: aiSearchName
     properties: {
@@ -98,9 +93,11 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
 output projectName string = project.name
 output projectId string = project.id
 output projectPrincipalId string = project.identity.principalId
+
+#disable-next-line BCP053
 output projectWorkspaceId string = project.properties.internalId
 
-// return the BYO connection names
+// BYO connection names
 output cosmosDBConnection string = cosmosDBName
 output azureStorageConnection string = azureStorageName
 output aiSearchConnection string = aiSearchName

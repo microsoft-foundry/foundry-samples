@@ -2,7 +2,11 @@
 
 This template helps build an agent that enables users to perform real-world browser tasks through natural language prompts. Powered by **Azure AI Agent Service** and **Azure Playwright Service**, it facilitates multi-turn conversations to automate browser-based workflows such as searching, navigating, filling forms, and booking.
 
-**WARNING:** Browser automation comes with significant security risks. Both errors in judgment by the AI and the presence of malicious or confusing instructions on web pages which the AI encounters may cause it to execute commands you do not intend, which could compromise the security of your browser, your computer, and any accounts to which the browser or AI has access, including personal information, financial, or enterprise systems. We recommend that you use this type of agent only in isolated environments with controlled access, such as browsers running within dedicated VMs.
+**WARNING:** Browser automation comes with significant security risks. Both errors in judgment by the AI and the presence of malicious or confusing instructions on web pages which the AI encounters may cause it to execute commands you or others do not intend, which could compromise the security of your or other users’ browsers, computers, and any accounts to which the browser or AI has access, including personal information, financial, or enterprise systems.  We recommend that any agent built using this Browser Automation Agent code sample be used only in isolated environments and only with controlled access, such as browsers running within dedicated VMs.  By using the Browser Automation Agent sample, you are acknowledging that you bear responsibility and liability for any use of it and of any resulting agents you create with it, including with respect to any other users to whom you make it or resulting agents available.
+
+**IMPORTANT NOTE:** Starter templates, instructions, code samples and resources in this msft-agent-samples file (“samples”) are designed to assist in accelerating development of agents for specific scenarios. It is important that you review all provided resources and carefully test Agent behavior in the context of your use case: ([Learn More](https://learn.microsoft.com/en-us/legal/cognitive-services/agents/transparency-note?context=%2Fazure%2Fai-services%2Fagents%2Fcontext%2Fcontext)). 
+
+Certain Agent offerings may be subject to legal and regulatory requirements, may require licenses, or may not be suitable for all industries, scenarios, or use cases. By using any sample, you are acknowledging that Agents or other output created using that sample are solely your responsibility, and that you will comply with all applicable laws, regulations, and relevant safety standards, terms of service, and codes of conduct.  
 
  # 🧠 Scenario Overview
 
@@ -35,27 +39,38 @@ The agent is configured through a Python script (`browser_automation.py`) and au
 
 ---
 
-## 🧠 Architecture Overview
-
-![Architecture Diagram](assets/architecture-browser-automation.png)
-
----
-
 ## ⚙️ Setup Instructions
 
 ### Prerequisites
 
-- Azure AI Foundry project
-- A deployed language model (e.g., GPT-4)
-- Playwright connection (optional, see below)
+1. Azure subscription with the following permissions
+   - Contributor or Cognitive Services Contributor role (for resource deployment)
+   - Azure AI Developer and Cognitive Services user role (for agent creation)
+2. Agent setup: deploy the latest agent setup using this ([Agents Set Up](https://learn.microsoft.com/en-us/azure/ai-services/agents/overview#get-started-with-foundry-agent-service)).
+   - The above creates:
+      - AI Services resource
+      - AI Project
+      - Model deployment
+3. Playwright Resource setup: 
+   - Create a Microsoft Playwright Resource: https://learn.microsoft.com/en-us/azure/playwright-testing/how-to-manage-playwright-workspace?tabs=playwright
+   - Generate an API Key for the Playwright resource: https://learn.microsoft.com/en-us/azure/playwright-testing/how-to-manage-access-tokens
+   - Access the Workspace region endpoint from the Workspace Details. 
+4. Create a serverless connection in the Azure AI Foundry project with the Playwright workspace region endpoint and the Playwright Access Key. 
+   - Go to the Azure AI Foundry portal and select your AI Project. Go to the Management center and Click connected resources.
+   - Create a new connection of type Serverless Model and enter the following information.
+      - Target URI - Playwright Workspace Region Endpoint (example - wss://eastus.api.playwright.microsoft.com/accounts/eastus_xxxxxxxxxxxxxxxxxxxxxxx/browsers).
+      - Key - Playwright Access Key
+   - For more info to create a connection, see [Create a connection](https://learn.microsoft.com/azure/ai-foundry/how-to/connections-add)
+5. Python 3.8+
+6. Azure CLI
 
 ### Environment Variables
 
 Set the following environment variables before running the sample:
 
 ```bash
-PROJECT_CONNECTION_STRING=<your_project_connection_string>
+PROJECT_ENDPOINT=<your_project_endpoint>
 MODEL_DEPLOYMENT_NAME=<your_model_deployment_name>
-PLAYWRIGHT_CONNECTION_ID=<optional_serverless_connection_id>
+PLAYWRIGHT_CONNECTION_ID=<serverless_connection_id>
 
 

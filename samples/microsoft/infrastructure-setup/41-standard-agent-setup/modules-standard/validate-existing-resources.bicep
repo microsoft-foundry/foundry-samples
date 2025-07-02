@@ -5,7 +5,7 @@
 param aiSearchResourceId string
 
 @description('Resource ID of the Azure Storage Account.')
-param azureStorageAccountResourceId string 
+param azureStorageAccountResourceId string
 
 @description('ResourceId of Cosmos DB Account')
 param azureCosmosDBAccountResourceId string

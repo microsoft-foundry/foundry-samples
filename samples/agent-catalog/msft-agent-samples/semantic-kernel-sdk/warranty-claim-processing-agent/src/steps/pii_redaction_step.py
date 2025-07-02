@@ -1,21 +1,24 @@
+import os
+
 from azure.ai.textanalytics import TextAnalyticsClient
 from azure.core.credentials import AzureKeyCredential
+from dotenv import find_dotenv, load_dotenv
 from semantic_kernel.functions import kernel_function
 from semantic_kernel.processes.kernel_process import KernelProcessStep
-
-from config.config import *
-from config.config_secrets import *
 from utils.logger import Logger
 
 
 # As part of PII Redaction step, sensitive information is redacted from the claim data using the Azure Text Analytics service.
 # Sensitive fields, such as names or phone numbers will be masked with asterisks.
 class PiiRedactionStep(KernelProcessStep):
-    _agentName = "PiiRedactionStep"
+    _stepName = "PiiRedactionStep"
 
     @kernel_function
     def execute(self, data_to_redact):
-        Logger.log_step_start(self._agentName)
+        Logger.log_step_start(self._stepName)
+
+        COGNITIVE_SERVICES_ENDPOINT = os.getenv("COGNITIVE_SERVICES_ENDPOINT")
+        COGNITIVE_SERVICES_KEY = os.getenv("COGNITIVE_SERVICES_KEY")
 
         redacted_text = ""
 
@@ -36,16 +39,16 @@ class PiiRedactionStep(KernelProcessStep):
             redacted_text += doc.redacted_text + "\n"
 
         Logger.log_step_result(redacted_text)
-        Logger.log_step_completion(self._agentName)
+        Logger.log_step_completion(self._stepName)
         return redacted_text
 
 # Mocked PII Redaction Agent is a mock agent to simulate PII redaction with hardcoded data
 class MockPiiRedactionStep(KernelProcessStep):
-    _agentName = "MockPiiRedactionStep"
+    _stepName = "MockPiiRedactionStep"
 
     @kernel_function
     def execute(self, data_to_redact):
-        Logger.log_step_start(self._agentName)
+        Logger.log_step_start(self._stepName)
 
         # Hardcoded redacted text for testing purposes
         redacted_text = """
@@ -65,6 +68,6 @@ class MockPiiRedactionStep(KernelProcessStep):
         }
         """
         Logger.log_step_result(redacted_text)
-        Logger.log_step_completion(self._agentName)
+        Logger.log_step_completion(self._stepName)
 
         return redacted_text

@@ -5,10 +5,10 @@
     "location": {
       "value": "eastus"
     },
-    "ai_services": {
+    "aiServicesName": {
       "value": "aiServices"
     },
-    "project_name": {
+    "projectName": {
       "value": "project"
     },
     "modelName": {

@@ -14,26 +14,23 @@ USAGE:
  
     Before running the sample:
  
-    pip install azure-ai-projects azure-identity
+    pip install azure-ai-agents azure-identity
  
     Set these environment variables with your own values:
-    1) PROJECT_CONNECTION_STRING - The project connection string, as found in the overview page of your
+    1) PROJECT_ENDPOINT - The project endpoint, as found in the overview page of your
        Azure AI Foundry project.
     2) MODEL_DEPLOYMENT_NAME - The deployment name of the AI model, as found under the "Name" column in 
        the "Models + endpoints" tab in your Azure AI Foundry project.
-    3) PLAYWRIGHT_CONNECTION_ID (Optional) - The connection ID of the Serverless connection containing the details
-         of the Playwright browser. If not provided, a MSFT managed playwright resource will be used.
-         Format: <AI Project resource ID>/connections<Serverless connection name>
-         - Creating a Microsoft Playwright Resource: https://learn.microsoft.com/en-us/azure/playwright-testing/how-to-manage-playwright-workspace?tabs=playwright
-         - Give the Project Identity a "Contributor" role on the Playwright resource.
-         - Generate an API Key for the Playwright resource: https://learn.microsoft.com/en-us/azure/playwright-testing/how-to-manage-access-tokens
-         - Create a serverless connection in the Azure AI Foundry project with the Playwright endpoint and Access Key. 
+    3) PLAYWRIGHT_CONNECTION_ID - The connection ID of the Serverless connection containing the details
+         of the Playwright browser.
+         Format: <AI Project resource ID>/connections/<Serverless connection name>
+         Example: /subscriptions/<subscription-id>/resourceGroups/<resource_group_name>/providers/Microsoft.CognitiveServices/accounts/<account_name>/projects/<project_name>/connections/<connection-name>
 """
 
 # <imports>
 from os import environ, getenv
-from azure.ai.projects import AIProjectClient
-from azure.ai.projects.models import MessageRole
+from azure.ai.agents import AgentsClient
+from azure.ai.agents.models import ListSortOrder
 from azure.identity import DefaultAzureCredential
 from typing import Any, Dict
 # </imports>
@@ -41,24 +38,25 @@ from typing import Any, Dict
 # <client_initialization>
 endpoint = environ["PROJECT_ENDPOINT"]
 model_deployment_name = environ["MODEL_DEPLOYMENT_NAME"]
-with AIProjectClient(
+playwright_connection_id = getenv("PLAYWRIGHT_CONNECTION_ID")
+
+
+with AgentsClient(
     endpoint=endpoint,
     credential=DefaultAzureCredential(exclude_interactive_browser_credential=False),
-) as project_client:
+) as agents_client:
 # </client_initialization>
-    playwright_connection_id: str | None = getenv("PLAYWRIGHT_CONNECTION_ID")
-
+    
     # [START create_agent_with_browser_automation_tool]
     # <browser_automation_tool_setup>
     browser_automation_tool_definition: Dict[str, Any] = {
         "type": "browser_automation",
-    }
-    if playwright_connection_id:
-        browser_automation_tool_definition["browser_automation"] = {
+        "browser_automation": {
             "connection": {
                 "id": playwright_connection_id,
             }
         }
+    }
     
     payload: Dict[str, Any] = {
         "name": "Browser Automation Tool Demo Agent",
@@ -69,7 +67,7 @@ with AIProjectClient(
     }
     # </browser_automation_tool_setup>
     # <agent_creation>
-    agent = project_client.agents.create_agent(
+    agent = agents_client.create_agent(
         body=payload,
     )
     print(f"Created agent, agent ID: {agent.id}")
@@ -78,38 +76,37 @@ with AIProjectClient(
 
     # <thread_management>
     # Create a thread
-    thread = project_client.agents.create_thread()
+    thread = agents_client.threads.create()
     print(f"Created thread, thread ID: {thread.id}")
 
     # Create a message
-    message = project_client.agents.create_message(
+    message = agents_client.messages.create(
         thread_id=thread.id,
         role="user",
-        content="Find a popular quinoa salad recipe on Allrecipes with more than 500 reviews and a rating above 4 stars. Create a shopping list of ingredients for this recipe and include the total cooking and preparation time. on https://www.allrecipes.com/",
+        content="get me the latest news from cricbuzz.com",
     )
     print(f"Created message, message ID: {message.id}")
     # </thread_management>
 
     # <message_processing>
-    run = project_client.agents.create_and_process_run(thread_id=thread.id, agent_id=agent.id)
+    run = agents_client.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
+    print(f"Run finished with status: {run.status}")
+
     if run.status == "failed":
         print(f"Run failed: {run.last_error}")
 
     # Get messages from the thread
-    messages = project_client.agents.list_messages(thread_id=thread.id)
-    print(f"Messages: {messages}")
+    # Fetch and log all messages
+    messages = agents_client.messages.list(thread_id=thread.id, order=ListSortOrder.ASCENDING)
+    for msg in messages:
+        if msg.text_messages:
+            last_text = msg.text_messages[-1]
+            print(f"{msg.role}: {last_text.text.value}")
 
-    # Get the last message from agent
-    last_msg = messages.get_last_text_message_by_role(MessageRole.AGENT)
-    if last_msg:
-        print(f"Last Message: {last_msg.text.value}")
     # </message_processing>
 
     # <cleanup>
     # Delete the agent once done
-    result = project_client.agents.delete_agent(agent.id)
-    if result.deleted:
-        print(f"Deleted agent {result.id}")
-    else:
-        print(f"Failed to delete agent {result.id}")
+    agents_client.delete_agent(agent.id)
+    print(f"Deleted agent {agent.id}")
     # </cleanup>

@@ -11,9 +11,6 @@ from utils.logger import Logger
 
 class ContentUnderstandingTool:
     def __init__(self):
-        # Load environment variables from .env file
-        load_dotenv(find_dotenv())
-
         AZURE_AI_CU_ENDPOINT = os.getenv("AZURE_AI_CU_ENDPOINT")
         AZURE_AI_CU_API_VERSION = os.getenv("AZURE_AI_CU_API_VERSION", "2024-12-01-preview")
         AZURE_AI_CU_SUBSCRIPTION = os.getenv("AZURE_AI_CU_SUBSCRIPTION")

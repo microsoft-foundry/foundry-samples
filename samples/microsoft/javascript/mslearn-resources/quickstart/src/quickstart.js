@@ -2,92 +2,101 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { DefaultAzureCredential } from '@azure/identity';
+import { ToolUtility, DoneEvent, ErrorEvent, isOutputOfType } from '@azure/ai-agents';
 import { AIProjectClient } from '@azure/ai-projects';
-import { AgentsClient, ToolUtility, DoneEvent, ErrorEvent, RunStreamEvent, MessageStreamEvent } from '@azure/ai-agents';
 import { config } from 'dotenv';
 config();
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Run Azure AI Foundry chat completion using the Azure OpenAI model
+await chatCompletion().catch(console.error);
+// Run Azure AI Foundry agents (poem agent and file agent)
+await runAgents().catch(console.error);
 
 async function chatCompletion() {
     // <chat_completion>
-    const endpoint = process.env.INFERENCE_ENDPOINT;
+    // Get the Azure AI endpoint and deployment name from environment variables
+    const endpoint = process.env.PROJECT_ENDPOINT;
     const deployment = process.env.MODEL_DEPLOYMENT_NAME || 'gpt-4o';
-    const project = new AIProjectClient(endpoint, new DefaultAzureCredential());
 
-    const client = project.inference.azureOpenAI();
+    // Create an Azure OpenAI Client
+    const project = new AIProjectClient(endpoint, new DefaultAzureCredential());
+    const client = await project.inference.azureOpenAI({
+        // The API version should match the version of the Azure OpenAI resource
+        apiVersion: "2024-12-01-preview"
+    });
+
+    // Create a chat completion
     const chatCompletion = await client.chat.completions.create({
-        deployment,
+        model: deployment,
         messages: [
             { role: "system", content: "You are a helpful writing assistant" },
             { role: "user", content: "Write me a poem about flowers" },
         ],
     });
-
-    console.log("response = ", JSON.stringify(chatCompletion, null, 2));
+    console.log(`\n==================== 🌷 COMPLETIONS POEM ====================\n`);
+    console.log(chatCompletion.choices[0].message.content);
     // </chat_completion>
 }
 
-// chatCompletion().catch(console.error);
-
 async function runAgents() {
     // <create_and_run_agent>
-
-    // Create an Azure AI Client
     const endpoint = process.env.PROJECT_ENDPOINT;
     const deployment = process.env.MODEL_DEPLOYMENT_NAME || 'gpt-4o';
-    const client = new AgentsClient(endpoint, new DefaultAzureCredential());
+    const client = new AIProjectClient(endpoint, new DefaultAzureCredential());
 
     // Create an Agent
-    const agent = await client.createAgent(deployment, {
+    const agent = await client.agents.createAgent(deployment, {
         name: 'my-agent',
-        instructions: 'You are a helpful agent',
+        instructions: 'You are a helpful agent'
     });
     console.log(`\n==================== 🕵️  POEM AGENT ====================`);
 
     // Create a thread and message
-    const thread = await client.createThread();
+    const thread = await client.agents.threads.create();
     const prompt = 'Write me a poem about flowers';
     console.log(`\n---------------- 📝 User Prompt ---------------- \n${prompt}`);
-    await client.createMessage(thread.id, 'user', prompt);
+    await client.agents.messages.create(thread.id, 'user', prompt);
 
     // Create run
-    let run = await client.createRun(thread.id, agent.id);
+    let run = await client.agents.runs.create(thread.id, agent.id);
 
     // Wait for run to complete
     console.log(`\n---------------- 🚦 Run Status ----------------`);
     while (['queued', 'in_progress', 'requires_action'].includes(run.status)) {
         // Avoid adding a lot of messages to the console
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        run = await client.getRun(thread.id, run.id);
+        run = await client.agents.runs.get(thread.id, run.id);
         console.log(`Run status: ${run.status}`);
     }
 
     console.log('\n---------------- 📊 Token Usage ----------------');
     console.table([run.usage]);
 
-    const messages = await client.listMessages(thread.id);
-    const assistantMessage = messages.data.find(m => m.role === 'assistant');
+    const messagesIterator = await client.agents.messages.list(thread.id);
+    const assistantMessage = await getAssistantMessage(messagesIterator);
     console.log('\n---------------- 💬 Response ----------------');
     printAssistantMessage(assistantMessage);
 
-    // Delete the Agent
-    await client.deleteAgent(agent.id);
+    // Clean up
+    console.log(`\n---------------- 🧹 Clean Up Poem Agent ----------------`);
+    await client.agents.deleteAgent(agent.id);
     console.log(`Deleted Agent, Agent ID: ${agent.id}`);
-
     // </create_and_run_agent>
 
     // <create_filesearch_agent> 
-
     // Upload a file named product_info_1.md
     console.log(`\n==================== 🕵️  FILE AGENT ====================`);
-    const filePath = path.join(__dirname, '../../../../data/product_info_1.md');
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const filePath = path.join(__dirname, '../data/product_info_1.md');
     const fileStream = fs.createReadStream(filePath);
-    const file = await client.uploadFile(fileStream, 'assistants', {
+    fileStream.on('data', (chunk) => {
+        console.log(`Read ${chunk.length} bytes of data.`);
+    });
+    const file = await client.agents.files.upload(fileStream, 'assistants', {
         fileName: 'product_info_1.md'
     });
     console.log(`Uploaded file, ID: ${file.id}`);
-    const vectorStore = await client.createVectorStore({
+    const vectorStore = await client.agents.vectorStores.create({
         fileIds: [file.id],
         name: 'my_vectorstore'
     });
@@ -102,7 +111,7 @@ async function runAgents() {
 
     // Create an Agent and a FileSearch tool
     const fileSearchTool = ToolUtility.createFileSearchTool([vectorStore.id]);
-    const fileAgent = await client.createAgent(deployment, {
+    const fileAgent = await client.agents.createAgent(deployment, {
         name: 'my-file-agent',
         instructions: 'You are a helpful assistant and can search information from uploaded files',
         tools: [fileSearchTool.definition],
@@ -110,56 +119,48 @@ async function runAgents() {
     });
 
     // Create a thread and message
-    const fileSearchThread = await client.createThread({ toolResources: fileSearchTool.resources });
+    const fileSearchThread = await client.agents.threads.create({ toolResources: fileSearchTool.resources });
     const filePrompt = 'What are the steps to setup the TrailMaster X4 Tent?';
     console.log(`\n---------------- 📝 User Prompt ---------------- \n${filePrompt}`);
-    await client.createMessage(fileSearchThread.id, 'user', filePrompt);
+    await client.agents.messages.create(fileSearchThread.id, 'user', filePrompt);
 
     // Create run
-    let fileSearchRun = await client.createRun(fileSearchThread.id, fileAgent.id).stream();
+    let fileSearchRun = await client.agents.runs.create(fileSearchThread.id, fileAgent.id).stream();
 
     for await (const eventMessage of fileSearchRun) {
-        switch (eventMessage.event) {
-            case RunStreamEvent.ThreadRunCreated:
-                break;
-            case MessageStreamEvent.ThreadMessageDelta:
-                {
-                    const messageDelta = eventMessage.data;
-                    messageDelta.delta.content.forEach((contentPart) => {
-                        if (contentPart.type === "text") {
-                            const textContent = contentPart;
-                            const textValue = textContent.text?.value || "No text";
-                        }
-                    });
-                }
-                break;
-
-            case RunStreamEvent.ThreadRunCompleted:
-                break;
-            case ErrorEvent.Error:
-                console.log(`An error occurred. Data ${eventMessage.data}`);
-                break;
-            case DoneEvent.Done:
-                break;
+        if (eventMessage.event === DoneEvent.Done) {
+            console.log(`Run completed: ${eventMessage.data}`);
+        }
+        if (eventMessage.event === ErrorEvent.Error) {
+            console.log(`An error occurred. ${eventMessage.data}`);
         }
     }
 
-    const fileSearchMessages = await client.listMessages(fileSearchThread.id);
-    const fileAssistantMessage = fileSearchMessages.data.find(m => m.role === 'assistant');
+    const fileSearchMessagesIterator = await client.agents.messages.list(fileSearchThread.id);
+    const fileAssistantMessage = await getAssistantMessage(fileSearchMessagesIterator);
     console.log(`\n---------------- 💬 Response ---------------- \n`);
     printAssistantMessage(fileAssistantMessage);
 
-    client.deleteVectorStore(vectorStore.id);
-    client.deleteFile(file.id);
-    client.deleteAgent(fileAgent.id);
-    console.log(`\n🧹 Deleted VectorStore, File, and FileAgent. FileAgent ID: ${fileAgent.id}`);
-
+    // Clean up
+    console.log(`\n---------------- 🧹 Clean Up File Agent ----------------`);
+    client.agents.vectorStores.delete(vectorStore.id);
+    client.agents.files.delete(file.id);
+    client.agents.deleteAgent(fileAgent.id);
+    console.log(`Deleted VectorStore, File, and FileAgent. FileAgent ID: ${fileAgent.id}`);
     // </create_filesearch_agent>
 }
 
-runAgents().catch(console.error);
+// Helper functions
+async function getAssistantMessage(messagesIterator) {
+    for await (const m of messagesIterator) {
+        if (m.role === 'assistant') {
+            return m;
+        }
+    }
+    return null;
+}
 
-// Helper function to print assistant message content nicely (handles nested text.value)
+// Print assistant message content nicely
 function printAssistantMessage(message) {
     if (!message || !Array.isArray(message.content)) {
         console.log('No assistant message found or content is not in expected format.');
@@ -180,3 +181,4 @@ function printAssistantMessage(message) {
     }
     output.split('\n').forEach(line => console.log(line));
 }
+

@@ -184,12 +184,16 @@ const readme = `
         - The endpoint can be the regional endpoint (e.g., \`https://<region>.api.cognitive.microsoft.com/\`) or a custom domain endpoint (e.g., \`https://<custom-domain>.cognitiveservices.azure.com/\`).
         - The resource must be in the \`eastus2\` or \`swedencentral\` region. Other regions are not supported.
 
+    2. **(Optional) Set the Agent**
+        - Set the project name and agent ID to connect to a specific agent.
+        - Entra ID auth is required for agent mode, use \`az account get-access-token --resource https://ai.azure.com --query accessToken -o tsv\` to get the token.
+
     2. **Select noise suppression or echo cancellation**
         - Enable noise suppression and/or echo cancellation to improve audio quality.
 
     3. **Select the Turn Detection**
         - Choose the desired turn detection method. The default is \`Server VAD\`, which uses server-side voice activity detection.
-        - The \`Server SD (reduced false alarms)\` option is also available for better performance.
+        - The \`Azure Semantic VAD\` option is also available for better performance.
 
     4. **Select the Voice**
        - Choose the desired voice from the list.
@@ -410,9 +414,9 @@ const ChatInterface = () => {
 
   // Add mode state and agent fields
   const [mode, setMode] = useState<"model" | "agent">("model");
-  const [agentConnectionString, setAgentConnectionString] = useState("");
+  const [agentProjectName, setAgentProjectName] = useState("");
   const [agentId, setAgentId] = useState("");
-  const [agentAccessToken, setAgentAccessToken] = useState("");
+  // const [agentAccessToken, setAgentAccessToken] = useState("");
   const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -448,9 +452,9 @@ const ChatInterface = () => {
           setPredefinedScenarios(config.pre_defined_scenarios);
         }
         // Parse agent configs from /config
-        if (config.agent && config.agent.connection_string) {
-          setAgentAccessToken(config.agent.access_token);
-          setAgentConnectionString(config.agent.connection_string);
+        if (config.agent && config.agent.project_name) {
+          // setAgentAccessToken(config.agent.access_token);
+          setAgentProjectName(config.agent.project_name);
           if (Array.isArray(config.agent.agents)) {
             setAgents(config.agent.agents);
             // If only one agent, auto-select it
@@ -520,8 +524,8 @@ const ChatInterface = () => {
             ? {
               modelOrAgent: {
                 agentId,
-                agentConnectionString,
-                agentAccessToken,
+                projectName: agentProjectName,
+                agentAccessToken: entraToken,
               },
               apiVersion: "2025-05-01-preview",
             }
@@ -1174,6 +1178,7 @@ const ChatInterface = () => {
       "gpt-4.1",
       "gpt-4.1-mini",
       "gpt-4.1-nano",
+      "phi4-mini",
     ];
     return cascadedModels.includes(model);
   }
@@ -1253,7 +1258,7 @@ const ChatInterface = () => {
                   onChange={(e) => setEndpoint(e.target.value)}
                   disabled={isConnected || configLoaded}
                 />
-                {!configLoaded && (
+                {(!configLoaded && mode === "model") && (
                   <Input
                     placeholder="Subscription Key"
                     value={apiKey}
@@ -1261,6 +1266,15 @@ const ChatInterface = () => {
                     disabled={isConnected}
                   />
                 )}
+                { mode === "agent" && (
+                  <Input
+                    placeholder="Entra Token"
+                    value={entraToken}
+                    onChange={(e) => setEntraToken(e.target.value)}
+                    disabled={isConnected}
+                  />
+                )}
+                {/* Entra token input */}
                 {/* Show agent fields if agent mode */}
                 {mode === "agent" ? (
                   <>
@@ -1268,9 +1282,9 @@ const ChatInterface = () => {
                       <label className="text-sm font-medium">Agent</label>
                     </div>
                     <Input
-                      placeholder="Agent Connection String"
-                      value={agentConnectionString}
-                      onChange={(e) => setAgentConnectionString(e.target.value)}
+                      placeholder="Agent Project Name"
+                      value={agentProjectName}
+                      onChange={(e) => setAgentProjectName(e.target.value)}
                       disabled={isConnected}
                     />
                     {/* Agent ID as Select if agents available, else Input */}
@@ -1299,12 +1313,12 @@ const ChatInterface = () => {
                         disabled={isConnected}
                       />
                     )}
-                    <Input
+                    {/* <Input
                       placeholder="Agent Access Token"
                       value={agentAccessToken}
                       onChange={(e) => setAgentAccessToken(e.target.value)}
                       disabled={isConnected}
-                    />
+                    /> */}
                   </>
                 ) : (
                   <>
@@ -1342,6 +1356,9 @@ const ChatInterface = () => {
                           </SelectItem>
                           <SelectItem value="phi4-mm">
                             Phi4-MM Realtime
+                          </SelectItem>
+                          <SelectItem value="phi4-mini">
+                            Phi4 Mini (Cascaded)
                           </SelectItem>
                         </SelectContent>
                       </Select>

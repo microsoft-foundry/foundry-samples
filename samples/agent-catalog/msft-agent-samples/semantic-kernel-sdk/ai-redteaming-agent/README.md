@@ -2,6 +2,10 @@
 
 This code sample enables creating an AI Red Teaming Agent using Azure AI Evaluation and Semantic Kernel. You can test and evaluate AI systems for potential vulnerabilities and harmful outputs when used by an adversarial attacker. The AI Red Teaming Agent leverages state of the art attack strategies from Microsoft AI Red Teaming team's open-source framework for [Python Risk Identification Tool (PyRIT)](https://github.com/Azure/PyRIT).
 
+**IMPORTANT NOTE:** Starter templates, instructions, code samples and resources in this msft-agent-samples file (“samples”) are designed to assist in accelerating development of agents for specific scenarios. It is important that you review all provided resources and carefully test Agent behavior in the context of your use case: ([Learn More](https://learn.microsoft.com/en-us/legal/cognitive-services/agents/transparency-note?context=%2Fazure%2Fai-services%2Fagents%2Fcontext%2Fcontext)). 
+
+Certain Agent offerings may be subject to legal and regulatory requirements, may require licenses, or may not be suitable for all industries, scenarios, or use cases. By using any sample, you are acknowledging that Agents or other output created using that sample are solely your responsibility, and that you will comply with all applicable laws, regulations, and relevant safety standards, terms of service, and codes of conduct.  
+
 ## Overview
 
 The `template.py` script implements an AI Red Teaming Agent that can:
@@ -36,10 +40,8 @@ AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
 AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
 AZURE_OPENAI_API_KEY=your-api-key
 
-# Azure AI Project Configuration
-AZURE_SUBSCRIPTION_ID=your-subscription-id
-AZURE_RESOURCE_GROUP=your-resource-group
-AZURE_PROJECT_NAME=your-project-name
+# Azure AI Project Endpoint, get it on Azure AI Froundry UI project home page
+AZURE_AI_PROJECT_ENDPOINT=https://your-resource-name.services.ai.azure.com/api/projects/your-project-name
 ```
 
 ### 3. Configure Target Model
@@ -82,9 +84,7 @@ Then, update the `main` function to use your new target function:
 ```python
 # Initialize the RedTeamPlugin with the target function
 red_team_plugin = RedTeamPlugin(
-    subscription_id=subscription_id,
-    resource_group=resource_group,
-    project_name=project_name,
+    azure_ai_project_endpoint=ai_project_endpoint,
     target_func=call_custom_api  # Use your new function here
 )
 ```

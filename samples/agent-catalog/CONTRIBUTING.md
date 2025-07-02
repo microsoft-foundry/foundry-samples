@@ -38,14 +38,31 @@ Optional (as appropriate)
 
 ```text
 /<agent-name>/
+
 ├── README.md
-├── template.py
-├── deploy.bicep (optional)
-├── sample_data/ (optional)
-│   ├── example_input.json
-│   └── example_output.json
+├── python/                        # Python-specific implementation
+│   ├── template.py
+│   ├── deploy.bicep (optional)
+│   ├── src/
+│   │   └── custom_logic.py
+│   ├── tests/ (optional)
+│   │   └── test_agent.py
+│   └── sample_data/
+│       ├── example_input.json
+│       └── example_output.json
+├── csharp/                        # C# implementation
+│   ├── template.csproj
+│   ├── deploy.bicep (optional)
+│   ├── src/
+│   │   └── AgentLogic.cs
+│   │   └── Tools/
+│   │       └── CustomTool.cs
+│   ├── tests/ (optional)
+│   │   └── AgentTests.cs
 ├── assets/ (optional)
-│   └── architecture.png
+│   ├── architecture.png
+│   ├── knowledge_example.json
+│   └── logo.svg (required if not Microsoft-authored)
 └── LICENSE
 
 ```

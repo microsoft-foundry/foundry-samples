@@ -25,6 +25,16 @@
         "operationId": "Translator_Translate",
         "parameters": [
           {
+            "name": "ocp-apim-subscription-region",
+            "in": "header",
+            "description": "the local region of the endpoint",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "${translator_resource_region}"
+            }
+          },
+          {
             "name": "api-version",
             "in": "query",
             "description": "Version of the API requested by the client. Value must be 3.0.",

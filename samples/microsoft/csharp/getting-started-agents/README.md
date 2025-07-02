@@ -1,54 +1,25 @@
 # Azure AI Agents SDK – C# Samples Tracker
 
 ## Overview
-- Uses 1DP endpoint with Agent 1.0 OpenAI compatible (/assistants route)
+This directory contains various C# samples organized by tool, designed to demonstrate the use of the Azure AI Agents SDK with different functionalities. Each tool's subdirectory showcases a specific capability or integration with external services.
 
----
-Existing SDK Samples: https://github.com/Azure/azure-sdk-for-net/tree/feature/azure-ai-agents-persistent/sdk/ai/Azure.AI.Agents.Persistent
+## Tools
 
----
-This table tracks the current status of code samples for each supported tool in the Azure AI Agents SDK.
-
----
-
-## Code Sample Status
-
-| Tool               | Sample Description                     | Status          | Notes / Known Issues                          |
-|--------------------|-----------------------------------------|-----------------|-----------------------------------------------|
-| **Basic Agent**    | Using agent with no tools              | ❌ Doesn't exist|                                               |
-| **Bing**           | Using Bing in an agent                 | ⚠️ Exists| Sample updated - get "Bing Search API key is missing" error |
-| **File Search**    | Uploading files                        | ✅ Fully functional and validated |  |
-|                    | Using blob storage (project data assets)| ⚠️ Exists| Sample not yet tested - but compiles properly and follows updated coding patterns |
-|                    | Managing files                         | ❌ Doesn't exist|                                               |
-| **Azure AI Search**| Using a knowledge store                | ⚠️ Exists | Sample not yet tested - but compiles properly and follows updated coding patterns |
-| **Fabric**         | Grounding with Fabric data             | ⚠️ Exists| Sample not yet tested - but compiles properly and follows updated coding patterns |
-| **SharePoint**     | Grounding with SharePoint files        | ❌ Doesn't exist in docs or repo|                                               |
-| **TripAdvisor**    | Using licensed TripAdvisor data        | ❌ Doesn't exist in docs or repo|                                               |
-| **Function Calling**| Calling local functions               | ✅ Fully functional and validated|                                               |
-| **Azure Functions**| Calling durable Azure Functions        | ✅ Fully functional and validated|                                               |
-| **Logic Apps**     | Calling Logic Apps workflows           | ❌ Doesn't exist|                                               |
-| **Code Interpreter**| Using Code Interpreter                | ✅ Fully functional and validated|                                               |
-|                    | Supported file types                   | ✅ Fully functional and validated|                                               |
-| **OpenAPI**        | Calling external APIs with OpenAPI     | ✅ Fully functional and validated|                                               |
-| **Quickstart**     | Agent example showcasing multiple tools| ❌ Doesn't exist|                                               |
-
----
-
-## ✅ Status Legend
-
-- ❌ **Doesn't exist** – No sample created yet  
-- ⚠️ **Exists, but doesn't work** – Sample exists but isn't functional
-- ✅ **Exists and works** – Fully functional and validated
-
----
-
-## 📁 File Placement
-
-- **In-progress samples** go to:  
-  `samples/doc-samples/python/azure-ai-agents-sdk/`
-
----
-
-> Update this file regularly as work progresses. Link samples and add notes when applicable.
-
----
+| Tool Name | Link | Description |
+|-----------|------|-------------|
+| Additional Message | [AdditionalMessage](AdditionalMessage/) | Demonstrates handling additional messages in synchronous and asynchronous modes. |
+| Azure AI Search | [AzureAiSearch](AzureAiSearch/) | Samples for using Azure AI Search for knowledge store integration. |
+| Azure Function Calling | [AzureFunctionCalling](AzureFunctionCalling/) | Demonstrates calling Azure Functions in synchronous and asynchronous modes. |
+| Basics | [Basics](Basics/) | Provides basic setup and usage examples for getting started with agents. |
+| Bing Grounding | [BingGrounding](BingGrounding/) | Samples for using Bing for grounding data within an agent. |
+| Browser Automation | [BrowserAutomation](BrowserAutomation/) | Samples for automating browser tasks in synchronous and asynchronous modes. |
+| Fabric | [Fabric](Fabric/) | Demonstrates grounding with Fabric data. |
+| File Search | [FileSearch](FileSearch/) | Provides functionality for uploading and managing files. |
+| File Search Blob Storage | [FileSearchBlobStorage](FileSearchBlobStorage/) | Demonstrates file search using blob storage. |
+| Functions | [Functions](Functions/) | Samples for calling local functions within an agent. |
+| Functions with Streaming | [FunctionsWithStreaming](FunctionsWithStreaming/) | Samples for calling functions with streaming capabilities. |
+| Image File Inputs | [ImageFileInputs](ImageFileInputs/) | Samples for handling image file inputs in synchronous and asynchronous modes. |
+| Image URL Inputs | [ImageUrlInputs](ImageUrlInputs/) | Samples for handling image URL inputs in synchronous and asynchronous modes. |
+| Message Attachment Local File Search | [MessageAttachmentLocalFileSearch](MessageAttachmentLocalFileSearch/) | Samples for local file search with message attachments. |
+| OpenAPI | [OpenAPI](OpenAPI/) | Samples for calling external APIs with OpenAPI. |
+| Streaming | [Streaming](Streaming/) | Samples for demonstrating streaming capabilities in synchronous and asynchronous modes. |

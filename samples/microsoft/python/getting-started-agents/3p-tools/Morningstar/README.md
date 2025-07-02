@@ -1,11 +1,16 @@
+> [!IMPORTANT]
+> Important Note From Microsoft:
+> * Your use of connected non-Microsoft services is subject to the terms between you and the service provider. By connecting to a non-Microsoft service, you acknowledge that some of your data, such as prompt content, is passed to the non-Microsoft service, and/or your application might receive data from the non-Microsoft service. You are responsible for your use (and any charges associated with your use) of non-Microsoft services and data.
+> * The code in this 3p-tools file were created by third parties, not Microsoft, and have not been tested or verified by Microsoft. Your use of the code samples is subject to the terms provided by the relevant third party. By using any third-party sample in this file, you are acknowledging that Microsoft has no responsibility to you or others with respect to these samples.
+
 # Morningstar
 
 ## Description
-The Morningstar tool connects your generative AI applications to Morningstar's trusted content with ease - no custom consumption pipelines required. Simply connect, query, and rely on the same continually-improving engine that powers Morningstar's in-product generative AI capabilities. You can access up-to-date analyst research, expert commentary, and essential Morningstar data.
+The Morningstar tool connects your generative AI applications to Morningstar's trusted content with ease - no custom consumption pipelines required. Simply connect, query, and rely on the same continually-improving engine that powers Morningstar's in-product generative AI capabilities. Access up-to-date investment research and data such as analyst research, expert commentary, and essential Morningstar data.
 
 ## Prerequisites
 
-* Create a Morningstar if you don't already have one.
+* Create a Morningstar account, if you don't already have one.
     For access request please email us at iep-dev@morningstar.com using the subject line:
     Subject: Morningstar Agent Access Request
     In the body of the email, include the following:

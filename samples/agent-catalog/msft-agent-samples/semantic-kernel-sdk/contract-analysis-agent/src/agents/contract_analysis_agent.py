@@ -12,22 +12,20 @@ from utils.logger import Logger
 class ContractAnalysisAgent:
     _agentName = "ContractAnalysisAgent"
 
-    async def execute(self, contracts_readme: list[str]) -> str:
-        # Load environment variables from .env file
-        load_dotenv(find_dotenv())
+    async def execute(self, contracts_readme: list[str]) -> str:        
+        Logger.log_start(self._agentName)
+
         AGENT_INSTRUCTIONS_PATH = os.getenv("AGENT_INSTRUCTIONS_PATH")
-        AZURE_AI_AGENT_PROJECT_CONNECTION_STRING = os.getenv("AZURE_AI_AGENT_PROJECT_CONNECTION_STRING")
+        AZURE_AI_AGENT_ENDPOINT = os.getenv("AZURE_AI_AGENT_ENDPOINT")
         AZURE_AI_AGENT_AGENT_ID = os.getenv("AZURE_AI_AGENT_AGENT_ID")
         AZURE_AI_AGENT_MODEL_DEPLOYMENT_NAME = os.getenv("AZURE_AI_AGENT_MODEL_DEPLOYMENT_NAME")
-
-        Logger.log_start(self._agentName)
 
         analysis_text = ""
 
         # Create an Azure AI agent client
         client = AzureAIAgent.create_client(
             credential=DefaultAzureCredential(),
-            conn_str=AZURE_AI_AGENT_PROJECT_CONNECTION_STRING)
+            endpoint=AZURE_AI_AGENT_ENDPOINT)
         
         agent_definition = None
 

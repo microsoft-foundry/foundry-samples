@@ -39,8 +39,8 @@ with agents_client:
     # Create the agent
     agent = agents_client.create_agent(
         model=model_name,
-        name="My_Translator_Agent",
-        instructions="You are a translation agent. The user can use any language to interface with you and please answer in the same language as the customer. " +
+        name="ms-translator",
+        instructions="You are a translation agent. The user can use any language to interface with you and please answer in the same language as the user used. " +
             "Any translation asks must be performed via a call to the translator_api. In case of failure to call the translator_api indicate what was the failure",
         tools=translator_api_tool.definitions
     )
@@ -65,14 +65,14 @@ with agents_client:
 
     if run.status == "failed":
         print(f"Run failed: {run.last_error}")
-
-    # Delete the Agent when done
-    agents_client.delete_agent(agent.id)
-    print("Deleted agent")
-
+   
     # Fetch and log all messages
     messages = agents_client.messages.list(thread_id=thread.id, order=ListSortOrder.ASCENDING)
     for msg in messages:
         if msg.text_messages:
             last_text = msg.text_messages[-1]
             print(f"{msg.role}: {last_text.text.value}")
+
+    # Delete the Agent when done
+    agents_client.delete_agent(agent.id)
+    print("Deleted agent")

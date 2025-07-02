@@ -2,8 +2,6 @@
 
 Welcome to the Foundry Agent Catalog!
 
-# Get started with the Agent Catalog
-
 Accelerate your agent development using code samples and best practices for creating agents. Each agent sample below links to a GitHub Repository, where you can browse the agent's configuration files, setup instructions and source code to start integrating them into your own project in code. Our goal is to make it easy for you to explore, customize, and deploy agents that solve real-world business problems. 
 
 **With agents you create using these code samples, be sure to assess safety and legal implications, and to comply with all applicable laws and safety standards. [Learn More](https://learn.microsoft.com/en-us/legal/cognitive-services/agents/transparency-note)**
@@ -29,8 +27,6 @@ Accelerate your agent development using code samples and best practices for crea
 | [Customer Service Agent](https://aka.ms/customer-service) | Helps create a multi-agent system that manages full-cycle support resolution —from authentication to escalation to resolution | Microsoft | Multi-agent | Agent AI Agent Service | Advanced | NA |
 | [Warranty Claim Processing Agent](https://aka.ms/warranty-claim-processing) | Facilitates the development of agents for processing warranty claims | Microsoft | Single-agent | Semantic Kernel | Intermediate | OpenAPI Specified Tool |
 | [Voice Live Agent](https://aka.ms/voice-live-agent) | Enables agent development for real-time, voice-based interactions using Azure AI Voice Live API. | Microsoft | Single-agent | Agent AI Agent Service  | Intermediate | NA |
-| [Meeting Prep Agent](https://aka.ms/meeting-prep-agent) | Helps build an agent that helps with meetings by researching attendees and generating contextual summaries | Microsoft | Single-agent | Agent AI Agent Service | Intermediate | Grounding with Bing, Azure Logic Apps |
-| [CommsPilot](https://aka.ms/comms-pilot) | Enables agent creation for personalized outbound sales emails and outreach logging | Microsoft | Single-agent | Agent AI Agent Service | Intermediate | File Search, Grounding with Bing, Azure Logic Apps |
 | [Text Translation Agent](https://aka.ms/translation-agent) | Helps create agents that handle multilingual text processing, including dynamic language detection and bidirectional translation using Azure AI Translator service | Microsoft | Single-agent | Agent AI Agent Service | Beginner | OpenAPI Specified Tool |
 | [Video Translation Agent](https://aka.ms/video-translation-agent) | Supports building agents for multilingual video localization with translation, subtitles, and speech generation | Microsoft | Single-agent | Semantic Kernel | Beginner | NA |
 | [Intent Routing Agent](https://aka.ms/intent-routing) | Helps create agents that detect user intent and provide exact answering. Perfect for deterministically intent routing and exact question answering with human controls. | Microsoft | Single-agent | Agent AI Agent Service | Beginner | OpenAPI Specified Tool |

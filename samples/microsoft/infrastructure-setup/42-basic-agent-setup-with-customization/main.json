@@ -1,0 +1,199 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.36.1.42791",
+      "templateHash": "7460487288983622840"
+    }
+  },
+  "parameters": {
+    "azureDeployName": {
+      "type": "string",
+      "defaultValue": "[utcNow()]"
+    },
+    "account_name": {
+      "type": "string",
+      "defaultValue": "foundy",
+      "maxLength": 9,
+      "metadata": {
+        "description": "The name of the Azure AI Foundry resource."
+      }
+    },
+    "project_name": {
+      "type": "string",
+      "defaultValue": "project",
+      "metadata": {
+        "description": "The name of your project"
+      }
+    },
+    "projectDescription": {
+      "type": "string",
+      "defaultValue": "some description",
+      "metadata": {
+        "description": "The description of your project"
+      }
+    },
+    "projectDisplayName": {
+      "type": "string",
+      "defaultValue": "project_display_name",
+      "metadata": {
+        "description": "The display name of your project"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "westus",
+      "allowedValues": [
+        "australiaeast",
+        "canadaeast",
+        "eastus",
+        "eastus2",
+        "francecentral",
+        "japaneast",
+        "koreacentral",
+        "norwayeast",
+        "polandcentral",
+        "southindia",
+        "swedencentral",
+        "switzerlandnorth",
+        "uaenorth",
+        "uksouth",
+        "westus",
+        "westus3",
+        "westeurope",
+        "southeastasia"
+      ],
+      "metadata": {
+        "description": "The Azure region where your AI Foundry resource and project will be created."
+      }
+    },
+    "existingAoaiResourceId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The resource ID of the existing Azure OpenAI resource."
+      }
+    }
+  },
+  "variables": {
+    "accountName": "[format('{0}{1}', parameters('account_name'), substring(uniqueString(parameters('azureDeployName')), 0, 4))]",
+    "byoAoaiConnectionName": "aoaiConnection",
+    "existingAoaiResourceIdParts": "[split(parameters('existingAoaiResourceId'), '/')]",
+    "existingAoaiResourceIdSubId": "[variables('existingAoaiResourceIdParts')[2]]",
+    "existingAoaiResourceIdRgName": "[variables('existingAoaiResourceIdParts')[4]]",
+    "existingAoaiResourceIdName": "[variables('existingAoaiResourceIdParts')[8]]"
+  },
+  "resources": {
+    "project::byoAoaiConnection": {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('accountName'), parameters('project_name'), variables('byoAoaiConnectionName'))]",
+      "properties": {
+        "category": "AzureOpenAI",
+        "target": "[reference('existingAoaiResource').endpoint]",
+        "authType": "AAD",
+        "metadata": {
+          "ApiType": "Azure",
+          "ResourceId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', variables('existingAoaiResourceIdSubId'), variables('existingAoaiResourceIdRgName')), 'Microsoft.CognitiveServices/accounts', variables('existingAoaiResourceIdName'))]",
+          "location": "[reference('existingAoaiResource', '2023-05-01', 'full').location]"
+        }
+      },
+      "dependsOn": [
+        "existingAoaiResource",
+        "project"
+      ]
+    },
+    "existingAoaiResource": {
+      "existing": true,
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2023-05-01",
+      "subscriptionId": "[variables('existingAoaiResourceIdSubId')]",
+      "resourceGroup": "[variables('existingAoaiResourceIdRgName')]",
+      "name": "[variables('existingAoaiResourceIdName')]"
+    },
+    "account": {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[variables('accountName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "S0"
+      },
+      "kind": "AIServices",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "allowProjectManagement": true,
+        "customSubDomainName": "[variables('accountName')]",
+        "networkAcls": {
+          "defaultAction": "Allow",
+          "virtualNetworkRules": [],
+          "ipRules": []
+        },
+        "publicNetworkAccess": "Enabled",
+        "disableLocalAuth": false
+      }
+    },
+    "project": {
+      "type": "Microsoft.CognitiveServices/accounts/projects",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}', variables('accountName'), parameters('project_name'))]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "description": "[parameters('projectDescription')]",
+        "displayName": "[parameters('projectDisplayName')]"
+      },
+      "dependsOn": [
+        "account"
+      ]
+    },
+    "accountCapabilityHost": {
+      "type": "Microsoft.CognitiveServices/accounts/capabilityHosts",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}', variables('accountName'), format('{0}-capHost', variables('accountName')))]",
+      "properties": {
+        "capabilityHostKind": "Agents"
+      },
+      "dependsOn": [
+        "account",
+        "project"
+      ]
+    },
+    "projectCapabilityHost": {
+      "type": "Microsoft.CognitiveServices/accounts/projects/capabilityHosts",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('accountName'), parameters('project_name'), format('{0}-capHost', parameters('project_name')))]",
+      "properties": {
+        "capabilityHostKind": "Agents",
+        "aiServicesConnections": [
+          "[format('{0}', variables('byoAoaiConnectionName'))]"
+        ]
+      },
+      "dependsOn": [
+        "accountCapabilityHost",
+        "project"
+      ]
+    }
+  },
+  "outputs": {
+    "account_endpoint": {
+      "type": "string",
+      "value": "[reference('account').endpoint]"
+    },
+    "account_name": {
+      "type": "string",
+      "value": "[variables('accountName')]"
+    },
+    "project_name": {
+      "type": "string",
+      "value": "[parameters('project_name')]"
+    }
+  }
+}

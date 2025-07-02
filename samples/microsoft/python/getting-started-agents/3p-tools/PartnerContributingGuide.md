@@ -9,6 +9,7 @@ This contributing guide is designed for partners who want to bring their APIs as
 ## Prepare your Pull Request (PR)
 Your PR needs to create a new folder with the tool name and include the following information: 
 - `README.md` (required): follow this [template](./README_template_for_parter.md) as an example and this README file will serve as public documentation for help customers set up and use the tool with your API through Azure AI Foundry Agent service
+  - Keep the `Important Note From Microsoft` section as-is at the very top of the file
   - The name, logo, and description in this README file will be used in the Azure AI Foundry Portal user experience and marketing materials.
   - It must include how customers set up an account with your API directly and your customer support contact or website.
   - Customers should be able to follow this README file and successfully use the tool with Azure AI Foundry Agent service.

@@ -7,10 +7,11 @@ from agents.sop_forge_agent import SOPForgeAgent
 from dotenv import find_dotenv, load_dotenv
 from tools.content_understanding_tool import ContentUnderstandingTool
 
-# Load environment variables from .env file
-load_dotenv(find_dotenv())
 
 async def run_agent():
+    # Load environment variables from .env file
+    load_dotenv(find_dotenv())
+
     # Create the agent
     agent = SOPForgeAgent()
 
