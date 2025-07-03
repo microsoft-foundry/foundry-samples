@@ -1,6 +1,6 @@
 #!/bin/bash
 # Automated testing script for Azure AI Foundry Java Samples
-# Usage: ./testing.sh [SampleName]
+# Usage: ./testing.sh [Optional SampleName]
 
 set -e  # Exit on error
 
@@ -22,6 +22,22 @@ check_required_env() {
         else
             print_color "36" "Using AZURE_ENDPOINT as fallback for PROJECT_ENDPOINT"
         fi
+    fi
+    
+    # Check for optional variables but provide information about defaults
+    if [ -z "$AZURE_MODEL_DEPLOYMENT_NAME" ]; then
+        print_color "36" "No AZURE_MODEL_DEPLOYMENT_NAME provided, using default: phi-4"
+    fi
+    
+    if [ -z "$AZURE_MODEL_API_PATH" ]; then
+        print_color "36" "No AZURE_MODEL_API_PATH provided, using default: deployments"
+    fi
+    
+    # Check for authentication mechanism
+    if [ ! -z "$AZURE_AI_API_KEY" ]; then
+        print_color "36" "Authentication will use AZURE_AI_API_KEY"
+    else
+        print_color "36" "Authentication will use DefaultAzureCredential (requires az login)"
     fi
     
     # Add informational output about which SDKs will be tested

@@ -1,6 +1,6 @@
 @echo off
 REM Automated testing script for Azure AI Foundry Java Samples
-REM Usage: testing.bat [SampleName]
+REM Usage: testing.bat [Optional SampleName]
 REM This script tests samples that use:
 REM  - Azure AI Agents Persistent SDK (com.azure:azure-ai-agents-persistent:1.0.0-beta.2)
 REM  - Azure AI Projects SDK (com.azure:azure-ai-projects:1.0.0-beta.2)
@@ -51,7 +51,23 @@ if "%PROJECT_ENDPOINT%"=="" (
     ) else (
         call :print_color 36 "Using AZURE_ENDPOINT as fallback for PROJECT_ENDPOINT"
     )
-) 
+)
+
+REM Check for optional variables but provide information about defaults
+if "%AZURE_MODEL_DEPLOYMENT_NAME%"=="" (
+    call :print_color 36 "No AZURE_MODEL_DEPLOYMENT_NAME provided, using default: phi-4"
+)
+
+if "%AZURE_MODEL_API_PATH%"=="" (
+    call :print_color 36 "No AZURE_MODEL_API_PATH provided, using default: deployments"
+)
+
+REM Check for authentication mechanism
+if not "%AZURE_AI_API_KEY%"=="" (
+    call :print_color 36 "Authentication will use AZURE_AI_API_KEY"
+) else (
+    call :print_color 36 "Authentication will use DefaultAzureCredential (requires az login)"
+)
 
 REM Add informational output about which SDKs will be tested
 call :print_color 36 "=============================================================="

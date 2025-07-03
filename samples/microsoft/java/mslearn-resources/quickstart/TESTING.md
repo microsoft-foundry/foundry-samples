@@ -56,7 +56,9 @@ export MODEL_DEPLOYMENT_NAME=gpt4o
 
 | Variable | Default Value | Description |
 |----------|---------------|-------------|
-| `MODEL_DEPLOYMENT_NAME` | `gpt4o` | The model deployment name to use |
+| `AZURE_MODEL_DEPLOYMENT_NAME` | `phi-4` | The model deployment name to use |
+| `AZURE_MODEL_API_PATH` | `deployments` | API path segment used to construct the endpoint URL |
+| `AZURE_AI_API_KEY` | *none* | API key for authentication (falls back to DefaultAzureCredential if not provided) |
 | `CHAT_PROMPT` | *varies by sample* | The prompt to send to the chat |
 | `STREAMING_WAIT_TIME` | `10000` | Wait time for streaming samples (in milliseconds) |
 | `AGENT_NAME` | *auto-generated* | Name for the agent (for agent-related samples) |
@@ -85,7 +87,7 @@ To run a specific sample, specify the sample class name:
 
 #### Windows
 ```cmd
-testing.bat ChatCompletionSample
+testing.bat OptionalChatCompletionSample
 ```
 
 #### Linux/macOS
@@ -98,13 +100,13 @@ testing.bat ChatCompletionSample
 | Sample Name | Description | Required Env Variables |
 |-------------|-------------|------------------------|
 | `CreateProject` | Creates a new AI Foundry project | PROJECT_ENDPOINT or AZURE_ENDPOINT |
-| `AgentSample` | Creates and manages an AI agent | PROJECT_ENDPOINT or AZURE_ENDPOINT, optionally MODEL_DEPLOYMENT_NAME |
-| `ChatCompletionSample` | Basic chat completion via agents | PROJECT_ENDPOINT or AZURE_ENDPOINT, optionally MODEL_DEPLOYMENT_NAME, CHAT_PROMPT |
-| `ChatCompletionStreamingSample` | Streaming chat completion | PROJECT_ENDPOINT or AZURE_ENDPOINT, optionally MODEL_DEPLOYMENT_NAME, CHAT_PROMPT, STREAMING_WAIT_TIME |
+| `AgentSample` | Creates and manages an AI agent | PROJECT_ENDPOINT or AZURE_ENDPOINT, optionally AZURE_MODEL_DEPLOYMENT_NAME |
+| `ChatCompletionSample` | Basic chat completion using Inference SDK | PROJECT_ENDPOINT or AZURE_ENDPOINT, optionally AZURE_MODEL_DEPLOYMENT_NAME, AZURE_MODEL_API_PATH, AZURE_AI_API_KEY, CHAT_PROMPT |
+| `ChatCompletionStreamingSample` | Streaming chat completion using Inference SDK | PROJECT_ENDPOINT or AZURE_ENDPOINT, optionally AZURE_MODEL_DEPLOYMENT_NAME, AZURE_MODEL_API_PATH, AZURE_AI_API_KEY, CHAT_PROMPT, STREAMING_WAIT_TIME |
 | `ChatCompletionOpenAISample` | Direct chat using OpenAI SDK | OPENAI_API_KEY, optionally MODEL_DEPLOYMENT_NAME, CHAT_PROMPT |
-| `ChatCompletionInferenceSample` | Chat using Azure AI Inference SDK | PROJECT_ENDPOINT or AZURE_ENDPOINT, optionally MODEL_DEPLOYMENT_NAME, CHAT_PROMPT |
-| `FileSearchAgentSample` | Demonstrates file search with agents | PROJECT_ENDPOINT or AZURE_ENDPOINT, optionally MODEL_DEPLOYMENT_NAME |
-| `EvaluateAgentSample` | Shows agent evaluation | PROJECT_ENDPOINT or AZURE_ENDPOINT, optionally MODEL_DEPLOYMENT_NAME |
+| `ChatCompletionInferenceSample` | Chat using Azure AI Inference SDK | PROJECT_ENDPOINT or AZURE_ENDPOINT, optionally AZURE_MODEL_DEPLOYMENT_NAME, CHAT_PROMPT |
+| `FileSearchAgentSample` | Demonstrates file search with agents | PROJECT_ENDPOINT or AZURE_ENDPOINT, optionally AZURE_MODEL_DEPLOYMENT_NAME |
+| `EvaluateAgentSample` | Shows agent evaluation | PROJECT_ENDPOINT or AZURE_ENDPOINT, optionally AZURE_MODEL_DEPLOYMENT_NAME |
 
 ## SDK Features Overview
 
@@ -142,7 +144,14 @@ The Azure AI Inference SDK (`com.azure:azure-ai-inference:1.0.0-beta.5`) allows 
 - Stream responses for real-time applications
 - Leverage advanced model capabilities
 
-The `ChatCompletionSample`, `ChatCompletionStreamingSample`, and other chat completion samples showcase this SDK's functionality.
+The `ChatCompletionSample` and `ChatCompletionStreamingSample` showcase this SDK's functionality with:
+
+- Flexible endpoint URL construction using PROJECT_ENDPOINT + AZURE_MODEL_API_PATH + AZURE_MODEL_DEPLOYMENT_NAME
+- Dual authentication options: API key (AZURE_AI_API_KEY) or DefaultAzureCredential
+- Synchronous completions with `complete()` method (ChatCompletionSample)
+- Token streaming with `completeStream()` method (ChatCompletionStreamingSample)
+- Comprehensive error handling with HTTP status code interpretation
+- Detailed logging using ClientLogger
 
 ### OpenAI Java SDK
 
@@ -204,7 +213,19 @@ The samples use specific versions of Azure AI SDKs as specified at the top of th
    - Use the testing scripts (`testing.bat` or `testing.sh`) to quickly validate your setup
    - Check the console output for SDK version information and connection status
 
-2. **Understanding the Samples**:
+2. **Understanding the Chat Completion Samples**:
+   - For beginners, start with `ChatCompletionSample` which demonstrates the basics
+   - To see real-time responses, try `ChatCompletionStreamingSample` which shows tokens as they arrive
+   - The full endpoint URL is constructed from:
+     ```
+     PROJECT_ENDPOINT + AZURE_MODEL_API_PATH + AZURE_MODEL_DEPLOYMENT_NAME
+     ```
+   - Authentication works in two ways:
+     - With AZURE_AI_API_KEY: Uses AzureKeyCredential
+     - Without AZURE_AI_API_KEY: Uses DefaultAzureCredential from az login
+   - Both samples include comprehensive error handling with specific guidance
+
+3. **Understanding the Samples**:
    - Each sample demonstrates different aspects of the Azure AI SDKs
    - Review the Javadoc comments in the source code for detailed explanations
    - The samples progress from basic connectivity to more advanced features
