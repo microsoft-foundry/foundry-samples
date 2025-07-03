@@ -47,15 +47,15 @@ The system consists of:
 - Python 3.8+
 - Azure CLI
 - Azure subscription
-- Agent setup: deploy the latest agent setup using ([this custom deployment](https://github.com/azure-ai-foundry/foundry-samples/tree/main/use-cases/agents/setup/basic-setup)).
+- Agent setup: deploy the latest agent setup using ([this custom deployment](hhttps://aka.ms/basic-agent-deployment)).
   - The above creates:
     1. AI Services resource (type: Microsoft.CognitiveServices/accounts),
     2. AI Project (type: Microsoft.CognitiveServices/accounts/projects),
     3. Model deployment (type: Microsoft.CognitiveServices/accounts/deployments) 
-- A connection of the resource that supports Azure AI Translator service is added to the project of your Agent. 
-  - To use the translator service with Azure AI Foundry resource or AI hub resource, choose "Azure AI foundry" connection. 
-  - To use the translator service with Azure AI Translator resource, use "Custom keys" connection. 
-  - To add a "Custom keys" connection, add a key value pair with Ocp-Apim-Subscription-Key as the key name, and the Azure AI Translator resource key as the value. 
+- A custom connection of the resource that supports Azure AI Translator service is added to the project of your Agent. 
+  - You can use the translator service with Azure AI Foundry resource, AI hub resource or Azure AI Translator resource. 
+  - In your agent project management center, use "Custom keys" connection when adding the custom connection in the connected resources page. 
+  - To add a "Custom keys" connection, add a key value pair with Ocp-Apim-Subscription-Key as the key name, and the resource key as the value. For Azure AI Foundry resource and AI hub resource, you can find the resource key value in the resource overview page in the Azure AI Foundry portal management center. You can also find the key of any type of resources in the Azure portal. 
   - For more info to create a connection, see [Create a connection](https://learn.microsoft.com/azure/ai-foundry/how-to/connections-add)
   - For more info about Azure AI Translator service, see [Text translation Overview](https://learn.microsoft.com/en-us/azure/ai-services/translator/text-translation/overview)
 

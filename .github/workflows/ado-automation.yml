@@ -1,0 +1,52 @@
+name: Create ADO user story from GitHub issue
+run-name: GitHub Issue #${{ github.event.issue.number }}
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  create-ado-story:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build payload and call Azure DevOps
+        env:
+          ADO_ORG:            ${{ secrets.ADO_ORG }}
+          ADO_PROJECT:        ${{ secrets.ADO_PROJECT }}
+          ADO_PAT:            ${{ secrets.ADO_PAT }}
+          DRI_EMAIL:          ${{ secrets.DRI_EMAIL }}
+          ADO_AREA_PATH:      ${{ secrets.ADO_AREA_PATH }}
+          ADO_ITERATION_PATH: ${{ secrets.ADO_ITERATION_PATH }}
+          ADO_TAG:            ${{ secrets.ADO_TAG }}
+          ISSUE_TITLE:        ${{ github.event.issue.title }}
+          ISSUE_BODY:         ${{ github.event.issue.body }}
+          ISSUE_URL:          ${{ github.event.issue.html_url }}
+        run: |
+          DESCRIPTION="<div>${ISSUE_BODY//$'\n'/<br/>}<br/><br/><a href=\"$ISSUE_URL\">$ISSUE_URL</a></div>"
+
+          jq -n \
+            --arg title "$ISSUE_TITLE" \
+            --arg desc  "$DESCRIPTION" \
+            --arg area  "$ADO_AREA_PATH" \
+            --arg iter  "$ADO_ITERATION_PATH" \
+            --arg assn  "$DRI_EMAIL" \
+            --arg tags  "$ADO_TAG" \
+            '[
+               { "op":"add", "path":"/fields/System.Title",         "value":$title },
+               { "op":"add", "path":"/fields/System.Description",   "value":$desc  },
+               { "op":"add", "path":"/fields/System.AreaPath",      "value":$area  },
+               { "op":"add", "path":"/fields/System.IterationPath", "value":$iter  },
+               { "op":"add", "path":"/fields/System.AssignedTo",    "value":$assn  },
+               { "op":"add", "path":"/fields/System.Tags",          "value":$tags  }
+             ]' > /tmp/payload.json
+
+          AUTH=$(printf ":$ADO_PAT" | base64 | tr -d '\n')
+          WORK_ITEM_URL="https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis/wit/workitems/\$User%20Story?api-version=7.1-preview.3"
+
+          curl --fail-with-body -sS \
+               -H "Content-Type: application/json-patch+json" \
+               -H "Authorization: Basic $AUTH" \
+               -X POST \
+               --data-binary @/tmp/payload.json \
+               "$WORK_ITEM_URL"

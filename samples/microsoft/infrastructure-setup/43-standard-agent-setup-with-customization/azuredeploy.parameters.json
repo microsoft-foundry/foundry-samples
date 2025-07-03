@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {},
+    "aiFoundryName": {
+      "value": ""
+    },
+    "foundryProjectName": {
+      "value": ""
+    },
+    "aiSearchResourceId": {
+      "value": ""
+    },
+    "azureStorageAccountResourceId": {
+      "value": ""
+    },
+    "azureCosmosDBAccountResourceId": {
+      "value": ""
+    },
+    "existingAoaiResourceId": {
+      "value": ""
+    },
+    "modelName": {
+      "value": ""
+    },
+    "modelFormat": {
+      "value": ""
+    },
+    "modelVersion": {
+      "value": ""
+    },
+    "modelSkuName": {
+      "value": ""
+    },
+    "modelCapacity": {
+      "value": 0
+    }
+  }
+}
