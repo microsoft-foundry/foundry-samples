@@ -413,3 +413,5 @@ samples/agent-catalog/msft-agent-samples/foundry-agent-service-sdk/intent-routin
 
 # python environments
 .venv
+*test_venv/
+*_venv/
