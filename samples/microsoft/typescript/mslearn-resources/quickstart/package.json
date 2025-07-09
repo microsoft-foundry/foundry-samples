@@ -1,0 +1,34 @@
+{
+  "name": "foundry-samples-quickstart",
+  "version": "1.0.0",
+  "description": "TypeScript AI Foundry Quickstart",
+  "homepage": "https://github.com/azure-ai-foundry/foundry-samples#readme",
+  "bugs": {
+    "url": "https://github.com/azure-ai-foundry/foundry-samples/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/azure-ai-foundry/foundry-samples.git"
+  },
+  "license": "MIT",
+  "author": "Dan Wahlin, Julia Muiruri",
+  "type": "module",
+  "main": "dist/quickstart.js",
+  "scripts": {
+    "start": "tsx --no-deprecation src/quickstart.ts",
+    "build": "npx tsc",
+    "dev": "tsx watch --no-deprecation src/quickstart.ts",
+    "type-check": "npx tsc --noEmit"
+  },
+  "dependencies": {
+    "@azure/ai-projects": "1.0.0-beta.8",
+    "@azure/ai-agents": "1.0.0",
+    "@azure/identity": "^4.10.2",
+    "dotenv": "^17.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.12",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}

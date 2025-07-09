@@ -1,4 +1,6 @@
-# JavaScript QuickStart
+# TypeScript QuickStart
+
+This sample demonstrates how to use Azure AI Foundry with TypeScript for chat completions and AI agents.
 
 ## Set up your environment
 
@@ -16,4 +18,33 @@
 
 ## Run a chat completion and agent
 
-Run `npm start` to start the application and trigger the chat completion and agents.
+### Development Mode
+
+Run with hot reload during development:
+
+```bash
+npm run dev
+```
+
+### Production Mode
+
+Run the TypeScript directly:
+
+```bash
+npm start
+```
+
+### Build Mode
+
+Compile TypeScript to JavaScript:
+
+```bash
+npm run build
+```
+
+### Type Check
+
+Check types without running:
+```bash
+npm run type-check
+```
