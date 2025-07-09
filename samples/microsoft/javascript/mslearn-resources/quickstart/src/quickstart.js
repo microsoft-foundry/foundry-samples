@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { DefaultAzureCredential } from '@azure/identity';
-import { ToolUtility, DoneEvent, ErrorEvent, isOutputOfType } from '@azure/ai-agents';
+import { AgentsClient, ToolUtility, DoneEvent, ErrorEvent } from '@azure/ai-agents';
 import { AIProjectClient } from '@azure/ai-projects';
 import { config } from 'dotenv';
 config();
@@ -42,44 +42,44 @@ async function runAgents() {
     // <create_and_run_agent>
     const endpoint = process.env.PROJECT_ENDPOINT;
     const deployment = process.env.MODEL_DEPLOYMENT_NAME || 'gpt-4o';
-    const client = new AIProjectClient(endpoint, new DefaultAzureCredential());
+    const client = new AgentsClient(endpoint, new DefaultAzureCredential());
 
     // Create an Agent
-    const agent = await client.agents.createAgent(deployment, {
+    const agent = await client.createAgent(deployment, {
         name: 'my-agent',
         instructions: 'You are a helpful agent'
     });
     console.log(`\n==================== 🕵️  POEM AGENT ====================`);
 
     // Create a thread and message
-    const thread = await client.agents.threads.create();
+    const thread = await client.threads.create();
     const prompt = 'Write me a poem about flowers';
     console.log(`\n---------------- 📝 User Prompt ---------------- \n${prompt}`);
-    await client.agents.messages.create(thread.id, 'user', prompt);
+    await client.messages.create(thread.id, 'user', prompt);
 
     // Create run
-    let run = await client.agents.runs.create(thread.id, agent.id);
+    let run = await client.runs.create(thread.id, agent.id);
 
     // Wait for run to complete
     console.log(`\n---------------- 🚦 Run Status ----------------`);
     while (['queued', 'in_progress', 'requires_action'].includes(run.status)) {
         // Avoid adding a lot of messages to the console
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        run = await client.agents.runs.get(thread.id, run.id);
+        run = await client.runs.get(thread.id, run.id);
         console.log(`Run status: ${run.status}`);
     }
 
     console.log('\n---------------- 📊 Token Usage ----------------');
     console.table([run.usage]);
 
-    const messagesIterator = await client.agents.messages.list(thread.id);
+    const messagesIterator = await client.messages.list(thread.id);
     const assistantMessage = await getAssistantMessage(messagesIterator);
     console.log('\n---------------- 💬 Response ----------------');
     printAssistantMessage(assistantMessage);
 
     // Clean up
     console.log(`\n---------------- 🧹 Clean Up Poem Agent ----------------`);
-    await client.agents.deleteAgent(agent.id);
+    await client.deleteAgent(agent.id);
     console.log(`Deleted Agent, Agent ID: ${agent.id}`);
     // </create_and_run_agent>
 
@@ -92,11 +92,11 @@ async function runAgents() {
     fileStream.on('data', (chunk) => {
         console.log(`Read ${chunk.length} bytes of data.`);
     });
-    const file = await client.agents.files.upload(fileStream, 'assistants', {
+    const file = await client.files.upload(fileStream, 'assistants', {
         fileName: 'product_info_1.md'
     });
     console.log(`Uploaded file, ID: ${file.id}`);
-    const vectorStore = await client.agents.vectorStores.create({
+    const vectorStore = await client.vectorStores.create({
         fileIds: [file.id],
         name: 'my_vectorstore'
     });
@@ -111,7 +111,7 @@ async function runAgents() {
 
     // Create an Agent and a FileSearch tool
     const fileSearchTool = ToolUtility.createFileSearchTool([vectorStore.id]);
-    const fileAgent = await client.agents.createAgent(deployment, {
+    const fileAgent = await client.createAgent(deployment, {
         name: 'my-file-agent',
         instructions: 'You are a helpful assistant and can search information from uploaded files',
         tools: [fileSearchTool.definition],
@@ -119,13 +119,13 @@ async function runAgents() {
     });
 
     // Create a thread and message
-    const fileSearchThread = await client.agents.threads.create({ toolResources: fileSearchTool.resources });
+    const fileSearchThread = await client.threads.create({ toolResources: fileSearchTool.resources });
     const filePrompt = 'What are the steps to setup the TrailMaster X4 Tent?';
     console.log(`\n---------------- 📝 User Prompt ---------------- \n${filePrompt}`);
-    await client.agents.messages.create(fileSearchThread.id, 'user', filePrompt);
+    await client.messages.create(fileSearchThread.id, 'user', filePrompt);
 
     // Create run
-    let fileSearchRun = await client.agents.runs.create(fileSearchThread.id, fileAgent.id).stream();
+    let fileSearchRun = await client.runs.create(fileSearchThread.id, fileAgent.id).stream();
 
     for await (const eventMessage of fileSearchRun) {
         if (eventMessage.event === DoneEvent.Done) {
@@ -136,16 +136,16 @@ async function runAgents() {
         }
     }
 
-    const fileSearchMessagesIterator = await client.agents.messages.list(fileSearchThread.id);
+    const fileSearchMessagesIterator = await client.messages.list(fileSearchThread.id);
     const fileAssistantMessage = await getAssistantMessage(fileSearchMessagesIterator);
     console.log(`\n---------------- 💬 Response ---------------- \n`);
     printAssistantMessage(fileAssistantMessage);
 
     // Clean up
     console.log(`\n---------------- 🧹 Clean Up File Agent ----------------`);
-    client.agents.vectorStores.delete(vectorStore.id);
-    client.agents.files.delete(file.id);
-    client.agents.deleteAgent(fileAgent.id);
+    client.vectorStores.delete(vectorStore.id);
+    client.files.delete(file.id);
+    client.deleteAgent(fileAgent.id);
     console.log(`Deleted VectorStore, File, and FileAgent. FileAgent ID: ${fileAgent.id}`);
     // </create_filesearch_agent>
 }
