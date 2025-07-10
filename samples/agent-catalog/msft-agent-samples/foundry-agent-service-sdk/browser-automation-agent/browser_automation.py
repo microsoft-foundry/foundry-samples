@@ -14,22 +14,22 @@ USAGE:
  
     Before running the sample:
  
-    pip install azure-ai-agents azure-identity
+    pip install azure-ai-projects azure-ai-agents azure-identity
  
     Set these environment variables with your own values:
     1) PROJECT_ENDPOINT - The project endpoint, as found in the overview page of your
        Azure AI Foundry project.
     2) MODEL_DEPLOYMENT_NAME - The deployment name of the AI model, as found under the "Name" column in 
        the "Models + endpoints" tab in your Azure AI Foundry project.
-    3) PLAYWRIGHT_CONNECTION_ID - The connection ID of the Serverless connection containing the details
-         of the Playwright browser.
+    3) PLAYWRIGHT_WORKSPACE_CONNECTION_ID - The connection ID of the Serverless connection containing the details
+         of the Playwright Workspace remote browsers.
          Format: <AI Project resource ID>/connections/<Serverless connection name>
          Example: /subscriptions/<subscription-id>/resourceGroups/<resource_group_name>/providers/Microsoft.CognitiveServices/accounts/<account_name>/projects/<project_name>/connections/<connection-name>
 """
 
 # <imports>
 from os import environ, getenv
-from azure.ai.agents import AgentsClient
+from azure.ai.projects import AIProjectClient
 from azure.ai.agents.models import ListSortOrder
 from azure.identity import DefaultAzureCredential
 from typing import Any, Dict
@@ -38,13 +38,14 @@ from typing import Any, Dict
 # <client_initialization>
 endpoint = environ["PROJECT_ENDPOINT"]
 model_deployment_name = environ["MODEL_DEPLOYMENT_NAME"]
-playwright_connection_id = getenv("PLAYWRIGHT_CONNECTION_ID")
+playwright_workspace_connection_id = getenv("PLAYWRIGHT_WORKSPACE_CONNECTION_ID")
 
 
-with AgentsClient(
+with AIProjectClient(
     endpoint=endpoint,
     credential=DefaultAzureCredential(exclude_interactive_browser_credential=False),
-) as agents_client:
+    api_version="2025-05-15-preview",
+).agents as agents_client:
 # </client_initialization>
     
     # [START create_agent_with_browser_automation_tool]
@@ -53,7 +54,7 @@ with AgentsClient(
         "type": "browser_automation",
         "browser_automation": {
             "connection": {
-                "id": playwright_connection_id,
+                "id": playwright_workspace_connection_id,
             }
         }
     }

@@ -1,6 +1,6 @@
 # 🌐 Browser Automation Agent
 
-This template helps build an agent that enables users to perform real-world browser tasks through natural language prompts. Powered by **Azure AI Agent Service** and **Azure Playwright Service**, it facilitates multi-turn conversations to automate browser-based workflows such as searching, navigating, filling forms, and booking.
+This template helps build an agent that enables users to perform real-world browser tasks through natural language prompts. Powered by **Azure AI Agent Service** and **Playwright Workspaces**, it facilitates multi-turn conversations to automate browser-based workflows such as searching, navigating, filling forms, and booking.
 
 **WARNING:** Browser automation comes with significant security risks. Both errors in judgment by the AI and the presence of malicious or confusing instructions on web pages which the AI encounters may cause it to execute commands you or others do not intend, which could compromise the security of your or other users’ browsers, computers, and any accounts to which the browser or AI has access, including personal information, financial, or enterprise systems.  We recommend that any agent built using this Browser Automation Agent code sample be used only in isolated environments and only with controlled access, such as browsers running within dedicated VMs.  By using the Browser Automation Agent sample, you are acknowledging that you bear responsibility and liability for any use of it and of any resulting agents you create with it, including with respect to any other users to whom you make it or resulting agents available.
 
@@ -13,7 +13,7 @@ Certain Agent offerings may be subject to legal and regulatory requirements, may
 This agent demonstrates a browser automation experience where the user interacts with a website conversationally—like booking a class online. Here's how it works:
 
 1. **User Prompt**: The user asks for available classes.
-2. **Session Provisioning**: The request is received by Azure AI Agent Service, which provisions a private browser session using Azure Playwright Service.
+2. **Session Provisioning**: The request is received by Azure AI Agent Service, which provisions a private browser session using Playwright Workspaces.
 3. **Web Interaction**: The browser performs Playwright-driven actions to retrieve and display class options.
 4. **Follow-Up Commands**: The user provides further input to complete the booking, all within the same multi-turn thread.
 
@@ -32,8 +32,8 @@ This agent demonstrates a browser automation experience where the user interacts
 
 This agent leverages **Azure AI Agent Service** and uses:
 
-- **Browser Automation Tool** (via Playwright): Executes browser-based tasks on your behalf, securely and asynchronously.
-- **Azure Playwright Service**: Powers the browser session backend with serverless browser capabilities.
+- **Browser Automation Tool** (via Playwright Workspaces): Executes browser-based tasks on your behalf, securely and asynchronously.
+- **Playwright Workspaces**: Powers the browser session backend with serverless browser capabilities.
 
 The agent is configured through a Python script (`browser_automation.py`) and authenticated using managed identity.
 
@@ -51,15 +51,18 @@ The agent is configured through a Python script (`browser_automation.py`) and au
       - AI Services resource
       - AI Project
       - Model deployment
-3. Playwright Resource setup: 
-   - Create a Microsoft Playwright Resource: https://learn.microsoft.com/en-us/azure/playwright-testing/how-to-manage-playwright-workspace?tabs=playwright
-   - Generate an API Key for the Playwright resource: https://learn.microsoft.com/en-us/azure/playwright-testing/how-to-manage-access-tokens
+3. Playwright Workspace Resource setup: 
+   - Create a Playwright Workspace Resource: https://aka.ms/pww/docs/manage-workspaces
+   - Generate an Access Token for the Playwright Workspace resource: https://aka.ms/pww/docs/manage-access-tokens
    - Access the Workspace region endpoint from the Workspace Details. 
-4. Create a serverless connection in the Azure AI Foundry project with the Playwright workspace region endpoint and the Playwright Access Key. 
+   - Give the Project Identity a "Contributor" role on the Playwright Workspace resource, or configure a custom role by following these instructions: https://aka.ms/pww/docs/manage-workspace-access
+4. Create a serverless connection in the Azure AI Foundry project with the Playwright workspace region endpoint and the Playwright Workspace Access Token. 
    - Go to the Azure AI Foundry portal and select your AI Project. Go to the Management center and Click connected resources.
    - Create a new connection of type Serverless Model and enter the following information.
-      - Target URI - Playwright Workspace Region Endpoint (example - wss://eastus.api.playwright.microsoft.com/accounts/eastus_xxxxxxxxxxxxxxxxxxxxxxx/browsers).
-      - Key - Playwright Access Key
+      - Target URI - Playwright Workspace Region Endpoint (example - wss://{region}.api.playwright.microsoft.com/playwrightworkspaces/{workspaceId}/browsers).
+         - To understand more on how to get this value: https://aka.ms/pww/docs/configure-service-endpoint
+      - Key - Playwright Access Token
+         - To understand more on how to get this value: https://aka.ms/pww/docs/generate-access-token
    - For more info to create a connection, see [Create a connection](https://learn.microsoft.com/azure/ai-foundry/how-to/connections-add)
 5. Python 3.8+
 6. Azure CLI
@@ -71,6 +74,6 @@ Set the following environment variables before running the sample:
 ```bash
 PROJECT_ENDPOINT=<your_project_endpoint>
 MODEL_DEPLOYMENT_NAME=<your_model_deployment_name>
-PLAYWRIGHT_CONNECTION_ID=<serverless_connection_id>
+PLAYWRIGHT_WORKSPACE_CONNECTION_ID=<serverless_connection_id>
 
 
