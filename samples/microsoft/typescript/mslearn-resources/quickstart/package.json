@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@azure/ai-projects": "1.0.0-beta.8",
-    "@azure/ai-agents": "1.0.0",
+    "@azure/ai-agents": "1.0.0-beta.3",
     "@azure/identity": "^4.10.2",
     "dotenv": "^17.1.0"
   },
