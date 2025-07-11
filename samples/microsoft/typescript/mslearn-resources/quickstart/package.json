@@ -21,13 +21,13 @@
     "type-check": "npx tsc --noEmit"
   },
   "dependencies": {
-    "@azure/ai-projects": "1.0.0-beta.8",
-    "@azure/ai-agents": "1.0.0-beta.3",
+    "@azure/ai-projects": "1.0.0-beta.10",
+    "@azure/ai-agents": "1.0.0",
     "@azure/identity": "^4.10.2",
-    "dotenv": "^17.1.0"
+    "dotenv": "^17.2.0"
   },
   "devDependencies": {
-    "@types/node": "^24.0.12",
+    "@types/node": "^24.0.13",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   }
