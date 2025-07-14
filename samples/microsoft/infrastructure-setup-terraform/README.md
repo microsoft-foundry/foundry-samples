@@ -29,7 +29,7 @@ Azure AI Agent Service offers three deployment modes optimized for agent workloa
 - Deploys a Network Secured Standard Agent environment:
   - Creates Azure AI Foundry resource and project
   - Automatically deploys gpt-4o
-  - Azure resources for storing customer data—Azure Storage, Azure Cosmos DB, and Azure AI Search—are automatically created if existing resources aren't provided.
+  - Azure resources for storing customer data—Azure Storage, Azure Cosmos DB, and Azure AI Search—are automatically created.
     - These resources are connected to your project to store files, threads, and vector data.
   - Bring your own Virtual Network and subnets
   - Bring your own Private DNS Zones
