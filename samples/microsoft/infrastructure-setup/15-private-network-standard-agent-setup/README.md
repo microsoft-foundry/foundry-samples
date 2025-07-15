@@ -86,6 +86,7 @@ This implementation gives you full control over the inbound and outbound communi
   **Limitations:**
   - Class A subnet support is only available in a limited number of regions and requires your subscription id be allowlisted. Please reach out to fosteramanda@microsoft.com if you are interested in getting access.
     - Supported regions: West US, East US, East US 2, Central US, Japan East, France Central, [New] Spain Central, [New] UAE North
+  - The capability host sub-resources of Resource/Project must be deleted before deleting the Resource/Project resource itself. You can use the script __deleteCaphost.sh__ located in this folder to delete it. 
 
 ### Template Customization
 
