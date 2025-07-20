@@ -82,7 +82,7 @@ resource "azurerm_cosmosdb_account" "cosmosdb" {
 resource "azapi_resource" "ai_search" {
   provider = azapi.workload_subscription
 
-  type                      = "Microsoft.Search/searchServices@2024-06-01-preview"
+  type                      = "Microsoft.Search/searchServices@2025-05-01"
   name                      = "aifoundry${random_string.unique.result}search"
   parent_id                 = "/subscriptions/${var.subscription_id_resources}/resourceGroups/${var.resource_group_name_resources}"
   location                  = var.location

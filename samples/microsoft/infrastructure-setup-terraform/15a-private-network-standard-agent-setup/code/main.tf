@@ -120,7 +120,7 @@ resource "azurerm_cosmosdb_account" "cosmosdb" {
 ## Create an AI Search instance that will be used to store vector embeddings
 ##
 resource "azapi_resource" "ai_search" {
-  type                      = "Microsoft.Search/searchServices@2024-06-01-preview"
+  type                      = "Microsoft.Search/searchServices@2025-05-01"
   name                      = "aifoundry${random_string.unique.result}search"
   parent_id                 = azurerm_resource_group.rg.id
   location                  = var.location
