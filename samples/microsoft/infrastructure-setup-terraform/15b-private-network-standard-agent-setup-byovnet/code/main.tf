@@ -145,7 +145,6 @@ resource "azapi_resource" "ai_foundry" {
     }
 
     properties = {
-
       # Support both Entra ID and API Key authentication for underlining Cognitive Services account
       disableLocalAuth = false
 
@@ -153,7 +152,7 @@ resource "azapi_resource" "ai_foundry" {
       allowProjectManagement = true
 
       # Set custom subdomain name for DNS names created for this Foundry resource
-      customSubDomainName    = "aifoundry${random_string.unique.result}"
+      customSubDomainName = "aifoundry${random_string.unique.result}"
 
       # Network-related controls
       # Disable public access but allow Trusted Azure Services exception
@@ -625,8 +624,8 @@ resource "azurerm_role_assignment" "storage_blob_data_owner_ai_foundry_project" 
   (
     (
       !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/read'})
-      AND  !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/filter/action'})
-      AND  !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/write'})
+      AND !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/filter/action'})
+      AND !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/write'})
     )
     OR
     (@Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringStartsWithIgnoreCase '${local.project_id_guid}'
