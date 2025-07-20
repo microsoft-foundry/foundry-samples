@@ -458,7 +458,7 @@ resource "azapi_resource" "conn_aisearch" {
       authType = "AAD"
       metadata = {
         ApiType    = "Azure"
-        ApiVersion = "2024-05-01-preview"
+        ApiVersion = "2025-05-01-preview"
         ResourceId = azapi_resource.ai_search.id
         location   = var.location
       }
