@@ -194,7 +194,7 @@ resource "azurerm_cognitive_deployment" "aifoundry_deployment_gpt_4o" {
   model {
     format  = "OpenAI"
     name    = "gpt-4o"
-    version = "2024-05-13"
+    version = "2024-11-20"
   }
 }
 
