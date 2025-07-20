@@ -2,7 +2,7 @@
 ##########
 
 ## Create a random string
-## 
+##
 resource "random_string" "unique" {
   length      = 4
   min_numeric = 4
@@ -33,7 +33,7 @@ resource "azurerm_virtual_network" "vnet" {
 ## Create two subnets one for the Standard Agent VNet injection and one for the AI Foundry resource
 ##
 resource "azurerm_subnet" "subnet_agent" {
-  name                 = "agent-subnet"
+  name                 = "snet-agent"
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = [
@@ -48,7 +48,7 @@ resource "azurerm_subnet" "subnet_agent" {
 }
 
 resource "azurerm_subnet" "subnet_pe" {
-  name                 = "pe-subnet"
+  name                 = "snet-pe"
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = [
@@ -177,7 +177,7 @@ resource "azapi_resource" "ai_foundry" {
 
   body = {
 
-    
+
     kind = "AIServices",
     sku = {
       name = "S0"
@@ -752,12 +752,12 @@ resource "azurerm_role_assignment" "storage_blob_data_owner_ai_foundry_project" 
   condition            = <<-EOT
   (
     (
-      !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/read'})  
-      AND  !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/filter/action'}) 
-      AND  !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/write'}) 
-    ) 
-    OR 
-    (@Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringStartsWithIgnoreCase '${local.project_id_guid}' 
+      !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/read'})
+      AND  !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/filter/action'})
+      AND  !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/write'})
+    )
+    OR
+    (@Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringStartsWithIgnoreCase '${local.project_id_guid}'
     AND @Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringLikeIgnoreCase '*-azureml-agent')
   )
   EOT
