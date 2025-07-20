@@ -151,7 +151,7 @@ resource "azapi_resource" "ai_search" {
         }
       }
       # Networking-related controls
-      publicNetworkAccess = "disabled"
+      publicNetworkAccess = "Disabled"
       networkRuleSet = {
         bypass = "None"
       }
@@ -541,7 +541,7 @@ resource "azapi_resource" "conn_cosmosdb" {
   body = {
     name = azurerm_cosmosdb_account.cosmosdb.name
     properties = {
-      category = "CosmosDB"
+      category = "CosmosDb"
       target   = azurerm_cosmosdb_account.cosmosdb.endpoint
       authType = "AAD"
       metadata = {

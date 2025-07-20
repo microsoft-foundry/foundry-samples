@@ -2,7 +2,7 @@
 ##########
 
 ## Create a random string
-## 
+##
 resource "random_string" "unique" {
   length      = 4
   min_numeric = 4
@@ -113,7 +113,7 @@ resource "azapi_resource" "ai_search" {
         }
       }
       # Networking-related controls
-      publicNetworkAccess = "disabled"
+      publicNetworkAccess = "Disabled"
       networkRuleSet = {
         bypass = "None"
       }
@@ -391,7 +391,7 @@ resource "azapi_resource" "conn_cosmosdb" {
   body = {
     name = azurerm_cosmosdb_account.cosmosdb.name
     properties = {
-      category = "CosmosDB"
+      category = "CosmosDb"
       target   = azurerm_cosmosdb_account.cosmosdb.endpoint
       authType = "AAD"
       metadata = {
@@ -624,12 +624,12 @@ resource "azurerm_role_assignment" "storage_blob_data_owner_ai_foundry_project" 
   condition            = <<-EOT
   (
     (
-      !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/read'})  
-      AND  !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/filter/action'}) 
-      AND  !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/write'}) 
-    ) 
-    OR 
-    (@Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringStartsWithIgnoreCase '${local.project_id_guid}' 
+      !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/read'})
+      AND  !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/filter/action'})
+      AND  !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/write'})
+    )
+    OR
+    (@Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringStartsWithIgnoreCase '${local.project_id_guid}'
     AND @Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringLikeIgnoreCase '*-azureml-agent')
   )
   EOT
