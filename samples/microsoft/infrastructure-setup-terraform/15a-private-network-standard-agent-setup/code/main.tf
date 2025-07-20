@@ -169,7 +169,7 @@ resource "azapi_resource" "ai_foundry" {
     azurerm_subnet.subnet_agent
   ]
 
-  type                      = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
+  type                      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name                      = "aifoundry${random_string.unique.result}"
   parent_id                 = azurerm_resource_group.rg.id
   location                  = var.location
@@ -491,7 +491,7 @@ resource "azapi_resource" "ai_foundry_project" {
     azurerm_private_endpoint.pe_aifoundry
   ]
 
-  type                      = "Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview"
+  type                      = "Microsoft.CognitiveServices/accounts/projects@2025-06-01"
   name                      = "project${random_string.unique.result}"
   parent_id                 = azapi_resource.ai_foundry.id
   location                  = var.location
