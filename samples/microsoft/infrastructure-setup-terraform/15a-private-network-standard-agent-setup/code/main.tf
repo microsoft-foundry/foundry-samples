@@ -354,7 +354,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "plz_openai_link" {
 
 ## Create Private Endpoints for resources
 ##
-resource "azurerm_private_endpoint" "pe-storage" {
+resource "azurerm_private_endpoint" "pe_storage" {
   depends_on = [
     azurerm_private_dns_zone_virtual_network_link.plz_ai_search_link,
     azurerm_private_dns_zone_virtual_network_link.plz_storage_blob_link,
@@ -388,9 +388,9 @@ resource "azurerm_private_endpoint" "pe-storage" {
   }
 }
 
-resource "azurerm_private_endpoint" "pe-cosmosdb" {
+resource "azurerm_private_endpoint" "pe_cosmosdb" {
   depends_on = [
-    azurerm_private_endpoint.pe-storage,
+    azurerm_private_endpoint.pe_storage,
     azurerm_cosmosdb_account.cosmosdb,
     azurerm_virtual_network.vnet
   ]
@@ -417,9 +417,9 @@ resource "azurerm_private_endpoint" "pe-cosmosdb" {
   }
 }
 
-resource "azurerm_private_endpoint" "pe-aisearch" {
+resource "azurerm_private_endpoint" "pe_aisearch" {
   depends_on = [
-    azurerm_private_endpoint.pe-cosmosdb,
+    azurerm_private_endpoint.pe_cosmosdb,
     azapi_resource.ai_search,
     azurerm_virtual_network.vnet
   ]
@@ -446,9 +446,9 @@ resource "azurerm_private_endpoint" "pe-aisearch" {
   }
 }
 
-resource "azurerm_private_endpoint" "pe-aifoundry" {
+resource "azurerm_private_endpoint" "pe_aifoundry" {
   depends_on = [
-    azurerm_private_endpoint.pe-aisearch,
+    azurerm_private_endpoint.pe_aisearch,
     azapi_resource.ai_foundry,
     azurerm_virtual_network.vnet
   ]
@@ -485,10 +485,10 @@ resource "azurerm_private_endpoint" "pe-aifoundry" {
 resource "azapi_resource" "ai_foundry_project" {
   depends_on = [
     azapi_resource.ai_foundry,
-    azurerm_private_endpoint.pe-storage,
-    azurerm_private_endpoint.pe-cosmosdb,
-    azurerm_private_endpoint.pe-aisearch,
-    azurerm_private_endpoint.pe-aifoundry
+    azurerm_private_endpoint.pe_storage,
+    azurerm_private_endpoint.pe_cosmosdb,
+    azurerm_private_endpoint.pe_aisearch,
+    azurerm_private_endpoint.pe_aifoundry
   ]
 
   type                      = "Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview"

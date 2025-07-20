@@ -203,7 +203,7 @@ resource "azurerm_cognitive_deployment" "aifoundry_deployment_gpt_4o" {
 
 ## Create Private Endpoints for resources
 ##
-resource "azurerm_private_endpoint" "pe-storage" {
+resource "azurerm_private_endpoint" "pe_storage" {
   provider = azurerm.workload_subscription
 
   depends_on = [
@@ -231,11 +231,11 @@ resource "azurerm_private_endpoint" "pe-storage" {
   }
 }
 
-resource "azurerm_private_endpoint" "pe-cosmosdb" {
+resource "azurerm_private_endpoint" "pe_cosmosdb" {
   provider = azurerm.workload_subscription
 
   depends_on = [
-    azurerm_private_endpoint.pe-storage,
+    azurerm_private_endpoint.pe_storage,
     azurerm_cosmosdb_account.cosmosdb
   ]
 
@@ -261,11 +261,11 @@ resource "azurerm_private_endpoint" "pe-cosmosdb" {
   }
 }
 
-resource "azurerm_private_endpoint" "pe-aisearch" {
+resource "azurerm_private_endpoint" "pe_aisearch" {
   provider = azurerm.workload_subscription
 
   depends_on = [
-    azurerm_private_endpoint.pe-cosmosdb,
+    azurerm_private_endpoint.pe_cosmosdb,
     azapi_resource.ai_search
   ]
 
@@ -291,11 +291,11 @@ resource "azurerm_private_endpoint" "pe-aisearch" {
   }
 }
 
-resource "azurerm_private_endpoint" "pe-aifoundry" {
+resource "azurerm_private_endpoint" "pe_aifoundry" {
   provider = azurerm.workload_subscription
 
   depends_on = [
-    azurerm_private_endpoint.pe-aisearch,
+    azurerm_private_endpoint.pe_aisearch,
     azapi_resource.ai_foundry
   ]
 
@@ -333,10 +333,10 @@ resource "azapi_resource" "ai_foundry_project" {
 
   depends_on = [
     azapi_resource.ai_foundry,
-    azurerm_private_endpoint.pe-storage,
-    azurerm_private_endpoint.pe-cosmosdb,
-    azurerm_private_endpoint.pe-aisearch,
-    azurerm_private_endpoint.pe-aifoundry
+    azurerm_private_endpoint.pe_storage,
+    azurerm_private_endpoint.pe_cosmosdb,
+    azurerm_private_endpoint.pe_aisearch,
+    azurerm_private_endpoint.pe_aifoundry
   ]
 
   type                      = "Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview"
