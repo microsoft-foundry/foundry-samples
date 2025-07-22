@@ -25,7 +25,7 @@ resource "azurerm_virtual_network" "vnet" {
   name                = "vnet-agents${random_string.unique.result}"
   location            = var.location
   resource_group_name = azurerm_resource_group.rg.name
-  address_space       = [
+  address_space = [
     var.virtual_network_address_space
   ]
 }
@@ -36,7 +36,7 @@ resource "azurerm_subnet" "subnet_agent" {
   name                 = "agent-subnet"
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [
+  address_prefixes = [
     var.agent_subnet_address_prefix
   ]
   delegation {
@@ -51,7 +51,7 @@ resource "azurerm_subnet" "subnet_pe" {
   name                 = "pe-subnet"
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [
+  address_prefixes = [
     var.private_endpoint_subnet_address_prefix
   ]
 }
@@ -177,7 +177,7 @@ resource "azapi_resource" "ai_foundry" {
 
   body = {
 
-    
+
     kind = "AIServices",
     sku = {
       name = "S0"
@@ -194,7 +194,7 @@ resource "azapi_resource" "ai_foundry" {
       allowProjectManagement = true
 
       # Set custom subdomain name for DNS names created for this Foundry resource
-      customSubDomainName    = "aifoundry${random_string.unique.result}"
+      customSubDomainName = "aifoundry${random_string.unique.result}"
 
       # Network-related controls
       # Disable public access but allow Trusted Azure Services exception
@@ -672,6 +672,22 @@ resource "time_sleep" "wait_rbac" {
 
 ## Create the AI Foundry project capability host
 ##
+
+locals {
+  aiServicesConnections = [
+    azapi_resource.conn_azure_openai.name
+  ]
+  vectorStoreConnections = [
+    azapi_resource.conn_aisearch.name
+  ]
+  storageConnections = [
+    azapi_resource.conn_storage.name
+  ]
+  threadStorageConnections = [
+    azapi_resource.conn_cosmosdb.name
+  ]
+}
+
 resource "azapi_resource" "ai_foundry_project_capability_host" {
   depends_on = [
     azapi_resource.conn_aisearch,
@@ -687,17 +703,20 @@ resource "azapi_resource" "ai_foundry_project_capability_host" {
   body = {
     properties = {
       capabilityHostKind = "Agents"
-      vectorStoreConnections = [
-        azapi_resource.ai_search.name
-      ]
-      storageConnections = [
-        azurerm_storage_account.storage_account.name
-      ]
-      threadStorageConnections = [
-        azurerm_cosmosdb_account.cosmosdb.name
-      ]
+      aiServicesConnections    = local.aiServicesConnections
+      vectorStoreConnections   = local.vectorStoreConnections
+      storageConnections       = local.storageConnections
+      threadStorageConnections = local.threadStorageConnections
     }
   }
+
+  // Capability host can not be updated, and must be replaced if any changes are made
+  replace_triggers_external_values = [
+    local.aiServicesConnections,
+    local.vectorStoreConnections,
+    local.storageConnections,
+    local.threadStorageConnections
+  ]
 }
 
 ## Create the necessary data plane role assignments to the CosmosDb databases created by the AI Foundry Project

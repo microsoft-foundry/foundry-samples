@@ -534,6 +534,21 @@ resource "time_sleep" "wait_rbac" {
 
 ## Create the AI Foundry project capability host
 ##
+
+locals {
+  aiServicesConnections = [
+    azapi_resource.conn_azure_openai.name
+  ]
+  vectorStoreConnections = [
+    azapi_resource.conn_aisearch.name
+  ]
+  storageConnections = [
+    azapi_resource.conn_storage.name
+  ]
+  threadStorageConnections = [
+    azapi_resource.conn_cosmosdb.name
+  ]
+}
 resource "azapi_resource" "ai_foundry_project_capability_host" {
   provider = azapi.workload_subscription
 
@@ -551,17 +566,20 @@ resource "azapi_resource" "ai_foundry_project_capability_host" {
   body = {
     properties = {
       capabilityHostKind = "Agents"
-      vectorStoreConnections = [
-        azapi_resource.ai_search.name
-      ]
-      storageConnections = [
-        azurerm_storage_account.storage_account.name
-      ]
-      threadStorageConnections = [
-        azurerm_cosmosdb_account.cosmosdb.name
-      ]
+      aiServicesConnections    = local.aiServicesConnections
+      vectorStoreConnections   = local.vectorStoreConnections
+      storageConnections       = local.storageConnections
+      threadStorageConnections = local.threadStorageConnections
     }
   }
+  
+  // Capability host can not be updated, and must be replaced if any changes are made
+  replace_triggers_external_values = [
+    local.aiServicesConnections,
+    local.vectorStoreConnections,
+    local.storageConnections,
+    local.threadStorageConnections
+  ]
 }
 
 ## Create the necessary data plane role assignments to the CosmosDb databases created by the AI Foundry Project
