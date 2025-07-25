@@ -22,7 +22,6 @@ resource "azurerm_resource_group" "rg" {
 ## Create the AI Foundry resource
 ##
 resource "azapi_resource" "ai_foundry" {
-
   type                      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name                      = "aifoundry${random_string.unique.result}"
   parent_id                 = azurerm_resource_group.rg.id
