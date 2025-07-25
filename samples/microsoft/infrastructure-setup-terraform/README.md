@@ -13,6 +13,14 @@ Azure AI Agent Service offers three deployment modes optimized for agent workloa
 - Standard Setup with Bring Your Own (BYO) Virtual Network:
     Includes everything in the Standard Setup, with the added ability to operate entirely within your own virtual network. This setup supports Bring Your Own Virtual Network (BYO virtual network), allowing for strict control over data movement and helping prevent data exfiltration by keeping traffic confined to your network environment.
 
+### [00-basic/](./00-basic/README.md)
+
+- Deploys Azure AI Foundry with basic setup
+  - Project and deployment for getting started
+  - Public networking
+  - Microsoft-managed file storage
+  - Microsoft-managed resources for storing Agents threads and messages
+
 ### [15a-private-network-standard-agent-setup/](./15a-private-network-standard-agent-setup/README.md)
 
 - Deploys a Network Secured Standard Agent environment:
