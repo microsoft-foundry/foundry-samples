@@ -1,4 +1,5 @@
 location = "westus3"
+subscription_id = "44444444-4444-4444-4444-444444444444"
 
 # Optional
 virtual_network_address_space = "192.168.0.0/16"

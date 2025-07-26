@@ -92,6 +92,7 @@ Note: The following resources will be created automatically for you:
 The variables listed below [must be provided](https://developer.hashicorp.com/terraform/language/values/variables#variable-definition-precedence) when performing deploying the templates. The file sample-terraform.tfvars provides a sample Terraform variables file that can be used.
 
 - **location** - The Azure region the resources will be deployed to. This must be the same region where the pre-existing virtual network has been deployed to.
+- **subscription_id** - The subscription ID (ex: 44444444-4444-4444-4444-444444444444) that the resources created with this template will be deployed to.
 
 The variables listed below are optional and if not specified will use the defaults as included in the variables.tf file.
 

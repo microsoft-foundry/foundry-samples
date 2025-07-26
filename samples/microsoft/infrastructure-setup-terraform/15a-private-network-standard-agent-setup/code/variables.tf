@@ -21,3 +21,8 @@ variable "location" {
   description = "The name of the location to provision the resources to"
   type        = string
 }
+
+variable "subscription_id" {
+  description = "The subscription id where you are creating the Foundry resource"
+  type        = string
+}
