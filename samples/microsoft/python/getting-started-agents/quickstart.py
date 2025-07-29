@@ -29,9 +29,10 @@ load_dotenv()  # Load environment variables from a .env file
 ## - deploy a gpt-4o model
 
 ## <chat_completion>
-from azure.ai.projects.onedp import AIProjectClient
+from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
-from azure.ai.projects import FileSearchTool
+from azure.ai.agents.models import FileSearchTool
+import os
 
 # Initialize the AIProjectClient with endpoint and credentials
 project_client = AIProjectClient(
