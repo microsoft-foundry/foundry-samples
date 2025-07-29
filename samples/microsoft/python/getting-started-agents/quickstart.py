@@ -85,7 +85,7 @@ if run.status == "failed":
 
 # Fetch and log all messages from the thread
 messages = project_client.agents.messages.list(thread_id=thread.id)
-for message in messages.data:
+for message in messages:
     print(f"Role: {message.role}, Content: {message.content}")
 
 # Delete the agent after use
@@ -96,13 +96,13 @@ print("Deleted agent")
 
 # <create_filesearch_agent>
 # Upload file and create vector store
-file = project.agents.upload_file(file_path="product_info_1.md", purpose="agents")
-vector_store = project.agents.create_vector_store_and_poll(file_ids=[file.id], name="my_vectorstore")
+file = project_client.agents.files.upload_and_poll(file_path="../../data/product_info_1.md", purpose="assistants")
+vector_store = project_client.agents.vector_stores.create_and_poll(file_ids=[file.id], name="my_vectorstore")
 
 # Create file search tool and agent
 file_search = FileSearchTool(vector_store_ids=[vector_store.id])
-agent = project.agents.create_agent(
-    model="gpt-4o",
+agent = project_client.agents.create_agent(
+    model=os.environ["MODEL_DEPLOYMENT_NAME"],  # Model deployment name
     name="my-assistant",
     instructions="You are a helpful assistant and can search information from uploaded files",
     tools=file_search.definitions,
@@ -110,35 +110,21 @@ agent = project.agents.create_agent(
 )
 
 # Create thread and process user message
-thread = project.agents.create_thread()
-project.agents.create_message(thread_id=thread.id, role="user", content="Hello, what Contoso products do you know?")
-run = project.agents.create_and_process_run(thread_id=thread.id, agent_id=agent.id)
+thread = project_client.agents.threads.create()
+project_client.agents.messages.create(thread_id=thread.id, role="user", content="Hello, what Contoso products do you know?")
+run = project_client.agents.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
 
 # Handle run status
 if run.status == "failed":
     print(f"Run failed: {run.last_error}")
 
 # Cleanup resources
-project.agents.delete_vector_store(vector_store.id)
-project.agents.delete_file(file_id=file.id)
-project.agents.delete_agent(agent.id)
+project_client.agents.vector_stores.delete(vector_store.id)
+project_client.agents.files.delete(file_id=file.id)
+project_client.agents.delete_agent(agent.id)
 
 # Print thread messages
-for message in project.agents.list_messages(thread_id=thread.id).text_messages:
+for message in project_client.agents.messages.list(thread_id=thread.id):
     print(message)
 # </create_filesearch_agent>
 
-# <evaluate_agent_run>
-from azure.ai.projects import EvaluatorIds
-
-result = project.evaluation.create_agent_evaluation(
-    thread=thread.id,
-    run=run.id, 
-    evaluators=[EvaluatorIds.AGENT_QUALITY_EVALUATOR])
-
-# wait for evaluation to complete
-result.wait_for_completion()
-
-# result
-print(result.output())
-# </evaluate_agent_run>
