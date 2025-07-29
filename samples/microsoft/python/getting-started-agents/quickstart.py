@@ -38,7 +38,6 @@ import os
 project_client = AIProjectClient(
     endpoint=os.environ["PROJECT_ENDPOINT"],  # Ensure the PROJECT_ENDPOINT environment variable is set
     credential=DefaultAzureCredential(),  # Use Azure Default Credential for authentication
-    api_version="latest",
 )
 
 # Access the Azure OpenAI client for chat completions
