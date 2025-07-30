@@ -536,9 +536,7 @@ resource "time_sleep" "wait_rbac" {
 ##
 
 locals {
-  aiServicesConnections = [
-    azapi_resource.conn_azure_openai.name
-  ]
+  aiServicesConnections = null
   vectorStoreConnections = [
     azapi_resource.conn_aisearch.name
   ]
