@@ -25,7 +25,7 @@ Configuring customer managed keys is performed using a two-step approach, in whi
 
 ## Limitations
 
-* Agent service does not support customer-managed key encryption in the basic setup. To use customer-managed key encryption, you must bring your own storage resources using the standard setup.
+* Agent service does not support customer-managed key encryption in the basic setup. To use customer-managed key encryption, you must [bring your own storage resources using the standard setup](../31-customer-managed-keys-standard-agent/).
 * Post-creation Foundry resources can update from Microsoft-managed key encryption to Customer-managed key encryption. However, updates from customer-managed key encryption to Microsoft-managed key encryption is not supported.
 
 ## Instructions
