@@ -15,12 +15,26 @@ This Azure AI Foundry template example demonstrates how to configure customer-ma
 
 Configuring customer managed keys is performed using a two-step approach, in which first the resource is created without encryption to allow the managed identity to be created. In a second step, the managed identity is assigned access to your key vault and encryption is applied on your resource.
 
+## Prerequisites
+
+* An Azure Key Vault with an existing key, soft delete and purge protection enabled.
+
+## Limitations
+
+* Agent service does not support customer-managed key encryption in the basic setup. To use customer-managed key encryption, you must bring your own storage resources using the standard setup.
+* Post-creation Foundry resources can update from Microsoft-managed key encryption to Customer-managed key encryption. However, updates from customer-managed key encryption to Microsoft-managed key encryption is not supported.
+
+## Instructions
+
 Run the command for BICEP:
 
-az deployment group create --name "{DEPLOYMENT_NAME}" --resource-group "{RESOURCE_GROUP_NAME}" --template-file ./main.bicep --parameters azureKeyVaultName="{KEY_VAULT_NAME}" azureKeyName="{KEY_NAME}" azureKeyVersion="{KEY_VERSION}"
-
-Prerequisites:
-1. An Azure Key Vault with an existing key, soft delete and purge protection enabled
-
-Limitations:
-1. Agent service does not support customer-managed key encryption in the basic setup. To use customer-managed key encryption, you must bring your own storage resources using the standard setup.
+```bash
+az deployment group create \
+--name "{DEPLOYMENT_NAME}" \
+--resource-group "{RESOURCE_GROUP_NAME}" \
+--template-file ./main.bicep \
+--parameters aiFoundryName="{FOUNDRY_NAME} \
+keyVaultName="{KEY_VAULT_NAME}" \
+keyName="{KEY_NAME}" \
+keyVersion="{KEY_VERSION}"
+```

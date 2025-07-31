@@ -1,4 +1,0 @@
-azure-ai-evaluation[redteam] >= 1.8.0
-semantic-kernel
-python-dotenv
-requests

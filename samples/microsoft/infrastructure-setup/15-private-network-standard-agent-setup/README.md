@@ -77,15 +77,21 @@ This implementation gives you full control over the inbound and outbound communi
 1. Review network requirements and plan Virtual Network address space (e.g., 192.168.0.0/16 or an alternative non-overlapping address space)
 
 2. Two subnets are needed as well:  
-    - **Agent Subnet** (e.g., 192.168.0.0/24): Hosts Agent client for Agent workloads 
+    - **Agent Subnet** (e.g., 192.168.0.0/24): Hosts Agent client for Agent workloads, delegated to Microsoft.App/environments
     - **Private endpoint Subnet** (e.g. 192.168.1.0/24): Hosts private endpoints 
-    - Ensure that the address spaces for these subnets do not overlap with any existing networks in your Azure environment
+    - Ensure that the address spaces for these subnets do not overlap with any existing networks in your Azure environment or reserved IP ranges like the following: 169.254.0.0/16, 172.30.0.0/16, 172.31.0.0/16, 192.0.2.0/24, 0.0.0.0/8, 127.0.0.0/8, 100.100.0.0/17, 100.100.192.0/19, 100.100.224.0/19, 10.0.0.0/8.
   
-  > **Note:** If you do not provide an existing virtual network, the template will create a new virtual network with the default address spaces and subnets described above. If you use an existing virtual network, make sure it already contains two subnets (Agent and Private Endpoint) before deploying the template.
+  > **Notes:** 
+  - If you do not provide an existing virtual network, the template will create a new virtual network with the default address spaces and subnets described above. If you use an existing virtual network, make sure it already contains two subnets (Agent and Private Endpoint) before deploying the template.
+  - You must ensure the Foundry account was successfully created so that underlying caphost has also succeeded. Then proceed to deploying the project caphost bicep. 
+  - You must ensure the subnet is not already in use by another account. It must be an exclusive subnet for the Foundry account.
+  - You must ensure the subnet is exclusively delegated to __Microsoft.App/environments__ and cannot be used by any other Azure resources.
 
   **Limitations:**
   - Class A subnet support is only available in a limited number of regions and requires your subscription id be allowlisted. Please reach out to fosteramanda@microsoft.com if you are interested in getting access.
     - Supported regions: West US, East US, East US 2, Central US, Japan East, France Central, [New] Spain Central, [New] UAE North
+  - The capability host sub-resources of Resource/Project must be deleted before deleting the Resource/Project resource itself. You can use the script __deleteCaphost.sh__ located in this folder to delete it.  
+
 
 ### Template Customization
 

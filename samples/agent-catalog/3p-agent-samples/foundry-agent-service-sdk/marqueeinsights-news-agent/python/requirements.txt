@@ -1,6 +1,0 @@
-azure-ai-agents
-azure-identity
-python-dotenv
-
-# test runner
-pytest>=7.0.0

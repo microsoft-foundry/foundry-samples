@@ -124,13 +124,16 @@ az login
 Linux/MacOS
 ```bash
 export ARM_SUBSCRIPTION_ID="YOUR_SUBSCRIPTION_ID"
-terraform apply
 ```
 
 Windows
 ```cmd
 set ARM_SUBSCRIPTION_ID="YOUR_SUBSCRIPTION_ID"
-terraform apply
+```
+
+PowerShell Command Prompt
+```
+$env:ARM_SUBSCRIPTION_ID="YOUR_SUBSCRIPTION_ID"
 ```
 
 4. Initialize Terraform

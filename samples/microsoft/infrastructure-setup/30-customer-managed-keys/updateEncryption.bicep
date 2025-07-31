@@ -24,7 +24,7 @@ param keyVaultPermissions object = {
 }
 
 // Reference account post creation, since we must wait for managed identity to be created to give access to CMK key vault
-resource existingAccount 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = {
+resource existingAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' existing = {
   name: aiFoundryName
 }
 // Reference the existing Key Vault
@@ -48,7 +48,7 @@ resource keyVaultAccessPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2022-0
 }
 
 // Set customer-managed key encryption on account
-resource accountUpdate 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
+resource accountUpdate 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: existingAccount.name
   location: location
   identity: {
@@ -70,7 +70,7 @@ resource accountUpdate 'Microsoft.CognitiveServices/accounts@2025-04-01-preview'
     }
 
     // existing properties
-    publicNetworkAccess: 'Disabled'
+    publicNetworkAccess: 'Enabled'
     allowProjectManagement: true
     customSubDomainName: aiFoundryName
     disableLocalAuth: false

@@ -1,0 +1,1477 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "API",
+    "license": {
+      "name": "LexisNexis all rights reserved. It is published for informational use only and is subject to change."
+    },
+    "version": "",
+    "description": "Content API for accessing Lexis Nexis data. This API provides access to LexisNexis data and services, including cases, dockets, and other legal information. The API allows users to search for and retrieve legal documents, as well as access metadata and other related information. The API is designed for developers and legal professionals who need programmatic access to LexisNexis data."
+  },
+  "servers": [
+    {
+      "url": "https://services-api.lexisnexis.com/v1"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuthHeader": []
+    }
+  ],
+  "paths": {
+    "/Cases": {
+      "get": {
+        "operationId": "getCases",
+        "summary": "Retrieve Cases",
+        "description": "Get documents cases based on the provided query parameters such as `$search`, `$orderby`, etc.",
+        "tags": [
+          "API"
+        ],
+        "parameters": [
+          {
+            "name": "$search",
+            "in": "query",
+            "required": true,
+            "allowReserved": true,
+            "description": "The Cases resource can be searched using the $search query string parameter.</br> </br>Additionally, it is possible to use the following segments to construct your search&colon; attorney, cite, concur, concurby, core-terms, court, disposition, dissent, dissentby, headnotes, history, judges, ln-summary, load-date, name, number, opinion, opinionby, outcome, overview, summary, writtenby, jurisinfo, courtcode, nohnsummary, ml-load-date, lngi",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "$expand",
+            "in": "query",
+            "explode": false,
+            "style": "form",
+            "description": "A navigation property name which will be included with the current result set.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "LNGI",
+                  "Document",
+                  "Source",
+                  "PostFilters",
+                  "AppliedPostFilter"
+                ]
+              }
+            }
+          },
+          {
+            "name": "$orderby",
+            "in": "query",
+            "explode": false,
+            "style": "form",
+            "description": "The Cases resource can be sorted by any of the listed properties, in accordance with the standard sorting behavior. By default, results will be sorted by relevance in the absence of the $orderby query string parameter.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Jurisdiction desc",
+                "Jurisdiction asc",
+                "Court desc",
+                "Court asc",
+                "Attorney desc",
+                "Attorney asc",
+                "LawFirm desc",
+                "LawFirm asc",
+                "Judge desc",
+                "Judge asc",
+                "PublicationStatus desc",
+                "PublicationStatus asc",
+                "Date desc",
+                "Date asc",
+                "Title desc",
+                "Title asc"
+              ]
+            }
+          },
+          {
+            "name": "$skip",
+            "in": "query",
+            "allowReserved": true,
+            "description": "Sets the starting result index for the request.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "$top",
+            "in": "query",
+            "allowReserved": true,
+            "description": "Sets the maximum number of results to receive for this request.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "$select",
+            "in": "query",
+            "description": "Select specific fields as a comma-separated string. Valid values include:",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Jurisdiction",
+                "Court",
+                "Attorney",
+                "LawFirm",
+                "Judge",
+                "PublicationStatus",
+                "MostCited",
+                "LNGI",
+                "LoadDate",
+                "LastUpdateDate",
+                "Document",
+                "ResultId",
+                "SearchType",
+                "Source",
+                "Topic",
+                "PracticeArea",
+                "Date",
+                "Keyword",
+                "PostFilters",
+                "AppliedPostFilter",
+                "Title",
+                "DocumentContent",
+                "Overview",
+                "Extracts",
+                "IsCitationMatch",
+                "SourcePath"
+              ]
+            },
+            "example": "Title,Date,Source"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok. Request is successfully completed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseSearchResult"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. Indicates too many requests have been sent in a given amount of time (throttle limit exceeded).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Dockets": {
+      "get": {
+        "operationId": "getDockets",
+        "summary": "Retrieve Dockets",
+        "description": "Get documents of dockets based on the provided query parameters such as `$search`, `$orderby`, etc.",
+        "tags": [
+          "API"
+        ],
+        "parameters": [
+          {
+            "name": "$search",
+            "in": "query",
+            "required": true,
+            "allowReserved": true,
+            "description": "The Dockets resource can be searched using the $search query string parameter.</br> </br>Additionally, it is possible to use the following segments to construct your search&colon; attorney, court, firm, judges, name, number, datefiled, litigant-clean-name, attorney-clean-name, lawfirm-clean-name, proceeding-section-keyword-search, nature-of-suit, statute, cause, courtkey, charges, patent-number, patent-class, patent-sub-class, class-action, chapter, disposition, load-date, jurisinfo, plaintiff-litigant-clean-name, defendant-litigant-clean-name, others-litigant-clean-name, plaintiff-attorney-clean-name, defendant-attorney-clean-name, others-attorney-clean-name, plaintiff-lawfirm-clean-name, defendant-lawfirm-clean-name, others-lawfirm-clean-name, judge-clean-name, plaintiff-litigant, defendant-litigant, others-litigant, plaintiff-attorney, defendant-attorney, others-attorney, plaintiff-lawfirm, defendant-lawfirm, others-lawfirm, trustee, ssn, ein, itin, ml-load-date, lngi",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "$expand",
+            "in": "query",
+            "explode": false,
+            "style": "form",
+            "description": "A navigation property name which will be included with the current result set.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "DocumentParts",
+                  "Document",
+                  "LNGI",
+                  "Source",
+                  "PostFilters",
+                  "AppliedPostFilter"
+                ]
+              }
+            }
+          },
+          {
+            "name": "$orderby",
+            "in": "query",
+            "explode": false,
+            "style": "form",
+            "description": "The Dockets resource can be sorted by any of the listed properties. By default, results will be sorted by relevance in the absence of the $orderby query string parameter.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Court desc",
+                "Court asc",
+                "Date desc",
+                "Date asc",
+                "Title desc",
+                "Title asc"
+              ]
+            }
+          },
+          {
+            "name": "$skip",
+            "in": "query",
+            "allowReserved": true,
+            "description": "Sets the starting result index for the request.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "$top",
+            "in": "query",
+            "allowReserved": true,
+            "description": "Sets the maximum number of results to receive for this request.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0,
+              "maximum": 50
+            }
+          },
+            {
+            "name": "$select",
+            "in": "query",
+            "description": "Select specific fields as a comma-separated string. Valid values include:",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Jurisdiction",
+                "Court",
+                "Attorney",
+                "LawFirm",
+                "Judge",
+                "PublicationStatus",
+                "MostCited",
+                "LNGI",
+                "LoadDate",
+                "LastUpdateDate",
+                "Document",
+                "ResultId",
+                "SearchType",
+                "Source",
+                "Topic",
+                "PracticeArea",
+                "Date",
+                "Keyword",
+                "PostFilters",
+                "AppliedPostFilter",
+                "Title",
+                "DocumentContent",
+                "Overview",
+                "Extracts",
+                "IsCitationMatch",
+                "SourcePath"
+              ]
+            },
+            "example": "Title,Date,Source"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok. Request is successfully completed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocketsSearchResult"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. Indicates too many requests have been sent in a given amount of time (throttle limit exceeded).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuthHeader": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Error code"
+          },
+          "message": {
+            "type": "string",
+            "description": "Error Descrption"
+          }
+        }
+      },
+      "CaseSearchResult": {
+        "type": "object",
+        "properties": {
+          "Jurisdiction": {
+            "type": "string",
+            "description": "The jurisdiction of the case.",
+            "format": "string"
+          },
+          "Court": {
+            "type": "string",
+            "nullable": true,
+            "description": "The court of the case.",
+            "format": "string"
+          },
+          "Attorney": {
+            "type": "string",
+            "nullable": true,
+            "description": "Name of the Attorney that handles the case. This property is used for filtering, will be populated with the Attorney Name related to the Case.",
+            "format": "string"
+          },
+          "LawFirm": {
+            "type": "string",
+            "nullable": true,
+            "description": "Name of the Law Firm that handles the case. This property is used for filtering, will be populated with the Law Firm Name related to the Case.",
+            "format": "string"
+          },
+          "Judge": {
+            "type": "string",
+            "nullable": true,
+            "description": "Name of the Judge hear and decide the case. This property is used for filtering, will be populated with the Judge Name related to the Case.",
+            "format": "string"
+          },
+          "PublicationStatus": {
+            "type": "string",
+            "nullable": true,
+            "description": "The publication status of the case.  This property is typically only used for filtering, and won't be populated in the search results",
+            "format": "string"
+          },
+          "MostCited": {
+            "type": "string",
+            "nullable": true,
+            "description": "The MostCited/Citerefdef of the case. This property is typically only used for filtering, and won't be populated in the search results.",
+            "format": "string"
+          },
+          "LNGI": {
+            "$ref": "#/components/schemas/LexisNexisGlobalIdentifier"
+          },
+          "LoadDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "The loaddate of the Cases document.",
+            "format": "string"
+          },
+          "LastUpdateDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "The LastUpdateDate of the Cases document.",
+            "format": "string"
+          },
+          "Document": {
+            "$ref": "#/components/schemas/Document"
+          },
+          "ResultId": {
+            "type": "string",
+            "description": "The search result identifier.  This will typically also be the identity of the document associated with this search result.",
+            "format": "string"
+          },
+          "SearchType": {
+            "$ref": "#/components/schemas/SearchType"
+          },
+          "Source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "Topic": {
+            "$ref": "#/components/schemas/Topic"
+          },
+          "PracticeArea": {
+            "$ref": "#/components/schemas/PracticeArea"
+          },
+          "Date": {
+            "type": "string",
+            "nullable": true,
+            "description": "The publication date.",
+            "format": "date-time"
+          },
+          "Keyword": {
+            "type": "string",
+            "nullable": true,
+            "description": "A keyword which is used to refine the search.  Search terms should typically be entered using the $search query string parameter, and the set of available keywords is returned in the PostFilter collection.",
+            "format": "string"
+          },
+          "PostFilters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CasePostFilter"
+            }
+          },
+          "AppliedPostFilter": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppliedPostFilter"
+            }
+          },
+          "Title": {
+            "type": "string",
+            "description": "The title of the search result's document.",
+            "format": "string"
+          },
+          "DocumentContent@odata.mediaContentType": {
+            "type": "string",
+            "description": "Content-type of the document associated with this result",
+            "format": "content-type"
+          },
+          "DocumentContent@odata.mediaReadLink": {
+            "type": "string",
+            "description": "A reference to the content of the document associated with this search result.",
+            "format": "URL"
+          },
+          "Overview": {
+            "type": "string",
+            "nullable": true,
+            "description": "Contains the overview of the contents within the document.",
+            "format": "string"
+          },
+          "Extracts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SummaryDetails"
+            }
+          },
+          "IsCitationMatch": {
+            "type": "boolean",
+            "description": "True if this result has a legal citation that matches the search terms, otherwise false."
+          },
+          "SourcePath": {
+            "type": "string",
+            "nullable": true,
+            "description": "None",
+            "format": "string"
+          }
+        }
+      },      
+      "CasePostFilter": {
+        "type": "object",
+        "description": "The list of post-filters which can be used to further refine the search.  These are only available if requested via the `$expand` keyword, and cannot be lazy-loaded.",
+        "properties": {
+          "PostFilterId": {
+            "type": "string",
+            "description": "None",
+            "format": "string"
+          },
+          "FilterItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PostFilterItem"
+            }
+          }
+        }
+      },      
+      "DocketsSearchResult": {
+        "type": "object",
+        "properties": {
+          "DocketNumber": {
+            "type": "string",
+            "description": "The docket number of the Dockets data.",
+            "format": "string"
+          },
+          "ContentType": {
+            "type": "string",
+            "description": "The content type of the Dockets data.",
+            "format": "string"
+          },
+          "Court": {
+            "type": "string",
+            "nullable": true,
+            "description": "The federal and state courts of the dockets data.",
+            "format": "string"
+          },
+          "CourtFederal": {
+            "type": "string",
+            "nullable": true,
+            "description": "The inner courts for the applied Federal courts.",
+            "format": "string"
+          },
+          "CourtState": {
+            "type": "string",
+            "nullable": true,
+            "description": "The inner courts for the applied State courts.",
+            "format": "string"
+          },
+          "CourtId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The Id of the court.",
+            "format": "string"
+          },
+          "CourtLinkCourt": {
+            "type": "string",
+            "nullable": true,
+            "description": "The CourtLink Court of the dockets data.  This property is only used for filtering Dockets, and won't be populated in search results.",
+            "format": "string"
+          },
+          "AttorneyPlaintiff": {
+            "type": "string",
+            "nullable": true,
+            "description": "The attorney representing the plaintiff on the docket. This property is used for filtering, and is available in the PlaintiffDefendants list.",
+            "format": "string"
+          },
+          "AttorneyDefendant": {
+            "type": "string",
+            "nullable": true,
+            "description": "The attorney representing the defendant on the docket. This property is used for filtering, and is available in the PlaintiffDefendants list.",
+            "format": "string"
+          },
+          "AttorneyOther": {
+            "type": "string",
+            "nullable": true,
+            "description": "The attorney on the docket not listed under the Plaintiff or Defendant. This property is typically only used for filtering, and won't be populated in the search results",
+            "format": "string"
+          },
+          "LawFirmPlaintiff": {
+            "type": "string",
+            "nullable": true,
+            "description": "The lawfirm representing the plaintiff on the docket. This property is used for filtering, and is available in the PlaintiffDefendants list.",
+            "format": "string"
+          },
+          "LawFirmDefendant": {
+            "type": "string",
+            "nullable": true,
+            "description": "The lawfirm representing the defendant on the docket. This property is used for filtering, and is available in the PlaintiffDefendants list.",
+            "format": "string"
+          },
+          "LawFirmOther": {
+            "type": "string",
+            "nullable": true,
+            "description": "The lawfirm on the docket not listed under the Plaintiff or Defendant. This property is used for filtering, and is available in the PlaintiffDefendants list.",
+            "format": "string"
+          },
+          "Judge": {
+            "type": "string",
+            "nullable": true,
+            "description": "Name of the Judge hear and decide the case. This property is used for filtering, will be populated with the Judge Name related to the Case.",
+            "format": "string"
+          },
+          "LitigantPlaintiff": {
+            "type": "string",
+            "nullable": true,
+            "description": "The plaintiff on the docket.  This property is used for filtering, and is available in the PlaintiffDefendants list.",
+            "format": "string"
+          },
+          "LitigantDefendant": {
+            "type": "string",
+            "nullable": true,
+            "description": "The defendant on the docket.  This property is used for filtering, and is available in the PlaintiffDefendants list.",
+            "format": "string"
+          },
+          "LitigantOther": {
+            "type": "string",
+            "nullable": true,
+            "description": "The litigant on the docket that is not the Plaintiff or Defendant.  This property is used for filtering, and is available in the PlaintiffDefendants list.",
+            "format": "string"
+          },
+          "CaseStatus": {
+            "type": "string",
+            "nullable": true,
+            "description": "The casestatus of the dockets data. This property is typically only used for filtering, and won't be populated in the search results",
+            "format": "string"
+          },
+          "CourtLinkCaseStatus": {
+            "$ref": "#/components/schemas/CourtLinkCaseStatus"
+          },
+          "DocketChapter": {
+            "type": "string",
+            "nullable": true,
+            "description": "The chapter associated with a dockets data from a Bankruptcy or a Bankruptcy Adversary Proceedings. This property is typically only used for filtering, and will not be populated in the search results.",
+            "format": "string"
+          },
+          "ClassAction": {
+            "type": "string",
+            "nullable": true,
+            "description": "The ClassAction of the dockets data. This property is typically only used for filtering, and won't be populated in the search results",
+            "format": "string"
+          },
+          "NaturesOfSuit": {
+            "$ref": "#/components/schemas/NatureOfSuitItem"
+          },
+          "NosCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "The natures of suit codes the dockets data. This property is only used for filtering using the code value alone.",
+            "format": "string"
+          },
+          "Cause": {
+            "type": "string",
+            "nullable": true,
+            "description": "The cause of the dockets data. This property is typically only used for filtering, and won't be populated in the search results",
+            "format": "string"
+          },
+          "Participants": {
+            "type": "array",
+            "description": "The Participants who are part of the dockets data. This property is not used for filtering, and will be populated in the search results",
+            "items": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "Debtors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Debtor"
+            }
+          },
+          "Charges": {
+            "type": "array",
+            "description": "The charges associated with a dockets data from a Criminal Court. This property cannot be used for filtering, and will be populated in the search results.",
+            "items": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "CaseType": {
+            "type": "string",
+            "nullable": true,
+            "description": "The casetype of the dockets data. This property is typically only used for filtering, and won't be populated in the search results.  This case type is only for certain courts.",
+            "format": "string"
+          },
+          "CourtLinkCaseType": {
+            "type": "string",
+            "nullable": true,
+            "description": "The Courtlink specific casetype of the dockets data. This property is typically only used for filtering, and won't be populated in the search results",
+            "format": "string"
+          },
+          "CourtLinkCaseTypeCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "The Courtlink specific casetype code of the dockets data. This property is typically only used for filtering, and won't be populated in the search results",
+            "format": "string"
+          },
+          "LitigationArea": {
+            "type": "string",
+            "nullable": true,
+            "description": "The litigationarea of the dockets data. This property is typically only used for filtering, and won't be populated in the search results",
+            "format": "string"
+          },
+          "JudgmentData": {
+            "type": "string",
+            "nullable": true,
+            "description": "The judgmentdata of the dockets data. This property is typically only used for filtering, and won't be populated in the search results",
+            "format": "string"
+          },
+          "Publisher": {
+            "type": "string",
+            "nullable": true,
+            "description": "The publisher of the dockets data.",
+            "format": "string"
+          },
+          "MeetingSchedule341": {
+            "type": "string",
+            "nullable": true,
+            "description": "The MeetingSchedule341 of the dockets data. This property is typically only used for filtering, and won't be populated in the search results",
+            "format": "string"
+          },
+          "DocumentParts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentPart"
+            }
+          },
+          "Document": {
+            "$ref": "#/components/schemas/Document"
+          },
+          "Trustees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Trustee"
+            }
+          },
+          "AttorneyAddress": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttorneyAddress"
+            }
+          },
+          "Assets": {
+            "type": "string",
+            "nullable": true,
+            "description": "The Assets of the dockets data.",
+            "format": "string"
+          },
+          "PlaintiffDefendants": {
+            "$ref": "#/components/schemas/PlaintiffDefendant"
+          },
+          "LNGI": {
+            "$ref": "#/components/schemas/LexisNexisGlobalIdentifier"
+          },
+          "LastUpdateDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "The LastUpdateDate of the dockets document.",
+            "format": "string"
+          },
+          "AISummary": {
+            "type": "string",
+            "nullable": true,
+            "description": "The Summary generated by the dockets document.",
+            "format": "string"
+          },
+          "ResultId": {
+            "type": "string",
+            "description": "The search result identifier.  This will typically also be the identity of the document associated with this search result.",
+            "format": "string"
+          },
+          "SearchType": {
+            "$ref": "#/components/schemas/SearchType"
+          },
+          "Source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "Topic": {
+            "$ref": "#/components/schemas/Topic"
+          },
+          "PracticeArea": {
+            "$ref": "#/components/schemas/PracticeArea"
+          },
+          "Date": {
+            "type": "string",
+            "nullable": true,
+            "description": "The publication date.",
+            "format": "date-time"
+          },
+          "Keyword": {
+            "type": "string",
+            "nullable": true,
+            "description": "A keyword which is used to refine the search.  Search terms should typically be entered using the $search query string parameter, and the set of available keywords is returned in the PostFilter collection.",
+            "format": "string"
+          },
+          "PostFilters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocketsPostFilter"
+            }
+          },
+          "AppliedPostFilter": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppliedPostFilter"
+            }
+          },
+          "Title": {
+            "type": "string",
+            "description": "The title of the search result's document.",
+            "format": "string"
+          },
+          "DocumentContent@odata.mediaContentType": {
+            "type": "string",
+            "description": "Content-type of the document associated with this result",
+            "format": "content-type"
+          },
+          "DocumentContent@odata.mediaReadLink": {
+            "type": "string",
+            "description": "A reference to the content of the document associated with this search result.",
+            "format": "URL"
+          },
+          "Overview": {
+            "type": "string",
+            "nullable": true,
+            "description": "Contains the overview of the contents within the document.",
+            "format": "string"
+          },
+          "Extracts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SummaryDetails"
+            }
+          },
+          "IsCitationMatch": {
+            "type": "boolean",
+            "description": "True if this result has a legal citation that matches the search terms, otherwise false."
+          },
+          "SourcePath": {
+            "type": "string",
+            "nullable": true,
+            "description": "None",
+            "format": "string"
+          }
+        }
+      },
+      "CourtLinkCaseStatus": {
+        "type": "string",
+        "description": "The casestatus of the dockets data. This property is typically only used for filtering, and won't be populated in the search results\n  * `Open`  \n\n  * `Closed`  \n\n  * `Unknown`  \n\n  * `Undefined`  \n",
+        "enum": [
+          "Open",
+          "Closed",
+          "Unknown",
+          "Undefined"
+        ]
+      },
+      "NatureOfSuitItem": {
+        "type": "object",
+        "description": "The natures of suit codes and description of the dockets data. This property may be populated in the search results depending on the court.",
+        "properties": {
+          "Code": {
+            "type": "string",
+            "description": "The Nature Of Suit code within the document.",
+            "format": "string"
+          },
+          "Description": {
+            "type": "string",
+            "description": "The Nature Of Suit description within the document.",
+            "format": "string"
+          }
+        }
+      },
+      "Debtor": {
+        "type": "object",
+        "description": "For a bankruptcy docket, the debtors associated with the case. This property is not used for filtering, and will be populated in the search results",
+        "properties": {
+          "Name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Debtor's name.",
+            "format": "string"
+          },
+          "Address1": {
+            "type": "string",
+            "nullable": true,
+            "description": "Street address line 1.",
+            "format": "string"
+          },
+          "Address2": {
+            "type": "string",
+            "nullable": true,
+            "description": "Street address line 2.",
+            "format": "string"
+          },
+          "City": {
+            "type": "string",
+            "nullable": true,
+            "description": "City.",
+            "format": "string"
+          },
+          "State": {
+            "type": "string",
+            "nullable": true,
+            "description": "State.",
+            "format": "string"
+          },
+          "ZipCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "ZIP code.",
+            "format": "string"
+          },
+          "RedactedSSN": {
+            "type": "string",
+            "nullable": true,
+            "description": "Last four digits of the Social Security Number.",
+            "format": "string"
+          },
+          "PhoneNumber": {
+            "type": "string",
+            "nullable": true,
+            "description": "Debtor's phone number.",
+            "format": "string"
+          }
+        }
+      },
+      "DocumentPart": {
+        "type": "object",
+        "description": "A list of document parts.  Large documents can be split into multiple parts that must be requested separately.",
+        "properties": {
+          "Title": {
+            "type": "string",
+            "description": "The title of the document part",
+            "format": "string"
+          },
+          "Document@odata.mediaContentType": {
+            "type": "string",
+            "description": "Content-type of the document associated with this result",
+            "format": "content-type"
+          },
+          "Document@odata.mediaReadLink": {
+            "type": "string",
+            "description": "A reference to the content of the document part",
+            "format": "URL"
+          }
+        }
+      },
+      "Document": {
+        "type": "object",
+        "description": "The document including its content associated with this search result.  This is only available if requested via the `$expand` keyword, and cannot be lazy-loaded.",
+        "properties": {
+          "DocumentId": {
+            "type": "string",
+            "description": "The document identifier.",
+            "format": "string"
+          },
+          "DocumentIdType": {
+            "type": "string",
+            "description": "Modifies the interpretation of the `DocumentId` property for various classes of document identifier.  If absent, a default value is applied which is appropriate for all of the document identifiers exposed by LexisNexis Web Services API. Potential values are found in the DocumentIdType enumeration, but OData protocol restrictions prevent this enumeration from being referenced directly.",
+            "format": "string"
+          },
+          "Content": {
+            "type": "string",
+            "nullable": true,
+            "description": "If the Document is not being queried as a Media Link Entry, the Content property contains the XML body of the document.",
+            "format": "string"
+          },
+          "Citation": {
+            "type": "string",
+            "nullable": true,
+            "description": "The Citation property can be used in order to look up document results by citation.  This can result in zero or more document results.",
+            "format": "string"
+          }
+        }
+      },
+      "Trustee": {
+        "type": "object",
+        "description": "The Trustee associated with the case. This property is not used for filtering, and will be populated in the search results",
+        "properties": {
+          "Name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Name of the Trustee who are part of the dockets data.",
+            "format": "string"
+          },
+          "Address1": {
+            "type": "string",
+            "nullable": true,
+            "description": "Street address line 1 of the Trustee.",
+            "format": "string"
+          },
+          "Address2": {
+            "type": "string",
+            "nullable": true,
+            "description": "Street address line 2 of the Trustee.",
+            "format": "string"
+          },
+          "City": {
+            "type": "string",
+            "nullable": true,
+            "description": "The City of the Trustee.",
+            "format": "string"
+          },
+          "State": {
+            "type": "string",
+            "nullable": true,
+            "description": "The State of the Trustee.",
+            "format": "string"
+          },
+          "ZipCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "The ZIP code of the Trustee.",
+            "format": "string"
+          },
+          "AddedDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "Trustee Date added.",
+            "format": "string"
+          },
+          "TerminatedDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "Trustee Date terminated.",
+            "format": "string"
+          },
+          "PhoneNumber": {
+            "type": "string",
+            "nullable": true,
+            "description": "Trustee phone number.",
+            "format": "string"
+          }
+        }
+      },
+      "AttorneyAddress": {
+        "type": "object",
+        "description": "The AttorneyAddress including its content associated with this search result.  This is only available if requested via the `$expand` keyword, and cannot be lazy-loaded.",
+        "properties": {
+          "Name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Name of the Attorney who are part of the dockets data.",
+            "format": "string"
+          },
+          "Address": {
+            "type": "string",
+            "nullable": true,
+            "description": "The Address of the Attorney.",
+            "format": "string"
+          },
+          "City": {
+            "type": "string",
+            "nullable": true,
+            "description": "The City of the Attorney.",
+            "format": "string"
+          },
+          "State": {
+            "type": "string",
+            "nullable": true,
+            "description": "The State of the Attorney.",
+            "format": "string"
+          },
+          "ZipCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "The ZIP code of the Attorney.",
+            "format": "string"
+          },
+          "PhoneNumber": {
+            "type": "string",
+            "nullable": true,
+            "description": "Attorney phone number.",
+            "format": "string"
+          }
+        }
+      },
+      "PlaintiffDefendant": {
+        "type": "object",
+        "description": "List of the Plaintiff's and Defendant's Attorneys, Law Firms and Litigants on the docket. This property is not used for filtering, and will be populated in the search results",
+        "properties": {
+          "AttorneyPlaintiff": {
+            "type": "array",
+            "description": "The attorney plaintiff of the dockets data. This property is typically only used for filtering, and won't be populated in the search results",
+            "items": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "AttorneyDefendant": {
+            "type": "array",
+            "description": "The attorney defendant of the dockets data. This property is typically only used for filtering, and won't be populated in the search results",
+            "items": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "AttorneyOther": {
+            "type": "array",
+            "description": "The attorney other of the dockets data. This property is typically only used for filtering, and won't be populated in the search results",
+            "items": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "LawFirmPlaintiff": {
+            "type": "array",
+            "description": "The lawfirm plaintiff of the dockets data. This property is typically only used for filtering, and won't be populated in the search results",
+            "items": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "LawFirmDefendant": {
+            "type": "array",
+            "description": "The lawfirm defendant of the dockets data. This property is typically only used for filtering, and won't be populated in the search results",
+            "items": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "LawFirmOther": {
+            "type": "array",
+            "description": "The lawfirm other of the dockets data. This property is typically only used for filtering, and won't be populated in the search results",
+            "items": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "LitigantPlaintiff": {
+            "type": "array",
+            "description": "The litigant plaintiff of the dockets data.  This property is typically only used for filtering, and won't be populated in the search results",
+            "items": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "LitigantDefendant": {
+            "type": "array",
+            "description": "The litigant defendant of the dockets data.  This property is typically only used for filtering, and won't be populated in the search results",
+            "items": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "LitigantOther": {
+            "type": "array",
+            "description": "The litigant other of the dockets data.  This property is typically only used for filtering, and won't be populated in the search results",
+            "items": {
+              "type": "string",
+              "format": "string"
+            }
+          }
+        }
+      },
+      "LexisNexisGlobalIdentifier": {
+        "type": "object",
+        "description": "LNGI Identifier of the company releated to the dockets document.",
+        "properties": {
+          "Name": {
+            "type": "string",
+            "description": "Name of the global identifiers.",
+            "format": "string"
+          },
+          "Court": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LNGIList"
+            }
+          },
+          "Companies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LNGIList"
+            }
+          },
+          "Attorneys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LNGIList"
+            }
+          },
+          "LawFirms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LNGIList"
+            }
+          },
+          "Judges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LNGIList"
+            }
+          },
+          "Geography": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LNGIList"
+            }
+          }
+        }
+      },
+      "SearchType": {
+        "type": "string",
+        "description": "The search method which is used to execute the query.\n  * `DynamicAnd` - Dynamic searches will analyze the search terms for its format.  Search terms will only be matched as a group, so a search for \"house boat\" will not include results which only contain \"house\" or \"boat\". \n\n  * `DynamicOr` - Dynamic searches will analyze the search terms for its format.  Search terms will be used both individually and as a group, so a search for \"house boat\" will also include results which only contain \"house\" or \"boat\". \n\n  * `NaturalLanguageOr` - Executes a search using a natural language parser.  Search terms will be used both individually and as a group. \n\n  * `NaturalLanguageAnd` - Executes a search using a natural language parser.  Search terms will be used only as a group. \n\n  * `Boolean` - Executes a search using a boolean parser. \n",
+        "enum": [
+          "DynamicAnd",
+          "DynamicOr",
+          "NaturalLanguageOr",
+          "NaturalLanguageAnd",
+          "Boolean"
+        ]
+      },
+      "Source": {
+        "type": "object",
+        "description": "The content source that is searched.  This property is typically only used for filtering, and won't be populated in the search results.",
+        "properties": {
+          "Id": {
+            "type": "string",
+            "description": "The identifier for this source.",
+            "format": "string"
+          },
+          "Geography": {
+            "type": "string",
+            "nullable": true,
+            "description": "Region of the Source. Use $expand=Filters to get the list of available Geographies for the user.",
+            "format": "string"
+          },
+          "Name": {
+            "type": "string",
+            "description": "The name for this source.",
+            "format": "string"
+          },
+          "ContentType": {
+            "type": "string",
+            "description": "The content type for this source.",
+            "format": "string"
+          },
+          "Jurisdiction": {
+            "type": "string",
+            "nullable": true,
+            "description": "The jurisdiction for this source. This property is only used for filtering, and won't be populated in the source results.",
+            "format": "string"
+          },
+          "Publisher": {
+            "type": "string",
+            "nullable": true,
+            "description": "The publisher for this source. This property is only used for filtering, and won't be populated in the source results.",
+            "format": "string"
+          },
+          "AlphaCategory": {
+            "type": "string",
+            "nullable": true,
+            "description": "The alphabetical category for this source. This property is only used for filtering, and won't be populated in the source results.",
+            "format": "string"
+          },
+          "PublishFrequency": {
+            "type": "string",
+            "nullable": true,
+            "description": "The frequency at which this source gets published.",
+            "format": "string"
+          },
+          "Coverage": {
+            "type": "string",
+            "nullable": true,
+            "description": "The dates covered by content from this source.",
+            "format": "string"
+          },
+          "UpdateSchedule": {
+            "type": "string",
+            "nullable": true,
+            "description": "The schedule for when this source is updated.",
+            "format": "string"
+          },
+          "Description": {
+            "type": "string",
+            "nullable": true,
+            "description": "The description for this source.",
+            "format": "string"
+          },
+          "PracticeArea": {
+            "$ref": "#/components/schemas/PracticeArea"
+          },
+          "Filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceFilter"
+            }
+          }
+        }
+      },
+      "Topic": {
+        "type": "object",
+        "description": "The topic that is searched.  This property is typically only used for filtering, and won't be populated in the search results.",
+        "properties": {
+          "Id": {
+            "type": "string",
+            "description": "None",
+            "format": "string"
+          },
+          "Name": {
+            "type": "string",
+            "description": "The name of this legal topic",
+            "format": "string"
+          }
+        }
+      },
+      "PracticeArea": {
+        "type": "object",
+        "description": "The practice area that is searched.  This property is typically only used for filtering, and won't be populated in the source results.",
+        "properties": {
+          "Id": {
+            "type": "string",
+            "description": "The identifier for this practice area.",
+            "format": "string"
+          },
+          "Name": {
+            "type": "string",
+            "description": "The name of the practice area.",
+            "format": "string"
+          },
+          "Geography": {
+            "type": "string",
+            "description": "Contains the geography of the practice area.",
+            "format": "string"
+          },
+          "Topics@odata.navigationLink": {
+            "type": "string",
+            "description": "The list of legal topics which are part of this practice area",
+            "format": "URL"
+          }
+        }
+      },
+      "DocketsPostFilter": {
+        "type": "object",
+        "description": "The list of post-filters which can be used to further refine the search.  These are only available if requested via the `$expand` keyword, and cannot be lazy-loaded.",
+        "properties": {
+          "PostFilterId": {
+            "type": "string",
+            "description": "None",
+            "format": "string"
+          },
+          "FilterItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PostFilterItem"
+            }
+          }
+        }
+      },
+      "AppliedPostFilter": {
+        "type": "object",
+        "description": "The list of applied post-filters which were applied to the search.  These are only available if requested via the `$expand` keyword, and cannot be lazy-loaded.",
+        "properties": {
+          "PostFilterName": {
+            "type": "string",
+            "description": "The Name of the Postfilter for this AppliedFilter.",
+            "format": "string"
+          },
+          "Name": {
+            "type": "string",
+            "description": "The name of the Postfilter Item for this AppliedFilter.",
+            "format": "string"
+          },
+          "Id": {
+            "type": "string",
+            "description": "The identifier of the Postfilter Item for this AppliedFilter.",
+            "format": "string"
+          },
+          "Count": {
+            "type": "integer",
+            "nullable": true,
+            "description": "The number of documents which will be matched if this filter is added to the current search.",
+            "format": "int32"
+          }
+        }
+      },
+      "SummaryDetails": {
+        "type": "object",
+        "description": "Contains a collection of relevant extracts within the document.",
+        "properties": {
+          "Type": {
+            "$ref": "#/components/schemas/SummaryType"
+          },
+          "SummaryText": {
+            "type": "string",
+            "description": "The matched relevant extract within the document.",
+            "format": "string"
+          }
+        }
+      },
+      "LNGIList": {
+        "type": "object",
+        "description": "LNGI identifier of Geography",
+        "properties": {
+          "Id": {
+            "type": "string",
+            "description": "LNGI identifier of Company",
+            "format": "string"
+          },
+          "Name": {
+            "type": "string",
+            "description": "Name of Company",
+            "format": "string"
+          }
+        }
+      },
+      "SourceFilter": {
+        "type": "object",
+        "description": "The list of filters which can be used to further refine the search. These are only available if requested via the `$expand` keyword, and cannot be lazy-loaded.",
+        "properties": {
+          "SourceFilterItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceFilterItem"
+            }
+          },
+          "FilterName": {
+            "type": "string",
+            "description": "None",
+            "format": "string"
+          },
+          "FilterField": {
+            "$ref": "#/components/schemas/FilterField"
+          }
+        }
+      },
+      "PostFilterItem": {
+        "type": "object",
+        "properties": {
+          "Id": {
+            "type": "string",
+            "description": "The identifier for the post filter.",
+            "format": "string"
+          },
+          "Name": {
+            "type": "string",
+            "description": "The textual description of the filter.",
+            "format": "string"
+          },
+          "Count": {
+            "type": "integer",
+            "nullable": true,
+            "description": "The number of documents which would be matched if this post filter is added to the current search.",
+            "format": "int32"
+          },
+          "SearchResults@odata.navigationLink": {
+            "type": "string",
+            "description": "The search results which are generated by applying this post filter to the current search.",
+            "format": "URL"
+          }
+        }
+      },
+      "SummaryType": {
+        "type": "string",
+        "description": "The type of matched extract within the document.\n  * `Term` - For hitteaser text \n\n  * `Extract` - For teaser text \n",
+        "enum": [
+          "Term",
+          "Extract"
+        ]
+      },
+      "SourceFilterItem": {
+        "type": "object",
+        "properties": {
+          "FilterId": {
+            "type": "string",
+            "description": "The identifier which is used to filter the source list.",
+            "format": "string"
+          },
+          "FilterValue": {
+            "type": "string",
+            "description": "The textual description of the filter.",
+            "format": "string"
+          },
+          "FilterCount": {
+            "type": "integer",
+            "description": "The number of documents which would be matched if this source filter is added to the current search.",
+            "format": "int32"
+          }
+        }
+      },
+      "FilterField": {
+        "type": "string",
+        "description": "* `ContentType` - Filters by the related content categories. \n* `Jurisdiction` - Filters by the legal jurisdiction. \n* `Topic` - Filters by the practice area or topic. \n* `Publisher` - Filters by the publisher. \n* `Subscription` - Filters by the content's availability to the current user. \n* `Alphabetical` - Filters by the alphabet. \n* `Geography` - Filters by the Geography. \n",
+        "enum": [
+          "ContentType",
+          "Jurisdiction",
+          "Topic",
+          "Publisher",
+          "Subscription",
+          "Alphabetical",
+          "Geography"
+        ]
+      }  
+    }
+  }
+}

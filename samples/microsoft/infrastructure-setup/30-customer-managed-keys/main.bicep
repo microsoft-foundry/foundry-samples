@@ -30,7 +30,7 @@ var keyVaultUri = 'https://${keyVaultName}.vault.azure.net/'
 /*
   An AI Foundry resources is a variant of a CognitiveServices/account resource type
 */ 
-resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
+resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: aiFoundryName
   location: location
   identity: {
@@ -53,7 +53,21 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   }
 }
 
-// Set up customer-managed key encryption once managed identity has been created
+// Projects are folders to organize your work in AI Foundry such as Agents, Evaluations, Files
+resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
+  name: 'first-project'
+  identity: {
+    type: 'SystemAssigned'
+  }
+  parent: account
+  location: location
+  properties: {
+    displayName: 'project'
+    description: 'My first project'
+  }
+}
+
+// Set up customer-managed key encryption once the system-assigned managed identities are created
 module encryptionUpdate 'updateEncryption.bicep' = {
   name: 'updateEncryption'
   params: {
