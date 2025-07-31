@@ -15,7 +15,7 @@ This Azure AI Foundry template demonstrates how to deploy AI Foundry with Agents
 
 ## Prerequisites
 
-* Bring an existing Azure Key Vault resource. This sample template does not create it.
+* An existing Azure Key Vault resource. This sample template does not create it.
 * You must enable both the Soft Delete and Do Not Purge properties on the existing Azure Key Vault instance.
 * If you use the Key Vault firewall, you must allow trusted Microsoft services to access the Azure Key Vault.
 * You must grant your Azure AI Foundry resource and project system-assigned managed identity the following permissions on your key vault: get key, wrap key, unwrap key.
