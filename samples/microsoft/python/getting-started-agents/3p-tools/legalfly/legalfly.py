@@ -41,8 +41,8 @@ connection_name = os.environ["LEGALFLY_API_CONNECTION_NAME"]
 
 
 # Initialize the project client using the endpoint and default credentials
-with AIProjectClient.from_connection_string(
-    conn_str=endpoint,
+with AIProjectClient(
+    endpoint=endpoint,
     credential=DefaultAzureCredential(exclude_interactive_browser_credential=False),
 ) as project_client:
     # </initialization>

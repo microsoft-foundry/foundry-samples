@@ -53,9 +53,9 @@ from user_logic_apps import AzureLogicAppTool, create_send_email_function
 
 # <client_initialization>
 # Create the project client
-project_client = AIProjectClient.from_connection_string(
+project_client = AIProjectClient(
     credential=DefaultAzureCredential(),
-    conn_str=os.environ["PROJECT_ENDPOINT"],
+    endpoint=os.environ["PROJECT_ENDPOINT"],
 )
 # </client_initialization>
 

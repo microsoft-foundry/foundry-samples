@@ -41,7 +41,7 @@ project_client = AIProjectClient(
 )
 
 # Access the Azure OpenAI client for chat completions
-openai = project_client.inference.get_azure_openai_client(api_version="2024-06-01")
+openai = project_client.get_openai_client(api_version="2024-06-01")
 response = openai.chat.completions.create(
     model=os.environ["MODEL_DEPLOYMENT_NAME"],  # Ensure the MODEL_DEPLOYMENT_NAME environment variable is set
     messages=[
