@@ -47,11 +47,14 @@ with AIProjectClient(
 ) as project_client:
     # </initialization>
 
-    # Load the OpenAPI specification for the service from a local JSON file using jsonref to handle references
-    with open("./legalfly.json", "r") as f:
+    # Ensure the correct path to the OpenAPI specification file
+    openapi_spec_path = os.path.join(os.path.dirname(__file__), "legalfly.json")
+
+    # Load the OpenAPI specification for the service from the local JSON file using jsonref to handle references
+    with open(openapi_spec_path, "r") as f:
         openapi_spec = jsonref.loads(f.read())
 
-    conn_id = project_client.connections.get(connection_name=connection_name).id
+    conn_id = project_client.connections.get(name=connection_name).id
     # Create Auth object for the OpenApiTool (note that connection or managed identity auth setup requires additional setup in Azure)
     auth = OpenApiConnectionAuthDetails(security_scheme=OpenApiConnectionSecurityScheme(connection_id=conn_id))
 
@@ -79,11 +82,11 @@ with AIProjectClient(
     # <thread_management>
     # --- Thread Management ---
     # Create a new conversation thread for the interaction
-    thread = project_client.agents.create_thread()
+    thread = project_client.agents.threads.create()
     print(f"Created thread, ID: {thread.id}")
 
     # Create the initial user message in the thread
-    message = project_client.agents.create_message(
+    message = project_client.agents.messages.create(
         thread_id=thread.id,
         role="user",
         # give an example of a user message that the agent can respond to
@@ -96,7 +99,7 @@ with AIProjectClient(
     # --- Message Processing (Run Creation and Auto-processing) ---
     # Create and automatically process the run, handling tool calls internally
     # Note: This differs from the function_tool example where tool calls are handled manually
-    run = project_client.agents.create_and_process_run(thread_id=thread.id, agent_id=agent.id)
+    run = project_client.agents.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
     print(f"Run finished with status: {run.status}")
     # </message_processing>
 
@@ -106,10 +109,10 @@ with AIProjectClient(
         print(f"Run failed: {run.last_error}")
 
     # Retrieve the steps taken during the run for analysis
-    run_steps = project_client.agents.list_run_steps(thread_id=thread.id, run_id=run.id)
+    run_steps = project_client.agents.run_steps.list(thread_id=thread.id, run_id=run.id)
 
     # Loop through each step to display information
-    for step in run_steps.data:
+    for step in run_steps:
         print(f"Step {step['id']} status: {step['status']}")
 
         # Check if there are tool calls recorded in the step details
@@ -135,10 +138,9 @@ with AIProjectClient(
     print("Deleted agent")
 
     # Fetch and log all messages exchanged during the conversation thread
-    messages = project_client.agents.list_messages(thread_id=thread.id)
+    messages = project_client.agents.messages.list(thread_id=thread.id)
     print(f"Messages: {messages}")
-    messages_array = messages.data
-    for m in messages_array:
+    for m in messages:
         content = m.get("content", [])
         if content and content[0].get("type") == "text":
             text_value = content[0].get("text", {}).get("value", "")
