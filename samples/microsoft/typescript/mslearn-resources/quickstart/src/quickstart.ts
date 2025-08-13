@@ -20,9 +20,9 @@ async function chatCompletion() {
 
     // Create an Azure OpenAI Client
     const project = new AIProjectClient(endpoint, new DefaultAzureCredential());
-    const client = await project.inference.azureOpenAI({
+    const client = await project.getAzureOpenAIClient({
         // The API version should match the version of the Azure OpenAI resource
-        apiVersion: "2024-12-01-preview"
+        apiVersion: "2025-04-01-preview"
     });
 
     // Create a chat completion
