@@ -1,0 +1,7 @@
+resource_group_name_resources = "myfoundryrg"
+resource_group_name_dns       = "mydnsrg"
+subnet_id_agent               = "/subscriptions/55555555-5555-5555-5555-555555555555/resourceGroups/myfoundryrg/providers/Microsoft.Network/virtualNetworks/vnetfoundry/subnets/snet-agent"
+subnet_id_private_endpoint    = "/subscriptions/55555555-5555-5555-5555-555555555555/resourceGroups/myfoundryrg/providers/Microsoft.Network/virtualNetworks/vnetfoundry/subnets/snet-svc"
+subscription_id_resources     = "55555555-5555-5555-5555-555555555555"
+subscription_id_infra         = "44444444-4444-4444-4444-444444444444"
+location                      = "westus3"

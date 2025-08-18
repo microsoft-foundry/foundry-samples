@@ -1,5 +1,0 @@
-azure-ai-agents==1.0.0
-azure-ai-projects==1.0.0b11
-azure_storage==0.37.0
-python-dotenv==1.1.0
-semantic_kernel==1.31.0

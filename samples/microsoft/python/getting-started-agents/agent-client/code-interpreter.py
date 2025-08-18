@@ -40,7 +40,7 @@ with agents_client:
 
     # Upload a file and wait for it to be processed
     # [START upload_file_and_create_agent_with_code_interpreter]
-    file = agents_client.upload_file_and_poll(file_path="/workspaces/foundry-samples/doc-samples/agents/data/nifty_500_quarterly_results.csv", purpose=FilePurpose.AGENTS)
+    file = agents_client.files.upload_and_poll(file_path="/workspaces/foundry-samples/doc-samples/agents/data/nifty_500_quarterly_results.csv", purpose=FilePurpose.AGENTS)
     print(f"Uploaded file, file ID: {file.id}")
 
     code_interpreter = CodeInterpreterTool(file_ids=[file.id])
@@ -56,36 +56,36 @@ with agents_client:
     # [END upload_file_and_create_agent_with_code_interpreter]
     print(f"Created agent, agent ID: {agent.id}")
 
-    thread = agents_client.create_thread()
+    thread = agents_client.threads.create()
     print(f"Created thread, thread ID: {thread.id}")
 
     # Create a message
-    message = agents_client.create_message(
+    message = agents_client.messages.create(
         thread_id=thread.id,
         role="user",
         content="Could you please create bar chart in TRANSPORTATION sector for the operating profit from the uploaded csv file and provide file to me?",
     )
     print(f"Created message, message ID: {message.id}")
 
-    run = agents_client.create_and_process_run(thread_id=thread.id, agent_id=agent.id)
+    run = agents_client.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
     print(f"Run finished with status: {run.status}")
 
     if run.status == "failed":
         # Check if you got "Rate limit is exceeded.", then you want to get more quota
         print(f"Run failed: {run.last_error}")
 
-    agents_client.delete_file(file.id)
+    agents_client.files.delete(file.id)
     print("Deleted file")
 
     # [START get_messages_and_save_files]
-    messages = agents_client.list_messages(thread_id=thread.id)
+    messages = agents_client.messages.list(thread_id=thread.id)
     print(f"Messages: {messages}")
 
     for image_content in messages.image_contents:
         file_id = image_content.image_file.file_id
         print(f"Image File ID: {file_id}")
         file_name = f"{file_id}_image_file.png"
-        agents_client.save_file(file_id=file_id, file_name=file_name)
+        agents_client.files.save(file_id=file_id, file_name=file_name)
         print(f"Saved image file to: {Path.cwd() / file_name}")
 
     for file_path_annotation in messages.file_path_annotations:
@@ -97,7 +97,7 @@ with agents_client:
         print(f"End Index: {file_path_annotation.end_index}")
     # [END get_messages_and_save_files]
 
-    last_msg = messages.get_last_text_message_by_role(MessageRole.AGENT)
+    last_msg = messages.get_last_message_text_by_role(MessageRole.AGENT)
     if last_msg:
         print(f"Last Message: {last_msg.text.value}")
 

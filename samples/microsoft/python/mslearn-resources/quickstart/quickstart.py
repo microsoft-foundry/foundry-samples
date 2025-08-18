@@ -11,7 +11,7 @@ project = AIProjectClient(
     credential=DefaultAzureCredential(),
 )
 
-models = project.inference.get_azure_openai_client(api_version="2024-10-21")
+models = project.get_openai_client(api_version="2024-10-21")
 response = models.chat.completions.create(
     model="gpt-4o",
     messages=[

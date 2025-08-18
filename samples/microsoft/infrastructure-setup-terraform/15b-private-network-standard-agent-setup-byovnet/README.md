@@ -100,7 +100,7 @@ Note: The following resources will be created automatically for you:
 
 ### Variables
 
-The variables listed below [must be provided](https://developer.hashicorp.com/terraform/language/values/variables#variable-definition-precedence) when performing deploying the templates. The file sample-terraform.tfvars provides a sample Terraform variables file that can be used.
+The variables listed below [must be provided](https://developer.hashicorp.com/terraform/language/values/variables#variable-definition-precedence) when performing deploying the templates. The file example.tfvars provides a sample Terraform variables file that can be used.
 - **resource_group_name_resources** - The name of the resource group where the resources created with this template will be depoyed to.
 - **resource_group_name_dns** - This name of the resource group where the pre-existing Private DNS Zones have been deployed to.
 - **subnet_id_agent** - The Azure resource ID of the subnet that will be delegated to the Agent service. This subnet must be delegated to Microsoft.App/environments prior to deployment of the resources.
@@ -111,7 +111,7 @@ The variables listed below [must be provided](https://developer.hashicorp.com/te
 
 ## Deploy the Terraform template
 
-1. Fill in the required information for the variables listed in the sample-terraform.tfvars file and rename the file to terraform.tfvars.
+1. Fill in the required information for the variables listed in the example.tfvars file and rename the file to terraform.tfvars.
 
 2. If performing the deployment interactively, log in to Az CLI with a user that has sufficient permissions to deploy the resources.
 
@@ -124,13 +124,16 @@ az login
 Linux/MacOS
 ```bash
 export ARM_SUBSCRIPTION_ID="YOUR_SUBSCRIPTION_ID"
-terraform apply
 ```
 
 Windows
 ```cmd
 set ARM_SUBSCRIPTION_ID="YOUR_SUBSCRIPTION_ID"
-terraform apply
+```
+
+PowerShell Command Prompt
+```
+$env:ARM_SUBSCRIPTION_ID="YOUR_SUBSCRIPTION_ID"
 ```
 
 4. Initialize Terraform
@@ -265,7 +268,7 @@ code/
 ├── main.tf                                         # Main deployment file        
 ├── outputs.tf                                      # Placeholder file for future outputs
 ├── providers.tf                                    # Terraform provider configuration 
-├── sample-terraform.tfvars                         # Sample tfvars file
+├── example.tfvars                                  # Sample tfvars file
 ├── variables.tf                                    # Terraform variables
 ├── versions.tf                                     # Configures minimum Terraform version and versions for providers
 ```

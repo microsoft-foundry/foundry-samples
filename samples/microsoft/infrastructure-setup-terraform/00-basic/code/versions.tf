@@ -13,10 +13,6 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.7"
     }
-    time = {
-      source  = "hashicorp/time"
-      version = "~> 0.13"
-    }
   }
   required_version = ">= 1.10.0, < 2.0.0"
   # Uncomment to store state in Azure Storage
