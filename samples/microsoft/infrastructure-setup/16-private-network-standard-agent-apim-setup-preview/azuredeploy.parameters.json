@@ -68,6 +68,9 @@
     "projectCapHost": {
       "value": ""
     },
+    "apiManagementResourceId": {
+      "value": ""
+    },
     "existingDnsZones": {
       "value": {
         "privatelink.services.ai.azure.com": "",
@@ -75,7 +78,8 @@
         "privatelink.cognitiveservices.azure.com": "",
         "privatelink.search.windows.net": "",
         "privatelink.blob.core.windows.net": "",
-        "privatelink.documents.azure.com": ""
+        "privatelink.documents.azure.com": "",
+        "privatelink.azure-api.net": ""
       }
     }
   }

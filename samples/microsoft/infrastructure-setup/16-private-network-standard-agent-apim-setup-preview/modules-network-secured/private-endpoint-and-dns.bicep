@@ -31,6 +31,8 @@ param aiSearchName string
 param storageName string
 @description('Name of the Cosmos DB account')
 param cosmosDBName string
+@description('Name of the API Management service (optional)')
+param apiManagementName string = ''
 @description('Name of the Vnet')
 param vnetName string
 @description('Name of the Customer subnet')
@@ -62,6 +64,12 @@ param cosmosDBSubscriptionId string = subscription().subscriptionId
 @description('Resource group name for Cosmos DB account')
 param cosmosDBResourceGroupName string = resourceGroup().name
 
+@description('Subscription ID for API Management service (optional)')
+param apiManagementSubscriptionId string = subscription().subscriptionId
+
+@description('Resource group name for API Management service (optional)')
+param apiManagementResourceGroupName string = resourceGroup().name
+
 @description('Map of DNS zone FQDNs to resource group names. If provided, reference existing DNS zones in this resource group instead of creating them.')
 param existingDnsZones object = {
   'privatelink.services.ai.azure.com': ''
@@ -70,6 +78,7 @@ param existingDnsZones object = {
   'privatelink.search.windows.net': ''
   'privatelink.blob.${environment().suffixes.storage}': ''
   'privatelink.documents.azure.com': ''
+  'privatelink.azure-api.net': ''
 }
 
 // ---- Resource references ----
@@ -91,6 +100,11 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing 
 resource cosmosDBAccount 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' existing = {
   name: cosmosDBName
   scope: resourceGroup(cosmosDBSubscriptionId, cosmosDBResourceGroupName)
+}
+
+resource apiManagementService 'Microsoft.ApiManagement/service@2023-05-01-preview' existing = if (!empty(apiManagementName)) {
+  name: apiManagementName
+  scope: resourceGroup(apiManagementSubscriptionId, apiManagementResourceGroupName)
 }
 
 // Reference existing network resources
@@ -188,6 +202,25 @@ resource cosmosDBPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01'
   }
 }
 
+/*--------------------------------------------- API Management Private Endpoint -------------------------------------*/
+
+resource apiManagementPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = if (!empty(apiManagementName)) {
+  name: '${apiManagementName}-private-endpoint'
+  location: resourceGroup().location
+  properties: {
+    subnet: { id: peSubnet.id } // Deploy in customer hub subnet
+    privateLinkServiceConnections: [
+      {
+        name: '${apiManagementName}-private-link-service-connection'
+        properties: {
+          privateLinkServiceId: apiManagementService.id // Target API Management service
+          groupIds: [ 'Gateway' ] // Gateway endpoint for API calls
+        }
+      }
+    ]
+  }
+}
+
 /* -------------------------------------------- Private DNS Zones -------------------------------------------- */
 
 // Format: 1) Private DNS Zone
@@ -203,6 +236,7 @@ var cognitiveServicesDnsZoneName = 'privatelink.cognitiveservices.azure.com'
 var aiSearchDnsZoneName = 'privatelink.search.windows.net'
 var storageDnsZoneName = 'privatelink.blob.${environment().suffixes.storage}'
 var cosmosDBDnsZoneName = 'privatelink.documents.azure.com'
+var apiManagementDnsZoneName = 'privatelink.azure-api.net'
 
 // ---- DNS Zone Resource Group lookups ----
 var aiServicesDnsZoneRG = existingDnsZones[aiServicesDnsZoneName]
@@ -211,6 +245,7 @@ var cognitiveServicesDnsZoneRG = existingDnsZones[cognitiveServicesDnsZoneName]
 var aiSearchDnsZoneRG = existingDnsZones[aiSearchDnsZoneName]
 var storageDnsZoneRG = existingDnsZones[storageDnsZoneName]
 var cosmosDBDnsZoneRG = existingDnsZones[cosmosDBDnsZoneName]
+var apiManagementDnsZoneRG = existingDnsZones[apiManagementDnsZoneName]
 
 // ---- DNS Zone Resources and References ----
 resource aiServicesPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (empty(aiServicesDnsZoneRG)) {
@@ -291,6 +326,19 @@ resource existingCosmosDBPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-
 //creating condition if user pass existing dns zones or not
 var cosmosDBDnsZoneId = empty(cosmosDBDnsZoneRG) ? cosmosDBPrivateDnsZone.id : existingCosmosDBPrivateDnsZone.id
 
+resource apiManagementPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (empty(apiManagementDnsZoneRG) && !empty(apiManagementName)) {
+  name: apiManagementDnsZoneName
+  location: 'global'
+}
+
+// Reference existing private DNS zone if provided
+resource existingApiManagementPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = if (!empty(apiManagementDnsZoneRG) && !empty(apiManagementName)) {
+  name: apiManagementDnsZoneName
+  scope: resourceGroup(apiManagementDnsZoneRG)
+}
+//creating condition if user pass existing dns zones or not
+var apiManagementDnsZoneId = !empty(apiManagementName) ? (empty(apiManagementDnsZoneRG) ? apiManagementPrivateDnsZone.id : existingApiManagementPrivateDnsZone.id) : ''
+
 // ---- DNS VNet Links ----
 resource aiServicesLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = if (empty(aiServicesDnsZoneRG)) {
   parent: aiServicesPrivateDnsZone
@@ -341,6 +389,15 @@ resource cosmosDBLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@202
   parent: cosmosDBPrivateDnsZone
   location: 'global'
   name: 'cosmosDB-${suffix}-link'
+  properties: {
+    virtualNetwork: { id: vnet.id }
+    registrationEnabled: false
+  }
+}
+resource apiManagementLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = if (empty(apiManagementDnsZoneRG) && !empty(apiManagementName)) {
+  parent: apiManagementPrivateDnsZone
+  location: 'global'
+  name: 'apiManagement-${suffix}-link'
   properties: {
     virtualNetwork: { id: vnet.id }
     registrationEnabled: false
@@ -398,5 +455,17 @@ resource cosmosDBDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGrou
   }
   dependsOn: [
     empty(cosmosDBDnsZoneRG) ? cosmosDBLink : null
+  ]
+}
+resource apiManagementDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (!empty(apiManagementName)) {
+  parent: apiManagementPrivateEndpoint
+  name: '${apiManagementName}-dns-group'
+  properties: {
+    privateDnsZoneConfigs: [
+      { name: '${apiManagementName}-dns-config', properties: { privateDnsZoneId: apiManagementDnsZoneId } }
+    ]
+  }
+  dependsOn: [
+    apiManagementLink
   ]
 }

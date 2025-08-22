@@ -10,10 +10,14 @@ param azureStorageAccountResourceId string
 @description('ResourceId of Cosmos DB Account')
 param azureCosmosDBAccountResourceId string
 
+@description('Resource ID of the API Management service (optional)')
+param apiManagementResourceId string = ''
+
 // Check if existing resources have been passed in
 var storagePassedIn = azureStorageAccountResourceId != ''
 var searchPassedIn = aiSearchResourceId != ''
 var cosmosPassedIn = azureCosmosDBAccountResourceId != ''
+var apiManagementPassedIn = apiManagementResourceId != ''
 
 var storageParts = split(azureStorageAccountResourceId, '/')
 var azureStorageSubscriptionId = storagePassedIn && length(storageParts) > 2 ? storageParts[2] : subscription().subscriptionId
@@ -26,6 +30,10 @@ var aiSearchServiceResourceGroupName = searchPassedIn && length(acsParts) > 4 ? 
 var cosmosParts = split(azureCosmosDBAccountResourceId, '/')
 var cosmosDBSubscriptionId = cosmosPassedIn && length(cosmosParts) > 2 ? cosmosParts[2] : subscription().subscriptionId
 var cosmosDBResourceGroupName = cosmosPassedIn && length(cosmosParts) > 4 ? cosmosParts[4] : resourceGroup().name
+
+var apiManagementParts = split(apiManagementResourceId, '/')
+var apiManagementSubscriptionId = apiManagementPassedIn && length(apiManagementParts) > 2 ? apiManagementParts[2] : subscription().subscriptionId
+var apiManagementResourceGroupName = apiManagementPassedIn && length(apiManagementParts) > 4 ? apiManagementParts[4] : resourceGroup().name
 
 // Validate AI Search
 resource aiSearch 'Microsoft.Search/searchServices@2024-06-01-preview' existing = if (searchPassedIn) {
@@ -45,10 +53,18 @@ resource azureStorageAccount 'Microsoft.Storage/storageAccounts@2024-01-01' exis
   scope: resourceGroup(azureStorageSubscriptionId,azureStorageResourceGroupName)
 }
 
+// Validate API Management Service
+resource apiManagementService 'Microsoft.ApiManagement/service@2023-05-01-preview' existing = if (apiManagementPassedIn) {
+  name: last(split(apiManagementResourceId, '/'))
+  scope: resourceGroup(apiManagementSubscriptionId, apiManagementResourceGroupName)
+}
+
 // output aiServiceExists bool = aiServicesPassedIn && (aiServiceAccount.name == aiServiceParts[8])
 output aiSearchExists bool = searchPassedIn && (aiSearch.name == acsParts[8])
 output cosmosDBExists bool = cosmosPassedIn && (cosmosDBAccount.name == cosmosParts[8])
 output azureStorageExists bool = storagePassedIn && (azureStorageAccount.name == storageParts[8])
+output apiManagementExists bool = apiManagementPassedIn && (apiManagementService.name == apiManagementParts[8])
+output apiManagementName string = apiManagementPassedIn ? last(split(apiManagementResourceId, '/')) : ''
 
 output aiSearchServiceSubscriptionId string = aiSearchServiceSubscriptionId
 output aiSearchServiceResourceGroupName string = aiSearchServiceResourceGroupName
@@ -58,6 +74,9 @@ output cosmosDBResourceGroupName string = cosmosDBResourceGroupName
 
 output azureStorageSubscriptionId string = azureStorageSubscriptionId
 output azureStorageResourceGroupName string = azureStorageResourceGroupName
+
+output apiManagementSubscriptionId string = apiManagementSubscriptionId
+output apiManagementResourceGroupName string = apiManagementResourceGroupName
 
 // Adding DNS Zone Check
 

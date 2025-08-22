@@ -78,6 +78,8 @@ param aiSearchResourceId string = ''
 param azureStorageAccountResourceId string = ''
 @description('The Cosmos DB Account full ARM Resource ID. This is an optional field, and if not provided, the resource will be created.')
 param azureCosmosDBAccountResourceId string = ''
+@description('The API Management Service full ARM Resource ID. This is an optional field for existing API Management services.')
+param apiManagementResourceId string = ''
 
 //New Param for resource group of Private DNS zones
 //@description('Optional: Resource group containing existing private DNS zones. If specified, DNS zones will not be created.')
@@ -168,6 +170,7 @@ module validateExistingResources 'modules-network-secured/validate-existing-reso
     aiSearchResourceId: aiSearchResourceId
     azureStorageAccountResourceId: azureStorageAccountResourceId
     azureCosmosDBAccountResourceId: azureCosmosDBAccountResourceId
+    apiManagementResourceId: apiManagementResourceId
     existingDnsZones: existingDnsZones
     dnsZoneNames: dnsZoneNames
   }
@@ -226,6 +229,7 @@ module privateEndpointAndDNS 'modules-network-secured/private-endpoint-and-dns.b
       aiSearchName: aiDependencies.outputs.aiSearchName       // AI Search to secure
       storageName: aiDependencies.outputs.azureStorageName        // Storage to secure
       cosmosDBName:aiDependencies.outputs.cosmosDBName
+      apiManagementName: validateExistingResources.outputs.apiManagementName              // API Management to secure (optional)
       vnetName: vnet.outputs.virtualNetworkName    // VNet containing subnets
       peSubnetName: vnet.outputs.peSubnetName        // Subnet for private endpoints
       suffix: uniqueSuffix                                    // Unique identifier
@@ -237,6 +241,8 @@ module privateEndpointAndDNS 'modules-network-secured/private-endpoint-and-dns.b
       aiSearchResourceGroupName: aiSearchServiceResourceGroupName // Resource Group for AI Search Service
       storageAccountResourceGroupName: azureStorageResourceGroupName // Resource Group for Storage Account
       storageAccountSubscriptionId: azureStorageSubscriptionId // Subscription ID for Storage Account
+      apiManagementResourceGroupName: validateExistingResources.outputs.apiManagementResourceGroupName // Resource Group for API Management (if provided)
+      apiManagementSubscriptionId: validateExistingResources.outputs.apiManagementSubscriptionId // Subscription ID for API Management (if provided)
       existingDnsZones: existingDnsZones
     }
     dependsOn: [
