@@ -1,3 +1,5 @@
+APIM Private Preview will be available on Sept 15 2025. Please do not deploy this template before then. To enable the Private Preview, please fill out this form (https://forms.office.com/r/qGP66N0UaC) or reach out to meerakurup@microsoft.com to enable your subscription.
+
 ---
 description: This set of templates demonstrates how to set up Azure AI Agent Service with virtual network isolation with private network links to connect the agent to your secure data.
 page_type: sample
