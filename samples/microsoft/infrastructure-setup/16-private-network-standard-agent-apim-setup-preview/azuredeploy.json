@@ -14,7 +14,6 @@
       "defaultValue": "eastus2",
       "allowedValues": [
         "australiaeast",
-        "centralus",
         "eastus",
         "eastus2",
         "francecentral",
@@ -167,6 +166,13 @@
       "defaultValue": "",
       "metadata": {
         "description": "The Cosmos DB Account full ARM Resource ID. This is an optional field, and if not provided, the resource will be created."
+      }
+    },
+    "apiManagementResourceId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The API Management Service full ARM Resource ID. This is an optional field for existing API Management services."
       }
     },
     "projectCapHost": {
@@ -1039,6 +1045,9 @@
           },
           "azureCosmosDBAccountResourceId": {
             "value": "[parameters('azureCosmosDBAccountResourceId')]"
+          },
+          "apiManagementResourceId": {
+            "value": "[parameters('apiManagementResourceId')]"
           }
         },
         "template": {
@@ -1069,12 +1078,20 @@
               "metadata": {
                 "description": "ResourceId of Cosmos DB Account"
               }
+            },
+            "apiManagementResourceId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Resource ID of the API Management service (optional)"
+              }
             }
           },
           "variables": {
             "storagePassedIn": "[not(equals(parameters('azureStorageAccountResourceId'), ''))]",
             "searchPassedIn": "[not(equals(parameters('aiSearchResourceId'), ''))]",
             "cosmosPassedIn": "[not(equals(parameters('azureCosmosDBAccountResourceId'), ''))]",
+            "apiManagementPassedIn": "[not(equals(parameters('apiManagementResourceId'), ''))]",
             "storageParts": "[split(parameters('azureStorageAccountResourceId'), '/')]",
             "azureStorageSubscriptionId": "[if(and(variables('storagePassedIn'), greater(length(variables('storageParts')), 2)), variables('storageParts')[2], subscription().subscriptionId)]",
             "azureStorageResourceGroupName": "[if(and(variables('storagePassedIn'), greater(length(variables('storageParts')), 4)), variables('storageParts')[4], resourceGroup().name)]",
@@ -1083,7 +1100,10 @@
             "aiSearchServiceResourceGroupName": "[if(and(variables('searchPassedIn'), greater(length(variables('acsParts')), 4)), variables('acsParts')[4], resourceGroup().name)]",
             "cosmosParts": "[split(parameters('azureCosmosDBAccountResourceId'), '/')]",
             "cosmosDBSubscriptionId": "[if(and(variables('cosmosPassedIn'), greater(length(variables('cosmosParts')), 2)), variables('cosmosParts')[2], subscription().subscriptionId)]",
-            "cosmosDBResourceGroupName": "[if(and(variables('cosmosPassedIn'), greater(length(variables('cosmosParts')), 4)), variables('cosmosParts')[4], resourceGroup().name)]"
+            "cosmosDBResourceGroupName": "[if(and(variables('cosmosPassedIn'), greater(length(variables('cosmosParts')), 4)), variables('cosmosParts')[4], resourceGroup().name)]",
+            "apiManagementParts": "[split(parameters('apiManagementResourceId'), '/')]",
+            "apiManagementSubscriptionId": "[if(and(variables('apiManagementPassedIn'), greater(length(variables('apiManagementParts')), 2)), variables('apiManagementParts')[2], subscription().subscriptionId)]",
+            "apiManagementResourceGroupName": "[if(and(variables('apiManagementPassedIn'), greater(length(variables('apiManagementParts')), 4)), variables('apiManagementParts')[4], resourceGroup().name)]"
           },
           "resources": [],
           "outputs": {
@@ -1098,6 +1118,14 @@
             "azureStorageExists": {
               "type": "bool",
               "value": "[and(variables('storagePassedIn'), equals(last(split(parameters('azureStorageAccountResourceId'), '/')), variables('storageParts')[8]))]"
+            },
+            "apiManagementExists": {
+              "type": "bool",
+              "value": "[and(variables('apiManagementPassedIn'), equals(last(split(parameters('apiManagementResourceId'), '/')), variables('apiManagementParts')[8]))]"
+            },
+            "apiManagementName": {
+              "type": "string",
+              "value": "[if(variables('apiManagementPassedIn'), last(split(parameters('apiManagementResourceId'), '/')), '')]"
             },
             "aiSearchServiceSubscriptionId": {
               "type": "string",
@@ -1122,6 +1150,14 @@
             "azureStorageResourceGroupName": {
               "type": "string",
               "value": "[variables('azureStorageResourceGroupName')]"
+            },
+            "apiManagementSubscriptionId": {
+              "type": "string",
+              "value": "[variables('apiManagementSubscriptionId')]"
+            },
+            "apiManagementResourceGroupName": {
+              "type": "string",
+              "value": "[variables('apiManagementResourceGroupName')]"
             }
           }
         }
@@ -1411,6 +1447,9 @@
           "cosmosDBName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', format('dependencies-{0}-{1}-deployment', variables('accountName'), variables('uniqueSuffix'))), '2022-09-01').outputs.cosmosDBName.value]"
           },
+          "apiManagementName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('validate-existing-resources-{0}-deployment', variables('uniqueSuffix'))), '2022-09-01').outputs.apiManagementName.value]"
+          },
           "vnetName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', format('vnet-{0}-{1}-deployment', variables('trimVnetName'), variables('uniqueSuffix'))), '2022-09-01').outputs.virtualNetworkName.value]"
           },
@@ -1443,6 +1482,12 @@
           },
           "storageAccountSubscriptionId": {
             "value": "[variables('azureStorageSubscriptionId')]"
+          },
+          "apiManagementResourceGroupName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('validate-existing-resources-{0}-deployment', variables('uniqueSuffix'))), '2022-09-01').outputs.apiManagementResourceGroupName.value]"
+          },
+          "apiManagementSubscriptionId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('validate-existing-resources-{0}-deployment', variables('uniqueSuffix'))), '2022-09-01').outputs.apiManagementSubscriptionId.value]"
           }
         },
         "template": {
@@ -1478,6 +1523,13 @@
               "type": "string",
               "metadata": {
                 "description": "Name of the Cosmos DB account"
+              }
+            },
+            "apiManagementName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Name of the API Management service (optional)"
               }
             },
             "vnetName": {
@@ -1552,6 +1604,20 @@
               "defaultValue": "[resourceGroup().name]",
               "metadata": {
                 "description": "Resource group name for Cosmos DB account"
+              }
+            },
+            "apiManagementSubscriptionId": {
+              "type": "string",
+              "defaultValue": "[subscription().subscriptionId]",
+              "metadata": {
+                "description": "Subscription ID for API Management service (optional)"
+              }
+            },
+            "apiManagementResourceGroupName": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().name]",
+              "metadata": {
+                "description": "Resource group name for API Management service (optional)"
               }
             }
           },
@@ -1645,6 +1711,29 @@
               }
             },
             {
+              "condition": "[not(empty(parameters('apiManagementName')))]",
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2024-05-01",
+              "name": "[format('{0}-private-endpoint', parameters('apiManagementName'))]",
+              "location": "[resourceGroup().location]",
+              "properties": {
+                "subnet": {
+                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', parameters('vnetSubscriptionId'), parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[format('{0}-private-link-service-connection', parameters('apiManagementName'))]",
+                    "properties": {
+                      "privateLinkServiceId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', parameters('apiManagementSubscriptionId'), parameters('apiManagementResourceGroupName')), 'Microsoft.ApiManagement/service', parameters('apiManagementName'))]",
+                      "groupIds": [
+                        "Gateway"
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
               "type": "Microsoft.Network/privateDnsZones",
               "apiVersion": "2020-06-01",
               "name": "privatelink.services.ai.azure.com",
@@ -1660,6 +1749,13 @@
               "type": "Microsoft.Network/privateDnsZones",
               "apiVersion": "2020-06-01",
               "name": "privatelink.cognitiveservices.azure.com",
+              "location": "global"
+            },
+            {
+              "condition": "[not(empty(parameters('apiManagementName')))]",
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "privatelink.azure-api.net",
               "location": "global"
             },
             {
@@ -1824,6 +1920,22 @@
               ]
             },
             {
+              "condition": "[not(empty(parameters('apiManagementName')))]",
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2024-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.azure-api.net', format('apiManagement-{0}-link', parameters('suffix')))]",
+              "location": "global",
+              "properties": {
+                "virtualNetwork": {
+                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', parameters('vnetSubscriptionId'), parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                },
+                "registrationEnabled": false
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azure-api.net')]"
+              ]
+            },
+            {
               "type": "Microsoft.Network/privateDnsZones",
               "apiVersion": "2020-06-01",
               "name": "privatelink.documents.azure.com",
@@ -1861,6 +1973,27 @@
               "dependsOn": [
                 "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.documents.azure.com')]",
                 "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-private-endpoint', parameters('cosmosDBName')))]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('apiManagementName')))]",
+              "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+              "apiVersion": "2024-05-01",
+              "name": "[format('{0}/{1}', format('{0}-private-endpoint', parameters('apiManagementName')), format('{0}-dns-group', parameters('apiManagementName')))]",
+              "properties": {
+                "privateDnsZoneConfigs": [
+                  {
+                    "name": "[format('{0}-dns-config', parameters('apiManagementName'))]",
+                    "properties": {
+                      "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azure-api.net')]"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', 'privatelink.azure-api.net', format('apiManagement-{0}-link', parameters('suffix')))]",
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azure-api.net')]",
+                "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-private-endpoint', parameters('apiManagementName')))]"
               ]
             }
           ]
