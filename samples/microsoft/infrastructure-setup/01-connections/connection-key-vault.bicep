@@ -14,14 +14,14 @@ az deployment group create \
   --name AzDeploy \
   --resource-group {RESOURCE-GROUP-NAME} \
   --template-file connection-key-vault.bicep \
-  --parameters aiFoundryName={Foundry-resource-name} connectedResourceName={KV-resource-name}
+  --parameters aiFoundryName={Foundry-resource-name} keyVaultName={KV-resource-name}
 
-az deployment group create --name AzDeploY --resource-group {RESOURCE-GROUP-NAME} --template-file connection-key-vault.bicep --parameters aiFoundryName={Foundry-resource-name} connectedResourceName={KV-resource-name}
+az deployment group create --name AzDeploy --resource-group {RESOURCE-GROUP-NAME} --template-file connection-key-vault.bicep --parameters aiFoundryName={Foundry-resource-name} keyVaultName={KV-resource-name}
 
 */
 
 param aiFoundryName string = '<your-account-name>'
-param connectedResourceName string = 'ais-${aiFoundryName}'
+param keyVaultName string
 //param resourceGroupName string = '<your-resource-group-name>'
 
 
@@ -32,7 +32,7 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' exi
 
 // Conditionally refers your existing Azure Key Vault resource
 resource existingKeyVault 'Microsoft.KeyVault/vaults@2024-11-01' existing = {
-  name: connectedResourceName
+  name: keyVaultName
   scope: resourceGroup()
 }
 
@@ -42,7 +42,7 @@ resource connection 'Microsoft.CognitiveServices/accounts/connections@2025-04-01
   properties: {
     category: 'AzureKeyVault'
     target: existingKeyVault.id
-    authType: 'ProjectManagedIdentity' // should be "ResourceManagedIdentity"
+    authType: 'AccountManagedIdentity' // should be "AccountManagedIdentity"
     isSharedToAll: true
     metadata: {
       ApiType: 'Azure'
@@ -62,50 +62,4 @@ resource rbacAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-prev
   }
 }
 
-// Create a new connection
-
-param location string = 'eastus'
-
-@allowed([
-  'new'
-  'existing'
-])
-param newOrExisting string = 'new'
-
-// Conditionally refers your existing Azure AI Search resource
-resource existingAppInsights 'Microsoft.Insights/components@2020-02-02' existing = if (newOrExisting == 'existing') {
-  name: connectedResourceName
-}
-
-// Conditionally creates a new Azure AI Search resource
-resource newAppInsights 'Microsoft.Insights/components@2020-02-02' = if (newOrExisting == 'new') {
-  name: connectedResourceName
-  location: location
-  kind: 'web'
-  properties: {
-    Application_Type: 'web'
-  }
-}
-
-// Creates the Azure Foundry connection to your Azure App Insights resource
-resource appinsightsconnection 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
-  name: '${aiFoundryName}-appinsights'
-  parent: aiFoundry
-  dependsOn: [
-    rbacAssignment
-    connection
-  ]
-  properties: {
-    category: 'AppInsights'
-    target: ((newOrExisting == 'new') ? newAppInsights.id : existingAppInsights.id)
-    authType: 'ApiKey'
-    isSharedToAll: true
-    credentials: {
-      key: ((newOrExisting == 'new') ? newAppInsights.properties.ConnectionString : existingAppInsights.properties.ConnectionString)
-    }
-    metadata: {
-      ApiType: 'Azure'
-      ResourceId: ((newOrExisting == 'new') ? newAppInsights.id : existingAppInsights.id)
-    }
-  }
-}
+// All following connections should be created with the dependsOn property for both the key vault connection and the role assignment
