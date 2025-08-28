@@ -42,7 +42,7 @@ resource connection 'Microsoft.CognitiveServices/accounts/connections@2025-04-01
   properties: {
     category: 'AzureKeyVault'
     target: existingKeyVault.id
-    authType: 'AccountManagedIdentity' // should be "AccountManagedIdentity"
+    authType: 'AccountManagedIdentity'
     isSharedToAll: true
     metadata: {
       ApiType: 'Azure'
