@@ -5,7 +5,6 @@ Standard Setup Network Secured Steps for main.bicep
 @description('Location for all resources.')
 @allowed([
     'australiaeast'
-    'centralus'
     'eastus'
     'eastus2'
     'francecentral'
