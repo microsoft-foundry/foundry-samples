@@ -15,7 +15,7 @@ languages:
 > **IMPORTANT**
 > 
 > Class A subnet support is only available in a limited number of regions and requires your subscription id be allowlisted. Please reach out to fosteramanda@microsoft.com if you are interested in getting access.
- **Supported regions: West US, East US, East US 2, Central US, Japan East, France Central, Spain Central, UAE North**
+ **Supported regions: West US, East US, East US 2, Japan East, France Central, UAE North, Brazil South, Germany West Central, Italy North, South Central US, Australia East, Sweden Central, South Africa North**
 >
 > Class B and C subnet support is already GA and available in all regions supported by Azure AI Foundry Agent Service. No subscription allowlisting is required. Deployment templates and setup steps are identical for Class A, B, and C subnets; Class A remains in private preview solely because of its limited region coverage. For more on the supported regions of the Azure AI Foundry Agent service, see [Models supported by Azure AI Foundry Agent Service](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/concepts/model-region-support?tabs=global-standard)
 
