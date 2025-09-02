@@ -12,12 +12,12 @@ languages:
 - json
 ---
 
-# Azure AI Agent Service: Standard Agent Setup with E2E Network Isolation
+# Azure AI Agent Service: Standard Agent Setup with E2E Network Isolation and APIM connection
 
 > **IMPORTANT**
 > 
 > Class A subnet support is only available in a limited number of regions and requires your subscription id be allowlisted. Please reach out to fosteramanda@microsoft.com if you are interested in getting access.
- **Supported regions: West US, East US, East US 2, Central US, Japan East, France Central, Spain Central, UAE North**
+ **Supported regions: West US, East US, East US 2, Japan East, France Central, UAE North, Brazil South, Germany West Central, Italy North, South Central US, Australia East, Sweden Central, South Africa North**
 >
 > Class B and C subnet support is already GA and available in all regions supported by Azure AI Foundry Agent Service. No subscription allowlisting is required. Deployment templates and setup steps are identical for Class A, B, and C subnets; Class A remains in private preview solely because of its limited region coverage. For more on the supported regions of the Azure AI Foundry Agent service, see [Models supported by Azure AI Foundry Agent Service](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/concepts/model-region-support?tabs=global-standard)
 
@@ -34,7 +34,7 @@ This implementation gives you full control over the inbound and outbound communi
 ## Key Information
 
 **Limited Region Support for Class A Subnet IPs**
-- Class A subnet support is only available in select regions and requires allowlisting of your subscription ID. **Supported regions: West US, East US, East US 2, Central US, Japan East, France Central, Spain Central, UAE North**
+- Class A subnet support is only available in select regions and requires allowlisting of your subscription ID. **Supported regions: West US, East US, East US 2, Japan East, France Central, UAE North, Brazil South, Germany West Central, Italy North, South Central US, Australia East, Sweden Central, South Africa North**
 
 **Region and Resource Placement Requirements**
 - **All Foundry workspace resources should be in the same region as the VNet**, including CosmosDB, Storage Account, AI Search, Foundry Account, Project, Managed Identity. The only exception is within the Foundry Account, you may choose to deploy your model to a different region, and any cross-region communication will be handled securely within our network infrastructure.
