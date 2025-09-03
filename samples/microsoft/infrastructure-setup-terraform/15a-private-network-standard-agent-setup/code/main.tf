@@ -44,6 +44,8 @@ resource "azurerm_subnet" "subnet_agent" {
   address_prefixes = [
     var.agent_subnet_address_prefix
   ]
+  # Delegation to Microsoft.App/environments is required for Azure AI Agent Service
+  # The agent service uses Container Apps infrastructure to run agent workloads
   delegation {
     name = "Microsoft.App/environments"
     service_delegation {

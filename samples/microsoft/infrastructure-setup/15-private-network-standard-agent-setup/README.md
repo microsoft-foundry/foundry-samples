@@ -331,6 +331,8 @@ modules-network-secured/
 ```
 
 > **Note:** If you bring your own VNET for this template, ensure the subnet for Agents has the correct subnet delegation to `Microsoft.App/environments`. If you have not specified the delegated subnet, the template will complete this for you.
+>
+> **Important:** The subnet delegation to `Microsoft.App/environments` is required because Azure AI Agent Service uses Container Apps infrastructure to run agent workloads. This delegation creates a service link association with the subnet that enables the agent service to deploy container environments as needed.
 
 ## Maintenance
 
@@ -347,6 +349,28 @@ modules-network-secured/
 2. Check DNS resolution
 3. Validate role assignments
 4. Review network security groups
+
+#### Virtual Network Deletion Issues
+
+**Problem**: When attempting to delete the Virtual Network, you receive an error about service link associations preventing deletion.
+
+**Root Cause**: The agent subnet has a delegation to `Microsoft.App/environments` which creates a service link association. This delegation is required for Azure AI Agent Service functionality, as agents run on Container Apps infrastructure.
+
+**Solution**:
+1. **Delete resources in the correct order**: Always delete the AI Foundry project and account resources before attempting to delete the Virtual Network. This ensures the Container App Environment(s) created by the agent service are properly cleaned up.
+
+2. **Manual cleanup if needed**: If you still encounter issues after deleting the AI resources:
+   ```bash
+   # List service associations on the subnet
+   az network vnet subnet show --resource-group <resource-group> --vnet-name <vnet-name> --name <agent-subnet-name> --query "serviceAssociationLinks"
+   
+   # If service associations exist, you may need to wait for them to be cleaned up automatically
+   # or contact Azure support for assistance with orphaned service associations
+   ```
+
+3. **Alternative cleanup approach**: Delete the entire resource group instead of individual resources to ensure proper cleanup order.
+
+**Prevention**: When deploying to existing VNets, ensure you have a proper deletion strategy that removes AI Foundry resources before network resources.
 
 ---
 

@@ -9,8 +9,12 @@ This module works with existing virtual networks and required subnets.
 
 2. Security Features:
    - Network isolation
-   - Subnet delegation for containerized workloads
+   - Subnet delegation to Microsoft.App/environments (required for Azure AI Agent Service)
    - Private endpoint subnet for secure connectivity
+
+Note: The subnet delegation creates a service link association that enables the Azure AI
+Agent Service to deploy Container App environments for running agent workloads. Ensure
+proper cleanup order when deleting resources (AI Foundry resources before VNet).
 */
 
 
@@ -55,6 +59,8 @@ module agentSubnet 'subnet.bicep' = {
     vnetName: vnetName
     subnetName: agentSubnetName
     addressPrefix: agentSubnetSpaces
+    // Delegation to Microsoft.App/environments is required for Azure AI Agent Service
+    // The agent service uses Container Apps infrastructure to run agent workloads
     delegations: [
       {
         name: 'Microsoft.App/environments'

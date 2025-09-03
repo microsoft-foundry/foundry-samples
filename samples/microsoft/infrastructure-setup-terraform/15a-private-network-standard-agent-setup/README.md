@@ -45,7 +45,7 @@ This infrastructure-as-code (IaC) solution deploys a network-secured Azure AI ag
 
 2. **Register Resource Providers**
 
-   Make sure you have an active Azure subscription for the workload that allows registering resource providers. For example, subnet delegation requires the Microsoft.App provider to be registered in your subscription. If it's not already registered, run the commands below:
+   Make sure you have an active Azure subscription for the workload that allows registering resource providers. For example, subnet delegation requires the Microsoft.App provider to be registered in your subscription. The delegation to `Microsoft.App/environments` is required because Azure AI Agent Service uses Container Apps infrastructure to run agent workloads. If it's not already registered, run the commands below:
 
    ```bash
    az provider register --namespace 'Microsoft.KeyVault'

@@ -9,7 +9,7 @@ variable "resource_group_name_dns" {
 }
 
 variable "subnet_id_agent" {
-  description = "The resource id of the subnet that has been delegated to Microsoft.Apps/environments"
+  description = "The resource id of the subnet that has been delegated to Microsoft.App/environments (required for Azure AI Agent Service Container Apps infrastructure)"
   type        = string
 }
 

@@ -78,6 +78,8 @@ If you wish to deploy a standalone deployment use the [15a-private-network-stand
 
 2. Validate that the subnet that will be delegated to the Agents service has been configured for delegation for Microsoft.App/environments. Without this delegation the deployment will fail.
 
+   > **Important:** The delegation to `Microsoft.App/environments` is required because Azure AI Agent Service uses Container Apps infrastructure to run agent workloads. This delegation creates a service link association that enables the agent service to deploy container environments as needed. When deleting resources, ensure AI Foundry resources are removed before the Virtual Network to prevent orphaned service link associations.
+
 3. Create the Private DNS Zones listed below. Ensure they are linked to the relevant virtual network which will depend on your DNS resolution pattern for Azure.
 
     - privatelink.cognitiveservices.azure.com
