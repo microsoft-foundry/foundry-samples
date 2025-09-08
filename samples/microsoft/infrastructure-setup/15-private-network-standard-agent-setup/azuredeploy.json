@@ -186,7 +186,7 @@
         "privatelink.search.windows.net": "",
         "privatelink.blob.core.windows.net": "",
         "privatelink.documents.azure.com": ""
-      }
+      },
       "metadata": {
         "description": "Object mapping DNS zone names to their resource group, or empty string to indicate creation"
       }
@@ -200,7 +200,7 @@
         "privatelink.search.windows.net",
         "privatelink.blob.core.windows.net",
         "privatelink.documents.azure.com"
-      ]
+      ],
       "metadata": {
         "description": "Zone Names for Validation of existing Private Dns Zones"
       }
