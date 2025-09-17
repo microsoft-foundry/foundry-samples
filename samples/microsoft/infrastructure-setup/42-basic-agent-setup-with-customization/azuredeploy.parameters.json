@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "aiFoundryName": {
+      "value": ""
+    },
+    "projectName": {
+      "value": ""
+    },
+    "projectDescription": {
+      "value": ""
+    },
+    "projectDisplayName": {
+      "value": ""
+    },
+    "location": {
+      "value": "westus"
+    },
+    "existingAoaiResourceId": {
+      "value": "<add-your-existing-aoai-resource-id>"
+    },
+    "createAppInsights": {
+      "value": true
+    },
+    "appInsightsName": {
+      "value": "foundryappinsights"
+    }
+  }
+}

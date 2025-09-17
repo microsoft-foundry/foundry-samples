@@ -6,15 +6,11 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.1.42791",
-      "templateHash": "7460487288983622840"
+      "templateHash": "3050485240988654035"
     }
   },
   "parameters": {
-    "azureDeployName": {
-      "type": "string",
-      "defaultValue": "[utcNow()]"
-    },
-    "account_name": {
+    "aiFoundryName": {
       "type": "string",
       "defaultValue": "foundy",
       "maxLength": 9,
@@ -22,7 +18,7 @@
         "description": "The name of the Azure AI Foundry resource."
       }
     },
-    "project_name": {
+    "projectName": {
       "type": "string",
       "defaultValue": "project",
       "metadata": {
@@ -74,12 +70,34 @@
       "type": "string",
       "defaultValue": "",
       "metadata": {
-        "description": "The resource ID of the existing Azure OpenAI resource."
+        "description": "The existing Azure OpenAI resource ID."
       }
+    },
+    "createAppInsights": {
+      "type": "bool",
+      "defaultValue": true,
+      "allowedValues": [
+        true,
+        false
+      ],
+      "metadata": {
+        "description": "True/False if you want to create an Azure Application Insights resource for the project."
+      }
+    },
+    "appInsightsName": {
+      "type": "string",
+      "defaultValue": "foundryappinsights",
+      "metadata": {
+        "description": "The name of the App Insights resource to create"
+      }
+    },
+    "azureDeployName": {
+      "type": "string",
+      "defaultValue": "[utcNow()]"
     }
   },
   "variables": {
-    "accountName": "[format('{0}{1}', parameters('account_name'), substring(uniqueString(parameters('azureDeployName')), 0, 4))]",
+    "accountName": "[format('{0}{1}', parameters('aiFoundryName'), substring(uniqueString(parameters('azureDeployName')), 0, 4))]",
     "byoAoaiConnectionName": "aoaiConnection",
     "existingAoaiResourceIdParts": "[split(parameters('existingAoaiResourceId'), '/')]",
     "existingAoaiResourceIdSubId": "[variables('existingAoaiResourceIdParts')[2]]",
@@ -90,7 +108,7 @@
     "project::byoAoaiConnection": {
       "type": "Microsoft.CognitiveServices/accounts/projects/connections",
       "apiVersion": "2025-04-01-preview",
-      "name": "[format('{0}/{1}/{2}', variables('accountName'), parameters('project_name'), variables('byoAoaiConnectionName'))]",
+      "name": "[format('{0}/{1}/{2}', variables('accountName'), parameters('projectName'), variables('byoAoaiConnectionName'))]",
       "properties": {
         "category": "AzureOpenAI",
         "target": "[reference('existingAoaiResource').endpoint]",
@@ -106,6 +124,28 @@
         "project"
       ]
     },
+    "project::appInsightsConnections": {
+      "condition": "[parameters('createAppInsights')]",
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('accountName'), parameters('projectName'), parameters('appInsightsName'))]",
+      "properties": {
+        "category": "AppInsights",
+        "target": "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]",
+        "authType": "ApiKey",
+        "credentials": {
+          "key": "[reference('appInsights').ConnectionString]"
+        },
+        "metadata": {
+          "ApiType": "Azure",
+          "ResourceId": "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]"
+        }
+      },
+      "dependsOn": [
+        "appInsights",
+        "project"
+      ]
+    },
     "existingAoaiResource": {
       "existing": true,
       "type": "Microsoft.CognitiveServices/accounts",
@@ -113,6 +153,17 @@
       "subscriptionId": "[variables('existingAoaiResourceIdSubId')]",
       "resourceGroup": "[variables('existingAoaiResourceIdRgName')]",
       "name": "[variables('existingAoaiResourceIdName')]"
+    },
+    "appInsights": {
+      "condition": "[parameters('createAppInsights')]",
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[parameters('appInsightsName')]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web"
+      }
     },
     "account": {
       "type": "Microsoft.CognitiveServices/accounts",
@@ -141,7 +192,7 @@
     "project": {
       "type": "Microsoft.CognitiveServices/accounts/projects",
       "apiVersion": "2025-04-01-preview",
-      "name": "[format('{0}/{1}', variables('accountName'), parameters('project_name'))]",
+      "name": "[format('{0}/{1}', variables('accountName'), parameters('projectName'))]",
       "location": "[parameters('location')]",
       "identity": {
         "type": "SystemAssigned"
@@ -169,7 +220,7 @@
     "projectCapabilityHost": {
       "type": "Microsoft.CognitiveServices/accounts/projects/capabilityHosts",
       "apiVersion": "2025-04-01-preview",
-      "name": "[format('{0}/{1}/{2}', variables('accountName'), parameters('project_name'), format('{0}-capHost', parameters('project_name')))]",
+      "name": "[format('{0}/{1}/{2}', variables('accountName'), parameters('projectName'), format('{0}-capHost', parameters('projectName')))]",
       "properties": {
         "capabilityHostKind": "Agents",
         "aiServicesConnections": [
@@ -183,17 +234,17 @@
     }
   },
   "outputs": {
-    "account_endpoint": {
+    "projectEndpoint": {
       "type": "string",
-      "value": "[reference('account').endpoint]"
+      "value": "[reference('project').endpoints['AI Foundry API']]"
     },
-    "account_name": {
+    "accountName": {
       "type": "string",
       "value": "[variables('accountName')]"
     },
-    "project_name": {
+    "projectName": {
       "type": "string",
-      "value": "[parameters('project_name')]"
+      "value": "[parameters('projectName')]"
     }
   }
 }
