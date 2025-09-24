@@ -53,9 +53,9 @@ from user_logic_apps import AzureLogicAppTool, create_send_email_function
 
 # <client_initialization>
 # Create the project client
-project_client = AIProjectClient.from_connection_string(
+project_client = AIProjectClient(
     credential=DefaultAzureCredential(),
-    conn_str=os.environ["PROJECT_ENDPOINT"],
+    endpoint=os.environ["PROJECT_ENDPOINT"],
 )
 # </client_initialization>
 
@@ -103,11 +103,11 @@ with project_client:
 
     # <thread_management>
     # Create a thread for communication
-    thread = project_client.agents.create_thread()
+    thread = project_client.agents.threads.create()
     print(f"Created thread, ID: {thread.id}")
 
     # Create a message in the thread
-    message = project_client.agents.create_message(
+    message = project_client.agents.messages.create(
         thread_id=thread.id,
         role="user",
         content="Hello, please send an email to <RECIPIENT_EMAIL> with the date and time in '%Y-%m-%d %H:%M:%S' format.",
@@ -117,7 +117,7 @@ with project_client:
 
     # <message_processing>
     # Create and process an agent run in the thread
-    run = project_client.agents.create_and_process_run(thread_id=thread.id, agent_id=agent.id)
+    run = project_client.agents.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
     print(f"Run finished with status: {run.status}")
 
     if run.status == "failed":
@@ -130,6 +130,6 @@ with project_client:
     print("Deleted agent")
 
     # Fetch and log all messages
-    messages = project_client.agents.list_messages(thread_id=thread.id)
+    messages = project_client.agents.messages.list(thread_id=thread.id)
     print(f"Messages: {messages}")
     # </cleanup>

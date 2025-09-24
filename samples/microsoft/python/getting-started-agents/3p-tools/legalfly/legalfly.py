@@ -41,8 +41,8 @@ connection_name = os.environ["LEGALFLY_API_CONNECTION_NAME"]
 
 
 # Initialize the project client using the endpoint and default credentials
-with AIProjectClient.from_connection_string(
-    conn_str=endpoint,
+with AIProjectClient(
+    endpoint=endpoint,
     credential=DefaultAzureCredential(exclude_interactive_browser_credential=False),
 ) as project_client:
     # </initialization>
@@ -79,11 +79,11 @@ with AIProjectClient.from_connection_string(
     # <thread_management>
     # --- Thread Management ---
     # Create a new conversation thread for the interaction
-    thread = project_client.agents.create_thread()
+    thread = project_client.agents.threads.create()
     print(f"Created thread, ID: {thread.id}")
 
     # Create the initial user message in the thread
-    message = project_client.agents.create_message(
+    message = project_client.agents.messages.create(
         thread_id=thread.id,
         role="user",
         # give an example of a user message that the agent can respond to
@@ -96,7 +96,7 @@ with AIProjectClient.from_connection_string(
     # --- Message Processing (Run Creation and Auto-processing) ---
     # Create and automatically process the run, handling tool calls internally
     # Note: This differs from the function_tool example where tool calls are handled manually
-    run = project_client.agents.create_and_process_run(thread_id=thread.id, agent_id=agent.id)
+    run = project_client.agents.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
     print(f"Run finished with status: {run.status}")
     # </message_processing>
 
@@ -106,7 +106,7 @@ with AIProjectClient.from_connection_string(
         print(f"Run failed: {run.last_error}")
 
     # Retrieve the steps taken during the run for analysis
-    run_steps = project_client.agents.list_run_steps(thread_id=thread.id, run_id=run.id)
+    run_steps = project_client.agents.runs_steps.list(thread_id=thread.id, run_id=run.id)
 
     # Loop through each step to display information
     for step in run_steps.data:
@@ -135,7 +135,7 @@ with AIProjectClient.from_connection_string(
     print("Deleted agent")
 
     # Fetch and log all messages exchanged during the conversation thread
-    messages = project_client.agents.list_messages(thread_id=thread.id)
+    messages = project_client.agents.messages.list(thread_id=thread.id)
     print(f"Messages: {messages}")
     messages_array = messages.data
     for m in messages_array:

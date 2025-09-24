@@ -1,8 +1,13 @@
 ########## Create infrastructure resources
 ##########
 
+## Get subscription data
+##
+
+data "azurerm_client_config" "current" {}
+
 ## Create a random string
-## 
+##
 resource "random_string" "unique" {
   length      = 4
   min_numeric = 4
@@ -25,7 +30,7 @@ resource "azurerm_virtual_network" "vnet" {
   name                = "vnet-agents${random_string.unique.result}"
   location            = var.location
   resource_group_name = azurerm_resource_group.rg.name
-  address_space       = [
+  address_space = [
     var.virtual_network_address_space
   ]
 }
@@ -33,25 +38,28 @@ resource "azurerm_virtual_network" "vnet" {
 ## Create two subnets one for the Standard Agent VNet injection and one for the AI Foundry resource
 ##
 resource "azurerm_subnet" "subnet_agent" {
-  name                 = "agent-subnet"
+  name                 = "snet-agent"
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [
+  address_prefixes = [
     var.agent_subnet_address_prefix
   ]
   delegation {
     name = "Microsoft.App/environments"
     service_delegation {
       name = "Microsoft.App/environments"
+      actions = [
+        "Microsoft.Network/virtualNetworks/subnets/join/action"
+      ]
     }
   }
 }
 
 resource "azurerm_subnet" "subnet_pe" {
-  name                 = "pe-subnet"
+  name                 = "snet-pe"
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [
+  address_prefixes = [
     var.private_endpoint_subnet_address_prefix
   ]
 }
@@ -120,7 +128,7 @@ resource "azurerm_cosmosdb_account" "cosmosdb" {
 ## Create an AI Search instance that will be used to store vector embeddings
 ##
 resource "azapi_resource" "ai_search" {
-  type                      = "Microsoft.Search/searchServices@2024-06-01-preview"
+  type                      = "Microsoft.Search/searchServices@2025-05-01"
   name                      = "aifoundry${random_string.unique.result}search"
   parent_id                 = azurerm_resource_group.rg.id
   location                  = var.location
@@ -151,7 +159,7 @@ resource "azapi_resource" "ai_search" {
         }
       }
       # Networking-related controls
-      publicNetworkAccess = "disabled"
+      publicNetworkAccess = "Disabled"
       networkRuleSet = {
         bypass = "None"
       }
@@ -166,18 +174,17 @@ resource "azapi_resource" "ai_search" {
 ##
 resource "azapi_resource" "ai_foundry" {
   depends_on = [
-    azurerm_subnet.subnet_agent
+    azurerm_subnet.subnet_agent,
+    azapi_resource_action.purge_ai_foundry
   ]
 
-  type                      = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
+  type                      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name                      = "aifoundry${random_string.unique.result}"
   parent_id                 = azurerm_resource_group.rg.id
   location                  = var.location
   schema_validation_enabled = false
 
   body = {
-
-    
     kind = "AIServices",
     sku = {
       name = "S0"
@@ -194,7 +201,7 @@ resource "azapi_resource" "ai_foundry" {
       allowProjectManagement = true
 
       # Set custom subdomain name for DNS names created for this Foundry resource
-      customSubDomainName    = "aifoundry${random_string.unique.result}"
+      customSubDomainName = "aifoundry${random_string.unique.result}"
 
       # Network-related controls
       # Disable public access but allow Trusted Azure Services exception
@@ -233,7 +240,7 @@ resource "azurerm_cognitive_deployment" "aifoundry_deployment_gpt_4o" {
   model {
     format  = "OpenAI"
     name    = "gpt-4o"
-    version = "2024-05-13"
+    version = "2024-11-20"
   }
 }
 
@@ -354,7 +361,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "plz_openai_link" {
 
 ## Create Private Endpoints for resources
 ##
-resource "azurerm_private_endpoint" "pe-storage" {
+resource "azurerm_private_endpoint" "pe_storage" {
   depends_on = [
     azurerm_private_dns_zone_virtual_network_link.plz_ai_search_link,
     azurerm_private_dns_zone_virtual_network_link.plz_storage_blob_link,
@@ -388,9 +395,9 @@ resource "azurerm_private_endpoint" "pe-storage" {
   }
 }
 
-resource "azurerm_private_endpoint" "pe-cosmosdb" {
+resource "azurerm_private_endpoint" "pe_cosmosdb" {
   depends_on = [
-    azurerm_private_endpoint.pe-storage,
+    azurerm_private_endpoint.pe_storage,
     azurerm_cosmosdb_account.cosmosdb,
     azurerm_virtual_network.vnet
   ]
@@ -417,9 +424,9 @@ resource "azurerm_private_endpoint" "pe-cosmosdb" {
   }
 }
 
-resource "azurerm_private_endpoint" "pe-aisearch" {
+resource "azurerm_private_endpoint" "pe_aisearch" {
   depends_on = [
-    azurerm_private_endpoint.pe-cosmosdb,
+    azurerm_private_endpoint.pe_cosmosdb,
     azapi_resource.ai_search,
     azurerm_virtual_network.vnet
   ]
@@ -446,9 +453,9 @@ resource "azurerm_private_endpoint" "pe-aisearch" {
   }
 }
 
-resource "azurerm_private_endpoint" "pe-aifoundry" {
+resource "azurerm_private_endpoint" "pe_aifoundry" {
   depends_on = [
-    azurerm_private_endpoint.pe-aisearch,
+    azurerm_private_endpoint.pe_aisearch,
     azapi_resource.ai_foundry,
     azurerm_virtual_network.vnet
   ]
@@ -485,13 +492,13 @@ resource "azurerm_private_endpoint" "pe-aifoundry" {
 resource "azapi_resource" "ai_foundry_project" {
   depends_on = [
     azapi_resource.ai_foundry,
-    azurerm_private_endpoint.pe-storage,
-    azurerm_private_endpoint.pe-cosmosdb,
-    azurerm_private_endpoint.pe-aisearch,
-    azurerm_private_endpoint.pe-aifoundry
+    azurerm_private_endpoint.pe_storage,
+    azurerm_private_endpoint.pe_cosmosdb,
+    azurerm_private_endpoint.pe_aisearch,
+    azurerm_private_endpoint.pe_aifoundry
   ]
 
-  type                      = "Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview"
+  type                      = "Microsoft.CognitiveServices/accounts/projects@2025-06-01"
   name                      = "project${random_string.unique.result}"
   parent_id                 = azapi_resource.ai_foundry.id
   location                  = var.location
@@ -529,7 +536,7 @@ resource "time_sleep" "wait_project_identities" {
 ## Create AI Foundry project connections
 ##
 resource "azapi_resource" "conn_cosmosdb" {
-  type                      = "Microsoft.CognitiveServices/accounts/projects/connections@2025-04-01-preview"
+  type                      = "Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01"
   name                      = azurerm_cosmosdb_account.cosmosdb.name
   parent_id                 = azapi_resource.ai_foundry_project.id
   schema_validation_enabled = false
@@ -541,7 +548,7 @@ resource "azapi_resource" "conn_cosmosdb" {
   body = {
     name = azurerm_cosmosdb_account.cosmosdb.name
     properties = {
-      category = "CosmosDB"
+      category = "CosmosDb"
       target   = azurerm_cosmosdb_account.cosmosdb.endpoint
       authType = "AAD"
       metadata = {
@@ -556,7 +563,7 @@ resource "azapi_resource" "conn_cosmosdb" {
 ## Create the AI Foundry project connection to Azure Storage Account
 ##
 resource "azapi_resource" "conn_storage" {
-  type                      = "Microsoft.CognitiveServices/accounts/projects/connections@2025-04-01-preview"
+  type                      = "Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01"
   name                      = azurerm_storage_account.storage_account.name
   parent_id                 = azapi_resource.ai_foundry_project.id
   schema_validation_enabled = false
@@ -587,7 +594,7 @@ resource "azapi_resource" "conn_storage" {
 ## Create the AI Foundry project connection to AI Search
 ##
 resource "azapi_resource" "conn_aisearch" {
-  type                      = "Microsoft.CognitiveServices/accounts/projects/connections@2025-04-01-preview"
+  type                      = "Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01"
   name                      = azapi_resource.ai_search.name
   parent_id                 = azapi_resource.ai_foundry_project.id
   schema_validation_enabled = false
@@ -604,7 +611,7 @@ resource "azapi_resource" "conn_aisearch" {
       authType = "AAD"
       metadata = {
         ApiType    = "Azure"
-        ApiVersion = "2024-05-01-preview"
+        ApiVersion = "2025-05-01-preview"
         ResourceId = azapi_resource.ai_search.id
         location   = var.location
       }
@@ -752,13 +759,31 @@ resource "azurerm_role_assignment" "storage_blob_data_owner_ai_foundry_project" 
   condition            = <<-EOT
   (
     (
-      !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/read'})  
-      AND  !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/filter/action'}) 
-      AND  !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/write'}) 
-    ) 
-    OR 
-    (@Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringStartsWithIgnoreCase '${local.project_id_guid}' 
+      !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/read'})
+      AND !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/filter/action'})
+      AND !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/write'})
+    )
+    OR
+    (@Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringStartsWithIgnoreCase '${local.project_id_guid}'
     AND @Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringLikeIgnoreCase '*-azureml-agent')
   )
   EOT
+}
+
+## Added AI Foundry account purger to avoid running into InUseSubnetCannotBeDeleted-lock caused by the agent subnet delegation.
+## The azapi_resource_action.purge_ai_foundry (only gets executed during destroy) purges the AI foundry account removing /subnets/snet-agent/serviceAssociationLinks/legionservicelink so the agent subnet can get properly removed.
+
+resource "azapi_resource_action" "purge_ai_foundry" {
+  method      = "DELETE"
+  resource_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.CognitiveServices/locations/${azurerm_resource_group.rg.location}/resourceGroups/${azurerm_resource_group.rg.name}/deletedAccounts/aifoundry${random_string.unique.result}"
+  type        = "Microsoft.Resources/resourceGroups/deletedAccounts@2021-04-30"
+  when        = "destroy"
+
+  depends_on = [time_sleep.purge_ai_foundry_cooldown]
+}
+
+resource "time_sleep" "purge_ai_foundry_cooldown" {
+  destroy_duration = "900s" # 10-15m is enough time to let the backend remove the /subnets/snet-agent/serviceAssociationLinks/legionservicelink
+
+  depends_on = [azurerm_subnet.subnet_agent]
 }

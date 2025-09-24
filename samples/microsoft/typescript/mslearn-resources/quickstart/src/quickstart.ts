@@ -20,7 +20,7 @@ async function chatCompletion() {
 
     // Create an Azure OpenAI Client
     const project = new AIProjectClient(endpoint, new DefaultAzureCredential());
-    const client = await project.inference.azureOpenAI({
+    const client = await project.getAzureOpenAIClient({
         // The API version should match the version of the Azure OpenAI resource
         apiVersion: "2024-12-01-preview"
     });
@@ -97,7 +97,7 @@ async function runAgents() {
     });
     console.log(`Uploaded file, ID: ${file.id}`);
     const vectorStore = await client.agents.vectorStores.create({
-        fileIds: [file.id],
+        fileIds: [file.id], // Associate the uploaded file with the vector store
         name: 'my_vectorstore'
     });
     console.log('\n---------------- 🗃️ Vector Store Info ----------------');

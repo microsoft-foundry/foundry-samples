@@ -45,7 +45,7 @@ with AIProjectClient(
     # Upload a file and wait for it to be processed
     # [START upload_file_and_create_agent_with_code_interpreter]
     # <file_upload>
-    file = project_client.agents.files.upload_file_and_poll(
+    file = project_client.agents.files.files.upload_and_poll(
         file_path=str(Path(__file__).parent / "nifty_500_quarterly_results.csv"), purpose=FilePurpose.AGENTS
     )
     print(f"Uploaded file, file ID: {file.id}")
@@ -69,11 +69,11 @@ with AIProjectClient(
     # </agent_creation>
 
     # <thread_management>
-    thread = project_client.agents.create_thread()
+    thread = project_client.agents.threads.create()
     print(f"Created thread, thread ID: {thread.id}")
 
     # Create a message
-    message = project_client.agents.create_message(
+    message = project_client.agents.messages.create(
         thread_id=thread.id,
         role="user",
         content="Could you please create bar chart in TRANSPORTATION sector for the operating profit from the uploaded csv file and provide file to me?",
@@ -82,7 +82,7 @@ with AIProjectClient(
     # </thread_management>
 
     # <message_processing>
-    run = project_client.agents.create_and_process_run(thread_id=thread.id, agent_id=agent.id)
+    run = project_client.agents.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
     print(f"Run finished with status: {run.status}")
 
     if run.status == "failed":
@@ -91,18 +91,18 @@ with AIProjectClient(
     # </message_processing>
 
     # <file_handling>
-    project_client.agents.delete_file(file.id)
+    project_client.agents.files.delete(file.id)
     print("Deleted file")
 
     # [START get_messages_and_save_files]
-    messages = project_client.agents.list_messages(thread_id=thread.id)
+    messages = project_client.agents.messages.list(thread_id=thread.id)
     print(f"Messages: {messages}")
 
     for image_content in messages.image_contents:
         file_id = image_content.image_file.file_id
         print(f"Image File ID: {file_id}")
         file_name = f"{file_id}_image_file.png"
-        project_client.agents.save_file(file_id=file_id, file_name=file_name)
+        project_client.agents.files.save(file_id=file_id, file_name=file_name)
         print(f"Saved image file to: {Path.cwd() / file_name}")
 
     for file_path_annotation in messages.file_path_annotations:
@@ -115,7 +115,7 @@ with AIProjectClient(
     # [END get_messages_and_save_files]
     # </file_handling>
 
-    last_msg = messages.get_last_text_message_by_role(MessageRole.AGENT)
+    last_msg = messages.get_last_message_text_by_role(MessageRole.AGENT)
     if last_msg:
         print(f"Last Message: {last_msg.text.value}")
 

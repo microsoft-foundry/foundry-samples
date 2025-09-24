@@ -16,14 +16,14 @@ languages:
 
 > **IMPORTANT**
 > 
-> Class A subnet support is only available in a limited number of regions and requires your subscription id be allowlisted. Please reach out to fosteramanda@microsoft.com if you are interested in getting access. **Supported regions:** West US, East US, East US 2, Central US, Japan East, France Central, [New] Spain Central, [New] UAE North
+> Class A subnet support is only available in a limited number of regions and requires your subscription id be allowlisted. Please fill out [**this form**](https://forms.office.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR9ZHnlM2xH1ElCCWV7X_lllUNzJLV0FJWU4zSjVKUFpQUUJPQTlGOVVMSC4u) if you are interested in getting access. **Supported regions: West US, East US, East US 2, Japan East, France Central, UAE North, South Central US, Italy North, Germany West Central, Brazil South, South Africa North, Australia East, Sweden Central, Canada East, West Europe**
 >
 > Class B and C subnet support is already GA and available in all regions supported by Azure AI Foundry Agent Service. No subscription allowlisting is required. Deployment templates and setup steps are identical for Class A, B, and C subnets; Class A remains in private preview solely because of its limited region coverage.
  
 ## Key Information
 
 **Limited Region Support for Class A Subnet IPs**
-- Class A subnet support is only available in select regions and requires allowlisting of your subscription ID. Supported regions: West US, East US, East US 2, Central US, Japan East, France Central, [New] Spain Central, [New] UAE North
+- Class A subnet support is only available in select regions and requires allowlisting of your subscription ID. Supported regions: West US, East US, East US 2, Central US, Japan East, France Central, Spain Central, UAE North, South Central US, Italy North, Germany West Central, Brazil South, South Africa North, Australia East, Sweden Central
 
 **Region and Resource Placement Requirements**
 - **All Foundry workspace resources should be in the same region as the VNet**, including CosmosDB, Storage Account, AI Search, Foundry Account, Project, Managed Identity. The only exception is within the Foundry Account, you may choose to deploy your model to a different region, and any cross-region communication will be handled securely within our network infrastructure.
@@ -72,8 +72,7 @@ Plan an appropriately sized virtual network with sufficient IP space for the sub
     - Ensure that the address spaces for these subnets do not overlap with any existing networks in your Azure environment or connected on-premises environments.
 
     **Limitations:**
-    - Class A subnet support is only available in a limited number of regions and requires your subscription id be allowlisted. Please reach out to fosteramanda@microsoft.com if you are interested in getting access.
-      - Regions with class A support: westus, eastus us, eastus 2, and central us
+    - Class A subnet support is only available in a limited number of regions and requires your subscription id be allowlisted.
 
 ---
 
@@ -89,7 +88,7 @@ Note: The following resources will be created automatically for you:
 
 ### Variables
 
-The variables listed below [must be provided](https://developer.hashicorp.com/terraform/language/values/variables#variable-definition-precedence) when performing deploying the templates. The file sample-terraform.tfvars provides a sample Terraform variables file that can be used.
+The variables listed below [must be provided](https://developer.hashicorp.com/terraform/language/values/variables#variable-definition-precedence) when performing deploying the templates. The file example.tfvars provides a sample Terraform variables file that can be used.
 
 - **location** - The Azure region the resources will be deployed to. This must be the same region where the pre-existing virtual network has been deployed to.
 
@@ -101,7 +100,7 @@ The variables listed below are optional and if not specified will use the defaul
 
 ## Deploy the Terraform template
 
-1. Fill in the required information for the variables listed in the sample-terraform.tfvars file and rename the file to terraform.tfvars.
+1. Fill in the required information for the variables listed in the example.tfvars file and rename the file to terraform.tfvars.
 
 2. If performing the deployment interactively, log in to Az CLI with a user that has sufficient permissions to deploy the resources.
 
@@ -267,7 +266,7 @@ code/
 ├── main.tf                                         # Main deployment file        
 ├── outputs.tf                                      # Placeholder file for future outputs
 ├── providers.tf                                    # Terraform provider configuration 
-├── sample-terraform.tfvars                         # Sample tfvars file
+├── example.tfvars                                  # Sample tfvars file
 ├── variables.tf                                    # Terraform variables
 ├── versions.tf                                     # Configures minimum Terraform version and versions for providers
 ```

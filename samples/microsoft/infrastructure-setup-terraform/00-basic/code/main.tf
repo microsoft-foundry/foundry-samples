@@ -29,7 +29,6 @@ resource "azapi_resource" "ai_foundry" {
   schema_validation_enabled = false
 
   body = {
-    
     kind = "AIServices"
     sku = {
       name = "S0"
@@ -46,7 +45,7 @@ resource "azapi_resource" "ai_foundry" {
       allowProjectManagement = true
 
       # Set custom subdomain name for DNS names created for this Foundry resource
-      customSubDomainName    = "aifoundry${random_string.unique.result}"
+      customSubDomainName = "aifoundry${random_string.unique.result}"
     }
   }
 }
@@ -58,7 +57,7 @@ resource "azurerm_cognitive_deployment" "aifoundry_deployment_gpt_4o" {
     azapi_resource.ai_foundry
   ]
 
-  name = "gpt-4o"
+  name                 = "gpt-4o"
   cognitive_account_id = azapi_resource.ai_foundry.id
 
   sku {
@@ -69,7 +68,7 @@ resource "azurerm_cognitive_deployment" "aifoundry_deployment_gpt_4o" {
   model {
     format  = "OpenAI"
     name    = "gpt-4o"
-    version = "2024-05-13"
+    version = "2024-11-20"
   }
 }
 

@@ -48,11 +48,11 @@ with project_client:
     agents_client = project_client.agents
 
     # Upload the file and specify its purpose
-    file = agents_client.upload_file_and_poll(file_path=asset_file_path, purpose=FilePurpose.AGENTS)
+    file = agents_client.files.upload_and_poll(file_path=asset_file_path, purpose=FilePurpose.AGENTS)
     print(f"Uploaded file, file ID: {file.id}")
 
     # Create a vector store using the uploaded file
-    vector_store = agents_client.create_vector_store_and_poll(file_ids=[file.id], name="my_vectorstore")
+    vector_store = agents_client.vector_stores.create_and_poll(file_ids=[file.id], name="my_vectorstore")
     print(f"Created vector store, vector store ID: {vector_store.id}")
 
     # Create a file search tool using the vector store
@@ -90,11 +90,11 @@ with project_client:
 
     # Cleanup resources after use
     # Delete the vector store
-    project_client.agents.delete_vector_store(vector_store.id)
+    project_client.agents.vector_stores.delete(vector_store.id)
     print("Deleted vector store")
 
     # Delete the uploaded file
-    project_client.agents.delete_file(file_id=file.id)
+    project_client.agents.files.delete(file_id=file.id)
     print("Deleted file")
 
     # Delete the agent

@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.36.1.42791",
-      "templateHash": "16198416145345516369"
+      "version": "0.37.4.10188",
+      "templateHash": "3205552327656911185"
     }
   },
   "parameters": {
@@ -61,9 +61,15 @@
         "uaenorth",
         "uksouth",
         "westus",
+        "westus2",
         "westus3",
         "westeurope",
-        "southeastasia"
+        "southeastasia",
+        "brazilsouth",
+        "germanywestcentral",
+        "italynorth",
+        "southafricanorth",
+        "southcentralus"
       ],
       "metadata": {
         "description": "The Azure region where your AI Foundry resource and project will be created."

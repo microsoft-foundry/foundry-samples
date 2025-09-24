@@ -47,23 +47,23 @@ with agents_client:
     print(f"Created agent, agent ID: {agent.id}")
 
     # [START create_thread]
-    thread = agents_client.create_thread()
+    thread = agents_client.threads.create()
     # [END create_thread]
     print(f"Created thread, thread ID: {thread.id}")
 
     # [START create_message]
-    message = agents_client.create_message(thread_id=thread.id, role="user", content="Hello, tell me a joke")
+    message = agents_client.messages.create(thread_id=thread.id, role="user", content="Hello, tell me a joke")
     # [END create_message]
     print(f"Created message, message ID: {message.id}")
 
     # [START create_run]
-    run = agents_client.create_run(thread_id=thread.id, agent_id=agent.id)
+    run = agents_client.runs.create(thread_id=thread.id, agent_id=agent.id)
 
     # Poll the run as long as run status is queued or in progress
     while run.status in ["queued", "in_progress", "requires_action"]:
         # Wait for a second
         time.sleep(1)
-        run = agents_client.get_run(thread_id=thread.id, run_id=run.id)
+        run = agents_client.runs.get(thread_id=thread.id, run_id=run.id)
         # [END create_run]
         print(f"Run status: {run.status}")
 
@@ -71,7 +71,7 @@ with agents_client:
     print("Deleted agent")
 
     # [START list_messages]
-    messages = agents_client.list_messages(thread_id=thread.id, order=ListSortOrder.ASCENDING)
+    messages = agents_client.messages.list(thread_id=thread.id, order=ListSortOrder.ASCENDING)
 
     # The messages are following in the reverse order,
     # we will iterate them and output only text contents.

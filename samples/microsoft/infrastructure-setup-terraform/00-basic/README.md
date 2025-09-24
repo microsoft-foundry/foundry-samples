@@ -41,7 +41,7 @@ This infrastructure-as-code (IaC) solution deploys Azure AI Foundry with public 
 
 ### Variables
 
-The variables listed below [must be provided](https://developer.hashicorp.com/terraform/language/values/variables#variable-definition-precedence) when performing deploying the templates. The file sample-terraform.tfvars provides a sample Terraform variables file that can be used.
+The variables listed below [must be provided](https://developer.hashicorp.com/terraform/language/values/variables#variable-definition-precedence) when performing deploying the templates. The file example.tfvars provides a sample Terraform variables file that can be used.
 
 - **location** - The Azure region the resources will be deployed to. This must be the same region where the pre-existing virtual network has been deployed to.
 
@@ -49,7 +49,7 @@ The variables listed below are optional and if not specified will use the defaul
 
 ## Deploy the Terraform template
 
-1. Fill in the required information for the variables listed in the sample-terraform.tfvars file and rename the file to terraform.tfvars.
+1. Fill in the required information for the variables listed in the example.tfvars file and rename the file to terraform.tfvars.
 
 2. If performing the deployment interactively, log in to Az CLI with a user that has sufficient permissions to deploy the resources.
 
@@ -91,7 +91,7 @@ code/
 ├── main.tf                                         # Main deployment file        
 ├── outputs.tf                                      # Placeholder file for future outputs
 ├── providers.tf                                    # Terraform provider configuration 
-├── sample-terraform.tfvars                         # Sample tfvars file
+├── example.tfvars                                  # Sample tfvars file
 ├── variables.tf                                    # Terraform variables
 ├── versions.tf                                     # Configures minimum Terraform version and versions for providers
 ```

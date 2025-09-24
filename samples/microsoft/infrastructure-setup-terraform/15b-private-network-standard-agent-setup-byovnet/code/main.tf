@@ -2,7 +2,7 @@
 ##########
 
 ## Create a random string
-## 
+##
 resource "random_string" "unique" {
   length      = 4
   min_numeric = 4
@@ -82,7 +82,7 @@ resource "azurerm_cosmosdb_account" "cosmosdb" {
 resource "azapi_resource" "ai_search" {
   provider = azapi.workload_subscription
 
-  type                      = "Microsoft.Search/searchServices@2024-06-01-preview"
+  type                      = "Microsoft.Search/searchServices@2025-05-01"
   name                      = "aifoundry${random_string.unique.result}search"
   parent_id                 = "/subscriptions/${var.subscription_id_resources}/resourceGroups/${var.resource_group_name_resources}"
   location                  = var.location
@@ -113,7 +113,7 @@ resource "azapi_resource" "ai_search" {
         }
       }
       # Networking-related controls
-      publicNetworkAccess = "disabled"
+      publicNetworkAccess = "Disabled"
       networkRuleSet = {
         bypass = "None"
       }
@@ -129,7 +129,7 @@ resource "azapi_resource" "ai_search" {
 resource "azapi_resource" "ai_foundry" {
   provider = azapi.workload_subscription
 
-  type                      = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
+  type                      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name                      = "aifoundry${random_string.unique.result}"
   parent_id                 = "/subscriptions/${var.subscription_id_resources}/resourceGroups/${var.resource_group_name_resources}"
   location                  = var.location
@@ -145,7 +145,6 @@ resource "azapi_resource" "ai_foundry" {
     }
 
     properties = {
-
       # Support both Entra ID and API Key authentication for underlining Cognitive Services account
       disableLocalAuth = false
 
@@ -153,7 +152,7 @@ resource "azapi_resource" "ai_foundry" {
       allowProjectManagement = true
 
       # Set custom subdomain name for DNS names created for this Foundry resource
-      customSubDomainName    = "aifoundry${random_string.unique.result}"
+      customSubDomainName = "aifoundry${random_string.unique.result}"
 
       # Network-related controls
       # Disable public access but allow Trusted Azure Services exception
@@ -194,7 +193,7 @@ resource "azurerm_cognitive_deployment" "aifoundry_deployment_gpt_4o" {
   model {
     format  = "OpenAI"
     name    = "gpt-4o"
-    version = "2024-05-13"
+    version = "2024-11-20"
   }
 }
 
@@ -203,7 +202,7 @@ resource "azurerm_cognitive_deployment" "aifoundry_deployment_gpt_4o" {
 
 ## Create Private Endpoints for resources
 ##
-resource "azurerm_private_endpoint" "pe-storage" {
+resource "azurerm_private_endpoint" "pe_storage" {
   provider = azurerm.workload_subscription
 
   depends_on = [
@@ -231,11 +230,11 @@ resource "azurerm_private_endpoint" "pe-storage" {
   }
 }
 
-resource "azurerm_private_endpoint" "pe-cosmosdb" {
+resource "azurerm_private_endpoint" "pe_cosmosdb" {
   provider = azurerm.workload_subscription
 
   depends_on = [
-    azurerm_private_endpoint.pe-storage,
+    azurerm_private_endpoint.pe_storage,
     azurerm_cosmosdb_account.cosmosdb
   ]
 
@@ -261,11 +260,11 @@ resource "azurerm_private_endpoint" "pe-cosmosdb" {
   }
 }
 
-resource "azurerm_private_endpoint" "pe-aisearch" {
+resource "azurerm_private_endpoint" "pe_aisearch" {
   provider = azurerm.workload_subscription
 
   depends_on = [
-    azurerm_private_endpoint.pe-cosmosdb,
+    azurerm_private_endpoint.pe_cosmosdb,
     azapi_resource.ai_search
   ]
 
@@ -291,11 +290,11 @@ resource "azurerm_private_endpoint" "pe-aisearch" {
   }
 }
 
-resource "azurerm_private_endpoint" "pe-aifoundry" {
+resource "azurerm_private_endpoint" "pe_aifoundry" {
   provider = azurerm.workload_subscription
 
   depends_on = [
-    azurerm_private_endpoint.pe-aisearch,
+    azurerm_private_endpoint.pe_aisearch,
     azapi_resource.ai_foundry
   ]
 
@@ -333,13 +332,13 @@ resource "azapi_resource" "ai_foundry_project" {
 
   depends_on = [
     azapi_resource.ai_foundry,
-    azurerm_private_endpoint.pe-storage,
-    azurerm_private_endpoint.pe-cosmosdb,
-    azurerm_private_endpoint.pe-aisearch,
-    azurerm_private_endpoint.pe-aifoundry
+    azurerm_private_endpoint.pe_storage,
+    azurerm_private_endpoint.pe_cosmosdb,
+    azurerm_private_endpoint.pe_aisearch,
+    azurerm_private_endpoint.pe_aifoundry
   ]
 
-  type                      = "Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview"
+  type                      = "Microsoft.CognitiveServices/accounts/projects@2025-06-01"
   name                      = "project${random_string.unique.result}"
   parent_id                 = azapi_resource.ai_foundry.id
   location                  = var.location
@@ -379,7 +378,7 @@ resource "time_sleep" "wait_project_identities" {
 resource "azapi_resource" "conn_cosmosdb" {
   provider = azapi.workload_subscription
 
-  type                      = "Microsoft.CognitiveServices/accounts/projects/connections@2025-04-01-preview"
+  type                      = "Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01"
   name                      = azurerm_cosmosdb_account.cosmosdb.name
   parent_id                 = azapi_resource.ai_foundry_project.id
   schema_validation_enabled = false
@@ -391,7 +390,7 @@ resource "azapi_resource" "conn_cosmosdb" {
   body = {
     name = azurerm_cosmosdb_account.cosmosdb.name
     properties = {
-      category = "CosmosDB"
+      category = "CosmosDb"
       target   = azurerm_cosmosdb_account.cosmosdb.endpoint
       authType = "AAD"
       metadata = {
@@ -408,7 +407,7 @@ resource "azapi_resource" "conn_cosmosdb" {
 resource "azapi_resource" "conn_storage" {
   provider = azapi.workload_subscription
 
-  type                      = "Microsoft.CognitiveServices/accounts/projects/connections@2025-04-01-preview"
+  type                      = "Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01"
   name                      = azurerm_storage_account.storage_account.name
   parent_id                 = azapi_resource.ai_foundry_project.id
   schema_validation_enabled = false
@@ -441,7 +440,7 @@ resource "azapi_resource" "conn_storage" {
 resource "azapi_resource" "conn_aisearch" {
   provider = azapi.workload_subscription
 
-  type                      = "Microsoft.CognitiveServices/accounts/projects/connections@2025-04-01-preview"
+  type                      = "Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01"
   name                      = azapi_resource.ai_search.name
   parent_id                 = azapi_resource.ai_foundry_project.id
   schema_validation_enabled = false
@@ -458,7 +457,7 @@ resource "azapi_resource" "conn_aisearch" {
       authType = "AAD"
       metadata = {
         ApiType    = "Azure"
-        ApiVersion = "2024-05-01-preview"
+        ApiVersion = "2025-05-01-preview"
         ResourceId = azapi_resource.ai_search.id
         location   = var.location
       }
@@ -624,12 +623,12 @@ resource "azurerm_role_assignment" "storage_blob_data_owner_ai_foundry_project" 
   condition            = <<-EOT
   (
     (
-      !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/read'})  
-      AND  !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/filter/action'}) 
-      AND  !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/write'}) 
-    ) 
-    OR 
-    (@Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringStartsWithIgnoreCase '${local.project_id_guid}' 
+      !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/read'})
+      AND !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/filter/action'})
+      AND !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/write'})
+    )
+    OR
+    (@Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringStartsWithIgnoreCase '${local.project_id_guid}'
     AND @Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringLikeIgnoreCase '*-azureml-agent')
   )
   EOT

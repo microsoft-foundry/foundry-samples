@@ -1,0 +1,41 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "aiFoundryName": {
+            "defaultValue": "<your-account-name>",
+            "type": "String"
+        },
+        "keyVaultName": {
+            "type": "String"
+        }
+    },
+    "resources": [
+        {
+            "type": "Microsoft.CognitiveServices/accounts/connections",
+            "apiVersion": "2025-04-01-preview",
+            "name": "[format('{0}/{1}', parameters('aiFoundryName'), format('{0}-keyvault', parameters('aiFoundryName')))]",
+            "properties": {
+                "category": "AzureKeyVault",
+                "target": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+                "authType": "AccountManagedIdentity",
+                "isSharedToAll": true,
+                "metadata": {
+                    "ApiType": "Azure",
+                    "ResourceId": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+                    "location": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2024-11-01', 'full').location]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "2020-04-01-preview",
+            "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), 'KeyVaultSecretsOfficer')]",
+            "properties": {
+                "roleDefinitionId": "/providers/Microsoft.Authorization/roleDefinitions/b86a8fe4-44ce-4948-aee5-eccb2c155cd7",
+                "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName')), '2025-04-01-preview', 'full').identity.principalId]"
+            },
+            "scope": "[format('Microsoft.KeyVault/vaults/{0}', parameters('keyVaultName'))]"
+        }
+    ]
+}

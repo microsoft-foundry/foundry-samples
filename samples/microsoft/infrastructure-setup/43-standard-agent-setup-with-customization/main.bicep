@@ -16,9 +16,15 @@
   'uaenorth'
   'uksouth'
   'westus'
+  'westus2'
   'westus3'
   'westeurope'
   'southeastasia'
+  'brazilsouth'
+  'germanywestcentral'
+  'italynorth'
+  'southafricanorth'
+  'southcentralus'
 ])
 @description('The Azure region where your AI Foundry resource and project will be created.')
 param location string = 'westus'
@@ -35,22 +41,6 @@ param projectDescription string = 'some description'
 
 @description('The display name of the project')
 param displayName string = 'project'
-
-// Model deployment parameters
-@description('The name of the model you want to deploy')
-param modelName string = 'gpt-4o'
-
-@description('The provider of your model')
-param modelFormat string = 'OpenAI'
-
-@description('The version of your model')
-param modelVersion string = '2024-05-13'
-
-@description('The sku of your model deployment')
-param modelSkuName string = 'GlobalStandard'
-
-@description('The tokens per minute (TPM) of your model deployment')
-param modelCapacity int = 1
 
 // Optionally bring existing resources
 @description('The AI Search Service full ARM Resource ID. This is an optional field, and if not provided, the resource will be created.')
@@ -150,11 +140,6 @@ module aiAccount 'modules-standard/ai-account-identity.bicep' = {
   params: {
     accountName: accountName
     location: location
-    modelName: modelName
-    modelFormat: modelFormat
-    modelVersion: modelVersion
-    modelSkuName: modelSkuName
-    modelCapacity: modelCapacity
   }
   dependsOn: [
     validateExistingResources, aiDependencies
