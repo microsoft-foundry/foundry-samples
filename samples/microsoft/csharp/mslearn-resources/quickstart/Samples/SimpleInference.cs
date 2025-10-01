@@ -6,7 +6,7 @@ using OpenAI.Chat;
 
 #pragma warning disable OPENAI001
 
-string projectEndpoint = System.Environment.GetEnvironmentVariable("AZURE_AI_ENDPOINT")!;
+string projectEndpoint = System.Environment.GetEnvironmentVariable("AZURE_AI_INFERENCE")!;
 string modelDeploymentName = System.Environment.GetEnvironmentVariable("AZURE_AI_MODEL")!;
 
 BearerTokenPolicy tokenPolicy = new(
