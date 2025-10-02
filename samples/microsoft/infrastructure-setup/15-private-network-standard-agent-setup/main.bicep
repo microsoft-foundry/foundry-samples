@@ -100,11 +100,14 @@ param azureCosmosDBAccountResourceId string = ''
 param existingDnsZones object = {
   'privatelink.services.ai.azure.com': ''
   'privatelink.openai.azure.com': ''
-  'privatelink.cognitiveservices.azure.com': ''               
-  'privatelink.search.windows.net': ''           
-  'privatelink.blob.core.windows.net': ''                            
-  'privatelink.documents.azure.com': ''                       
+  'privatelink.cognitiveservices.azure.com': ''
+  'privatelink.search.windows.net': ''
+  'privatelink.blob.${environment().suffixes.storage}': ''
+  'privatelink.documents.azure.com': ''
 }
+
+@description('Subscription ID containing existing private DNS zones. If not provided, the current subscription will be used.')
+param existingDnsZonesSubscriptionId string = ''
 
 @description('Zone Names for Validation of existing Private Dns Zones')
 param dnsZoneNames array = [
@@ -112,10 +115,9 @@ param dnsZoneNames array = [
   'privatelink.openai.azure.com'
   'privatelink.cognitiveservices.azure.com'
   'privatelink.search.windows.net'
-  'privatelink.blob.core.windows.net'
+  'privatelink.blob.${environment().suffixes.storage}'
   'privatelink.documents.azure.com'
 ]
-
 
 var projectName = toLower('${firstProjectName}${uniqueSuffix}')
 var cosmosDBName = toLower('${aiServices}${uniqueSuffix}cosmosdb')
@@ -127,7 +129,10 @@ var storagePassedIn = azureStorageAccountResourceId != ''
 var searchPassedIn = aiSearchResourceId != ''
 var cosmosPassedIn = azureCosmosDBAccountResourceId != ''
 var existingVnetPassedIn = existingVnetResourceId != ''
-
+var existingDnsZonesSubscriptionIdPassedIn = existingDnsZonesSubscriptionId != ''
+var dnsZonesSubscriptionId = existingDnsZonesSubscriptionIdPassedIn
+  ? existingDnsZonesSubscriptionId
+  : subscription().subscriptionId
 
 var acsParts = split(aiSearchResourceId, '/')
 var aiSearchServiceSubscriptionId = searchPassedIn ? acsParts[2] : subscription().subscriptionId
@@ -221,7 +226,7 @@ module aiDependencies 'modules-network-secured/standard-dependent-resources.bice
     // Cosmos DB Account
     cosmosDBResourceId: azureCosmosDBAccountResourceId
     cosmosDBExists: validateExistingResources.outputs.cosmosDBExists
-    }
+  }
 }
 
 resource storage 'Microsoft.Storage/storageAccounts@2022-05-01' existing = {
@@ -229,10 +234,12 @@ resource storage 'Microsoft.Storage/storageAccounts@2022-05-01' existing = {
   scope: resourceGroup(azureStorageSubscriptionId, azureStorageResourceGroupName)
 }
 
-
 resource aiSearch 'Microsoft.Search/searchServices@2023-11-01' existing = {
   name: aiDependencies.outputs.aiSearchName
-  scope: resourceGroup(aiDependencies.outputs.aiSearchServiceSubscriptionId, aiDependencies.outputs.aiSearchServiceResourceGroupName)
+  scope: resourceGroup(
+    aiDependencies.outputs.aiSearchServiceSubscriptionId,
+    aiDependencies.outputs.aiSearchServiceResourceGroupName
+  )
 }
 
 resource cosmosDB 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' existing = {
@@ -247,31 +254,32 @@ resource cosmosDB 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' existing = 
 // 3. Links private DNS zones to the VNet for name resolution
 // 4. Configures network policies to restrict access to private endpoints only
 module privateEndpointAndDNS 'modules-network-secured/private-endpoint-and-dns.bicep' = {
-    name: '${uniqueSuffix}-private-endpoint'
-    params: {
-      aiAccountName: aiAccount.outputs.accountName    // AI Services to secure
-      aiSearchName: aiDependencies.outputs.aiSearchName       // AI Search to secure
-      storageName: aiDependencies.outputs.azureStorageName        // Storage to secure
-      cosmosDBName:aiDependencies.outputs.cosmosDBName
-      vnetName: vnet.outputs.virtualNetworkName    // VNet containing subnets
-      peSubnetName: vnet.outputs.peSubnetName        // Subnet for private endpoints
-      suffix: uniqueSuffix                                    // Unique identifier
-      vnetResourceGroupName: vnet.outputs.virtualNetworkResourceGroup
-      vnetSubscriptionId: vnet.outputs.virtualNetworkSubscriptionId // Subscription ID for the VNet
-      cosmosDBSubscriptionId: cosmosDBSubscriptionId // Subscription ID for Cosmos DB
-      cosmosDBResourceGroupName: cosmosDBResourceGroupName // Resource Group for Cosmos DB
-      aiSearchSubscriptionId: aiSearchServiceSubscriptionId // Subscription ID for AI Search Service
-      aiSearchResourceGroupName: aiSearchServiceResourceGroupName // Resource Group for AI Search Service
-      storageAccountResourceGroupName: azureStorageResourceGroupName // Resource Group for Storage Account
-      storageAccountSubscriptionId: azureStorageSubscriptionId // Subscription ID for Storage Account
-      existingDnsZones: existingDnsZones
-    }
-    dependsOn: [
-    aiSearch      // Ensure AI Search exists
-    storage       // Ensure Storage exists
-    cosmosDB      // Ensure Cosmos DB exists
-  ]
+  name: '${uniqueSuffix}-private-endpoint'
+  params: {
+    aiAccountName: aiAccount.outputs.accountName // AI Services to secure
+    aiSearchName: aiDependencies.outputs.aiSearchName // AI Search to secure
+    storageName: aiDependencies.outputs.azureStorageName // Storage to secure
+    cosmosDBName: aiDependencies.outputs.cosmosDBName
+    vnetName: vnet.outputs.virtualNetworkName // VNet containing subnets
+    peSubnetName: vnet.outputs.peSubnetName // Subnet for private endpoints
+    suffix: uniqueSuffix // Unique identifier
+    vnetResourceGroupName: vnet.outputs.virtualNetworkResourceGroup
+    vnetSubscriptionId: vnet.outputs.virtualNetworkSubscriptionId // Subscription ID for the VNet
+    cosmosDBSubscriptionId: cosmosDBSubscriptionId // Subscription ID for Cosmos DB
+    cosmosDBResourceGroupName: cosmosDBResourceGroupName // Resource Group for Cosmos DB
+    aiSearchSubscriptionId: aiSearchServiceSubscriptionId // Subscription ID for AI Search Service
+    aiSearchResourceGroupName: aiSearchServiceResourceGroupName // Resource Group for AI Search Service
+    storageAccountResourceGroupName: azureStorageResourceGroupName // Resource Group for Storage Account
+    storageAccountSubscriptionId: azureStorageSubscriptionId // Subscription ID for Storage Account
+    existingDnsZones: existingDnsZones
+    dnsZonesSubscriptionId: dnsZonesSubscriptionId
   }
+  dependsOn: [
+    aiSearch // Ensure AI Search exists
+    storage // Ensure Storage exists
+    cosmosDB // Ensure Cosmos DB exists
+  ]
+}
 
 /*
   Creates a new project (sub-resource of the AI Services account)
@@ -300,10 +308,10 @@ module aiProject 'modules-network-secured/ai-project-identity.bicep' = {
     accountName: aiAccount.outputs.accountName
   }
   dependsOn: [
-     privateEndpointAndDNS
-     cosmosDB
-     aiSearch
-     storage
+    privateEndpointAndDNS
+    cosmosDB
+    aiSearch
+    storage
   ]
 }
 
@@ -325,8 +333,8 @@ module storageAccountRoleAssignment 'modules-network-secured/azure-storage-accou
     projectPrincipalId: aiProject.outputs.projectPrincipalId
   }
   dependsOn: [
-   storage
-   privateEndpointAndDNS
+    storage
+    privateEndpointAndDNS
   ]
 }
 
@@ -370,13 +378,13 @@ module addProjectCapabilityHost 'modules-network-secured/add-project-capability-
     projectCapHost: projectCapHost
   }
   dependsOn: [
-     aiSearch      // Ensure AI Search exists
-     storage       // Ensure Storage exists
-     cosmosDB
-     privateEndpointAndDNS
-     cosmosAccountRoleAssignments
-     storageAccountRoleAssignment
-     aiSearchRoleAssignments
+    aiSearch // Ensure AI Search exists
+    storage // Ensure Storage exists
+    cosmosDB
+    privateEndpointAndDNS
+    cosmosAccountRoleAssignments
+    storageAccountRoleAssignment
+    aiSearchRoleAssignments
   ]
 }
 
@@ -402,10 +410,9 @@ module cosmosContainerRoleAssignments 'modules-network-secured/cosmos-container-
     cosmosAccountName: aiDependencies.outputs.cosmosDBName
     projectWorkspaceId: formatProjectWorkspaceId.outputs.projectWorkspaceIdGuid
     projectPrincipalId: aiProject.outputs.projectPrincipalId
-
   }
-dependsOn: [
-  addProjectCapabilityHost
-  storageContainersRoleAssignment
+  dependsOn: [
+    addProjectCapabilityHost
+    storageContainersRoleAssignment
   ]
 }
