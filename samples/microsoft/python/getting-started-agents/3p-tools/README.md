@@ -22,6 +22,7 @@ The following tools are authored by **third-party partners**. Use the links belo
    | [LEGALFLY](./legalfly) | Legal insights grounded in trusted sources from your jurisdiction. |
    | [MiHCM](./MiHCM) | seamless integration with MiHCM's HR functionalities |
    | [Morningstar](./Morningstar) | Access up-to-date investment research and data such as analyst research, expert commentary, and essential Morningstar data. |
+   | [Nimble](./Nimble) | Enabling AI agents to extract fresh and structured web data using Nimble Technologies. |
    | [Trademo](./Trademo_Glocal_trade) | Provide latest duties and past shipment data for trade between multiple countries |
    | [Tripadvisor](./Tripadvisor) | Get travel data, guidance and reviews |
 

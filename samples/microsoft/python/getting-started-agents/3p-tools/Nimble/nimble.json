@@ -1,0 +1,477 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Nimble APIs",
+    "description": "APIs for web search and maps retrieval via Nimble",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.webit.live",
+      "description": "Nimble Maps API server"
+    },
+    {
+      "url": "https://searchit-server.crawlit.live",
+      "description": "Nimble Web Retrieval server"
+    }
+  ],
+  "security": [
+    {
+      "basicAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "authorization",
+        "description": "Basic Authentication with Base64-encoded credentials."
+      }
+    },
+    "parameters": {
+      "AuthorizationHeader": {
+        "name": "authorization",
+        "in": "header",
+        "description": "Basic Authentication header with Base64-encoded credentials.",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "schemas": {
+      "SearchResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "query_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status_code": {
+            "type": "integer"
+          },
+          "headers": {
+            "type": "object"
+          },
+          "parsing": {
+            "type": "object"
+          },
+          "input_url": {
+            "type": "string"
+          },
+          "nimble_links": {
+            "type": "object",
+            "properties": {
+              "next_page": {
+                "type": "string"
+              }
+            }
+          },
+          "driver": {
+            "type": "string"
+          }
+        }
+      },
+      "PlaceResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "query_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status_code": {
+            "type": "integer"
+          },
+          "headers": {
+            "type": "object"
+          },
+          "parsing": {
+            "type": "object"
+          },
+          "redirects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "status_code": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "final_url": {
+            "type": "string"
+          },
+          "driver": {
+            "type": "string"
+          }
+        }
+      },
+      "ReviewsResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "query_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status_code": {
+            "type": "integer"
+          },
+          "headers": {
+            "type": "object"
+          },
+          "parsing": {
+            "type": "object"
+          },
+          "input_url": {
+            "type": "string"
+          },
+          "nimble_links": {
+            "type": "object",
+            "properties": {
+              "next_page": {
+                "type": "string"
+              }
+            }
+          },
+          "driver": {
+            "type": "string"
+          }
+        }
+      },
+      "WebSearchResponse": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "page_content": {
+                  "type": "string",
+                  "description": "Content of the webpage"
+                },
+                "metadata": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string",
+                      "description": "Title of the webpage"
+                    },
+                    "snippet": {
+                      "type": "string",
+                      "description": "Short excerpt from the webpage"
+                    },
+                    "url": {
+                      "type": "string",
+                      "description": "URL of the webpage"
+                    },
+                    "position": {
+                      "type": "integer",
+                      "description": "Position in the search results"
+                    },
+                    "entity_type": {
+                      "type": "string",
+                      "description": "Type of entity returned"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/realtime/serp": {
+      "post": {
+        "summary": "Google Maps Search / Details / Reviews",
+        "description": "Single endpoint for multiple Google Maps operations",
+        "operationId": "googleMapsOperations",
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "search_engine",
+                  "no_html"
+                ],
+                "properties": {
+                  "search_engine": {
+                    "type": "string",
+                    "enum": [
+                      "google_maps_search",
+                      "google_maps_place",
+                      "google_maps_reviews"
+                    ]
+                  },
+                  "query": {
+                    "type": "string"
+                  },
+                  "place_id": {
+                    "type": "string"
+                  },
+                  "sort_by": {
+                    "type": "string",
+                    "enum": [
+                      "relevance",
+                      "newest",
+                      "highest_rating"
+                    ],
+                    "default": "relevance"
+                  },
+                  "no_html": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Always true, cannot be changed"
+                  },
+                  "parse": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "render": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "offset": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "coordinates": {
+                    "type": "string",
+                    "example": "@40.7433817,-73.98804225,12z"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SearchResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/PlaceResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReviewsResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": "Authentication failed: Invalid credentials"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "post": {
+        "summary": "Perform a web search",
+        "description": "Retrieve search results from various search engines (Google, Google SGE, Bing, Yandex).\nResults are returned with page content and metadata.",
+        "operationId": "nimbleDeepWebSearch",
+        "servers": [
+          {
+            "url": "https://searchit-server.crawlit.live"
+          }
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "The search query to execute"
+                  },
+                  "search_engine": {
+                    "type": "string",
+                    "description": "The search engine to use",
+                    "default": "google_search",
+                    "enum": [
+                      "google_search",
+                      "google_sge",
+                      "bing_search",
+                      "yandex_search"
+                    ]
+                  },
+                  "k": {
+                    "type": "integer",
+                    "description": "Number of search results to return",
+                    "default": 3
+                  },
+                  "render": {
+                    "type": "boolean",
+                    "description": "Whether to render the search results",
+                    "default": false
+                  },
+                  "locale": {
+                    "type": "string",
+                    "description": "The locale to use for the search",
+                    "default": "en"
+                  },
+                  "country": {
+                    "type": "string",
+                    "description": "The country to use for the search",
+                    "default": "US"
+                  },
+                  "parsing_type": {
+                    "type": "string",
+                    "description": "The parsing type for content",
+                    "default": "plain_text",
+                    "enum": [
+                      "plain_text",
+                      "markdown",
+                      "simplified_html"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful search response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": "Authentication failed: Invalid credentials"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
