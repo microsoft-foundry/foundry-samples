@@ -49,11 +49,8 @@
       "properties": {
         "category": "AzureStorageAccount",
         "target": "[if(equals(parameters('newOrExisting'), 'new'), resourceId('Microsoft.Storage/storageAccounts', parameters('connectedResourceName')), resourceId('Microsoft.Storage/storageAccounts', parameters('connectedResourceName')))]",
-        "authType": "AccountKey",
+        "authType": "AAD",
         "isSharedToAll": true,
-        "credentials": {
-          "key": "[string(if(equals(parameters('newOrExisting'), 'new'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('connectedResourceName')), '2024-01-01').keys, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('connectedResourceName')), '2024-01-01').keys))]"
-        },
         "metadata": {
           "ApiType": "Azure",
           "ResourceId": "[if(equals(parameters('newOrExisting'), 'new'), resourceId('Microsoft.Storage/storageAccounts', parameters('connectedResourceName')), resourceId('Microsoft.Storage/storageAccounts', parameters('connectedResourceName')))]"
