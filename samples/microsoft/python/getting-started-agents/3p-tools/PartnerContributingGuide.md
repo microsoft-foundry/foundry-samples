@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> We are not accepting new submissions for 3P tools. Thanks for your interest!
+
 # 3p Tool Partner Contributing Guide
 
 > [!IMPORTANT]
