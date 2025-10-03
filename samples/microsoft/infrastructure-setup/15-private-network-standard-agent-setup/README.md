@@ -165,7 +165,7 @@ Click the deploy to Azure button above to open the Azure portal and deploy the t
 
 > **Note:** To access your Foundry resource securely, use either a VM, VPN, or ExpressRoute.
 
----
+---  
 
 ## Network Secured Agent Project Architecture Deep Dive
 
@@ -349,6 +349,167 @@ modules-network-secured/
 4. Review network security groups
 
 ---
+---
+# (Optional) Adding Multiple Projects to AI Foundry Deployment
+
+This guide explains how to add additional projects to your existing AI Foundry deployment with network security and capability hosts.
+
+## Overview
+
+After deploying your initial AI Foundry setup using `main.bicep`, you can add additional projects using the modular approach provided in this repository. Each new project will:
+
+- ✅ **Reuse existing shared infrastructure** (AI Services account, Storage, Cosmos DB, AI Search, VNet)
+- ✅ **Create independent projects** with unique identities and connections
+- ✅ **Set up proper role assignments** and capability hosts for each project
+- ✅ **Maintain network security** configurations from your original deployment
+- ✅ **Deploy independently** without affecting existing projects
+
+## Files Added
+
+### Core Deployment Files
+
+| File | Purpose |
+|------|---------|
+| `add-project.bicep` | Main Bicep template for adding new projects |
+| `add-project.bicepparam` | Parameters file template for new projects |
+| `modules-network-secured/ai-project-identity-unique.bicep` | Modified project module with unique connection names |
+| `modules-network-secured/blob-storage-container-role-assignments-unique.bicep` | Modified storage role assignment module |
+
+### Helper Files
+
+| File | Purpose |
+|------|---------|
+| `get-existing-resources.ps1` | PowerShell script to discover existing resource names |
+
+## Prerequisites
+
+1. ✅ **Existing AI Foundry deployment** completed using `main.bicep`
+2. ✅ **Azure CLI** installed and logged in
+3. ✅ **Proper permissions** on the resource group and existing resources
+4. ✅ **Resource names** from your existing deployment
+
+## Step-by-Step Guide
+
+### Step 1: Discover Existing Resource Names
+
+Run the PowerShell script to automatically discover your existing resource names:
+
+```powershell
+# Navigate to your repository folder
+cd "path\to\your\AgentRepro\folder"
+
+# Run the discovery script
+.\get-existing-resources.ps1 -ResourceGroupName "your-resource-group-name"
+
+# Optional: Include subscription ID if needed
+.\get-existing-resources.ps1 -ResourceGroupName "your-resource-group-name" -SubscriptionId "your-subscription-id"
+```
+
+**Example output:**
+```
+=== Summary for add-project.bicepparam ===
+param existingAccountName = 'aiservicesytlz'
+param existingAiSearchName = 'aiservicesytlzsearch'
+param existingStorageName = 'aiservicesytlzstorage'
+param existingCosmosDBName = 'aiservicesytlzcosmosdb'
+param accountResourceGroupName = 'agenticvnet'
+param aiSearchResourceGroupName = 'agenticvnet'
+param storageResourceGroupName = 'agenticvnet'
+param cosmosDBResourceGroupName = 'agenticvnet'
+```
+
+### Step 2: Configure Parameters File
+
+Copy the output from Step 1 and update your `add-project.bicepparam` file:
+
+### Step 3: Deploy the New Project
+
+Deploy using Azure CLI:
+
+```powershell
+az deployment group create `
+  --resource-group "your-resource-group" `
+  --template-file "add-project.bicep" `
+  --parameters "add-project.bicepparam"
+```
+
+## Adding Multiple Projects
+
+To add additional projects, repeat the process with different parameter values:
+
+### For a Third Project:
+
+1. **Update project-specific parameters:**
+   ```bicep
+   param projectName = 'thirdproject'  // Must be unique
+   param displayName = 'Third Project'
+   param projectCapHost = 'caphostthird'  // Must be unique
+   ```
+
+3. **Deploy using the new parameters file:**
+   ```powershell
+   az deployment group create `
+     --resource-group "your-resource-group" `
+     --template-file "add-project.bicep" `
+     --parameters "add-project.bicepparam"
+   ```
+
+## What Gets Created
+
+Each new project deployment creates:
+
+| Resource | Description |
+|----------|-------------|
+| **AI Foundry Project** | New project under your existing AI Services account |
+| **Managed Identity** | Project-specific system-assigned identity |
+| **Unique Connections** | Project-specific connections to shared resources |
+| **Capability Host** | Configured for Agents with proper connections |
+| **RBAC Assignments** | Proper permissions on shared resources |
+
+### Role Assignments Created:
+
+- ✅ **Storage Blob Data Contributor** on Storage Account
+- ✅ **Storage Blob Data Owner** on project-specific containers
+- ✅ **Cosmos DB Operator** on Cosmos DB Account
+- ✅ **Cosmos Built-In Data Contributor** on project-specific containers
+- ✅ **Search Index Data Contributor** on AI Search Service
+- ✅ **Search Service Contributor** on AI Search Service
+
+## Configuration Reference
+
+### Required Parameters (Must Customize for Each Project)
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `projectName` | Unique name for the project | `'secondproject'` |
+| `displayName` | Display name in Azure portal | `'Second Project'` |
+| `projectCapHost` | Unique capability host name | `'caphostsecond'` |
+| `projectDescription` | Description of the project | `'My second AI project'` |
+
+### Existing Resource Parameters (From Script)
+
+| Parameter | Description | Source |
+|-----------|-------------|---------|
+| `existingAccountName` | AI Services account name | Output from `get-existing-resources.ps1` |
+| `existingAiSearchName` | AI Search service name | Output from `get-existing-resources.ps1` |
+| `existingStorageName` | Storage account name | Output from `get-existing-resources.ps1` |
+| `existingCosmosDBName` | Cosmos DB account name | Output from `get-existing-resources.ps1` |
+| `*ResourceGroupName` | Resource group names | Usually same as deployment RG |
+| `*SubscriptionId` | Subscription IDs | Usually same subscription |
+
+
+## Security Considerations
+
+- ✅ **Least Privilege**: Each project gets only the permissions it needs
+- ✅ **Isolated Containers**: Projects get separate storage containers
+- ✅ **Network Security**: Inherits network security from original deployment
+- ✅ **Unique Identities**: Each project has its own managed identity
+
+## Limitations
+
+- 📝 All projects share the same model deployments
+- 📝 Projects must be in the same region as the original deployment
+- 📝 Network configuration is inherited from original deployment
 
 ## References
 
