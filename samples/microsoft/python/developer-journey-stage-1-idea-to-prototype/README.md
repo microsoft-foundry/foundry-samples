@@ -128,7 +128,6 @@ Make sure you have:
    PROJECT_ENDPOINT=https://your-project.aiservices.azure.com
    MODEL_DEPLOYMENT_NAME=gpt-4o-mini
    SHAREPOINT_RESOURCE_NAME=your-sharepoint-connection
-   SHAREPOINT_SITE_URL=https://your-company.sharepoint.com/teams/your-site
    MCP_SERVER_URL=https://your-mcp-server.com
    ```
 

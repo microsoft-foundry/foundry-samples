@@ -100,41 +100,24 @@ async function createWorkplaceAssistant(): Promise<AgentConfiguration> {
     // - Internal process documentation
     
     const sharepointResourceName = process.env.SHAREPOINT_RESOURCE_NAME!;
-    const sharepointSiteUrl = process.env.SHAREPOINT_SITE_URL!;
     
     console.log('📁 Configuring SharePoint integration...');
     console.log(`   Connection: ${sharepointResourceName}`);
-    console.log(`   Site URL: ${sharepointSiteUrl}`);
     
     let sharepointTool: SharepointTool | null = null;
     try {
         // Attempt to retrieve pre-configured SharePoint connection
         const sharepointConnection = await projectClient.connections.get(sharepointResourceName);
-        const currentTarget = sharepointConnection.target || 'N/A';
-        
-        // Validate connection configuration (common preview issue)
-        if (currentTarget === '_' || !currentTarget || currentTarget === 'N/A') {
-            console.log(`⚠️  SharePoint connection has invalid target: '${currentTarget}'`);
-            console.log(`   Expected: ${sharepointSiteUrl}`);
-            console.log('   🔧 SOLUTION: Update connection target in Azure AI Foundry portal');
-            console.log('      1. Go to Management Center > Connected Resources');
-            console.log(`      2. Edit '${sharepointResourceName}' connection`);
-            console.log(`      3. Set target URL to: ${sharepointSiteUrl}`);
-            sharepointTool = null;
-        } else {
-            sharepointTool = new SharepointTool({ connectionId: sharepointConnection.id });
-            console.log('✅ SharePoint successfully connected');
-            console.log(`   Active target: ${currentTarget}`);
-        }
+        sharepointTool = new SharepointTool({ connectionId: sharepointConnection.id });
+        console.log('✅ SharePoint successfully connected');
         
     } catch (error) {
         // Graceful degradation - system continues without SharePoint
         console.log(`⚠️  SharePoint connection failed: ${error}`);
         console.log('   Agent will operate in technical guidance mode only');
         console.log('   📝 To enable full functionality:');
-        console.log('      1. Create SharePoint connection in Azure AI Foundry portal');
-        console.log(`      2. Connection name: ${sharepointResourceName}`);
-        console.log(`      3. Site URL: ${sharepointSiteUrl}`);
+        console.log('      Create SharePoint connection in Azure AI Foundry portal');
+        console.log(`      Connection name: ${sharepointResourceName}`);
         sharepointTool = null;
     }
     

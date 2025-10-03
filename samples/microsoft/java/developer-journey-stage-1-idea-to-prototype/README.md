@@ -66,7 +66,6 @@ AI_FOUNDRY_TENANT_ID=your-tenant-id
 
 # SharePoint Integration  
 SHAREPOINT_RESOURCE_NAME=Benefits
-SHAREPOINT_SITE_URL=https://yourtenant.sharepoint.com/sites/benefits
 
 # Microsoft Learn MCP Server
 MCP_SERVER_URL=https://learn.microsoft.com/api/mcp

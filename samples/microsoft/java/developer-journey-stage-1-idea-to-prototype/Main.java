@@ -121,41 +121,24 @@ public class Main {
         // - Internal process documentation
         
         String sharepointResourceName = config.getProperty("SHAREPOINT_RESOURCE_NAME");
-        String sharepointSiteUrl = config.getProperty("SHAREPOINT_SITE_URL");
         
         System.out.println("📁 Configuring SharePoint integration...");
         System.out.println("   Connection: " + sharepointResourceName);
-        System.out.println("   Site URL: " + sharepointSiteUrl);
         
         SharepointTool sharepointTool = null;
         try {
             // Attempt to retrieve pre-configured SharePoint connection
             var sharepointConnection = projectClient.getConnections().get(sharepointResourceName);
-            String currentTarget = sharepointConnection.getTarget();
-            
-            // Validate connection configuration (common preview issue)
-            if ("_".equals(currentTarget) || currentTarget == null || "N/A".equals(currentTarget)) {
-                System.out.println("⚠️  SharePoint connection has invalid target: '" + currentTarget + "'");
-                System.out.println("   Expected: " + sharepointSiteUrl);
-                System.out.println("   🔧 SOLUTION: Update connection target in Azure AI Foundry portal");
-                System.out.println("      1. Go to Management Center > Connected Resources");
-                System.out.println("      2. Edit '" + sharepointResourceName + "' connection");
-                System.out.println("      3. Set target URL to: " + sharepointSiteUrl);
-                sharepointTool = null;
-            } else {
-                sharepointTool = new SharepointTool(sharepointConnection.getId());
-                System.out.println("✅ SharePoint successfully connected");
-                System.out.println("   Active target: " + currentTarget);
-            }
+            sharepointTool = new SharepointTool(sharepointConnection.getId());
+            System.out.println("✅ SharePoint successfully connected");
             
         } catch (Exception e) {
             // Graceful degradation - system continues without SharePoint
             System.out.println("⚠️  SharePoint connection failed: " + e.getMessage());
             System.out.println("   Agent will operate in technical guidance mode only");
             System.out.println("   📝 To enable full functionality:");
-            System.out.println("      1. Create SharePoint connection in Azure AI Foundry portal");
-            System.out.println("      2. Connection name: " + sharepointResourceName);
-            System.out.println("      3. Site URL: " + sharepointSiteUrl);
+            System.out.println("      Create SharePoint connection in Azure AI Foundry portal");
+            System.out.println("      Connection name: " + sharepointResourceName);
             sharepointTool = null;
         }
         

@@ -77,39 +77,23 @@ def create_workplace_assistant():
     # - Internal process documentation
     
     sharepoint_resource_name = os.environ["SHAREPOINT_RESOURCE_NAME"]
-    sharepoint_site_url = os.getenv("SHAREPOINT_SITE_URL")
     
     print(f"📁 Configuring SharePoint integration...")
     print(f"   Connection: {sharepoint_resource_name}")
-    print(f"   Site URL: {sharepoint_site_url}")
     
     try:
         # Attempt to retrieve pre-configured SharePoint connection
         sharepoint_conn = project_client.connections.get(name=sharepoint_resource_name)
-        current_target = getattr(sharepoint_conn, 'target', 'N/A')
-        
-        # Validate connection configuration (common preview issue)
-        if current_target == "_" or not current_target or current_target == "N/A":
-            print(f"⚠️  SharePoint connection has invalid target: '{current_target}'")
-            print(f"   Expected: {sharepoint_site_url}")
-            print("   🔧 SOLUTION: Update connection target in Azure AI Foundry portal")
-            print("      1. Go to Management Center > Connected Resources")
-            print(f"      2. Edit '{sharepoint_resource_name}' connection")
-            print(f"      3. Set target URL to: {sharepoint_site_url}")
-            sharepoint_tool = None
-        else:
-            sharepoint_tool = SharepointTool(connection_id=sharepoint_conn.id)
-            print(f"✅ SharePoint successfully connected")
-            print(f"   Active target: {current_target}")
+        sharepoint_tool = SharepointTool(connection_id=sharepoint_conn.id)
+        print(f"✅ SharePoint successfully connected")
             
     except Exception as e:
         # Graceful degradation - system continues without SharePoint
         print(f"⚠️  SharePoint connection failed: {e}")
         print("   Agent will operate in technical guidance mode only")
         print("   📝 To enable full functionality:")
-        print("      1. Create SharePoint connection in Azure AI Foundry portal")
-        print(f"      2. Connection name: {sharepoint_resource_name}")
-        print(f"      3. Site URL: {sharepoint_site_url}")
+        print("      Create SharePoint connection in Azure AI Foundry portal")
+        print(f"      Connection name: {sharepoint_resource_name}")
         sharepoint_tool = None
     
     # ========================================================================

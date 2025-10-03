@@ -140,36 +140,17 @@ namespace ModernWorkplaceAssistant
             // - Internal process documentation
             
             var sharepointResourceName = Environment.GetEnvironmentVariable("SHAREPOINT_RESOURCE_NAME");
-            var sharepointSiteUrl = Environment.GetEnvironmentVariable("SHAREPOINT_SITE_URL");
             
             Console.WriteLine("📁 Configuring SharePoint integration...");
             Console.WriteLine($"   Connection: {sharepointResourceName}");
-            Console.WriteLine($"   Site URL: {sharepointSiteUrl}");
             
             SharepointTool sharepointTool = null;
             try
             {
                 // Attempt to retrieve pre-configured SharePoint connection
                 var sharepointConnection = await projectClient.GetConnectionAsync(sharepointResourceName);
-                var currentTarget = sharepointConnection?.Target ?? "N/A";
-                
-                // Validate connection configuration (common preview issue)
-                if (currentTarget == "_" || string.IsNullOrEmpty(currentTarget) || currentTarget == "N/A")
-                {
-                    Console.WriteLine($"⚠️  SharePoint connection has invalid target: '{currentTarget}'");
-                    Console.WriteLine($"   Expected: {sharepointSiteUrl}");
-                    Console.WriteLine("   🔧 SOLUTION: Update connection target in Azure AI Foundry portal");
-                    Console.WriteLine("      1. Go to Management Center > Connected Resources");
-                    Console.WriteLine($"      2. Edit '{sharepointResourceName}' connection");
-                    Console.WriteLine($"      3. Set target URL to: {sharepointSiteUrl}");
-                    sharepointTool = null;
-                }
-                else
-                {
-                    sharepointTool = new SharepointTool(sharepointConnection.Id);
-                    Console.WriteLine("✅ SharePoint successfully connected");
-                    Console.WriteLine($"   Active target: {currentTarget}");
-                }
+                sharepointTool = new SharepointTool(sharepointConnection.Id);
+                Console.WriteLine("✅ SharePoint successfully connected");
             }
             catch (Exception ex)
             {
@@ -177,9 +158,8 @@ namespace ModernWorkplaceAssistant
                 Console.WriteLine($"⚠️  SharePoint connection failed: {ex.Message}");
                 Console.WriteLine("   Agent will operate in technical guidance mode only");
                 Console.WriteLine("   📝 To enable full functionality:");
-                Console.WriteLine("      1. Create SharePoint connection in Azure AI Foundry portal");
-                Console.WriteLine($"      2. Connection name: {sharepointResourceName}");
-                Console.WriteLine($"      3. Site URL: {sharepointSiteUrl}");
+                Console.WriteLine("      Create SharePoint connection in Azure AI Foundry portal");
+                Console.WriteLine($"      Connection name: {sharepointResourceName}");
                 sharepointTool = null;
             }
             
