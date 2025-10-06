@@ -178,6 +178,7 @@ public class Evaluate {
      * - Demonstrates business-relevant quality metrics
      * - Provides foundation for governance and monitoring
      */
+    //#region evaluation_functions
     public static EvaluationResult evaluateResponse(TestQuestion question, String response, long responseTimeMs) {
         EvaluationResult result = new EvaluationResult();
         result.question = question.question;
@@ -507,6 +508,7 @@ public class Evaluate {
         
         System.out.println("\n" + "=".repeat(60));
     }
+    //#endregion evaluation_functions
     
     public static void main(String[] args) {
         runEvaluation();

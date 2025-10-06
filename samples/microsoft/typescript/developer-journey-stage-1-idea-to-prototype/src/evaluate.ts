@@ -59,6 +59,7 @@ class AgentEvaluator {
         );
     }
     
+    //#region evaluation_functions
     async runEvaluation(): Promise<EvaluationResult[]> {
         console.log('🧪 Starting Modern Workplace Assistant Evaluation');
         console.log('==================================================');
@@ -277,6 +278,7 @@ class AgentEvaluator {
             });
         }
     }
+    //#endregion evaluation_functions
     
     private async cleanupAgent(agent: Agent): Promise<void> {
         try {

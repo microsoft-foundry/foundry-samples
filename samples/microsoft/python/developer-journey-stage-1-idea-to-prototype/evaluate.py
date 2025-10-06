@@ -4,9 +4,12 @@ Evaluation Script for Modern Workplace Assistant
 Tests the agent with predefined business scenarios to assess quality.
 """
 
+#region evaluation_imports
 import json
 from main import create_workplace_assistant, chat_with_assistant
+#endregion evaluation_imports
 
+#region evaluation_functions
 def load_test_questions(filepath="questions.jsonl"):
     """Load test questions from JSONL file"""
     questions = []
@@ -47,7 +50,9 @@ def run_evaluation(agent_id, mcp_tool):
     print(f"\n📊 Evaluation Results: {passed}/{len(results)} questions passed")
     
     return results
+#endregion evaluation_functions
 
+#region evaluation_main
 def main():
     """Run evaluation on the workplace assistant"""
     print("🧪 Modern Workplace Assistant - Evaluation")
@@ -68,6 +73,9 @@ def main():
         
     except Exception as e:
         print(f"❌ Evaluation failed: {e}")
+#endregion evaluation_main
 
+#region evaluation_execution
 if __name__ == "__main__":
     main()
+#endregion evaluation_execution

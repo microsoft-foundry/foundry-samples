@@ -20,6 +20,7 @@
  * 3. Combined guidance showing how policy requirements map to technical implementation
  */
 
+//#region imports_and_setup
 import { AIProjectClient } from '@azure/ai-projects';
 import { DefaultAzureCredential, AzureCliCredential } from '@azure/identity';
 import { Agent, SharepointTool, McpTool, ToolDefinition } from '@azure/ai-agents';
@@ -47,6 +48,7 @@ const projectClient = new AIProjectClient(
     process.env.PROJECT_ENDPOINT!,
     credential
 );
+//#endregion imports_and_setup
 
 // ============================================================================
 // INTERFACES AND TYPES

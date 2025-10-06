@@ -20,6 +20,7 @@
  * 3. Combined guidance showing how policy requirements map to technical implementation
  */
 
+//#region imports_and_setup
 import com.azure.ai.projects.AIProjectClient;
 import com.azure.ai.projects.AIProjectClientBuilder;
 import com.azure.ai.agents.models.*;
@@ -30,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
+//#endregion imports_and_setup
 
 public class Main {
     
@@ -108,6 +110,7 @@ public class Main {
      * 
      * @return AgentConfiguration containing agent and tool information
      */
+    //#region create_workplace_assistant
     public static AgentConfiguration createWorkplaceAssistant() {
         System.out.println("🤖 Creating Modern Workplace Assistant...");
         

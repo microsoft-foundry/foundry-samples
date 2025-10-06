@@ -21,6 +21,7 @@ An employee needs to implement Azure AD multi-factor authentication. They need:
 3. Combined guidance showing how policy requirements map to technical implementation
 """
 
+#region imports_and_setup
 import os
 import time
 from azure.ai.projects import AIProjectClient
@@ -45,7 +46,9 @@ project_client = AIProjectClient(
     endpoint=os.environ["PROJECT_ENDPOINT"],
     credential=credential,
 )
+#endregion imports_and_setup
 
+#region create_workplace_assistant
 def create_workplace_assistant():
     """
     Create a Modern Workplace Assistant combining internal and external knowledge.
@@ -173,7 +176,9 @@ RESPONSE STRATEGY:
     
     print(f"✅ Agent created successfully: {agent.id}")
     return agent, mcp_tool, sharepoint_tool
+#endregion create_workplace_assistant
 
+#region demonstrate_business_scenarios
 def demonstrate_business_scenarios(agent, mcp_tool, sharepoint_tool):
     """
     Demonstrate realistic business scenarios combining internal and external knowledge.
@@ -347,7 +352,9 @@ def interactive_mode(agent, mcp_tool):
             print("-" * 60)
     
     print("\n👋 Thank you for testing the Modern Workplace Assistant!")
+#endregion demonstrate_business_scenarios
 
+#region main
 def main():
     """
     Main execution flow demonstrating the complete sample.
@@ -377,6 +384,9 @@ def main():
     print(f"\n🎉 Sample completed successfully!")
     print("📚 This foundation supports Tutorial 2 (Governance) and Tutorial 3 (Production)")
     print("🔗 Next: Add evaluation metrics, monitoring, and production deployment")
+#endregion main
 
+#region main_execution
 if __name__ == "__main__":
     main()
+#endregion main_execution

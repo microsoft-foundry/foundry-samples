@@ -20,6 +20,7 @@
  * 3. Combined guidance showing how policy requirements map to technical implementation
  */
 
+#region imports_and_setup
 using Azure.AI.Projects;
 using Azure.AI.Agents.Models;
 using Azure.Identity;
@@ -29,6 +30,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Text.Json;
+#endregion imports_and_setup
 
 namespace ModernWorkplaceAssistant
 {
@@ -111,6 +113,7 @@ namespace ModernWorkplaceAssistant
             }
         }
         
+        #region create_workplace_assistant
         /// <summary>
         /// Create a Modern Workplace Assistant combining internal and external knowledge.
         /// 
@@ -258,7 +261,9 @@ RESPONSE STRATEGY:
                 SharepointTool = sharepointTool 
             };
         }
+        #endregion create_workplace_assistant
         
+        #region demonstrate_business_scenarios
         /// <summary>
         /// Demonstrate realistic business scenarios combining internal and external knowledge.
         /// 
@@ -465,7 +470,9 @@ RESPONSE STRATEGY:
             
             Console.WriteLine("\n👋 Thank you for testing the Modern Workplace Assistant!");
         }
+        #endregion demonstrate_business_scenarios
         
+        #region main
         /// <summary>
         /// Main execution flow demonstrating the complete sample.
         /// 
@@ -507,5 +514,6 @@ RESPONSE STRATEGY:
                 Environment.Exit(1);
             }
         }
+        #endregion main
     }
 }

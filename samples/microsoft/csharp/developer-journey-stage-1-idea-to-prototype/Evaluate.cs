@@ -14,6 +14,7 @@
  * - Provides foundation for governance and monitoring
  */
 
+#region evaluation_imports
 using Azure.AI.Projects;
 using Azure.AI.Agents.Models;
 using Azure.Identity;
@@ -23,6 +24,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Text.Json;
+#endregion evaluation_imports
 
 namespace ModernWorkplaceAssistant.Evaluation
 {
@@ -81,6 +83,7 @@ namespace ModernWorkplaceAssistant.Evaluation
             }
         }
         
+        #region evaluation_functions
         public async Task<List<EvaluationResult>> RunEvaluationAsync()
         {
             Console.WriteLine("🧪 Starting Modern Workplace Assistant Evaluation");
@@ -330,8 +333,10 @@ namespace ModernWorkplaceAssistant.Evaluation
                 Console.WriteLine($"⚠️ Cleanup warning: {ex.Message}");
             }
         }
+        #endregion evaluation_functions
     }
     
+    #region evaluation_main
     // Entry point for evaluation
     public class EvaluationProgram
     {
@@ -354,4 +359,5 @@ namespace ModernWorkplaceAssistant.Evaluation
             }
         }
     }
+    #endregion evaluation_main
 }
