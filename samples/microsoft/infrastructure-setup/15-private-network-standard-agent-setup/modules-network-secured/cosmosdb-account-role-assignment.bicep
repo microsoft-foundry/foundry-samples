@@ -1,5 +1,5 @@
 // Assigns Role Cosmos DB Operator to the Project Principal ID
-@description('Name of the AI Search resource')
+@description('Name of the Cosmos DB resource')
 param cosmosDBName string
 
 @description('Principal ID of the AI project')

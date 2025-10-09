@@ -1,26 +1,30 @@
 //<chat_completion>
-using Azure;
+using System.ClientModel.Primitives;
 using Azure.Identity;
-using Azure.AI.Projects;
-using Azure.AI.Inference;
+using OpenAI;
+using OpenAI.Chat;
 
-var projectEndpoint = new Uri(System.Environment.GetEnvironmentVariable("AZURE_AI_ENDPOINT"));
-var modelDeploymentName = System.Environment.GetEnvironmentVariable("AZURE_AI_MODEL");
-var credential = new DefaultAzureCredential();
+#pragma warning disable OPENAI001
 
-AIProjectClient client = new AIProjectClient(projectEndpoint, credential);
+string projectEndpoint = System.Environment.GetEnvironmentVariable("AZURE_AI_INFERENCE")!;
+string modelDeploymentName = System.Environment.GetEnvironmentVariable("AZURE_AI_MODEL")!;
 
-ChatCompletionsClient chatClient = client.GetChatCompletionsClient();
+BearerTokenPolicy tokenPolicy = new(
+    new DefaultAzureCredential(),
+    "https://ai.azure.com/.default");
+OpenAIClient openAIClient = new(
+    authenticationPolicy: tokenPolicy,
+    options: new OpenAIClientOptions()
+    {
+        Endpoint = new($"{projectEndpoint}/openai/v1"),
+    });
+ChatClient chatClient = openAIClient.GetChatClient(modelDeploymentName);
 
-var requestOptions = new ChatCompletionsOptions()
-{
-    Messages =
-        {
-            new ChatRequestSystemMessage("You are a helpful assistant."),
-            new ChatRequestUserMessage("How many feet are in a mile?"),
-        },
-    Model = modelDeploymentName
-};
-Response<ChatCompletions> response = chatClient.Complete(requestOptions);
-Console.WriteLine(response.Value.Content);
+ChatCompletion completion = await chatClient.CompleteChatAsync(
+    [
+        new SystemChatMessage("You are a helpful assistant."),
+                    new UserChatMessage("How many feet are in a mile?")
+    ]);
+
+Console.WriteLine(completion.Content[0].Text);
 // </chat_completion>

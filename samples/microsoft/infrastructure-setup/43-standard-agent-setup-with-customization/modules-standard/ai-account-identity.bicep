@@ -1,11 +1,6 @@
 
 param accountName string
 param location string
-param modelName string
-param modelFormat string
-param modelVersion string
-param modelSkuName string
-param modelCapacity int
 
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: accountName
@@ -29,22 +24,6 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
 
     // API-key based auth is not supported for the Agent service
     disableLocalAuth: false
-  }
-}
-
-resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview'=  {
-  parent: account
-  name: modelName
-  sku : {
-    capacity: modelCapacity
-    name: modelSkuName
-  }
-  properties: {
-    model:{
-      name: modelName
-      format: modelFormat
-      version: modelVersion
-    }
   }
 }
 

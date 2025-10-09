@@ -40,10 +40,10 @@ with agents_client:
 
     # Upload file and create vector store
     # [START upload_file_create_vector_store_and_agent_with_file_search_tool]
-    file = agents_client.upload_file_and_poll(file_path="/workspaces/foundry-samples/scenarios/agents/samples/doc-samples/data/product_info_1.md", purpose=FilePurpose.AGENTS)
+    file = agents_client.files.upload_and_poll(file_path="/workspaces/foundry-samples/scenarios/agents/samples/doc-samples/data/product_info_1.md", purpose=FilePurpose.AGENTS)
     print(f"Uploaded file, file ID: {file.id}")
 
-    vector_store = agents_client.create_vector_store_and_poll(file_ids=[file.id], name="my_vectorstore")
+    vector_store = agents_client.vector_stores.create_and_poll(file_ids=[file.id], name="my_vectorstore")
     print(f"Created vector store, vector store ID: {vector_store.id}")
 
     # Create file search tool with resources followed by creating agent
@@ -61,17 +61,17 @@ with agents_client:
     print(f"Created agent, ID: {agent.id}")
 
     # Create thread for communication
-    thread = agents_client.create_thread()
+    thread = agents_client.threads.create()
     print(f"Created thread, ID: {thread.id}")
 
     # Create message to thread
-    message = agents_client.create_message(
+    message = agents_client.messages.create(
         thread_id=thread.id, role="user", content="Hello, what Contoso products do you know?"
     )
     print(f"Created message, ID: {message.id}")
 
     # Create and process agent run in thread with tools
-    run = agents_client.create_and_process_run(thread_id=thread.id, agent_id=agent.id)
+    run = agents_client.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
     print(f"Run finished with status: {run.status}")
 
     if run.status == "failed":
@@ -80,10 +80,10 @@ with agents_client:
 
     # [START teardown]
     # Delete the file when done
-    agents_client.delete_vector_store(vector_store.id)
+    agents_client.vector_stores.delete(vector_store.id)
     print("Deleted vector store")
 
-    agents_client.delete_file(file_id=file.id)
+    agents_client.files.delete(file_id=file.id)
     print("Deleted file")
 
     # Delete the agent when done
@@ -92,7 +92,7 @@ with agents_client:
     # [END teardown]
 
     # Fetch and log all messages
-    messages = agents_client.list_messages(thread_id=thread.id)
+    messages = agents_client.messages.list(thread_id=thread.id)
 
     # Print messages from the thread
     for text_message in messages.text_messages:

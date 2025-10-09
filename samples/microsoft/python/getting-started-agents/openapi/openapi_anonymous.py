@@ -80,11 +80,11 @@ with AIProjectClient(
     # <thread_management>
     # --- Thread Management ---
     # Create a new conversation thread for the interaction
-    thread = project_client.agents.create_thread()
+    thread = project_client.agents.threads.create()
     print(f"Created thread, ID: {thread.id}")
 
     # Create the initial user message in the thread
-    message = project_client.agents.create_message(
+    message = project_client.agents.messages.create(
         thread_id=thread.id,
         role="user",
         content="What's the weather in Seattle and What is the name and population of the country that uses currency with abbreviation THB?",
@@ -96,7 +96,7 @@ with AIProjectClient(
     # --- Message Processing (Run Creation and Auto-processing) ---
     # Create and automatically process the run, handling tool calls internally
     # Note: This differs from the function_tool example where tool calls are handled manually
-    run = project_client.agents.create_and_process_run(thread_id=thread.id, agent_id=agent.id)
+    run = project_client.agents.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
     print(f"Run finished with status: {run.status}")
     # </message_processing>
 
@@ -106,7 +106,7 @@ with AIProjectClient(
         print(f"Run failed: {run.last_error}")
 
     # Retrieve the steps taken during the run for analysis
-    run_steps = project_client.agents.list_run_steps(thread_id=thread.id, run_id=run.id)
+    run_steps = project_client.agents.runs_steps.list(thread_id=thread.id, run_id=run.id)
 
     # Loop through each step to display information
     for step in run_steps.data:
@@ -135,6 +135,6 @@ with AIProjectClient(
     print("Deleted agent")
 
     # Fetch and log all messages exchanged during the conversation thread
-    messages = project_client.agents.list_messages(thread_id=thread.id)
+    messages = project_client.agents.messages.list(thread_id=thread.id)
     print(f"Messages: {messages}")
     # </cleanup>
