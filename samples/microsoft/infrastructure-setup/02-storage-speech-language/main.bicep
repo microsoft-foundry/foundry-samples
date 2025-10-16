@@ -28,15 +28,13 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-07-01-preview' = {
     type: 'SystemAssigned'
   }
   properties: {
-    allowProjectManagement: false
-    publicNetworkAccess: 'Enabled' //'Disabled' 
+    allowProjectManagement: true
+    publicNetworkAccess: 'Enabled' // or 'Disabled' 
     disableLocalAuth: false
-    //customSubDomainName: toLower(replace(aiFoundryName, '_', '-'))
-    userOwnedStorage: [
-		{
+    customSubDomainName: toLower(replace(aiFoundryName, '_', '-'))
+    userOwnedStorage: [{
         resourceId: userOwnedStorageResourceId
-		}
-  ]
+		}]
   }
 }
 
