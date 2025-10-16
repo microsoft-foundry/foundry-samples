@@ -4,6 +4,7 @@ using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 
+// Load configuration from appsettings.json
 IConfigurationRoot configuration = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -12,8 +13,11 @@ IConfigurationRoot configuration = new ConfigurationBuilder()
 var projectEndpoint = configuration["ProjectEndpoint"];
 var modelDeploymentName = configuration["ModelDeploymentName"];
 var storageQueueUri = configuration["StorageQueueURI"];
+
+// Create a PersistentAgentsClient
 PersistentAgentsClient client = new(projectEndpoint, new DefaultAzureCredential());
 
+// Create a Azure Function Tool Definition.
 AzureFunctionToolDefinition azureFnTool = new(
     name: "foo",
     description: "Get answers from the foo bot.",
@@ -51,6 +55,7 @@ AzureFunctionToolDefinition azureFnTool = new(
     )
 );
 
+// Create a PersistentAgent with tool.
 PersistentAgent agent = await client.Administration.CreateAgentAsync(
     model: modelDeploymentName,
     name: "azure-function-agent-foo",
@@ -62,30 +67,35 @@ PersistentAgent agent = await client.Administration.CreateAgentAsync(
     tools: [azureFnTool]
 );
 
+// Create a thread.
 PersistentAgentThread thread = await client.Threads.CreateThreadAsync();
 
+// Create message.
 await client.Messages.CreateMessageAsync(
     thread.Id,
     MessageRole.User,
     "What is the most prevalent element in the universe? What would foo say?");
 
+// Start run.
 ThreadRun run = await client.Runs.CreateRunAsync(thread.Id, agent.Id);
 
+// Poll until finished.
 do
 {
     await Task.Delay(TimeSpan.FromMilliseconds(500));
     run = await client.Runs.GetRunAsync(thread.Id, run.Id);
 }
 while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
+    || run.Status == RunStatus.InProgress);
 
-AsyncPageable<ThreadMessage> messages = client.Messages.GetMessagesAsync(
-    threadId: thread.Id,
+// Get messages.
+AsyncPageable<PersistentThreadMessage> messages = client.Messages.GetMessagesAsync(
+    thread.Id,
     order: ListSortOrder.Ascending
 );
 
-await foreach (ThreadMessage threadMessage in messages)
+// Print messages.
+await foreach (PersistentThreadMessage threadMessage in messages)
 {
     foreach (MessageContent content in threadMessage.ContentItems)
     {
@@ -98,5 +108,6 @@ await foreach (ThreadMessage threadMessage in messages)
     }
 }
 
+// Clean up resources
 await client.Threads.DeleteThreadAsync(thread.Id);
 await client.Administration.DeleteAgentAsync(agent.Id);

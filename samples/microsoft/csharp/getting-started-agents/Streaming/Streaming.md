@@ -1,11 +1,12 @@
-# Sample using agents with streaming in Azure.AI.Agents
+# Sample using agents with streaming in Azure.AI.Agents.Persistent
 
 In this example we will demonstrate the agent streaming support.
 
-1. First, we set up configuration using `appsettings.json`, create a `PersistentAgentsClient`, and then create a `PersistentAgent` with the Code Interpreter tool.
+## Initialize
 
-```C# Snippet:AgentsStreaming_Step1_Common_SetupClientAndConfig
-using Azure;
+First we need to create agent client and read the environment variables that will be used in the next steps.
+
+```csharp
 using Azure.AI.Agents.Persistent;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
@@ -22,9 +23,11 @@ var modelDeploymentName = configuration["ModelDeploymentName"];
 PersistentAgentsClient client = new(projectEndpoint, new DefaultAzureCredential());
 ```
 
+We will create agent with the Interpreter tool support. It is needed to allow for writing mathematical formulas in [LaTeX](https://en.wikipedia.org/wiki/LaTeX) format.
+
 Synchronous sample:
 
-```C# Snippet:AgentsStreaming_Step1_Sync_CreateAgent
+```csharp
 PersistentAgent agent = client.Administration.CreateAgent(
     model: modelDeploymentName,
     name: "My Friendly Test Agent",
@@ -35,7 +38,7 @@ PersistentAgent agent = client.Administration.CreateAgent(
 
 Asynchronous sample:
 
-```C# Snippet:AgentsStreaming_Step1_Async_CreateAgent
+```csharp
 PersistentAgent agent = await client.Administration.CreateAgentAsync(
     model: modelDeploymentName,
     name: "My Friendly Test Agent",
@@ -44,14 +47,16 @@ PersistentAgent agent = await client.Administration.CreateAgentAsync(
 );
 ```
 
-2. Next, we create a `PersistentAgentThread` and add a user message to it.
+## Threads and Messages
+
+Create thread with the message.
 
 Synchronous sample:
 
-```C# Snippet:AgentsStreaming_Step2_Sync_CreateThreadAndMessage
+```csharp
 PersistentAgentThread thread = client.Threads.CreateThread();
 
-client.Messages.CreateMessage(
+PersistentThreadMessage message = client.Messages.CreateMessage(
     thread.Id,
     MessageRole.User,
     "Hi, Agent! Draw a graph for a line with a slope of 4 and y-intercept of 9.");
@@ -59,77 +64,34 @@ client.Messages.CreateMessage(
 
 Asynchronous sample:
 
-```C# Snippet:AgentsStreaming_Step2_Async_CreateThreadAndMessage
+```csharp
 PersistentAgentThread thread = await client.Threads.CreateThreadAsync();
 
-await client.Messages.CreateMessageAsync(
+PersistentThreadMessage message = await client.Messages.CreateMessageAsync(
     thread.Id,
     MessageRole.User,
     "Hi, Agent! Draw a graph for a line with a slope of 4 and y-intercept of 9.");
 ```
 
-3. Then, we create a `ThreadRun` for the thread and agent, providing any additional instructions. We poll the run's status until it is no longer queued, in progress, or requires action.
+## Streaming Updates
+
+Read the output from the stream.
 
 Synchronous sample:
 
-```C# Snippet:AgentsStreaming_Step3_Sync_CreateAndPollRun
-ThreadRun run = client.Runs.CreateRun(
-    thread.Id,
-    agent.Id,
-    additionalInstructions: "Please address the user as Jane Doe. The user has a premium account.");
-
-do
+```csharp
+foreach (StreamingUpdate streamingUpdate in client.Runs.CreateRunStreaming(thread.Id, agent.Id))
 {
-    Thread.Sleep(TimeSpan.FromMilliseconds(500));
-    run = client.Runs.GetRun(thread.Id, run.Id);
-}
-while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
-```
-
-Asynchronous sample:
-
-```C# Snippet:AgentsStreaming_Step3_Async_CreateAndPollRun
-ThreadRun run = await client.Runs.CreateRunAsync(
-    thread.Id,
-    agent.Id,
-    additionalInstructions: "Please address the user as Jane Doe. The user has a premium account.");
-
-do
-{
-    await Task.Delay(TimeSpan.FromMilliseconds(500));
-    run = await client.Runs.GetRunAsync(thread.Id, run.Id);
-}
-while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
-```
-
-4. Once the run is finished, we retrieve all messages from the thread. We then iterate through the messages to display text content and handle any image files by saving them locally and opening them.
-
-Synchronous sample:
-
-```C# Snippet:AgentsStreaming_Step4_Sync_ProcessMessages
-Pageable<ThreadMessage> messages = client.Messages.GetMessages(
-    threadId: thread.Id,
-    order: ListSortOrder.Ascending);
-
-foreach (ThreadMessage threadMessage in messages)
-{
-    foreach (MessageContent content in threadMessage.ContentItems)
+    switch (streamingUpdate)
     {
-        switch (content)
-        {
-            case MessageTextContent textItem:
-                Console.WriteLine($"[{threadMessage.Role}]: {textItem.Text}");
-                break;
-            case MessageImageFileContent imageFileContent:
-                Console.WriteLine($"[{threadMessage.Role}]: Image content file ID = {imageFileContent.FileId}");
-                BinaryData imageContent = client.Files.GetFileContent(imageFileContent.FileId);
+        case MessageContentUpdate messageContentUpdate:
+            Console.Write(messageContentUpdate.Text);
+            if (messageContentUpdate.ImageFileId is not null)
+            {
+                Console.WriteLine($"[Image content file ID: {messageContentUpdate.ImageFileId}]");
+                BinaryData imageContent = client.Files.GetFileContent(messageContentUpdate.ImageFileId);
                 string tempFilePath = Path.Combine(AppContext.BaseDirectory, $"{Guid.NewGuid()}.png");
                 File.WriteAllBytes(tempFilePath, imageContent.ToArray());
-                client.Files.DeleteFile(imageFileContent.FileId);
 
                 ProcessStartInfo psi = new()
                 {
@@ -137,34 +99,32 @@ foreach (ThreadMessage threadMessage in messages)
                     UseShellExecute = true
                 };
                 Process.Start(psi);
-                break;
-        }
+                
+                client.Files.DeleteFile(messageContentUpdate.ImageFileId);
+            }
+            break;
+        case MessageStatusUpdate messageStatusUpdate:
+            Console.WriteLine($"[Kind]: {messageStatusUpdate.UpdateKind}");
+            break;
     }
 }
 ```
 
 Asynchronous sample:
 
-```C# Snippet:AgentsStreaming_Step4_Async_ProcessMessages
-AsyncPageable<ThreadMessage> messages = client.Messages.GetMessagesAsync(
-    threadId: thread.Id,
-    order: ListSortOrder.Ascending);
-
-await foreach (ThreadMessage threadMessage in messages)
+```csharp
+await foreach (StreamingUpdate streamingUpdate in client.Runs.CreateRunStreamingAsync(thread.Id, agent.Id))
 {
-    foreach (MessageContent content in threadMessage.ContentItems)
+    switch (streamingUpdate)
     {
-        switch (content)
-        {
-            case MessageTextContent textItem:
-                Console.WriteLine($"[{threadMessage.Role}]: {textItem.Text}");
-                break;
-            case MessageImageFileContent imageFileContent:
-                Console.WriteLine($"[{threadMessage.Role}]: Image content file ID = {imageFileContent.FileId}");
-                BinaryData imageContent = await client.Files.GetFileContentAsync(imageFileContent.FileId);
+        case MessageContentUpdate messageContentUpdate:
+            Console.Write(messageContentUpdate.Text);
+            if (messageContentUpdate.ImageFileId is not null)
+            {
+                Console.WriteLine($"[Image content file ID: {messageContentUpdate.ImageFileId}]");
+                BinaryData imageContent = await client.Files.GetFileContentAsync(messageContentUpdate.ImageFileId);
                 string tempFilePath = Path.Combine(AppContext.BaseDirectory, $"{Guid.NewGuid()}.png");
                 File.WriteAllBytes(tempFilePath, imageContent.ToArray());
-                await client.Files.DeleteFileAsync(imageFileContent.FileId);
 
                 ProcessStartInfo psi = new()
                 {
@@ -172,24 +132,31 @@ await foreach (ThreadMessage threadMessage in messages)
                     UseShellExecute = true
                 };
                 Process.Start(psi);
-                break;
-        }
+
+                await client.Files.DeleteFileAsync(messageContentUpdate.ImageFileId);
+            }
+            break;
+        case MessageStatusUpdate messageStatusUpdate:
+            Console.WriteLine($"[Kind]: {messageStatusUpdate.UpdateKind}");
+            break;
     }
 }
 ```
 
-5. Finally, we delete the thread and the agent to clean up the resources created in this sample.
+## Cleanup Resources
+
+Finally, we delete all the resources we have created in this sample.
 
 Synchronous sample:
 
-```C# Snippet:AgentsStreaming_Step5_Sync_Cleanup
-client.Threads.DeleteThread(threadId: thread.Id);
-client.Administration.DeleteAgent(agentId: agent.Id);
+```csharp
+client.Threads.DeleteThread(thread.Id);
+client.Administration.DeleteAgent(agent.Id);
 ```
 
 Asynchronous sample:
 
-```C# Snippet:AgentsStreaming_Step5_Async_Cleanup
-await client.Threads.DeleteThreadAsync(threadId: thread.Id);
-await client.Administration.DeleteAgentAsync(agentId: agent.Id);
+```csharp
+await client.Threads.DeleteThreadAsync(thread.Id);
+await client.Administration.DeleteAgentAsync(agent.Id);
 ```

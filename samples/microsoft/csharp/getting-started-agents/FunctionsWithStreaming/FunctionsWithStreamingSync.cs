@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using System.ClientModel;
 using System.Text.Json;
 
+// Load configuration from appsettings.json
 IConfigurationRoot configuration = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -11,11 +12,14 @@ IConfigurationRoot configuration = new ConfigurationBuilder()
 
 var projectEndpoint = configuration["ProjectEndpoint"];
 var modelDeploymentName = configuration["ModelDeploymentName"];
+// Create a PersistentAgentsClient
 PersistentAgentsClient client = new(projectEndpoint, new DefaultAzureCredential());
 
+// No paramters local funciton and tool definition.
 string GetUserFavoriteCity() => "Seattle, WA";
 FunctionToolDefinition getUserFavoriteCityTool = new("getUserFavoriteCity", "Gets the user's favorite city.");
 
+// Single parameter local function and tool definition.
 string GetCityNickname(string location) => location switch
 {
     "Seattle, WA" => "The Emerald City",
@@ -40,6 +44,7 @@ FunctionToolDefinition getCityNicknameTool = new(
         },
         new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
 
+// Two paramter local function with an optional parameter and tool definition.
 string GetWeatherAtLocation(string location, string temperatureUnit = "f") => location switch
 {
     "Seattle, WA" => temperatureUnit == "f" ? "70f" : "21c",
@@ -69,6 +74,7 @@ FunctionToolDefinition getCurrentWeatherAtLocationTool = new(
         },
         new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
 
+// Function to resolve tool outputs based on the required tool call.
 ToolOutput GetResolvedToolOutput(string functionName, string toolCallId, string functionArguments)
 {
     if (functionName == getUserFavoriteCityTool.Name)
@@ -94,6 +100,7 @@ ToolOutput GetResolvedToolOutput(string functionName, string toolCallId, string 
     return null;
 }
 
+// Create a PersistentAgent with tools
 PersistentAgent agent = client.Administration.CreateAgent(
     model: modelDeploymentName,
     name: "SDK Test Agent - Functions",
@@ -102,8 +109,10 @@ PersistentAgent agent = client.Administration.CreateAgent(
         + "nicknames for cities whenever possible.",
     tools: [getUserFavoriteCityTool, getCityNicknameTool, getCurrentWeatherAtLocationTool]);
 
+// Create a thread.
 PersistentAgentThread thread = client.Threads.CreateThread();
 
+// Create a message.
 client.Messages.CreateMessage(
     thread.Id,
     MessageRole.User,
@@ -111,6 +120,7 @@ client.Messages.CreateMessage(
 
 List<ToolOutput> toolOutputs = [];
 ThreadRun streamRun = null!;
+// Start streaming run.
 CollectionResult<StreamingUpdate> stream = client.Runs.CreateRunStreaming(thread.Id, agent.Id);
 do
 {
@@ -140,5 +150,6 @@ do
 }
 while (toolOutputs.Count > 0);
 
-client.Threads.DeleteThread(threadId: thread.Id);
-client.Administration.DeleteAgent(agentId: agent.Id);
+// Clean up resources
+client.Threads.DeleteThread(thread.Id);
+client.Administration.DeleteAgent(agent.Id);

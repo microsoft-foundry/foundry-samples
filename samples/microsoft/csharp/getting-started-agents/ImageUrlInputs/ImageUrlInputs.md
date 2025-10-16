@@ -2,9 +2,11 @@
 
 This sample demonstrates examples of sending an image URL (along with optional text) as a structured content block in a single message. The examples shows how to create an agent, open a thread,  post content blocks combining text and image inputs, and then run the agent to see how it interprets the multimedia input.
 
-1. First we need to set up configuration, create an agent client, and create an agent. This step includes all necessary `using` directives.
+## Initialize
 
-```C# Snippet:AgentImageUrlSetupCommon
+First we need to set up configuration, create an agent client, and create an agent. This step includes all necessary `using` directives.
+
+```csharp
 using Azure;
 using Azure.AI.Agents.Persistent;
 using Azure.Identity;
@@ -22,7 +24,7 @@ PersistentAgentsClient client = new(projectEndpoint, new DefaultAzureCredential(
 
 Synchronous sample:
 
-```C# Snippet:AgentImageUrlCreateAgentSync
+```csharp
 PersistentAgent agent = client.Administration.CreateAgent(
     model: modelDeploymentName,
     name: "Image Understanding Agent",
@@ -32,7 +34,7 @@ PersistentAgent agent = client.Administration.CreateAgent(
 
 Asynchronous sample:
 
-```C# Snippet:AgentImageUrlCreateAgentAsync
+```csharp
 PersistentAgent agent = await client.Administration.CreateAgentAsync(
     model: modelDeploymentName,
     name: "Image Understanding Agent",
@@ -40,65 +42,64 @@ PersistentAgent agent = await client.Administration.CreateAgentAsync(
 );
 ```
 
-2. Next, create a thread.
+## Threads and Messages
+
+Next, create a thread.
 
 Synchronous sample:
 
-```C# Snippet:AgentImageUrlCreateThreadSync
+```csharp
 PersistentAgentThread thread = client.Threads.CreateThread();
 ```
 
 Asynchronous sample:
 
-```C# Snippet:AgentImageUrlCreateThreadAsync
+```csharp
 PersistentAgentThread thread = await client.Threads.CreateThreadAsync();
 ```
 
-3. Then, create a message using multiple content blocks. Here we combine a short text and an image URL in a single user message.
+Then, create a message using multiple content blocks. Here we combine a short text and an image URL in a single user message.
 
-```C# Snippet:AgentImageUrlCreateMessageCommon
-MessageImageUrlParam imageUrlParam = new(
-    url: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
-)
-{
-    Detail = ImageDetailLevel.High
-};
+```csharp
+MessageImageUriParam imageUrl = new("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg") { Detail = ImageDetailLevel.High };
 
 var contentBlocks = new List<MessageInputContentBlock>
 {
     new MessageInputTextBlock("Could you describe this image?"),
-    new MessageInputImageUrlBlock(imageUrlParam)
+    new MessageInputImageUriBlock(imageUrlParam)
 };
 ```
 
 Synchronous sample:
 
-```C# Snippet:AgentImageUrlCreateMessageSync
+```csharp
 client.Messages.CreateMessage(
-    threadId: thread.Id,
-    role: MessageRole.User,
+    thread.Id,
+    MessageRole.User,
     contentBlocks: contentBlocks
 );
 ```
 
 Asynchronous sample:
 
-```C# Snippet:AgentImageUrlCreateMessageAsync
+```csharp
 await client.Messages.CreateMessageAsync(
-    threadId: thread.Id,
-    role: MessageRole.User,
+    thread.Id,
+    MessageRole.User,
     contentBlocks: contentBlocks
 );
 ```
 
-4. Now, create and run the agent against the thread that now has an image to analyze, and wait for the run to complete.
+
+## Runs, Additional Messages and Polling
+Now, create and run the agent against the thread that now has an image to analyze, and wait for the run to complete.
 
 Synchronous sample:
 
-```C# Snippet:AgentImageUrlCreateRunAndPollSync
+```csharp
 ThreadRun run = client.Runs.CreateRun(
-    threadId: thread.Id,
-    assistantId: agent.Id
+    thread.Id,
+    agent.Id
 );
 
 do
@@ -107,16 +108,15 @@ do
     run = client.Runs.GetRun(thread.Id, run.Id);
 }
 while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
+    || run.Status == RunStatus.InProgress);
 ```
 
 Asynchronous sample:
 
-```C# Snippet:AgentImageUrlCreateRunAndPollAsync
+```csharp
 ThreadRun run = await client.Runs.CreateRunAsync(
-    threadId: thread.Id,
-    assistantId: agent.Id
+    thread.Id,
+    agent.Id
 );
 
 do
@@ -125,20 +125,21 @@ do
     run = await client.Runs.GetRunAsync(thread.Id, run.Id);
 }
 while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
+    || run.Status == RunStatus.InProgress);
 ```
 
-5. After the run completes, retrieve all messages (including how the agent responds) and print their contents.
+## View Messages
+
+After the run completes, retrieve all messages (including how the agent responds) and print their contents.
 
 Synchronous sample:
 
-```C# Snippet:AgentImageUrlReviewMessagesSync
-Pageable<ThreadMessage> messages = client.Messages.GetMessages(
-    threadId: thread.Id,
+```csharp
+Pageable<PersistentThreadMessage> messages = client.Messages.GetMessages(
+    thread.Id,
     order: ListSortOrder.Ascending);
 
-foreach (ThreadMessage threadMessage in messages)
+foreach (PersistentThreadMessage threadMessage in messages)
 {
     foreach (MessageContent content in threadMessage.ContentItems)
     {
@@ -147,10 +148,6 @@ foreach (ThreadMessage threadMessage in messages)
             case MessageTextContent textItem:
                 Console.WriteLine($"[{threadMessage.Role}]: {textItem.Text}");
                 break;
-
-            case MessageImageFileContent fileItem:
-                Console.WriteLine($"[{threadMessage.Role}]: Image File (internal ID): {fileItem.FileId}");
-                break;
         }
     }
 }
@@ -158,12 +155,12 @@ foreach (ThreadMessage threadMessage in messages)
 
 Asynchronous sample:
 
-```C# Snippet:AgentImageUrlReviewMessagesAsync
-AsyncPageable<ThreadMessage> messages = client.Messages.GetMessagesAsync(
-    threadId: thread.Id,
+```csharp
+AsyncPageable<PersistentThreadMessage> messages = client.Messages.GetMessagesAsync(
+    thread.Id,
     order: ListSortOrder.Ascending);
 
-await foreach (ThreadMessage threadMessage in messages)
+await foreach (PersistentThreadMessage threadMessage in messages)
 {
     foreach (MessageContent content in threadMessage.ContentItems)
     {
@@ -172,27 +169,25 @@ await foreach (ThreadMessage threadMessage in messages)
             case MessageTextContent textItem:
                 Console.WriteLine($"[{threadMessage.Role}]: {textItem.Text}");
                 break;
-
-            case MessageImageFileContent fileItem:
-                Console.WriteLine($"[{threadMessage.Role}]: Image File (internal ID): {fileItem.FileId}");
-                break;
         }
     }
 }
 ```
 
-6. Finally, delete all the resources created in this sample.
+## Cleanup Resources
+
+Finally, delete all the resources created in this sample.
 
 Synchronous sample:
 
-```C# Snippet:AgentImageUrlCleanupSync
-client.Threads.DeleteThread(threadId: thread.Id);
-client.Administration.DeleteAgent(agentId: agent.Id);
+```csharp
+client.Threads.DeleteThread(thread.Id);
+client.Administration.DeleteAgent(agent.Id);
 ```
 
 Asynchronous sample:
 
-```C# Snippet:AgentImageUrlCleanupAsync
-await client.Threads.DeleteThreadAsync(threadId: thread.Id);
-await client.Administration.DeleteAgentAsync(agentId: agent.Id);
+```csharp
+await client.Threads.DeleteThreadAsync(thread.Id);
+await client.Administration.DeleteAgentAsync(agent.Id);
 ```

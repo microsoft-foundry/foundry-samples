@@ -2,9 +2,11 @@
 
 In this example we demonstrate, how to use file search with `MessageAttachment`.
 
-1. First, we set up the configuration, create the `PersistentAgentsClient`, define a local file, create an agent, and upload the local file for the agent to use. The necessary `using` directives from the source files are included in the common setup.
+## Initialize
 
-```C# Snippet:AgentsCodeInterpreterFileAttachment_Step1_CommonSetup
+First, we set up the configuration, create the `PersistentAgentsClient`, define a local file, create an agent, and upload the local file for the agent to use. The necessary `using` directives from the source files are included in the common setup.
+
+```csharp
 using Azure;
 using Azure.AI.Agents.Persistent;
 using Azure.Identity;
@@ -31,7 +33,7 @@ File.WriteAllText(
 
 Synchronous sample:
 
-```C# Snippet:AgentsCodeInterpreterFileAttachment_Step1_CreateAgentAndUploadFile_Sync
+```csharp
 PersistentAgent agent = client.Administration.CreateAgent(
     model: modelDeploymentName,
     name: "my-agent",
@@ -45,7 +47,7 @@ PersistentAgentFileInfo uploadedAgentFile = client.Files.UploadFile(
 
 Asynchronous sample:
 
-```C# Snippet:AgentsCodeInterpreterFileAttachment_Step1_CreateAgentAndUploadFile_Async
+```csharp
 PersistentAgent agent = await client.Administration.CreateAgentAsync(
     model: modelDeploymentName,
     name: "my-agent",
@@ -57,9 +59,11 @@ PersistentAgentFileInfo uploadedAgentFile = await client.Files.UploadFileAsync(
     purpose: PersistentAgentFilePurpose.Agents);
 ```
 
-2. Next, we create a message attachment using the `PersistentAgentFileInfo.Id` from the uploaded file, create a new agent thread, and add a user message to this thread, including the attachment.
+## Threads and Messages
 
-```C# Snippet:AgentsCodeInterpreterFileAttachment_Step2_CommonMessageAttachment
+Next, we create a message attachment using the `PersistentAgentFileInfo.Id` from the uploaded file, create a new agent thread, and add a user message to this thread, including the attachment.
+
+```csharp
 MessageAttachment attachment = new(
     fileId: uploadedAgentFile.Id,
     tools: [new CodeInterpreterToolDefinition()]);
@@ -67,7 +71,7 @@ MessageAttachment attachment = new(
 
 Synchronous sample:
 
-```C# Snippet:AgentsCodeInterpreterFileAttachment_Step2_CreateThreadAndMessage_Sync
+```csharp
 PersistentAgentThread thread = client.Threads.CreateThread();
 
 client.Messages.CreateMessage(
@@ -79,7 +83,7 @@ client.Messages.CreateMessage(
 
 Asynchronous sample:
 
-```C# Snippet:AgentsCodeInterpreterFileAttachment_Step2_CreateThreadAndMessage_Async
+```csharp
 PersistentAgentThread thread = await client.Threads.CreateThreadAsync();
 
 await client.Messages.CreateMessageAsync(
@@ -89,11 +93,13 @@ await client.Messages.CreateMessageAsync(
     attachments: [attachment]);
 ```
 
-3. Then, we create a `ThreadRun` to process the message with the agent and poll its status until it is no longer queued, in progress, or requires action.
+## Start Runs and Polling
+
+Then, we create a `ThreadRun` to process the message with the agent and poll its status until it is no longer queued, in progress, or requires action.
 
 Synchronous sample:
 
-```C# Snippet:AgentsCodeInterpreterFileAttachment_Step3_CreateAndPollRun_Sync
+```csharp
 ThreadRun run = client.Runs.CreateRun(
     thread.Id,
     agent.Id);
@@ -104,13 +110,12 @@ do
     run = client.Runs.GetRun(thread.Id, run.Id);
 }
 while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
+    || run.Status == RunStatus.InProgress);
 ```
 
 Asynchronous sample:
 
-```C# Snippet:AgentsCodeInterpreterFileAttachment_Step3_CreateAndPollRun_Async
+```csharp
 ThreadRun run = await client.Runs.CreateRunAsync(
     thread.Id,
     agent.Id);
@@ -121,20 +126,21 @@ do
     run = await client.Runs.GetRunAsync(thread.Id, run.Id);
 }
 while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
+    || run.Status == RunStatus.InProgress);
 ```
 
-4. After the run completes, we retrieve all messages from the thread in ascending order and print their content to the console.
+## View Messages
+
+After the run completes, we retrieve all messages from the thread in ascending order and print their content to the console.
 
 Synchronous sample:
 
-```C# Snippet:AgentsCodeInterpreterFileAttachment_Step4_PrintMessages_Sync
-Pageable<ThreadMessage> messages = client.Messages.GetMessages(
-    threadId: thread.Id,
+```csharp
+Pageable<PersistentThreadMessage> messages = client.Messages.GetMessages(
+    thread.Id,
     order: ListSortOrder.Ascending);
 
-foreach (ThreadMessage threadMessage in messages)
+foreach (PersistentThreadMessage threadMessage in messages)
 {
     foreach (MessageContent content in threadMessage.ContentItems)
     {
@@ -150,12 +156,12 @@ foreach (ThreadMessage threadMessage in messages)
 
 Asynchronous sample:
 
-```C# Snippet:AgentsCodeInterpreterFileAttachment_Step4_PrintMessages_Async
-AsyncPageable<ThreadMessage> messages = client.Messages.GetMessagesAsync(
-    threadId: thread.Id,
+```csharp
+AsyncPageable<PersistentThreadMessage> messages = client.Messages.GetMessagesAsync(
+    thread.Id,
     order: ListSortOrder.Ascending);
 
-await foreach (ThreadMessage threadMessage in messages)
+await foreach (PersistentThreadMessage threadMessage in messages)
 {
     foreach (MessageContent content in threadMessage.ContentItems)
     {
@@ -169,20 +175,22 @@ await foreach (ThreadMessage threadMessage in messages)
 }
 ```
 
-5. Finally, we clean up the resources created during this sample, including the uploaded file, the agent thread, and the agent itself.
+## Cleanup Resources
+
+Finally, we clean up the resources created during this sample, including the uploaded file, the agent thread, and the agent itself.
 
 Synchronous sample:
 
-```C# Snippet:AgentsCodeInterpreterFileAttachment_Step5_Cleanup_Sync
+```csharp
 client.Files.DeleteFile(uploadedAgentFile.Id);
-client.Threads.DeleteThread(threadId: thread.Id);
-client.Administration.DeleteAgent(agentId: agent.Id);
+client.Threads.DeleteThread(thread.Id);
+client.Administration.DeleteAgent(agent.Id);
 ```
 
 Asynchronous sample:
 
-```C# Snippet:AgentsCodeInterpreterFileAttachment_Step5_Cleanup_Async
+```csharp
 await client.Files.DeleteFileAsync(uploadedAgentFile.Id);
-await client.Threads.DeleteThreadAsync(threadId: thread.Id);
-await client.Administration.DeleteAgentAsync(agentId: agent.Id);
+await client.Threads.DeleteThreadAsync(thread.Id);
+await client.Administration.DeleteAgentAsync(agent.Id);
 ```

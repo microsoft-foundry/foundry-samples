@@ -3,6 +3,7 @@ using Azure.AI.Agents.Persistent;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 
+// Load configuration from appsettings.json
 IConfigurationRoot configuration = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -10,22 +11,29 @@ IConfigurationRoot configuration = new ConfigurationBuilder()
 
 var projectEndpoint = configuration["ProjectEndpoint"];
 var modelDeploymentName = configuration["ModelDeploymentName"];
+// Get a local image file with full path.
 var filePath = configuration["FileNameWithCompletePath"];
+
+// Create a PersistentAgentsClient
 PersistentAgentsClient client = new(projectEndpoint, new DefaultAzureCredential());
 
+// Upload file to be used by the agent
 PersistentAgentFileInfo uploadedFile = await client.Files.UploadFileAsync(
     filePath: filePath,
     purpose: PersistentAgentFilePurpose.Agents
 );
 
+// Create a PersistentAgent
 PersistentAgent agent = await client.Administration.CreateAgentAsync(
     model: modelDeploymentName,
     name: "File Image Understanding Agent",
     instructions: "Analyze images from internally uploaded files."
 );
 
+// Create a thread.
 PersistentAgentThread thread = await client.Threads.CreateThreadAsync();
 
+// Create a message.
 var contentBlocks = new List<MessageInputContentBlock>
 {
     new MessageInputTextBlock("Here is an uploaded file. Please describe it:"),
@@ -37,25 +45,28 @@ await client.Messages.CreateMessageAsync(
     MessageRole.User,
     contentBlocks: contentBlocks);
 
+// Start run.
 ThreadRun run = await client.Runs.CreateRunAsync(
-    threadId: thread.Id,
-    assistantId: agent.Id
+    thread.Id,
+    agent.Id
 );
 
+// Poll until finished.
 do
 {
     await Task.Delay(TimeSpan.FromMilliseconds(500));
     run = await client.Runs.GetRunAsync(thread.Id, run.Id);
 }
 while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
+    || run.Status == RunStatus.InProgress);
 
-AsyncPageable<ThreadMessage> messages = client.Messages.GetMessagesAsync(
-    threadId: thread.Id,
+// Get messages.
+AsyncPageable<PersistentThreadMessage> messages = client.Messages.GetMessagesAsync(
+    thread.Id,
     order: ListSortOrder.Ascending);
 
-await foreach (ThreadMessage threadMessage in messages)
+// Print messages.
+await foreach (PersistentThreadMessage threadMessage in messages)
 {
     foreach (MessageContent content in threadMessage.ContentItems)
     {
@@ -64,14 +75,11 @@ await foreach (ThreadMessage threadMessage in messages)
             case MessageTextContent textItem:
                 Console.WriteLine($"[{threadMessage.Role}]: {textItem.Text}");
                 break;
-
-            case MessageImageFileContent fileItem:
-                Console.WriteLine($"[{threadMessage.Role}]: Image File (internal ID): {fileItem.FileId}");
-                break;
         }
     }
 }
 
+// Clean up resources
 await client.Files.DeleteFileAsync(uploadedFile.Id);
-await client.Threads.DeleteThreadAsync(threadId: thread.Id);
-await client.Administration.DeleteAgentAsync(agentId: agent.Id);
+await client.Threads.DeleteThreadAsync(thread.Id);
+await client.Administration.DeleteAgentAsync(agent.Id);

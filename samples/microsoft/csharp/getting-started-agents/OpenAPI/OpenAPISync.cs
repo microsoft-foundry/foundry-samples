@@ -3,6 +3,7 @@ using Azure.AI.Agents.Persistent;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 
+// Load configuration from appsettings.json
 IConfigurationRoot configuration = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -10,49 +11,61 @@ IConfigurationRoot configuration = new ConfigurationBuilder()
 
 var projectEndpoint = configuration["ProjectEndpoint"];
 var modelDeploymentName = configuration["ModelDeploymentName"];
+// From config get an OpenApiSpec file including path.
 var openApiSpec = configuration["OpenApiSpec"];
+
+// Create a PersistentAgentsClient
 PersistentAgentsClient client = new(projectEndpoint, new DefaultAzureCredential());
 
+// Create an OpenApi tool definition.
 OpenApiToolDefinition openApiToolDef = new(
     name: "get_weather",
     description: "Retrieve weather information for a location",
     spec: BinaryData.FromBytes(File.ReadAllBytes(openApiSpec)),
-    auth: new OpenApiAnonymousAuthDetails(),
+    openApiAuthentication: new OpenApiAnonymousAuthDetails(),
     defaultParams: ["format"]
 );
 
-PersistentAgent agent = client.Administration.CreateAgent(
+// Create a PersistentAgent with tool.
+PersistentAgent agent = await client.Administration.CreateAgentAsync(
     model: modelDeploymentName,
     name: "Open API Tool Calling Agent",
     instructions: "You are a helpful agent.",
     tools: [openApiToolDef]
 );
 
-PersistentAgentThread thread = client.Threads.CreateThread();
+// Create a thread.
+PersistentAgentThread thread = await client.Threads.CreateThreadAsync();
 
-client.Messages.CreateMessage(
+// Create a message.
+await client.Messages.CreateMessageAsync(
     thread.Id,
     MessageRole.User,
     "What's the weather in Seattle?");
 
-ThreadRun run = client.Runs.CreateRun(
+// Start run.
+ThreadRun run = await client.Runs.CreateRunAsync(
     thread.Id,
-    agent.Id);
+    agent.Id
+);
 
+// Poll until finished.
 do
 {
-    Thread.Sleep(TimeSpan.FromMilliseconds(500));
-    run = client.Runs.GetRun(thread.Id, run.Id);
+    await Task.Delay(TimeSpan.FromMilliseconds(500));
+    run = await client.Runs.GetRunAsync(thread.Id, run.Id);
 }
 while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
+    || run.Status == RunStatus.InProgress);
 
-Pageable<ThreadMessage> messages = client.Messages.GetMessages(
-    threadId: thread.Id,
-    order: ListSortOrder.Ascending);
+// Get messages.
+AsyncPageable<PersistentThreadMessage> messages = client.Messages.GetMessagesAsync(
+    thread.Id,
+    order: ListSortOrder.Ascending
+);
 
-foreach (ThreadMessage threadMessage in messages)
+// Print messages.
+await foreach (PersistentThreadMessage threadMessage in messages)
 {
     foreach (MessageContent content in threadMessage.ContentItems)
     {
@@ -65,5 +78,6 @@ foreach (ThreadMessage threadMessage in messages)
     }
 }
 
-client.Threads.DeleteThread(threadId: thread.Id);
-client.Administration.DeleteAgent(agentId: agent.Id);
+// Cleanup resources
+await client.Threads.DeleteThreadAsync(thread.Id);
+await client.Administration.DeleteAgentAsync(agent.Id);

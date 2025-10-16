@@ -1,8 +1,10 @@
 # Sample for using additional messages while creating agent run in Azure.AI.Agents
 
-1. Set up configuration, create an agent client, and create an agent. This step includes all necessary `using` directives.
+## Initialize
 
-```C# Snippet:Sample_PersistentAgent_AdditionalMessages_CommonSetup
+Set up configuration, create an agent client, and create an agent. This step includes all necessary `using` directives.
+
+```csharp
 using Azure;
 using Azure.AI.Agents.Persistent;
 using Azure.Identity;
@@ -19,7 +21,7 @@ PersistentAgentsClient client = new(projectEndpoint, new DefaultAzureCredential(
 
 Synchronous sample:
 
-```C# Snippet:Sample_PersistentAgent_AdditionalMessages_CreateAgentSync
+```csharp
 PersistentAgent agent = client.Administration.CreateAgent(
     model: modelDeploymentName,
     name: "Math Tutor",
@@ -29,7 +31,7 @@ PersistentAgent agent = client.Administration.CreateAgent(
 
 Asynchronous sample:
 
-```C# Snippet:Sample_PersistentAgent_AdditionalMessages_CreateAgentAsync
+```csharp
 PersistentAgent agent = await client.Administration.CreateAgentAsync(
     model: modelDeploymentName,
     name: "Math Tutor",
@@ -37,11 +39,13 @@ PersistentAgent agent = await client.Administration.CreateAgentAsync(
     tools: [new CodeInterpreterToolDefinition()]);
 ```
 
-1. Create the thread and add an initial message to it.
+## Threads and Messages
+
+Create the thread and add an initial message to it.
 
 Synchronous sample:
 
-```C# Snippet:Sample_PersistentAgent_AdditionalMessages_CreateThreadAndMessageSync
+```csharp
 PersistentAgentThread thread = client.Threads.CreateThread();
 
 client.Messages.CreateMessage(
@@ -52,7 +56,7 @@ client.Messages.CreateMessage(
 
 Asynchronous sample:
 
-```C# Snippet:Sample_PersistentAgent_AdditionalMessages_CreateThreadAndMessageAsync
+```csharp
 PersistentAgentThread thread = await client.Threads.CreateThreadAsync();
 
 await client.Messages.CreateMessageAsync(
@@ -61,12 +65,13 @@ await client.Messages.CreateMessageAsync(
     "What is the impedance formula?");
 ```
 
-1. Create the run with additional messages and poll for completion.
-   In this example we add two extra messages to the thread when creating the run: one with the `MessageRole.Agent` role and another with the `MessageRole.User` role.
+## Runs, Additional Messages and Polling
+
+Create the run with additional messages and poll for completion. In this example we add two extra messages to the thread when creating the run: one with the `MessageRole.Agent` role and another with the `MessageRole.User` role.
 
 Synchronous sample:
 
-```C# Snippet:Sample_PersistentAgent_AdditionalMessages_CreateAndPollRunSync
+```csharp
 ThreadRun run = client.Runs.CreateRun(
     threadId: thread.Id,
     agent.Id,
@@ -88,13 +93,12 @@ do
     run = client.Runs.GetRun(thread.Id, run.Id);
 }
 while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
+    || run.Status == RunStatus.InProgress);
 ```
 
 Asynchronous sample:
 
-```C# Snippet:Sample_PersistentAgent_AdditionalMessages_CreateAndPollRunAsync
+```csharp
 ThreadRun run = await client.Runs.CreateRunAsync(
     threadId: thread.Id,
     agent.Id,
@@ -116,20 +120,21 @@ do
     run = await client.Runs.GetRunAsync(thread.Id, run.Id);
 }
 while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
+    || run.Status == RunStatus.InProgress);
 ```
 
-1. Print out all the messages to the console.
+## View Messages
+
+Print out all the messages to the console.
 
 Synchronous sample:
 
-```C# Snippet:Sample_PersistentAgent_AdditionalMessages_PrintMessagesSync
-Pageable<ThreadMessage> messages = client.Messages.GetMessages(
+```csharp
+Pageable<PersistentThreadMessage> messages = client.Messages.GetMessages(
     threadId: thread.Id,
     order: ListSortOrder.Ascending);
 
-foreach (ThreadMessage threadMessage in messages)
+foreach (PersistentThreadMessage threadMessage in messages)
 {
     foreach (MessageContent content in threadMessage.ContentItems)
     {
@@ -145,12 +150,12 @@ foreach (ThreadMessage threadMessage in messages)
 
 Asynchronous sample:
 
-```C# Snippet:Sample_PersistentAgent_AdditionalMessages_PrintMessagesAsync
-AsyncPageable<ThreadMessage> messages = client.Messages.GetMessagesAsync(
+```csharp
+AsyncPageable<PersistentThreadMessage> messages = client.Messages.GetMessagesAsync(
     threadId: thread.Id,
     order: ListSortOrder.Ascending);
 
-await foreach (ThreadMessage threadMessage in messages)
+await foreach (PersistentThreadMessage threadMessage in messages)
 {
     foreach (MessageContent content in threadMessage.ContentItems)
     {
@@ -164,18 +169,20 @@ await foreach (ThreadMessage threadMessage in messages)
 }
 ```
 
-1. Finally, clean up resources (delete the thread and agent).
+## Cleanup Resources
+
+Finally, clean up resources (delete the thread and agent).
 
 Synchronous sample:
 
-```C# Snippet:Sample_PersistentAgent_AdditionalMessages_CleanupSync
-client.Threads.DeleteThread(threadId: thread.Id);
-client.Administration.DeleteAgent(agentId: agent.Id);
+```csharp
+client.Threads.DeleteThread(thread.Id);
+client.Administration.DeleteAgent(agent.Id);
 ```
 
 Asynchronous sample:
 
-```C# Snippet:Sample_PersistentAgent_AdditionalMessages_CleanupAsync
-await client.Threads.DeleteThreadAsync(threadId: thread.Id);
-await client.Administration.DeleteAgentAsync(agentId: agent.Id);
+```csharp
+await client.Threads.DeleteThreadAsync(thread.Id);
+await client.Administration.DeleteAgentAsync(agent.Id);
 ```

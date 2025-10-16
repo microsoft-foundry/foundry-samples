@@ -1,4 +1,3 @@
-using Azure;
 using Azure.AI.Agents.Persistent;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
@@ -28,39 +27,18 @@ await client.Messages.CreateMessageAsync(
     MessageRole.User,
     "Hi, Agent! Draw a graph for a line with a slope of 4 and y-intercept of 9.");
 
-ThreadRun run = await client.Runs.CreateRunAsync(
-    thread.Id,
-    agent.Id,
-    additionalInstructions: "Please address the user as Jane Doe. The user has a premium account.");
-
-do
+await foreach (StreamingUpdate streamingUpdate in client.Runs.CreateRunStreamingAsync(thread.Id, agent.Id))
 {
-    await Task.Delay(TimeSpan.FromMilliseconds(500));
-    run = await client.Runs.GetRunAsync(thread.Id, run.Id);
-}
-while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
-
-AsyncPageable<ThreadMessage> messages = client.Messages.GetMessagesAsync(
-    threadId: thread.Id,
-    order: ListSortOrder.Ascending);
-
-await foreach (ThreadMessage threadMessage in messages)
-{
-    foreach (MessageContent content in threadMessage.ContentItems)
+    switch (streamingUpdate)
     {
-        switch (content)
-        {
-            case MessageTextContent textItem:
-                Console.WriteLine($"[{threadMessage.Role}]: {textItem.Text}");
-                break;
-            case MessageImageFileContent imageFileContent:
-                Console.WriteLine($"[{threadMessage.Role}]: Image content file ID = {imageFileContent.FileId}");
-                BinaryData imageContent = await client.Files.GetFileContentAsync(imageFileContent.FileId);
+        case MessageContentUpdate messageContentUpdate:
+            Console.Write(messageContentUpdate.Text);
+            if (messageContentUpdate.ImageFileId is not null)
+            {
+                Console.WriteLine($"[Image content file ID: {messageContentUpdate.ImageFileId}]");
+                BinaryData imageContent = await client.Files.GetFileContentAsync(messageContentUpdate.ImageFileId);
                 string tempFilePath = Path.Combine(AppContext.BaseDirectory, $"{Guid.NewGuid()}.png");
                 File.WriteAllBytes(tempFilePath, imageContent.ToArray());
-                await client.Files.DeleteFileAsync(imageFileContent.FileId);
 
                 ProcessStartInfo psi = new()
                 {
@@ -68,10 +46,15 @@ await foreach (ThreadMessage threadMessage in messages)
                     UseShellExecute = true
                 };
                 Process.Start(psi);
-                break;
-        }
+                
+                await client.Files.DeleteFileAsync(messageContentUpdate.ImageFileId);
+            }
+            break;
+        case MessageStatusUpdate messageStatusUpdate:
+            Console.WriteLine($"[Kind]: {messageStatusUpdate.UpdateKind}");
+            break;
     }
 }
 
-await client.Threads.DeleteThreadAsync(threadId: thread.Id);
-await client.Administration.DeleteAgentAsync(agentId: agent.Id);
+await client.Threads.DeleteThreadAsync(thread.Id);
+await client.Administration.DeleteAgentAsync(agent.Id);

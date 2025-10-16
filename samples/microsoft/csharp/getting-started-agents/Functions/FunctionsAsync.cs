@@ -4,6 +4,7 @@ using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 
+// Load configuration from appsettings.json
 IConfigurationRoot configuration = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -11,17 +12,20 @@ IConfigurationRoot configuration = new ConfigurationBuilder()
 
 var projectEndpoint = configuration["ProjectEndpoint"];
 var modelDeploymentName = configuration["ModelDeploymentName"];
+
+// Create a PersistentAgentsClient
 PersistentAgentsClient client = new(projectEndpoint, new DefaultAzureCredential());
 
+// No paramters local funciton and tool definition.
 string GetUserFavoriteCity() => "Seattle, WA";
 FunctionToolDefinition getUserFavoriteCityTool = new("getUserFavoriteCity", "Gets the user's favorite city.");
 
+// Single parameter local function and tool definition.
 string GetCityNickname(string location) => location switch
 {
     "Seattle, WA" => "The Emerald City",
     _ => throw new NotImplementedException(),
 };
-
 FunctionToolDefinition getCityNicknameTool = new(
     name: "getCityNickname",
     description: "Gets the nickname of a city, e.g. 'LA' for 'Los Angeles, CA'.",
@@ -41,12 +45,12 @@ FunctionToolDefinition getCityNicknameTool = new(
         },
         new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
 
+// Two paramter local function with an optional parameter and tool definition.
 string GetWeatherAtLocation(string location, string temperatureUnit = "f") => location switch
 {
     "Seattle, WA" => temperatureUnit == "f" ? "70f" : "21c",
     _ => throw new NotImplementedException()
 };
-
 FunctionToolDefinition getCurrentWeatherAtLocationTool = new(
     name: "getCurrentWeatherAtLocation",
     description: "Gets the current weather at a provided location.",
@@ -71,6 +75,7 @@ FunctionToolDefinition getCurrentWeatherAtLocationTool = new(
         },
         new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
 
+// Function to resolve tool outputs based on the required tool call.
 ToolOutput GetResolvedToolOutput(RequiredToolCall toolCall)
 {
     if (toolCall is RequiredFunctionToolCall functionToolCall)
@@ -99,6 +104,7 @@ ToolOutput GetResolvedToolOutput(RequiredToolCall toolCall)
     return null;
 }
 
+// Create a PersistentAgent
 PersistentAgent agent = await client.Administration.CreateAgentAsync(
     model: modelDeploymentName,
     name: "SDK Test Agent - Functions",
@@ -107,15 +113,19 @@ PersistentAgent agent = await client.Administration.CreateAgentAsync(
         + "nicknames for cities whenever possible.",
     tools: [getUserFavoriteCityTool, getCityNicknameTool, getCurrentWeatherAtLocationTool]);
 
+// Create a thread.
 PersistentAgentThread thread = await client.Threads.CreateThreadAsync();
 
+// Create a message.
 await client.Messages.CreateMessageAsync(
     thread.Id,
     MessageRole.User,
     "What's the weather like in my favorite city?");
 
+// Start run.
 ThreadRun run = await client.Runs.CreateRunAsync(thread.Id, agent.Id);
 
+// Poll until finished.
 do
 {
     await Task.Delay(TimeSpan.FromMilliseconds(500));
@@ -140,12 +150,14 @@ while (run.Status == RunStatus.Queued
     || run.Status == RunStatus.InProgress
     || run.Status == RunStatus.RequiresAction);
 
-AsyncPageable<ThreadMessage> messages = client.Messages.GetMessagesAsync(
-    threadId: thread.Id,
+// Get messages.
+AsyncPageable<PersistentThreadMessage> messages = client.Messages.GetMessagesAsync(
+    thread.Id,
     order: ListSortOrder.Ascending
 );
 
-await foreach (ThreadMessage threadMessage in messages)
+// Print messages.
+await foreach (PersistentThreadMessage threadMessage in messages)
 {
     foreach (MessageContent content in threadMessage.ContentItems)
     {
@@ -158,5 +170,6 @@ await foreach (ThreadMessage threadMessage in messages)
     }
 }
 
-await client.Threads.DeleteThreadAsync(threadId: thread.Id);
-await client.Administration.DeleteAgentAsync(agentId: agent.Id);
+// Clean up resources
+await client.Threads.DeleteThreadAsync(thread.Id);
+await client.Administration.DeleteAgentAsync(agent.Id);

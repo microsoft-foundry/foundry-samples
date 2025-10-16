@@ -3,29 +3,36 @@ using Azure.AI.Agents.Persistent;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 
+// Load configuration from appsettings.json
 IConfigurationRoot configuration = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .Build();
 
+// Create a PersistentAgentsClient
 var projectEndpoint = configuration["ProjectEndpoint"];
 var modelDeploymentName = configuration["ModelDeploymentName"];
+// Get a local image file with full path.
 var filePath = configuration["FileNameWithCompletePath"];
 PersistentAgentsClient client = new(projectEndpoint, new DefaultAzureCredential());
 
+// Upload file to be used by the agent
 PersistentAgentFileInfo uploadedFile = client.Files.UploadFile(
     filePath: filePath,
     purpose: PersistentAgentFilePurpose.Agents
 );
 
+// Create a PersistentAgent
 PersistentAgent agent = client.Administration.CreateAgent(
     model: modelDeploymentName,
     name: "File Image Understanding Agent",
     instructions: "Analyze images from internally uploaded files."
 );
 
+// Create a thread.
 PersistentAgentThread thread = client.Threads.CreateThread();
 
+// Create a message.
 var contentBlocks = new List<MessageInputContentBlock>
 {
     new MessageInputTextBlock("Here is an uploaded file. Please describe it:"),
@@ -38,25 +45,28 @@ client.Messages.CreateMessage(
     contentBlocks: contentBlocks
 );
 
+// Start run.
 ThreadRun run = client.Runs.CreateRun(
-    threadId: thread.Id,
-    assistantId: agent.Id
+    thread.Id,
+    agent.Id
 );
 
+// Poll until finished.
 do
 {
     Thread.Sleep(TimeSpan.FromMilliseconds(500));
     run = client.Runs.GetRun(thread.Id, run.Id);
 }
 while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
+    || run.Status == RunStatus.InProgress);
 
-Pageable<ThreadMessage> messages = client.Messages.GetMessages(
-    threadId: thread.Id,
+// Get messages.
+Pageable<PersistentThreadMessage> messages = client.Messages.GetMessages(
+    thread.Id,
     order: ListSortOrder.Ascending);
 
-foreach (ThreadMessage threadMessage in messages)   
+// Print messages.
+foreach (PersistentThreadMessage threadMessage in messages)
 {
     foreach (MessageContent content in threadMessage.ContentItems)
     {
@@ -65,14 +75,11 @@ foreach (ThreadMessage threadMessage in messages)
             case MessageTextContent textItem:
                 Console.WriteLine($"[{threadMessage.Role}]: {textItem.Text}");
                 break;
-
-            case MessageImageFileContent fileItem:
-                Console.WriteLine($"[{threadMessage.Role}]: Image File (internal ID): {fileItem.FileId}");
-                break;
         }
     }
 }
 
+// Clean up resources
 client.Files.DeleteFile(uploadedFile.Id);
-client.Threads.DeleteThread(threadId: thread.Id);
-client.Administration.DeleteAgent(agentId: agent.Id);
+client.Threads.DeleteThread(thread.Id);
+client.Administration.DeleteAgent(agent.Id);

@@ -1,11 +1,10 @@
-# Sample using agents with OpenAPI tool in Azure.AI.Agents
+# Sample enterprise file search on agent with message attachment and code interpreter in Azure AI Agents
 
-In this example we will demonstrate the possibility to use services with [OpenAPI Specification](https://en.wikipedia.org/wiki/OpenAPI_Specification) with the agent. We will use [wttr.in](https://wttr.in) service to get weather. The agent will use an OpenAPI specification file for this service (e.g., `weather_openapi.json`), which is configured in `appsettings.json` and loaded by the C# code.
-The C# samples below demonstrate how to configure an agent with an OpenAPI tool, create a conversation thread, send a message, run the agent, and retrieve the response.
+In this example we demonstrate, how the Azure Blob can be utilized for enterprize file search with `MessageAttachment`.
 
 ## Initialize
 
-First, we set up the application configuration to read settings like the project endpoint, model deployment name, and the path to the OpenAPI specification file. We then create a `PersistentAgentsClient`, define the `openApiSpec` variable, and create a common `OpenApiToolDefinition`. This common setup includes all necessary `using` directives. Finally, synchronous and asynchronous samples show how a `PersistentAgent` is created using this tool definition.
+First, we set up the application configuration to retrieve necessary endpoints and credentials, and then initialize the `PersistentAgentsClient`. This step includes all necessary `using` directives from the authoritative C# files.
 
 ```csharp
 using Azure;
@@ -20,16 +19,19 @@ IConfigurationRoot configuration = new ConfigurationBuilder()
 
 var projectEndpoint = configuration["ProjectEndpoint"];
 var modelDeploymentName = configuration["ModelDeploymentName"];
-var openApiSpec = configuration["OpenApiSpec"];
-PersistentAgentsClient client = new(projectEndpoint, new DefaultAzureCredential());
+var blobURI = configuration["AzureBlobUri"];
 
-OpenApiToolDefinition openApiToolDef = new(
-    name: "get_weather",
-    description: "Retrieve weather information for a location",
-    spec: BinaryData.FromBytes(File.ReadAllBytes(openApiSpec)),
-    openApiAuthentication: new OpenApiAnonymousAuthDetails(),
-    defaultParams: ["format"]
-);
+PersistentAgentsClient client = new(projectEndpoint, new DefaultAzureCredential());
+```
+
+## Threads and Messages
+
+Next, we define the tools for our agent (in this case, a `CodeInterpreterToolDefinition`) and create the `PersistentAgent`.
+
+Common tools definition:
+
+```csharp
+List<ToolDefinition> tools = [new CodeInterpreterToolDefinition()];
 ```
 
 Synchronous sample:
@@ -37,9 +39,9 @@ Synchronous sample:
 ```csharp
 PersistentAgent agent = client.Administration.CreateAgent(
     model: modelDeploymentName,
-    name: "Open API Tool Calling Agent",
-    instructions: "You are a helpful agent.",
-    tools: [openApiToolDef]
+    name: "my-agent",
+    instructions: "You are helpful agent.",
+    tools: tools
 );
 ```
 
@@ -48,48 +50,75 @@ Asynchronous sample:
 ```csharp
 PersistentAgent agent = await client.Administration.CreateAgentAsync(
     model: modelDeploymentName,
-    name: "Open API Tool Calling Agent",
-    instructions: "You are a helpful agent.",
-    tools: [openApiToolDef]
+    name: "my-agent",
+    instructions: "You are helpful agent.",
+    tools: tools
 );
 ```
 
-## Threads and Messages
-
-With the agent configured, we create a `PersistentAgentThread` to manage the conversation. We then add an initial user message to this thread, for example, asking for the weather in a specific location.
+A `PersistentAgentThread` is created to manage the conversation.
 
 Synchronous sample:
 
 ```csharp
 PersistentAgentThread thread = client.Threads.CreateThread();
-
-client.Messages.CreateMessage(
-    thread.Id,
-    MessageRole.User,
-    "What's the weather in Seattle?");
 ```
 
 Asynchronous sample:
 
 ```csharp
 PersistentAgentThread thread = await client.Threads.CreateThreadAsync();
+```
 
+We prepare a `MessageAttachment` using a `VectorStoreDataSource` that points to an Azure Blob URI. This attachment, along with the tools, is then included in a user message sent to the thread.
+
+Common attachment preparation:
+
+```csharp
+var vectorStoreDataSource = new VectorStoreDataSource(
+    assetIdentifier: blobURI,
+    assetType: VectorStoreDataSourceAssetType.UriAsset
+);
+
+var attachment = new MessageAttachment(
+    ds: vectorStoreDataSource,
+    tools: tools
+);
+```
+
+Synchronous sample:
+
+```csharp
+client.Messages.CreateMessage(
+    threadId: thread.Id,
+    role: MessageRole.User,
+    content: "What does the attachment say?",
+    attachments: [attachment]
+);
+```
+
+Asynchronous sample:
+
+```csharp
 await client.Messages.CreateMessageAsync(
-    thread.Id,
-    MessageRole.User,
-    "What's the weather in Seattle?");
+    threadId: thread.Id,
+    role: MessageRole.User,
+    content: "What does the attachment say?",
+    attachments: [attachment]
+);
 ```
 
 ## Start Run and Polling
 
-To process the message(s) in the thread, we create a `ThreadRun` associated with the thread and the agent. The status of this run is then polled until it reaches a terminal state (e.g., completed, failed), indicating the agent has finished processing.
+A `ThreadRun` is initiated for the agent to process the message. We then poll the run's status until it is no longer queued, in progress, or requires action.
 
 Synchronous sample:
 
 ```csharp
 ThreadRun run = client.Runs.CreateRun(
     thread.Id,
-    agent.Id);
+    agent.Id
+);
 
 do
 {
@@ -110,7 +139,7 @@ ThreadRun run = await client.Runs.CreateRunAsync(
 
 do
 {
-    await Task.Delay(TimeSpan.FromMilliseconds(500));
+    Thread.Sleep(TimeSpan.FromMilliseconds(500));
     run = await client.Runs.GetRunAsync(thread.Id, run.Id);
 }
 while (run.Status == RunStatus.Queued
@@ -119,14 +148,15 @@ while (run.Status == RunStatus.Queued
 
 ## View Messages
 
-Once the agent run has completed, we retrieve all messages from the thread. These messages, which now include the agent's responses, are iterated through, and their content is printed to the console.
+After the run completes, we retrieve all messages from the thread in ascending order and display their content.
 
 Synchronous sample:
 
 ```csharp
 Pageable<PersistentThreadMessage> messages = client.Messages.GetMessages(
-    thread.Id,
-    order: ListSortOrder.Ascending);
+    threadId: thread.Id,
+    order: ListSortOrder.Ascending
+);
 
 foreach (PersistentThreadMessage threadMessage in messages)
 {
@@ -146,7 +176,7 @@ Asynchronous sample:
 
 ```csharp
 AsyncPageable<PersistentThreadMessage> messages = client.Messages.GetMessagesAsync(
-    thread.Id,
+    threadId: thread.Id,
     order: ListSortOrder.Ascending
 );
 
@@ -166,7 +196,7 @@ await foreach (PersistentThreadMessage threadMessage in messages)
 
 ## Cleanup Resources
 
-Finally, to clean up resources, we delete the `PersistentAgentThread` and the `PersistentAgent` that were created during this example.
+Finally, we clean up the created resources by deleting the thread and the agent.
 
 Synchronous sample:
 

@@ -3,7 +3,7 @@ using Azure.AI.Agents.Persistent;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 
-// Load configuration from appsettings.json
+// Load configuration from appsettings.json.
 IConfigurationRoot configuration = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -11,33 +11,44 @@ IConfigurationRoot configuration = new ConfigurationBuilder()
 
 var projectEndpoint = configuration["ProjectEndpoint"];
 var modelDeploymentName = configuration["ModelDeploymentName"];
-// Create a PersistentAgentsClient
+// Azure Blob Storage URI for the vector store data source.
+var blobURI = configuration["AzureBlobUri"];
+
+// Create a PersistentAgentsClient.
 PersistentAgentsClient client = new(projectEndpoint, new DefaultAzureCredential());
 
-// Create a PersistentAgent
+// Tool definitions.
+List<ToolDefinition> tools = [new CodeInterpreterToolDefinition()];
+
+// Create a PersistentAgent with tools.
 PersistentAgent agent = client.Administration.CreateAgent(
     model: modelDeploymentName,
-    name: "Image Understanding Agent",
-    instructions: "You are an image-understanding agent. Analyze images and provide textual descriptions."
+    name: "my-agent",
+    instructions: "You are helpful agent.",
+    tools: tools
 );
 
 // Create a thread.
 PersistentAgentThread thread = client.Threads.CreateThread();
 
-// Url to image for analysis.
-MessageImageUriParam imageUrl = new("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg") { Detail = ImageDetailLevel.High };
+// Create a vector store data source attachment.
+var vectorStoreDataSource = new VectorStoreDataSource(
+    assetIdentifier: blobURI,
+    assetType: VectorStoreDataSourceAssetType.UriAsset
+);
 
-var contentBlocks = new List<MessageInputContentBlock>
-{
-    new MessageInputTextBlock("Could you describe this image?"),
-    new MessageInputImageUriBlock(imageUrl)
-};
+// Create a message attachment with the vector store data source and tools.
+var attachment = new MessageAttachment(
+    ds: vectorStoreDataSource,
+    tools: tools
+);
 
-// Create a message.
+// Create a message and include the attachment.
 client.Messages.CreateMessage(
     thread.Id,
     MessageRole.User,
-    contentBlocks: contentBlocks
+    content: "What does the attachment say?",
+    attachments: [attachment]
 );
 
 // Start run.
@@ -58,7 +69,8 @@ while (run.Status == RunStatus.Queued
 // Get messages.
 Pageable<PersistentThreadMessage> messages = client.Messages.GetMessages(
     thread.Id,
-    order: ListSortOrder.Ascending);
+    order: ListSortOrder.Ascending
+);
 
 // Print messages.
 foreach (PersistentThreadMessage threadMessage in messages)
@@ -74,6 +86,6 @@ foreach (PersistentThreadMessage threadMessage in messages)
     }
 }
 
-// Clean up resources
+// Cleanup resources
 client.Threads.DeleteThread(thread.Id);
 client.Administration.DeleteAgent(agent.Id);

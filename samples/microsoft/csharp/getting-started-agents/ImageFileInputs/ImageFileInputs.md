@@ -2,9 +2,11 @@
 
 Demonstrates examples of sending an image file (along with optional text) as a structured content block in a single message. The examples shows how to create an agent, open a thread, post content blocks combining text and image inputs, and then run the agent to see how it interprets the multimedia input.
 
-1. First, we need to set up the configuration, create a `PersistentAgentsClient`, upload the image file, and create an agent. This initial step also includes all necessary `using` directives for the samples.
+## Initialize
 
-```C# Snippet:AgentsImageFileStep1Common_SetupClient
+First, we need to set up the configuration, create a `PersistentAgentsClient`, upload the image file, and create an agent. This initial step also includes all necessary `using` directives for the samples.
+
+```csharp
 using Azure;
 using Azure.AI.Agents.Persistent;
 using Azure.Identity;
@@ -17,13 +19,15 @@ IConfigurationRoot configuration = new ConfigurationBuilder()
 
 var projectEndpoint = configuration["ProjectEndpoint"];
 var modelDeploymentName = configuration["ModelDeploymentName"];
+// Get a local image file with full path.
 var filePath = configuration["FileNameWithCompletePath"];
+
 PersistentAgentsClient client = new(projectEndpoint, new DefaultAzureCredential());
 ```
 
 Synchronous sample:
 
-```C# Snippet:AgentsImageFileStep1Sync_UploadCreateAgent
+```csharp
 PersistentAgentFileInfo uploadedFile = client.Files.UploadFile(
     filePath: filePath,
     purpose: PersistentAgentFilePurpose.Agents
@@ -38,7 +42,7 @@ PersistentAgent agent = client.Administration.CreateAgent(
 
 Asynchronous sample:
 
-```C# Snippet:AgentsImageFileStep1Async_UploadCreateAgent
+```csharp
 PersistentAgentFileInfo uploadedFile = await client.Files.UploadFileAsync(
     filePath: filePath,
     purpose: PersistentAgentFilePurpose.Agents
@@ -51,9 +55,11 @@ PersistentAgent agent = await client.Administration.CreateAgentAsync(
 );
 ```
 
-2. Next, create a thread and add a message to it. The message will contain both text and a reference to the uploaded image file.
+## Threads and Messages
 
-```C# Snippet:AgentsImageFileStep2Common_ContentBlocks
+Next, create a thread and add a message to it. The message will contain both text and a reference to the uploaded image file.
+
+```csharp
 var contentBlocks = new List<MessageInputContentBlock>
 {
     new MessageInputTextBlock("Here is an uploaded file. Please describe it:"),
@@ -63,19 +69,19 @@ var contentBlocks = new List<MessageInputContentBlock>
 
 Synchronous sample:
 
-```C# Snippet:AgentsImageFileStep2Sync_CreateThreadMessage
+```csharp
 PersistentAgentThread thread = client.Threads.CreateThread();
 
 client.Messages.CreateMessage(
-    threadId: thread.Id,
-    role: MessageRole.User,
+    thread.Id,
+    MessageRole.User,
     contentBlocks: contentBlocks
 );
 ```
 
 Asynchronous sample:
 
-```C# Snippet:AgentsImageFileStep2Async_CreateThreadMessage
+```csharp
 PersistentAgentThread thread = await client.Threads.CreateThreadAsync();
 
 await client.Messages.CreateMessageAsync(
@@ -84,14 +90,16 @@ await client.Messages.CreateMessageAsync(
     contentBlocks: contentBlocks);
 ```
 
-3. Then, create a run for the agent on the thread and poll its status until it completes or requires action.
+## Runs, Additional Messages and Polling
+
+Then, create a run for the agent on the thread and poll its status until it completes or requires action.
 
 Synchronous sample:
 
-```C# Snippet:AgentsImageFileStep3Sync_CreatePollRun
+```csharp
 ThreadRun run = client.Runs.CreateRun(
-    threadId: thread.Id,
-    assistantId: agent.Id
+    thread.Id,
+    agent.Id
 );
 
 do
@@ -100,16 +108,15 @@ do
     run = client.Runs.GetRun(thread.Id, run.Id);
 }
 while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
+    || run.Status == RunStatus.InProgress);
 ```
 
 Asynchronous sample:
 
-```C# Snippet:AgentsImageFileStep3Async_CreatePollRun
+```csharp
 ThreadRun run = await client.Runs.CreateRunAsync(
-    threadId: thread.Id,
-    assistantId: agent.Id
+    thread.Id,
+    agent.Id
 );
 
 do
@@ -118,20 +125,21 @@ do
     run = await client.Runs.GetRunAsync(thread.Id, run.Id);
 }
 while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
+    || run.Status == RunStatus.InProgress);
 ```
 
-4. After the run is complete, retrieve all messages from the thread to see the agent's response and print them to the console.
+## View Messages
+
+After the run is complete, retrieve all messages from the thread to see the agent's response and print them to the console.
 
 Synchronous sample:
 
-```C# Snippet:AgentsImageFileStep4Sync_RetrieveProcessMessages
-Pageable<ThreadMessage> messages = client.Messages.GetMessages(
-    threadId: thread.Id,
+```csharp
+Pageable<PersistentThreadMessage> messages = client.Messages.GetMessages(
+    thread.Id,
     order: ListSortOrder.Ascending);
 
-foreach (ThreadMessage threadMessage in messages)   
+foreach (PersistentThreadMessage threadMessage in messages)   
 {
     foreach (MessageContent content in threadMessage.ContentItems)
     {
@@ -139,10 +147,6 @@ foreach (ThreadMessage threadMessage in messages)
         {
             case MessageTextContent textItem:
                 Console.WriteLine($"[{threadMessage.Role}]: {textItem.Text}");
-                break;
-
-            case MessageImageFileContent fileItem:
-                Console.WriteLine($"[{threadMessage.Role}]: Image File (internal ID): {fileItem.FileId}");
                 break;
         }
     }
@@ -151,12 +155,12 @@ foreach (ThreadMessage threadMessage in messages)
 
 Asynchronous sample:
 
-```C# Snippet:AgentsImageFileStep4Async_RetrieveProcessMessages
-AsyncPageable<ThreadMessage> messages = client.Messages.GetMessagesAsync(
-    threadId: thread.Id,
+```csharp
+AsyncPageable<PersistentThreadMessage> messages = client.Messages.GetMessagesAsync(
+    thread.Id,
     order: ListSortOrder.Ascending);
 
-await foreach (ThreadMessage threadMessage in messages)
+await foreach (PersistentThreadMessage threadMessage in messages)
 {
     foreach (MessageContent content in threadMessage.ContentItems)
     {
@@ -170,20 +174,22 @@ await foreach (ThreadMessage threadMessage in messages)
 }
 ```
 
-5. Finally, clean up all created resources, including the thread, the agent, and the uploaded file.
+## Cleanup Resources
+
+Finally, clean up all created resources, including the thread, the agent, and the uploaded file.
 
 Synchronous sample:
 
-```C# Snippet:AgentsImageFileStep5Sync_Cleanup
+```csharp
 client.Files.DeleteFile(uploadedFile.Id);
-client.Threads.DeleteThread(threadId: thread.Id);
-client.Administration.DeleteAgent(agentId: agent.Id);
+client.Threads.DeleteThread(thread.Id);
+client.Administration.DeleteAgent(agent.Id);
 ```
 
 Asynchronous sample:
 
-```C# Snippet:AgentsImageFileStep5Async_Cleanup
+```csharp
 await client.Files.DeleteFileAsync(uploadedFile.Id);
-await client.Threads.DeleteThreadAsync(threadId: thread.Id);
-await client.Administration.DeleteAgentAsync(agentId: agent.Id);
+await client.Threads.DeleteThreadAsync(thread.Id);
+await client.Administration.DeleteAgentAsync(agent.Id);
 ```

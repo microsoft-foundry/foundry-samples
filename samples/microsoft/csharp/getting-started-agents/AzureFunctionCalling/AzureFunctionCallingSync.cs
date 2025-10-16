@@ -4,6 +4,7 @@ using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 
+// Load configuration from appsettings.json
 IConfigurationRoot configuration = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -12,8 +13,11 @@ IConfigurationRoot configuration = new ConfigurationBuilder()
 var projectEndpoint = configuration["ProjectEndpoint"];
 var modelDeploymentName = configuration["ModelDeploymentName"];
 var storageQueueUri = configuration["StorageQueueURI"];
+
+// Create a PersistentAgentsClient
 PersistentAgentsClient client = new(projectEndpoint, new DefaultAzureCredential());
 
+// Create a Azure Function Tool Definition.
 AzureFunctionToolDefinition azureFnTool = new(
     name: "foo",
     description: "Get answers from the foo bot.",
@@ -51,6 +55,7 @@ AzureFunctionToolDefinition azureFnTool = new(
     )
 );
 
+// Create a PersistentAgent with tool.
 PersistentAgent agent = client.Administration.CreateAgent(
     model: modelDeploymentName,
     name: "azure-function-agent-foo",
@@ -62,30 +67,35 @@ PersistentAgent agent = client.Administration.CreateAgent(
     tools: [azureFnTool]
 );
 
+// Create a thread.
 PersistentAgentThread thread = client.Threads.CreateThread();
 
+// Create a message.
 client.Messages.CreateMessage(
     thread.Id,
     MessageRole.User,
     "What is the most prevalent element in the universe? What would foo say?");
 
+// Start run.
 ThreadRun run = client.Runs.CreateRun(thread.Id, agent.Id);
 
+// Poll until finished.
 do
 {
     Thread.Sleep(TimeSpan.FromMilliseconds(500));
     run = client.Runs.GetRun(thread.Id, run.Id);
 }
 while (run.Status == RunStatus.Queued
-    || run.Status == RunStatus.InProgress
-    || run.Status == RunStatus.RequiresAction);
+    || run.Status == RunStatus.InProgress);
 
-Pageable<ThreadMessage> messages = client.Messages.GetMessages(
-    threadId: thread.Id,
+// Get messages.
+Pageable<PersistentThreadMessage> messages = client.Messages.GetMessages(
+    thread.Id,
     order: ListSortOrder.Ascending
 );
 
-foreach (ThreadMessage threadMessage in messages)
+// Print messages.
+foreach (PersistentThreadMessage threadMessage in messages)
 {
     foreach (MessageContent content in threadMessage.ContentItems)
     {
@@ -98,5 +108,6 @@ foreach (ThreadMessage threadMessage in messages)
     }
 }
 
+// Clean up resources
 client.Threads.DeleteThread(thread.Id);
 client.Administration.DeleteAgent(agent.Id);
