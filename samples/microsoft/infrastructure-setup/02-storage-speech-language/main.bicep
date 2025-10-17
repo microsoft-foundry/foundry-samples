@@ -13,19 +13,21 @@ param location string = resourceGroup().location
 param userOwnedStorageResourceId string = ''
 
 @description('Name of the Storage Account derived from the resource ID or provided for new account')
-param storageAccountName string = userOwnedStorageResourceId != '' ? last(split(userOwnedStorageResourceId, '/')) : 'st${uniqueString(resourceGroup().id)}andya'
+param storageAccountName string = userOwnedStorageResourceId != '' ? last(split(userOwnedStorageResourceId, '/')) : 'st${uniqueString(subscription().subscriptionId, resourceGroup().name)}aaviles' // no '-' allowed
 
-@description('Resource group name of the Storage Account derived from the resource ID')
+@description('Resource group name of the Storage Account derived from the resource ID or same as AI Foundry for new accounts')
 param storageResourceGroupName string = userOwnedStorageResourceId != '' ? split(userOwnedStorageResourceId, '/')[4] : resourceGroup().name
+
+// Derived values for cross-subscription support
+var targetStorageSubscriptionId = userOwnedStorageResourceId != '' ? split(userOwnedStorageResourceId, '/')[2] : subscription().subscriptionId
 // --------------------------------
 
 // ====================================================================
 // DEPLOYMENT STEPS OVERVIEW:
-// 1. Collect user info for Storage Account, if it exists 
-// 2. Check if Storage Account exists 
-// 3. Create Storage Account (if not using existing one) 
-// 4. Create AI Foundry with User Owned Storage 
-// 5. Create Role Assignment for AI Foundry's managed identity on the Storage Account
+// 1. Storage Account Configuration (existing vs new)
+// 2. Create Storage Account (if new - always in same RG as AI Foundry)
+// 3. Create AI Foundry with User Owned Storage 
+// 4. Create Role Assignment for AI Foundry's managed identity on the Storage Account
 // ====================================================================
 
 // ====================================================================
@@ -35,17 +37,23 @@ param storageResourceGroupName string = userOwnedStorageResourceId != '' ? split
 var useExistingStorageAccount bool = userOwnedStorageResourceId != ''
 
 // ====================================================================
-// STEP 2: CHECK IF STORAGE ACCOUNT EXISTS
+// STEP 2: CREATE STORAGE ACCOUNT (IF NOT USING EXISTING ONE)
 // ====================================================================
-resource existingStorageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' existing = if (useExistingStorageAccount) {
-  name: storageAccountName
-  scope: resourceGroup(storageResourceGroupName)
+// New storage accounts are always created in the same resource group as AI Foundry
+// For cross-subscription existing storage, we use the target subscription for role assignment
+
+// For cross-subscription storage account creation (not recommended, but supported)
+module storageAccountModule './modules/storageAccount.bicep' = if (!useExistingStorageAccount && targetStorageSubscriptionId != subscription().subscriptionId) {
+  name: 'crossSubStorageAccount'
+  scope: resourceGroup(targetStorageSubscriptionId, resourceGroup().name)
+  params: {
+    storageAccountName: storageAccountName
+    location: location
+  }
 }
 
-// ====================================================================
-// STEP 3: CREATE STORAGE ACCOUNT (IF NOT USING EXISTING ONE)
-// ====================================================================
-resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = if (!useExistingStorageAccount) {
+// For same-subscription storage account creation (recommended)
+resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = if (!useExistingStorageAccount && targetStorageSubscriptionId == subscription().subscriptionId) {
   name: storageAccountName
   location: location
   sku: {
@@ -76,7 +84,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = if (!us
 }
 
 // ====================================================================
-// STEP 4: CREATE AI FOUNDRY WITH USER OWNED STORAGE
+// STEP 3: CREATE AI FOUNDRY WITH USER OWNED STORAGE
 // ====================================================================
 resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-07-01-preview' = {
   name: aiFoundryName
@@ -94,18 +102,18 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-07-01-preview' = {
     disableLocalAuth: false
     customSubDomainName: toLower(replace(aiFoundryName, '_', '-'))
     userOwnedStorage: [{
-        resourceId: useExistingStorageAccount ? existingStorageAccount.id : storageAccount.id
+        resourceId: useExistingStorageAccount ? userOwnedStorageResourceId : '/subscriptions/${targetStorageSubscriptionId}/resourceGroups/${resourceGroup().name}/providers/Microsoft.Storage/storageAccounts/${storageAccountName}'
     }]
   }
 }
 
 // ====================================================================
-// STEP 5: CREATE ROLE ASSIGNMENT FOR AI FOUNDRY'S MANAGED IDENTITY
+// STEP 4: CREATE ROLE ASSIGNMENT FOR AI FOUNDRY'S MANAGED IDENTITY
 // ====================================================================
-// Using module to handle role assignment for both existing and new storage accounts
+// Role assignment deployed to the correct subscription/resource group based on storage location
 module roleAssignmentModule './modules/roleAssignment.bicep' = {
   name: 'storageRoleAssignment'
-  scope: resourceGroup(storageResourceGroupName)
+  scope: resourceGroup(targetStorageSubscriptionId, storageResourceGroupName)
   params: {
     storageAccountName: storageAccountName
     principalId: aiFoundry.identity.principalId
@@ -123,10 +131,13 @@ output aiFoundryId string = aiFoundry.id
 output aiFoundryName string = aiFoundry.name
 
 @description('The resource ID of the storage account being used')
-output storageAccountId string = useExistingStorageAccount ? existingStorageAccount.id : storageAccount.id
+output storageAccountId string = useExistingStorageAccount ? userOwnedStorageResourceId : '/subscriptions/${targetStorageSubscriptionId}/resourceGroups/${resourceGroup().name}/providers/Microsoft.Storage/storageAccounts/${storageAccountName}'
 
 @description('The managed identity principal ID of the AI Foundry account')
 output aiFoundryPrincipalId string = aiFoundry.identity.principalId
+
+@description('The subscription ID where the storage account is located')
+output storageSubscriptionId string = targetStorageSubscriptionId
 
 @description('Status of role assignment')
 output roleAssignmentStatus string = 'Storage Blob Data Contributor role assigned automatically via module'
