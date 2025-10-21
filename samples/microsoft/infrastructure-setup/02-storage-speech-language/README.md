@@ -1,5 +1,7 @@
-# Bring Your Own Azure Storage for Speech and Language capabailities
+# Bring Your Own Azure Storage for Speech and Language capabilities (Preview)
 
-Conceptually speaking, this is a connection to another Azure resource, however, Foundry connections are control plane resources that are not tracked by Azure. That means that Foundry connections follow the `'Microsoft/CognitiveServices/accounts/connections'` API, while this (conceptual) connection to a Storage account uses the `userOwnedStorage` field in the Foundry resource JSON under `properties`.
+Use this template to associate your Azure Storage account to a new Foundry resource. This template allows you to bring an existing Azure Storage account as the storage for your Speech and Language usecases. Learn more about this feature's restrictions via our public documentation. 
 
-Before running this template, please consider the limitations outlined by [this public documentation](LINK).
+## Advanced implementation details  
+### How is this different from a regular Foundry connection?
+This template does not use the Foundry connections API. The [Foundry resource connections API](https://learn.microsoft.com/en-us/rest/api/aifoundry/accountmanagement/account-connections?view=rest-aifoundry-accountmanagement-2025-06-01) and [Foundry project connections API](https://learn.microsoft.com/en-us/rest/api/aifoundry/aiprojects/connections?view=rest-aifoundry-aiprojects-v1) use the Foundry endpoint to store authentication details like API keys and target. The Azure Storage association to a Foundry resource does not use that API. Instead, there is a field under `properties` in the Foundry resource creation step, that sets the Azure Storage resource ID. This association does not support API key authentication, only RBAC authentication.
