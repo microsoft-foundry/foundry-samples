@@ -10,11 +10,14 @@ languages:
 - json
 ---
 
-# Azure AI Agent Service: Standard Agent Setup with E2E Network Isolation
+# Azure AI Agent Service: Standard Agent Setup with E2E Network Isolation and UAI
 
 > **IMPORTANT**
 > 
-> Private Class B and C subnet support is available in all regions supported by Azure AI Foundry Agent Service and Private Class A is supported in a subset of regions supported by the Azure AI Foundry Agent service. Private Class A, B, and C support are all now GA. Deployment templates and setup steps are identical for Class A, B, and C subnets. For more on the supported regions of the Azure AI Foundry Agent service, see [Models supported by Azure AI Foundry Agent Service](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/concepts/model-region-support?tabs=global-standard)
+> Private Class A subnet support is GA and available in the following regions. **Supported regions: Australia East, Brazil South, Canada East, East US, East US 2, France Central, Germany West Central, Italy North, Japan East, South Africa North, South Central US, South India, Spain Central, Sweden Central, UAE North, UK South, West Europe, West US, West US 3.**
+>
+> Private Class B and C subnet support is already GA and available in all regions supported by Azure AI Foundry Agent Service. Deployment templates and setup steps are identical for Class A, B, and C subnets. For more on the supported regions of the Azure AI Foundry Agent service, see [Models supported by Azure AI Foundry Agent Service](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/concepts/model-region-support?tabs=global-standard)
+
 
 ---
 ## Overview
