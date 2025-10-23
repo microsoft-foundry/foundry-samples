@@ -1,0 +1,20 @@
+# Azure AI Foundry SDK v2.0 (preview)
+azure-ai-projects>=2.0.0a20251015001
+azure-ai-agents>=2.0.0a20251015001
+
+# Azure Authentication
+azure-identity>=1.15.0
+
+# Azure Monitoring (for trace collection)
+azure-monitor-query>=1.2.0
+opencensus-ext-azure>=1.1.9
+
+# Environment management
+python-dotenv>=1.0.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Optional: For fine-tuning and advanced features
+openai>=1.12.0
