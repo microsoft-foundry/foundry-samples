@@ -1,0 +1,46 @@
+{
+  "properties": {
+    "displayName": "Deny AI Foundry connections using API key-based authentication",
+    "policyType": "Custom",
+    "mode": "All",
+    "description": "This policy denies the creation of connections that use API key authentication for enhanced security",
+    "version": "1.0.0",
+    "parameters": {},
+    "policyRule": {
+      "if": {
+        "anyOf": [
+          {
+            "allOf": [
+              {
+                "field": "type",
+                "equals": "Microsoft.CognitiveServices/accounts/projects/connections"
+              },
+              {
+                "field": "Microsoft.CognitiveServices/accounts/projects/connections/authType",
+                "equals": "ApiKey"
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "field": "type",
+                "equals": "Microsoft.CognitiveServices/accounts/connections"
+              },
+              {
+                "field": "Microsoft.CognitiveServices/accounts/connections/authType",
+                "equals": "ApiKey"
+              }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "effect": "deny"
+      }
+    },
+    "versions": [
+      "1.0.0"
+    ]
+  }
+}
