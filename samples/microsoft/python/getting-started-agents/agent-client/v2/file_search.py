@@ -1,8 +1,10 @@
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import PromptAgentDefinition, FileSearchTool
+from dotenv import load_dotenv
 import os
 
+load_dotenv()
 # Load the file to be indexed for search
 file_1 = os.path.abspath(os.path.join(os.path.dirname(__file__), "../assets/product_info.md"))
 
@@ -65,7 +67,7 @@ with project_client:
     openai_client.vector_stores.delete(vector_store.id)
     print("Deleted vector store")
     # </delete_vector_store>
-    
+
     # Uncomment the following lines to delete the agent after testing
     #project_client.agents.delete_version(agent_name=agent.name, agent_version=agent.version)
     #print("Agent deleted")
