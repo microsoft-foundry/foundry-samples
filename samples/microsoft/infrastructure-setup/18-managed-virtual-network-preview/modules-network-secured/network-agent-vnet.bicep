@@ -1,0 +1,55 @@
+@description('Azure region for the deployment')
+param location string
+
+@description('The name of the virtual network')
+param vnetName string
+
+@description('Indicates if an existing VNet should be used')
+param useExistingVnet bool = false
+
+@description('Subscription ID of the existing VNet (if different from current subscription)')
+param existingVnetSubscriptionId string = subscription().subscriptionId
+
+@description('Resource Group name of the existing VNet (if different from current resource group)')
+param existingVnetResourceGroupName string = resourceGroup().name
+
+@description('The name of Private Endpoint subnet')
+param peSubnetName string = 'pe-subnet'
+
+@description('Address space for the VNet (only used for new VNet)')
+param vnetAddressPrefix string = ''
+
+@description('Address prefix for the private endpoint subnet')
+param peSubnetPrefix string = ''
+
+// Create new VNet if needed
+module newVNet 'vnet.bicep' = if (!useExistingVnet) {
+  name: 'vnet-deployment'
+  params: {
+    location: location
+    vnetName: vnetName
+    peSubnetName: peSubnetName
+    vnetAddressPrefix: vnetAddressPrefix
+    peSubnetPrefix: peSubnetPrefix
+  }
+}
+
+// Use existing VNet if requested
+module existingVNet 'existing-vnet.bicep' = if (useExistingVnet) {
+  name: 'existing-vnet-deployment'
+  params: {
+    vnetName: vnetName
+    vnetResourceGroupName: existingVnetResourceGroupName
+    vnetSubscriptionId: existingVnetSubscriptionId
+    peSubnetName: peSubnetName
+    peSubnetPrefix: peSubnetPrefix
+  }
+}
+
+// Provide unified outputs regardless of which module was used
+output virtualNetworkName string = useExistingVnet ? existingVNet.outputs.virtualNetworkName : newVNet.outputs.virtualNetworkName
+output virtualNetworkId string = useExistingVnet ? existingVNet.outputs.virtualNetworkId : newVNet.outputs.virtualNetworkId
+output virtualNetworkSubscriptionId string = useExistingVnet ? existingVNet.outputs.virtualNetworkSubscriptionId : newVNet.outputs.virtualNetworkSubscriptionId
+output virtualNetworkResourceGroup string = useExistingVnet ? existingVNet.outputs.virtualNetworkResourceGroup : newVNet.outputs.virtualNetworkResourceGroup
+output peSubnetName string = peSubnetName
+output peSubnetId string = useExistingVnet ? existingVNet.outputs.peSubnetId : newVNet.outputs.peSubnetId
