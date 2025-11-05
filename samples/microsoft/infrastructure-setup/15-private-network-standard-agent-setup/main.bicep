@@ -119,7 +119,8 @@ param dnsZoneNames array = [
 var projectName = toLower('${firstProjectName}${uniqueSuffix}')
 var cosmosDBName = toLower('${aiServices}${uniqueSuffix}cosmosdb')
 var aiSearchName = toLower('${aiServices}${uniqueSuffix}search')
-var azureStorageName = toLower('${aiServices}${uniqueSuffix}storage')
+//storage account name can only be 24 characters and must not contain special characters
+var azureStorageName = take(replace(replace(toLower('${aiServices}${uniqueSuffix}storage'), '-', ''), '_', ''), 24)
 
 // Check if existing resources have been passed in
 var storagePassedIn = azureStorageAccountResourceId != ''
