@@ -13,7 +13,7 @@ project_client = AIProjectClient(
 
 # <create_agent>
 agent = project_client.agents.create_version(
-    agent_name="MyAgent",
+    agent_name=os.environ["AZURE_AI_FOUNDRY_AGENT_NAME"],
     definition=PromptAgentDefinition(
         model=os.environ["AZURE_AI_FOUNDRY_MODEL_DEPLOYMENT_NAME"],
         instructions="You are a helpful assistant that answers general questions",

@@ -10,6 +10,7 @@ project_client = AIProjectClient(
     credential=DefaultAzureCredential(),
 )
 
+agent_name = os.environ["AZURE_AI_FOUNDRY_AGENT_NAME"]
 openai_client = project_client.get_openai_client()
 
 # Optional Step: Create a conversation to use with the agent
@@ -19,7 +20,7 @@ print(f"Created conversation (id: {conversation.id})")
 #Chat with the agent to answer questions
 response = openai_client.responses.create(
     conversation=conversation.id, #Optional conversation context for multi-turn
-    extra_body={"agent": {"name": "MyAgent", "type": "agent_reference"}},
+    extra_body={"agent": {"name": agent_name, "type": "agent_reference"}},
     input="What is the size of France in square miles?",
 )
 print(f"Response output: {response.output_text}")
@@ -27,7 +28,7 @@ print(f"Response output: {response.output_text}")
 #Optional Step: Ask a follow-up question in the same conversation
 response = openai_client.responses.create(
     conversation=conversation.id,
-    extra_body={"agent": {"name": "MyAgent", "type": "agent_reference"}},
+    extra_body={"agent": {"name": agent_name, "type": "agent_reference"}},
     input="And what is the capital city?",
 )
 print(f"Response output: {response.output_text}")
