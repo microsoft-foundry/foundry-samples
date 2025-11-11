@@ -30,7 +30,7 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
     publicNetworkAccess: 'Disabled'
     networkInjections: [
       {
-        scenario: ''
+        scenario: 'agent'
         subnetArmId: ''
         useMicrosoftManagedNetwork: true
       }
@@ -38,50 +38,6 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
     disableLocalAuth: false
   }
 }
-
-//AOAO omde managed virtual network
-/*resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
-  name: accountName
-  location: location
-  sku: {
-    name: 'S0'
-  }
-  kind: 'AIServices'
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    allowProjectManagement: true
-    customSubDomainName: accountName
-    networkAcls: {
-      defaultAction: 'Allow'
-      virtualNetworkRules: []
-      ipRules: []
-    }
-    publicNetworkAccess: 'Disabled'
-    networkInjections: [
-      {
-        scenario: ''
-        subnetArmId: ''
-        useMicrosoftManagedNetwork: true
-      }
-    ]
-    disableLocalAuth: false
-    managed_network: {
-      isolation_mode: 'allow_only_approved_outbound'
-      //network_id: 
-      outbound_rules: {
-          name: 'added-perule'
-          type: 'fqdn'
-          destination: 'azure.com'
-          category: 'user_defined'
-      }
-      managedNetworkKind: 'V2'
-      enableNetworkMonitor: true
-      //enableFirewallLog: true
-    }
-  }
-} */
 
 #disable-next-line BCP081
 resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview'=  {

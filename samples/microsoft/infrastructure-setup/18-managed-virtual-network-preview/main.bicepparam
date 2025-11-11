@@ -1,12 +1,7 @@
 using './main.bicep'
 
-param location = 'eastus2'
+param location = 'uaenorth'
 param aiServices = 'aiservices'
-param modelName = 'gpt-4o'
-param modelFormat = 'OpenAI'
-param modelVersion = '2024-11-20'
-param modelSkuName = 'GlobalStandard'
-param modelCapacity = 30
 param firstProjectName = 'project'
 param projectDescription = 'A project for the AI Foundry account with network secured deployed Agent'
 param displayName = 'project'

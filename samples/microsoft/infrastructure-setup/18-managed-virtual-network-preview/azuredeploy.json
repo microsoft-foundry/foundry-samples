@@ -11,7 +11,7 @@
   "parameters": {
     "location": {
       "type": "string",
-      "defaultValue": "eastus2",
+      "defaultValue": "uaenorth",
       "allowedValues": [
         "westus",
         "eastus",
@@ -47,13 +47,6 @@
       "defaultValue": "aiservices",
       "metadata": {
         "description": "Name for your AI Services resource."
-      }
-    },
-    "modelName": {
-      "type": "string",
-      "defaultValue": "gpt-4o",
-      "metadata": {
-        "description": "The name of the model you want to deploy"
       }
     },
     "modelFormat": {

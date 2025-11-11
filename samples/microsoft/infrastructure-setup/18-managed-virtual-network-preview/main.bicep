@@ -28,7 +28,7 @@ Standard Setup Network Secured Steps for main.bicep
   'switzerlandnorth'
   'norwayeast'
 ])
-param location string = 'eastus2'
+param location string = 'uaenorth'
 
 @description('Name for your AI Services resource.')
 param aiServices string = 'aiservices'
@@ -73,9 +73,6 @@ param existingVnetResourceId string = ''
 @description('Address space for the VNet (only used for new VNet)')
 param vnetAddressPrefix string = ''
 
-@description('Address prefix for the agent subnet. The default value is 192.168.0.0/24 but you can choose any size /26 or any class like 10.0.0.0 or 172.168.0.0')
-param agentSubnetPrefix string = ''
-
 @description('Address prefix for the private endpoint subnet')
 param peSubnetPrefix string = ''
 
@@ -98,7 +95,7 @@ param existingDnsZones object = {
   'privatelink.openai.azure.com': ''
   'privatelink.cognitiveservices.azure.com': ''               
   'privatelink.search.windows.net': ''           
-  'privatelink.blob.core.windows.net': ''                            
+  'privatelink.blob.${environment().suffixes.storage}': ''                            
   'privatelink.documents.azure.com': ''
   'privatelink.azure-api.net': ''                       
 }
@@ -109,7 +106,7 @@ param dnsZoneNames array = [
   'privatelink.openai.azure.com'
   'privatelink.cognitiveservices.azure.com'
   'privatelink.search.windows.net'
-  'privatelink.blob.core.windows.net'
+  'privatelink.blob.${environment().suffixes.storage}'
   'privatelink.documents.azure.com'
   'privatelink.azure-api.net'
 ]
