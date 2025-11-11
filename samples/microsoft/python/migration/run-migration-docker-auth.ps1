@@ -40,11 +40,12 @@ try {
     exit 1
 }
 
-# Parse arguments to detect production mode
+# Parse arguments to detect production mode and connection string usage
 $productionTenant = $null
 $sourceTenant = $null
 $productionResource = $null
 $productionSubscription = $null
+$useConnectionString = $false
 
 for ($i = 0; $i -lt $Arguments.Length; $i++) {
     if ($Arguments[$i] -eq "--production-tenant" -and ($i + 1) -lt $Arguments.Length) {
@@ -59,10 +60,55 @@ for ($i = 0; $i -lt $Arguments.Length; $i++) {
     if ($Arguments[$i] -eq "--production-subscription" -and ($i + 1) -lt $Arguments.Length) {
         $productionSubscription = $Arguments[$i + 1]
     }
+    if ($Arguments[$i] -eq "--project-connection-string") {
+        $useConnectionString = $true
+        Write-Host "${Blue}📝 Detected project connection string usage${Reset}"
+    }
 }
 
-# Generate source token (with tenant handling)
-if ($sourceTenant) {
+# Generate source token (still needed even with connection string - SDK requires credential)
+$sourceToken = $null
+if ($useConnectionString -and $sourceTenant) {
+    Write-Host "${Blue}🔑 Generating source Azure AI token for project connection string (tenant: $sourceTenant)${Reset}"
+    try {
+        # Check current tenant
+        $currentTenant = az account show --query tenantId -o tsv 2>$null
+        
+        if ($currentTenant -ne $sourceTenant) {
+            Write-Host "${Yellow}🔄 Switching to source tenant: $sourceTenant${Reset}"
+            az login --tenant $sourceTenant --only-show-errors
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "${Red}❌ Failed to authenticate with source tenant${Reset}"
+                exit 1
+            }
+        }
+        
+        $sourceToken = az account get-access-token --scope https://ai.azure.com/.default --query accessToken -o tsv
+        if ($sourceToken -and $sourceToken.Length -gt 100) {
+            Write-Host "${Green}✅ Source token generated successfully (length: $($sourceToken.Length))${Reset}"
+        } else {
+            Write-Host "${Red}❌ Failed to generate source token or token is invalid${Reset}"
+            exit 1
+        }
+    } catch {
+        Write-Host "${Red}❌ Failed to generate source Azure token: $_${Reset}"
+        exit 1
+    }
+} elseif ($useConnectionString) {
+    Write-Host "${Blue}🔑 Generating source Azure AI token for project connection string (current tenant)${Reset}"
+    try {
+        $sourceToken = az account get-access-token --scope https://ai.azure.com/.default --query accessToken -o tsv
+        if ($sourceToken -and $sourceToken.Length -gt 100) {
+            Write-Host "${Green}✅ Source token generated successfully (length: $($sourceToken.Length))${Reset}"
+        } else {
+            Write-Host "${Red}❌ Failed to generate source token or token is invalid${Reset}"
+            exit 1
+        }
+    } catch {
+        Write-Host "${Red}❌ Failed to generate source Azure token: $_${Reset}"
+        exit 1
+    }
+} elseif ($sourceTenant) {
     Write-Host "${Blue}🔑 Generating source Azure AI token for tenant: $sourceTenant${Reset}"
     try {
         # Check current tenant
@@ -211,6 +257,16 @@ try {
         Write-Host "${Green}🏠 Passing source token to container${Reset}"
     }
     
+    # Check if we need the beta version for project connection string
+    $needsBetaVersion = $false
+    for ($i = 0; $i -lt $Arguments.Length; $i++) {
+        if ($Arguments[$i] -eq "--project-connection-string") {
+            $needsBetaVersion = $true
+            Write-Host "${Blue}🔍 Detected project connection string usage - beta version required${Reset}"
+            break
+        }
+    }
+    
     # Filter out PowerShell-only arguments that shouldn't be passed to Python
     $filteredArguments = @()
     for ($i = 0; $i -lt $Arguments.Length; $i++) {
@@ -220,6 +276,12 @@ try {
         } else {
             $filteredArguments += $Arguments[$i]
         }
+    }
+    
+    # Add environment variable to indicate if beta version is needed
+    if ($needsBetaVersion) {
+        $dockerEnvVars += "-e", "NEED_BETA_VERSION=true"
+        Write-Host "${Blue}🔧 Passing beta version requirement to container${Reset}"
     }
     
     docker run --rm -it `

@@ -407,10 +407,73 @@ def list_assistants_from_api() -> List[Dict[str, Any]]:
     print(f"Warning: Unexpected API response format: {type(response_data)}")
     return []
 
+def ensure_project_connection_package():
+    """Ensure the correct azure-ai-projects version is installed for project connection string functionality."""
+    try:
+        # Test if we have the from_connection_string method
+        from azure.ai.projects import AIProjectClient
+        if hasattr(AIProjectClient, 'from_connection_string'):
+            print("✅ Correct azure-ai-projects version already installed (1.0.0b10)")
+            return True
+        else:
+            print("⚠️  Current azure-ai-projects version doesn't support from_connection_string")
+            print("🔄 Upgrading to azure-ai-projects==1.0.0b10...")
+            
+            import subprocess
+            import sys
+            
+            # Upgrade to the beta version
+            result = subprocess.run([
+                sys.executable, "-m", "pip", "install", "--upgrade", "azure-ai-projects==1.0.0b10"
+            ], capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                print("✅ Successfully upgraded to azure-ai-projects==1.0.0b10")
+                # Force reimport after upgrade
+                import importlib
+                import azure.ai.projects
+                importlib.reload(azure.ai.projects)
+                return True
+            else:
+                print(f"❌ Failed to upgrade package: {result.stderr}")
+                return False
+                
+    except ImportError:
+        print("❌ azure-ai-projects package not found")
+        print("🔄 Installing azure-ai-projects==1.0.0b10...")
+        
+        import subprocess
+        import sys
+        
+        result = subprocess.run([
+            sys.executable, "-m", "pip", "install", "azure-ai-projects==1.0.0b10"
+        ], capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            print("✅ Successfully installed azure-ai-projects==1.0.0b10")
+            return True
+        else:
+            print(f"❌ Failed to install package: {result.stderr}")
+            return False
+
 def get_assistant_from_project_connection(project_connection_string: str, assistant_id: str) -> Dict[str, Any]:
     """Get v1 assistant details from AIProjectClient using connection string."""
+    global AIProjectClient, PROJECT_CLIENT_AVAILABLE
+    
     if not PROJECT_CLIENT_AVAILABLE:
-        raise ImportError("azure-ai-projects package is required for project connection string functionality")
+        print("❌ azure-ai-projects package is required for project connection string functionality")
+        print("🔄 Attempting to install the correct version...")
+        if not ensure_project_connection_package():
+            raise ImportError("Failed to install azure-ai-projects==1.0.0b10")
+
+        # Re-import after installation
+        try:
+            from azure.ai.projects import AIProjectClient
+            PROJECT_CLIENT_AVAILABLE = True
+        except ImportError:
+            raise ImportError("Failed to import AIProjectClient after installation")    # Ensure we have the correct version
+    if not ensure_project_connection_package():
+        raise ImportError("azure-ai-projects==1.0.0b10 is required for project connection string functionality")
     
     # Try to use from_connection_string method (available in beta versions)
     try:
@@ -420,8 +483,8 @@ def get_assistant_from_project_connection(project_connection_string: str, assist
         )
         print("✅ Using AIProjectClient.from_connection_string method")
     except AttributeError:
-        # Fallback for versions that don't have from_connection_string
-        print("⚠️  from_connection_string not available, this method requires azure-ai-projects==1.0.0b10")
+        # This shouldn't happen now, but keep as fallback
+        print("⚠️  from_connection_string not available after upgrade")
         raise ImportError("azure-ai-projects==1.0.0b10 is required for project connection string functionality")
     
     with project_client:
@@ -434,8 +497,22 @@ def get_assistant_from_project_connection(project_connection_string: str, assist
 
 def list_assistants_from_project_connection(project_connection_string: str) -> List[Dict[str, Any]]:
     """List all v1 assistants from AIProjectClient using connection string."""
+    global AIProjectClient, PROJECT_CLIENT_AVAILABLE
+    
     if not PROJECT_CLIENT_AVAILABLE:
-        raise ImportError("azure-ai-projects package is required for project connection string functionality")
+        print("❌ azure-ai-projects package is required for project connection string functionality")
+        print("🔄 Attempting to install the correct version...")
+        if not ensure_project_connection_package():
+            raise ImportError("Failed to install azure-ai-projects==1.0.0b10")
+
+        # Re-import after installation
+        try:
+            from azure.ai.projects import AIProjectClient
+            PROJECT_CLIENT_AVAILABLE = True
+        except ImportError:
+            raise ImportError("Failed to import AIProjectClient after installation")    # Ensure we have the correct version
+    if not ensure_project_connection_package():
+        raise ImportError("azure-ai-projects==1.0.0b10 is required for project connection string functionality")
     
     # Try to use from_connection_string method (available in beta versions)
     try:
@@ -445,8 +522,8 @@ def list_assistants_from_project_connection(project_connection_string: str) -> L
         )
         print("✅ Using AIProjectClient.from_connection_string method")
     except AttributeError:
-        # Fallback for versions that don't have from_connection_string
-        print("⚠️  from_connection_string not available, this method requires azure-ai-projects==1.0.0b10")
+        # This shouldn't happen now, but keep as fallback
+        print("⚠️  from_connection_string not available after upgrade")
         raise ImportError("azure-ai-projects==1.0.0b10 is required for project connection string functionality")
     
     with project_client:
@@ -1176,6 +1253,15 @@ def process_v1_assistants_to_v2_agents(args=None, assistant_id: Optional[str] = 
         project_endpoint: Optional project endpoint for AIProjectClient (e.g., "https://...api/projects/p-3")
         project_connection_string: Optional project connection string for AIProjectClient (e.g., "eastus.api.azureml.ms;...;...;...")
     """
+    
+    # Handle package version management based on usage
+    need_beta_version = os.environ.get('NEED_BETA_VERSION') == 'true' or project_connection_string is not None
+    
+    if need_beta_version:
+        print("🔧 Project connection string detected - ensuring beta version is installed...")
+        if not ensure_project_connection_package():
+            print("❌ Failed to install required beta version")
+            sys.exit(1)
     if project_connection_string:
         print(f"🏢 Reading v1 assistants from Project Connection String")
         if not PROJECT_CLIENT_AVAILABLE:
