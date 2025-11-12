@@ -146,7 +146,8 @@ graph TB
 ### 🚪 Supported Gateway Types
 
 **🏢 Azure API Management**  
-Enterprise-grade API gateway with built-in Azure integration and advanced security features
+Enterprise-grade API gateway with built-in Azure integration and advanced security features  
+📖 [Learn more about Azure API Management GenAI Gateway Capabilities](https://learn.microsoft.com/en-in/azure/api-management/genai-gateway-capabilities)
 
 **🔧 Self-Hosted Gateways**  
 Custom gateway solutions deployed in your own infrastructure with full control
@@ -171,7 +172,7 @@ Use one of the available authentication methods supported by Azure AI Foundry co
 
 **4️⃣ Networking**  
 - **🌐 Public Networking**: If gateway endpoints are accessible on public internet, no separate setup required
-- **🔐 Fully Secured Network Setup**: Use Agents BYO VNet feature
+- **🔐 Fully Secured Network Setup (Coming Soon)**: Use Agents BYO VNet feature
   - **For APIM**: Use this [Bicep template for secure APIM setup](https://github.com/azure-ai-foundry/foundry-samples/tree/main/samples/microsoft/infrastructure-setup/16-private-network-standard-agent-apim-setup-preview)
   - **For other model gateways**: Ensure your gateway is reachable within the BYO VNet
 
@@ -245,8 +246,7 @@ Unified connections for various AI model providers through self-hosted or third-
 
 #### 🏢 For Azure API Management
 
-📚 **Complete Setup Guide**: [Azure API Management Setup for Foundry Agents](./apim-setup-guide.md)  
-*Step-by-step guide with screenshots showing APIM configuration, endpoint setup, and testing procedures*
+📚 **Complete Setup Guide**: [Azure API Management Setup for Foundry Agents](./apim/apim-setup-guide-for-agents.md)  
 
 - **🏗️ APIM Instance**: Azure API Management Standard v2 or Premium tier
 - **🔑 Subscription Key**: Valid subscription key for API access  
@@ -333,7 +333,10 @@ Unified connections for various AI model providers through self-hosted or third-
 | Resource | Description | Link |
 |----------|-------------|------|
 | **🏢 Azure API Management Setup Guide** | Complete guide for importing AI Foundry and Azure OpenAI resources, adding list/get deployment endpoints, and verification | [APIM Setup Guide](./apim-setup-guide.md) |
-| **� Private Network APIM Setup** | Bicep template for secure private network APIM gateway setup with Agents BYO VNet | [Private APIM Setup](https://github.com/azure-ai-foundry/foundry-samples/tree/main/samples/microsoft/infrastructure-setup/16-private-network-standard-agent-apim-setup-preview) |
+| **📖 Azure API Management GenAI Gateway** | Official Microsoft documentation on Azure API Management GenAI gateway capabilities and features | [GenAI Gateway Capabilities](https://learn.microsoft.com/en-in/azure/api-management/genai-gateway-capabilities) |
+| **🔗 Azure AI Foundry API in APIM** | Official Microsoft documentation on integrating Azure AI Foundry APIs with Azure API Management | [Azure AI Foundry API](https://learn.microsoft.com/en-in/azure/api-management/azure-ai-foundry-api) |
+| **🔗 Azure OpenAI API from Specification** | Official Microsoft documentation on importing Azure OpenAI APIs into Azure API Management from specification | [Azure OpenAI API Import](https://learn.microsoft.com/en-in/azure/api-management/azure-openai-api-from-specification) |
+| **🔒 Private Network APIM Setup** | Bicep template for secure private network APIM gateway setup with Agents BYO VNet | [Private APIM Setup](https://github.com/azure-ai-foundry/foundry-samples/tree/main/samples/microsoft/infrastructure-setup/16-private-network-standard-agent-apim-setup-preview) |
 | **�🔗 APIM Connection Configuration** | Detailed JSON schema, examples, and configuration options for APIM connections | [APIM Connection Objects](./apim/APIM-Connection-Objects.md) |
 | **🔗 ModelGateway Connection Configuration** | Detailed JSON schema, examples, and configuration options for ModelGateway connections | [ModelGateway Connection Objects](./model-gateway/ModelGateway-Connection-Objects.md) |
 | **📋 How to Create APIM Connections** | Step-by-step instructions for creating Azure API Management gateway connections | [APIM Connection Setup README](./apim/README.md) |
