@@ -231,7 +231,7 @@ Determine if your chat completions URL includes the deployment name in the path:
 - **❌ Set to "false"**: If your URL is like `/chat/completions` (deployment passed as parameter)
 
 **Examples:**
-- `true`: `/deployments/gpt-4/chat/completions`
-- `false`: `/chat/completions?deployment=gpt-4`
+- `"true"`: `/deployments/gpt-4/chat/completions`
+- `"false"`: `/chat/completions?deployment=gpt-4`
 
 > **📝 Note**: These values will be used when creating your APIM connection in Foundry using the Bicep templates.

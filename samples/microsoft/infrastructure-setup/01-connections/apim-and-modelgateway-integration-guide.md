@@ -238,9 +238,9 @@ Unified connections for various AI model providers through self-hosted or third-
 
 | Tool | Description | Link |
 |------|-------------|------|
-| **Azure CLI** | Latest version installed and configured | [Installation Guide](/cli/azure/install-azure-cli) |
-| **Foundry SDK** | Agents V2 SDK for development | *Link for agent v2* |
-| **Connection Setup** | Bicep templates for connections | *Link for connections bicep* |
+| **Azure CLI** | Latest version installed and configured | *Installation instructions available in official Azure documentation* |
+| **Foundry SDK** | Agents V2 SDK for development | [Agents V2 Preview SDK](https://github.com/microsoft/agentsv2-preview/tree/main/python/azure-ai-projects) \| [Agent Basic Sample](https://github.com/Azure/azure-sdk-for-python/blob/main/sdk/ai/azure-ai-projects/samples/agents/sample_agent_basic_async.py) |
+| **Connection Setup** | Bicep templates for connections | [APIM Templates](./apim) \| [Model Gateway Templates](./model-gateway) |
 
 ### 🚪 Gateway Prerequisites
 
