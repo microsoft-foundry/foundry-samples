@@ -36,11 +36,17 @@ project_endpoint = os.environ["PROJECT_ENDPOINT"]  # Ensure the PROJECT_ENDPOINT
 conn_id = os.environ["BING_CONNECTION_ID"]  
 model_deployment_name = os.environ["MODEL_DEPLOYMENT_NAME"]  # Ensure the MODEL_DEPLOYMENT_NAME environment variable is set
 
+subscription_id = os.environ["SUBSCRIPTION_ID"]  
+resource_group = os.environ["RESOURCE_GROUP"] 
+project_name = os.environ["PROJECT_NAME"] 
+
 # Initialize the AIProjectClient with the endpoint and credentials
 project_client = AIProjectClient(
     endpoint=project_endpoint,
     credential=DefaultAzureCredential(),  # Use Azure Default Credential for authentication
-    api_version="latest",
+    subscription_id=subscription_id,
+    resource_group_name=resource_group_name,
+    project_name=project_name
 )
 
 with project_client:
