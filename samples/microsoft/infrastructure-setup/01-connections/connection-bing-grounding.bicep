@@ -41,7 +41,7 @@ resource new 'Microsoft.Bing/accounts@2020-06-10' = if (newOrExisting == 'new') 
   kind: 'Bing.Grounding'
 }
 
-// Creates the Azure Foundry connection to your Azure App Insights resource
+// Creates the Azure Foundry connection to your Azure Grounding with Bing resource
 resource connection 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
   name: '${aiFoundryName}-bing'
   parent: aiFoundry
