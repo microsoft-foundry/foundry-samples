@@ -1,4 +1,4 @@
-name: Web Search Agent
+name: WebSearchAgent
 description: This Agent can perform web searches and retrieve the latest information from Bing.
 metadata:
   example:
@@ -11,7 +11,7 @@ metadata:
   authors:
     - jeomhove
 template:
-  name: Web Search Agent
+  name: WebSearchAgent
   kind: hosted
   environment_variables:
     - name: AZURE_AI_PROJECT_ENDPOINT

@@ -1,4 +1,4 @@
-name: Microsoft Learn MCP Agent
+name: MicrosoftLearnMCPAgent
 description: This Agent can perform web searches and retrieve the latest information from Bing.
 metadata:
   tags:
@@ -7,7 +7,7 @@ metadata:
   authors:
     - jeomhove
 template:
-  name: Microsoft Learn MCP Agent
+  name: MicrosoftLearnMCPAgent
   kind: hosted
   environment_variables:
     - name: AZURE_AI_PROJECT_ENDPOINT
