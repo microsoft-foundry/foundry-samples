@@ -1,4 +1,4 @@
-name: LangGraphMultiAgent
+name: LangGraphMultiAgent-MCP
 description: This LangGraph agent can perform arithmetic calculations such as addition, subtraction, multiplication, and division.
 metadata:
   example:
@@ -9,7 +9,7 @@ metadata:
     - example
     - learning
 template:
-  name: LangGraphMultiAgent
+  name: LangGraphMultiAgentMCP
   kind: hosted
   environment_variables:
     - name: AZURE_OPENAI_ENDPOINT
@@ -18,6 +18,8 @@ template:
       value: 2025-03-01-preview
     - name: APPLICATIONINSIGHTS_CONNECTION_STRING
       value: ${APPLICATIONINSIGHTS_CONNECTION_STRING}
+    - name: AZURE_AI_PROJECT_TOOL_CONNECTION_ID
+      value: ${AZURE_AI_PROJECT_TOOL_CONNECTION_ID}
 resources:
   - kind: model
     id: gpt-4o-mini
