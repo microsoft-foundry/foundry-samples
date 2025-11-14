@@ -10,14 +10,11 @@ def get_agent() -> ChatAgent:
     assert "AZURE_AI_PROJECT_ENDPOINT" in os.environ, (
         "AZURE_AI_PROJECT_ENDPOINT environment variable must be set."
     )
-    assert "AI_FOUNDRY_PROJECT_RESOURCE_ID" in os.environ, (
-        "AI_FOUNDRY_PROJECT_RESOURCE_ID environment variable must be set."
-    )
     assert "AZURE_AI_MODEL_DEPLOYMENT_NAME" in os.environ, (
         "AZURE_AI_MODEL_DEPLOYMENT_NAME environment variable must be set."
     )
-    assert "BING_GROUNDING_CONNECTION_NAME" in os.environ, (
-        "BING_GROUNDING_CONNECTION_NAME environment variable must be set to use HostedWebSearchTool."
+    assert "BING_GROUNDING_CONNECTION_ID" in os.environ, (
+        "BING_GROUNDING_CONNECTION_ID environment variable must be set to use HostedWebSearchTool."
     )
     
     chat_client = AzureAIAgentClient(
@@ -30,7 +27,7 @@ def get_agent() -> ChatAgent:
     bing_search_tool = HostedWebSearchTool(
         name="Bing Grounding Search",
         description="Search the web for current information using Bing",
-        connection_id=os.environ["AI_FOUNDRY_PROJECT_RESOURCE_ID"]+"/connections/" + os.environ["BING_GROUNDING_CONNECTION_NAME"],
+        connection_id=os.environ["BING_GROUNDING_CONNECTION_ID"],
     )
 
     # Create ChatAgent with the Bing search tool

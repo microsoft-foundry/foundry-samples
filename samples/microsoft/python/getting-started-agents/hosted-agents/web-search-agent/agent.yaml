@@ -19,12 +19,11 @@ template:
   environment_variables:
     - name: AZURE_AI_PROJECT_ENDPOINT
       value: ${AZURE_AI_PROJECT_ENDPOINT}
-    - name: AI_FOUNDRY_PROJECT_RESOURCE_ID
-      value: ${AI_FOUNDRY_PROJECT_RESOURCE_ID}
-    - name: BING_GROUNDING_CONNECTION_NAME
-      value: ${BING_GROUNDING_CONNECTION_NAME}
+    - name: BING_GROUNDING_CONNECTION_ID
+      value: ${BING_GROUNDING_CONNECTION_ID}
     - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
-      value: "{{chat}}"
+      value: "gpt-4o-mini"
+    # value: "{{chat}}"
 resources:
   - kind: model
     id: gpt-4o-mini

@@ -21,7 +21,8 @@ template:
     - name: APPLICATIONINSIGHTS_CONNECTION_STRING
       value: ${APPLICATIONINSIGHTS_CONNECTION_STRING}
     - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
-      value: "{{chat}}"
+      value: "gpt-4o-mini"
+      # value: "{{chat}}"
 resources:
   - kind: model
     id: gpt-4o-mini
