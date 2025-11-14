@@ -1,4 +1,4 @@
-name: MicrosoftLearnMCPAgent
+name: msft-learn-mcp-agent
 description: This Agent can access and search Microsoft Learn documentation using MCP (Model Context Protocol) with tool call approval.
 metadata:
   tags:
@@ -10,14 +10,16 @@ metadata:
   authors:
     - jeomhove
 template:
-  name: MicrosoftLearnMCPAgent
+  name: msft-learn-mcp-agent
   kind: hosted
+  protocols:
+    - protocol: responses
+      version: v1
   environment_variables:
     - name: AZURE_AI_PROJECT_ENDPOINT
       value: ${AZURE_AI_PROJECT_ENDPOINT}
     - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
-      value: "gpt-4o-mini"
-      # value: "{{chat}}"
+      value: "{{chat}}"
 resources:
   - kind: model
     id: gpt-4o-mini

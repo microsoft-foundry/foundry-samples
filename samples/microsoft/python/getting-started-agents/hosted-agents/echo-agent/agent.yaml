@@ -13,10 +13,10 @@ metadata:
     - Microsoft Agent Framework
 template:
   name: echo-agent
-  # The type of agent - "hosted" for HOBO, "container" for COBO
   kind: hosted
   protocols:
     - protocol: responses
+      version: v1
   environment_variables:
     - name: AZURE_AI_PROJECT_ENDPOINT
       value: ${AZURE_AI_PROJECT_ENDPOINT}
