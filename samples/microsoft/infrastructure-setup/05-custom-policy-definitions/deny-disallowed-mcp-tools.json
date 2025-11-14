@@ -1,0 +1,65 @@
+{
+  "properties": {
+    "displayName": "Only allow Foundry MCP connections from select sources",
+    "policyType": "Custom",
+    "mode": "All",
+    "description": "Only selected Foundry MCP connection sources are allowed",
+    "version": "1.0.0",
+    "parameters": {
+      "allowedSources": {
+        "type": "Array",
+        "metadata": {
+          "description": "Only select target addresses are allowed for MCP connections.",
+          "displayName": "Allowed connection targets"
+        },
+        "defaultValue": [
+          "https://api.githubcopilot.com/mcp"
+        ]
+      }
+    },
+    "policyRule": {
+      "if": {
+        "anyOf": [
+          {
+            "allOf": [
+              {
+                "field": "type",
+                "equals": "Microsoft.CognitiveServices/accounts/connections"
+              },
+              {
+                "field": "Microsoft.CognitiveServices/accounts/connections/category",
+                "equals": "RemoteTool"
+              },
+              {
+                "field": "Microsoft.CognitiveServices/accounts/connections/target",
+                "notIn": "[parameters('allowedSources')]"
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "field": "type",
+                "equals": "Microsoft.CognitiveServices/accounts/projects/connections"
+              },
+              {
+                "field": "Microsoft.CognitiveServices/accounts/connections/category",
+                "equals": "RemoteTool"
+              },
+              {
+                "field": "Microsoft.CognitiveServices/accounts/projects/connections/target",
+                "notIn": "[parameters('allowedSources')]"
+              }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "effect": "deny"
+      }
+    },
+    "versions": [
+      "1.0.0"
+    ]
+  }
+}

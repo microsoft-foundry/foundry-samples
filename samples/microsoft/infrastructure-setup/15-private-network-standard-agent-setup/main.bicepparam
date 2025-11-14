@@ -42,9 +42,26 @@ param dnsZoneNames = [
 ]
 
 
-// Network configuration: only used when existingVnetResourceId is not provided
-// These addresses are only used when creating a new VNet and subnets
-// If you provide existingVnetResourceId, these values will be ignored
+// Network configuration (behavior depends on `existingVnetResourceId`)
+//
+// - NEW VNet (existingVnetResourceId is empty):
+//     The values below are used to CREATE the VNet and the two subnets.
+//     Provide explicit, non-overlapping CIDR ranges when creating a new VNet.
+//
+// - EXISTING VNet (existingVnetResourceId is provided):
+//     The module will reference the existing VNet. Subnet handling depends on the
+//     values you provide:
+//       * If `agentSubnetPrefix` or `peSubnetPrefix` are empty, the module may
+//         auto-derive subnet CIDRs from the existing VNet's address space
+//         (using cidrSubnet). This can produce /24 (or configured) subnets
+//         starting at index 0, 1, etc.
+//       * If you provide explicit subnet prefixes, the module will attempt to
+//         create or update subnets with those prefixes in the existing VNet.
+//
+// Important operational notes and risks (when existingVnetResourceId is provided):
+// - Avoid CIDR overlaps with any existing subnets in the target VNet. Overlap
+//   leads to `NetcfgSubnetRangesOverlap` and failed deployments.
+// - For highest safety when using an existing VNet, supply the existing `agentSubnetPrefix` and `peSubnetPrefix`. 
 param vnetAddressPrefix = ''
 param agentSubnetPrefix = ''
 param peSubnetPrefix = ''

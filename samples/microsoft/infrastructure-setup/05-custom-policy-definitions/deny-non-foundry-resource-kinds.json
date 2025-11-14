@@ -1,0 +1,30 @@
+{
+  "properties": {
+    "displayName": "Deny account kinds that do not support the full AI Foundry capabilities.",
+    "policyType": "Custom",
+    "mode": "All",
+    "description": "This policy denies the creation of account kinds that do not support the full AI Foundry capabilities.",
+    "version": "1.0.0",
+    "parameters": {},
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.CognitiveServices/accounts"
+          },
+          {
+            "field": "kind",
+            "notEquals": "AIServices"
+          }
+        ]
+      },
+      "then": {
+        "effect": "deny"
+      }
+    },
+    "versions": [
+      "1.0.0"
+    ]
+  }
+}

@@ -1,8 +1,8 @@
 ## Create a random string
 ## 
 resource "random_string" "unique" {
-  length      = 4
-  min_numeric = 4
+  length      = 5
+  min_numeric = 5
   numeric     = true
   special     = false
   lower       = true
@@ -11,9 +11,10 @@ resource "random_string" "unique" {
 
 ## Create a resource group for the resources to be stored in
 ##
-resource "azurerm_resource_group" "rg" {
-  name     = "rg-aifoundry${random_string.unique.result}"
-  location = var.location
+resource "azapi_resource" "rg" {
+  type      = "Microsoft.Resources/resourceGroups@2021-04-01"
+  name      = "rg-aifoundry-${random_string.unique.result}"
+  location  = var.location
 }
 
 ########## Create AI Foundry resource
@@ -24,7 +25,7 @@ resource "azurerm_resource_group" "rg" {
 resource "azapi_resource" "ai_foundry" {
   type                      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name                      = "aifoundry${random_string.unique.result}"
-  parent_id                 = azurerm_resource_group.rg.id
+  parent_id                 = azapi_resource.rg.id
   location                  = var.location
   schema_validation_enabled = false
 
@@ -52,23 +53,26 @@ resource "azapi_resource" "ai_foundry" {
 
 ## Create a deployment for OpenAI's GPT-4o in the AI Foundry resource
 ##
-resource "azurerm_cognitive_deployment" "aifoundry_deployment_gpt_4o" {
+resource "azapi_resource" "aifoundry_deployment_gpt_4o" {
+  type      = "Microsoft.CognitiveServices/accounts/deployments@2023-05-01"
+  name      = "gpt-4o"
+  parent_id = azapi_resource.ai_foundry.id
   depends_on = [
     azapi_resource.ai_foundry
   ]
 
-  name                 = "gpt-4o"
-  cognitive_account_id = azapi_resource.ai_foundry.id
-
-  sku {
-    name     = "GlobalStandard"
-    capacity = 1
-  }
-
-  model {
-    format  = "OpenAI"
-    name    = "gpt-4o"
-    version = "2024-11-20"
+  body = {
+    sku = {
+      name     = "GlobalStandard"
+      capacity = 1
+    }
+    properties = {
+      model = {
+        format  = "OpenAI"
+        name    = "gpt-4o"
+        version = "2024-11-20"
+      }
+    }
   }
 }
 

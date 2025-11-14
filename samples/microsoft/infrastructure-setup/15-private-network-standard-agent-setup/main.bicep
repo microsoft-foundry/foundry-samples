@@ -20,12 +20,11 @@ Standard Setup Network Secured Steps for main.bicep
   'swedencentral'
   'canadaeast'
   'westeurope'
-
-  // allowed only Class B and C
   'westus3'
-  'centralus'
   'uksouth'
   'southindia'
+
+  //only class B and C
   'koreacentral'
   'polandcentral'
   'switzerlandnorth'

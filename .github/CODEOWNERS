@@ -6,6 +6,9 @@
 /samples/microsoft/csharp/mslearn-resources/quickstart/Samples/AgentFileSearch.cs @azure-ai-foundry/AI-Platform-Docs
 /samples/microsoft/csharp/mslearn-resources/quickstart/Samples/AgentService.cs @azure-ai-foundry/AI-Platform-Docs
 /samples/microsoft/csharp/mslearn-resources/quickstart/Samples/SimpleInference.cs @azure-ai-foundry/AI-Platform-Docs
+/samples/microsoft/infrastructure-setup-terraform/00-basic-azurerm/code/main.tf @azure-ai-foundry/AI-Platform-Docs
+/samples/microsoft/infrastructure-setup-terraform/00-basic-azurerm/code/providers.tf @azure-ai-foundry/AI-Platform-Docs
+/samples/microsoft/infrastructure-setup-terraform/00-basic-azurerm/code/variables.tf @azure-ai-foundry/AI-Platform-Docs
 /samples/microsoft/infrastructure-setup-terraform/00-basic/code/main.tf @azure-ai-foundry/AI-Platform-Docs
 /samples/microsoft/infrastructure-setup-terraform/00-basic/code/providers.tf @azure-ai-foundry/AI-Platform-Docs
 /samples/microsoft/infrastructure-setup-terraform/00-basic/code/variables.tf @azure-ai-foundry/AI-Platform-Docs

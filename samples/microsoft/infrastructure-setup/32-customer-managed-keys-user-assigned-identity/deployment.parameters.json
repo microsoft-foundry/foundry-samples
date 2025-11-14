@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "aiFoundryName": {
+      "value": "<your foundry resource name>"
+    },
+    "location": {
+      "value": "<your location>"
+    },
+    "keyVaultName": {
+      "value": "<your key vault name>"
+    },
+    "keyName": {
+      "value": "<>your key name>"
+    },
+    "keyVersion": {
+      "value": "<your key version>"
+    },
+    "userAssignedIdentityId": {
+      "value": "<your user-assigned identity resource ID>"
+    },
+    "userAssignedIdentityClientId": {
+      "value": "<your user-assigned identity client ID>"
+    }
+  }
+}

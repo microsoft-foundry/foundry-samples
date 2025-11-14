@@ -16,10 +16,10 @@ languages:
 
 > **IMPORTANT**
 > 
-> Class A subnet support is only available in a limited number of regions and requires your subscription id be allowlisted. Please fill out [**this form**](https://forms.office.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR9ZHnlM2xH1ElCCWV7X_lllUNzJLV0FJWU4zSjVKUFpQUUJPQTlGOVVMSC4u) if you are interested in getting access.
-**Supported regions: West US, East US, East US 2, Japan East, France Central, UAE North, South Central US, Italy North, Germany West Central, Brazil South, South Africa North, Australia East, Sweden Central, Canada East, West Europe**
+> Class A subnet support is GA and available in the following regions. **Supported regions: Australia East, Brazil South, Canada East, East US, East US 2, France Central, Germany West Central, Italy North, Japan East, South Africa North, South Central US, South India, Spain Central, Sweden Central, UAE North, UK South, West Europe, West US, West US 3.**
 >
-> Class B and C subnet support is already GA and available in all regions supported by Azure AI Foundry Agent Service. No subscription allowlisting is required. Deployment templates and setup steps are identical for Class A, B, and C subnets; Class A remains in private preview solely because of its limited region coverage. For more on the supported regions of the Azure AI Foundry Agent service, see [Models supported by Azure AI Foundry Agent Service](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/concepts/model-region-support?tabs=global-standard)
+> Class B and C subnet support is already GA and available in all regions supported by Azure AI Foundry Agent Service. Deployment templates and setup steps are identical for Class A, B, and C subnets. For more on the supported regions of the Azure AI Foundry Agent service, see [Models supported by Azure AI Foundry Agent Service](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/concepts/model-region-support?tabs=global-standard)
+
 
 ---
 ## Overview
@@ -32,9 +32,6 @@ This implementation gives you full control over the inbound and outbound communi
 ---
 
 ## Key Information
-
-**Limited Region Support for Class A Subnet IPs**
-- Class A subnet support is only available in select regions and requires allowlisting of your subscription ID. 
 
 **Region and Resource Placement Requirements**
 - **All Foundry workspace resources should be in the same region as the VNet**, including CosmosDB, Storage Account, AI Search, Foundry Account, Project, Managed Identity. The only exception is within the Foundry Account, you may choose to deploy your model to a different region, and any cross-region communication will be handled securely within our network infrastructure.
@@ -91,9 +88,23 @@ This implementation gives you full control over the inbound and outbound communi
   - You must ensure the subnet is exclusively delegated to __Microsoft.App/environments__ and cannot be used by any other Azure resources.
   
 
-  **Limitations:**
-  - Class A subnet support is only available in a limited number of regions and requires your subscription id be allowlisted. Please reach out to fosteramanda@microsoft.com if you are interested in getting access.
-  - The capability host sub-resources of Resource/Project must be deleted before deleting the Resource/Project resource itself. You can use the script __deleteCaphost.sh__ located in this folder to delete it.  
+### Account Deletion Prerequisites and Cleanup Guidance
+
+Before deleting an **Account** resource, it is essential to first delete the associated **Account Capability Host**.  
+Failure to do so may result in residual dependencies—such as subnets and other provisioned resources (e.g., ACA applications)—remaining linked to the capability host.  
+This can lead to errors such as **"Subnet already in use"** when attempting to reuse the same subnet in a different account deployment.
+
+**Cleanup Options**
+
+**1. Full Account Removal**:
+You may delete and purge the account.  
+The service will automatically handle the deletion of the associated capability host and any linked resources in the background.
+
+**2. Retain Account, Remove Capability Host**:
+If you intend to retain the account but remove the capability host, you can use the script `deleteCaphost.sh` located in this folder.
+
+> **Important**: Before deleting the account capability host, ensure that the **project capability host** is deleted.
+
 
 
 ### Template Customization

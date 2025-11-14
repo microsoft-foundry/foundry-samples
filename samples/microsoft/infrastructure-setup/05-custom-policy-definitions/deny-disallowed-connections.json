@@ -1,0 +1,57 @@
+{
+  "properties": {
+    "displayName": "Only selected Foundry connection categories are allowed",
+    "policyType": "Custom",
+    "mode": "All",
+    "description": "Only selected Foundry connection categories are allowed",
+    "version": "1.0.0",
+    "parameters": {
+      "allowedCategories": {
+        "type": "Array",
+        "metadata": {
+          "description": "Categories allowed for Microsoft.CognitiveServices/accounts/connections and Microsoft.CognitiveServices/accounts/projects/connections",
+          "displayName": "Allowed connection categories"
+        },
+        "defaultValue": [
+          "BingLLMSearch"
+        ]
+      }
+    },
+    "policyRule": {
+      "if": {
+        "anyOf": [
+          {
+            "allOf": [
+              {
+                "field": "type",
+                "equals": "Microsoft.CognitiveServices/accounts/connections"
+              },
+              {
+                "field": "Microsoft.CognitiveServices/accounts/connections/category",
+                "notIn": "[parameters('allowedCategories')]"
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "field": "type",
+                "equals": "Microsoft.CognitiveServices/accounts/projects/connections"
+              },
+              {
+                "field": "Microsoft.CognitiveServices/accounts/projects/connections/category",
+                "notIn": "[parameters('allowedCategories')]"
+              }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "effect": "deny"
+      }
+    },
+    "versions": [
+      "1.0.0"
+    ]
+  }
+}
