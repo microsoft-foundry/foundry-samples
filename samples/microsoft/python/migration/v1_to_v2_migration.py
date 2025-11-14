@@ -762,7 +762,8 @@ def create_agent_version_via_api(agent_name: str, agent_version_data: Dict[str, 
         API response data
     """
     # Build the v2 API endpoint URL based on mode (production vs local)
-    agent_name = agent_name.lower()[:len(agent_name)-1] + "f"
+    # Ensure agent name is lowercase for API compliance
+    agent_name = agent_name.lower()
     
     if production_resource and production_subscription:
         # Production mode: use Azure AI services endpoint format
