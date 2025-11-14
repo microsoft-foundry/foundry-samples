@@ -24,7 +24,7 @@ template:
     - name: BING_GROUNDING_CONNECTION_NAME
       value: ${BING_GROUNDING_CONNECTION_NAME}
     - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
-      value: {{chat}}
+      value: "{{chat}}"
 resources:
   - kind: model
     id: gpt-4o-mini
