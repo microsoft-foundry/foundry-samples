@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "projectResourceId": {
+      "value": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/sample-test/providers/Microsoft.CognitiveServices/accounts/sample-foundry/projects/firstProject"
+    },
+    "targetUrl": {
+      "value": "https://api.openai.com"
+    },
+    "gatewayName": {
+      "value": "openai-basic"
+    },
+    "connectionName": {
+      "value": "my-openai-basic-connection"
+    },
+    "authType": {
+      "value": "ApiKey"
+    },
+    "isSharedToAll": {
+      "value": false
+    }
+  }
+}

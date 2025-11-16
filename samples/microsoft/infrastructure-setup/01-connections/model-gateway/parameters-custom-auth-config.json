@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "projectResourceId": {
+      "value": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/sample-test/providers/Microsoft.CognitiveServices/accounts/sample-foundry/projects/firstProject"
+    },
+    "targetUrl": {
+      "value": "https://api.openai.com"
+    },
+    "gatewayName": {
+      "value": "custom-auth-gateway"
+    },
+    "connectionName": {
+      "value": "my-openai-custom-auth-connection"
+    },
+    "authType": {
+      "value": "ApiKey"
+    },
+    "isSharedToAll": {
+      "value": false
+    },
+    "deploymentInPath": {
+      "value": "false"
+    },
+    "listModelsEndpoint": {
+      "value": "/v1/models"
+    },
+    "getModelEndpoint": {
+      "value": "/v1/models/{deploymentName}"
+    },
+    "deploymentProvider": {
+      "value": "OpenAI"
+    },
+    "inferenceAPIVersion": {
+      "value": "2024-02-01"
+    },
+    "authConfig": {
+      "value": {
+        "type": "api_key",
+        "name": "Authorization",
+        "format": "Bearer {api_key}"
+      }
+    }
+  }
+}

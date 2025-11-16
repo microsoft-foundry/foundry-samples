@@ -1,0 +1,233 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "12322628902215141096"
+    }
+  },
+  "parameters": {
+    "projectResourceId": {
+      "type": "string",
+      "defaultValue": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/rg-sample/providers/Microsoft.CognitiveServices/accounts/sample-foundry-account/projects/sample-project"
+    },
+    "targetUrl": {
+      "type": "string",
+      "defaultValue": "https://your-model-gateway.example.com/v1"
+    },
+    "gatewayName": {
+      "type": "string",
+      "defaultValue": "example-gateway"
+    },
+    "authType": {
+      "type": "string",
+      "defaultValue": "ApiKey"
+    },
+    "isSharedToAll": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "connectionName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "apiKey": {
+      "type": "securestring"
+    },
+    "deploymentInPath": {
+      "type": "string",
+      "defaultValue": "false",
+      "allowedValues": [
+        "true",
+        "false"
+      ]
+    },
+    "inferenceAPIVersion": {
+      "type": "string",
+      "defaultValue": "2024-02-01"
+    },
+    "staticModels": {
+      "type": "array",
+      "defaultValue": [
+        {
+          "name": "gpt-4",
+          "properties": {
+            "model": {
+              "name": "gpt-4",
+              "version": "0613",
+              "format": "OpenAI"
+            }
+          }
+        },
+        {
+          "name": "gpt-3.5-turbo",
+          "properties": {
+            "model": {
+              "name": "gpt-3.5-turbo",
+              "version": "0613",
+              "format": "OpenAI"
+            }
+          }
+        },
+        {
+          "name": "text-embedding-ada-002",
+          "properties": {
+            "model": {
+              "name": "text-embedding-ada-002",
+              "version": "2",
+              "format": "OpenAI"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "variables": {
+    "generatedConnectionName": "[format('modelgateway-{0}-static', parameters('gatewayName'))]",
+    "finalConnectionName": "[if(not(equals(parameters('connectionName'), '')), parameters('connectionName'), variables('generatedConnectionName'))]",
+    "modelGatewayMetadata": {
+      "deploymentInPath": "[parameters('deploymentInPath')]",
+      "inferenceAPIVersion": "[parameters('inferenceAPIVersion')]",
+      "models": "[string(parameters('staticModels'))]"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "modelgateway-connection-static",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "projectResourceId": {
+            "value": "[parameters('projectResourceId')]"
+          },
+          "connectionName": {
+            "value": "[variables('finalConnectionName')]"
+          },
+          "targetUrl": {
+            "value": "[parameters('targetUrl')]"
+          },
+          "authType": {
+            "value": "[parameters('authType')]"
+          },
+          "isSharedToAll": {
+            "value": "[parameters('isSharedToAll')]"
+          },
+          "apiKey": {
+            "value": "[parameters('apiKey')]"
+          },
+          "metadata": {
+            "value": "[variables('modelGatewayMetadata')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "10077070729719288643"
+            }
+          },
+          "parameters": {
+            "projectResourceId": {
+              "type": "string"
+            },
+            "connectionName": {
+              "type": "string"
+            },
+            "targetUrl": {
+              "type": "string"
+            },
+            "authType": {
+              "type": "string",
+              "defaultValue": "ApiKey"
+            },
+            "isSharedToAll": {
+              "type": "bool",
+              "defaultValue": false
+            },
+            "apiKey": {
+              "type": "securestring"
+            },
+            "metadata": {
+              "type": "object"
+            }
+          },
+          "variables": {
+            "aiFoundryName": "[split(parameters('projectResourceId'), '/')[8]]",
+            "projectName": "[split(parameters('projectResourceId'), '/')[10]]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}/{2}', variables('aiFoundryName'), variables('projectName'), parameters('connectionName'))]",
+              "properties": {
+                "category": "ModelGateway",
+                "target": "[parameters('targetUrl')]",
+                "authType": "ApiKey",
+                "isSharedToAll": "[parameters('isSharedToAll')]",
+                "credentials": {
+                  "key": "[parameters('apiKey')]"
+                },
+                "metadata": "[parameters('metadata')]"
+              }
+            }
+          ],
+          "outputs": {
+            "connectionName": {
+              "type": "string",
+              "value": "[parameters('connectionName')]"
+            },
+            "connectionId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('aiFoundryName'), variables('projectName'), parameters('connectionName'))]"
+            },
+            "targetUrl": {
+              "type": "string",
+              "value": "[parameters('targetUrl')]"
+            },
+            "authType": {
+              "type": "string",
+              "value": "[parameters('authType')]"
+            },
+            "metadata": {
+              "type": "object",
+              "value": "[parameters('metadata')]"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "connectionName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'modelgateway-connection-static'), '2022-09-01').outputs.connectionName.value]"
+    },
+    "connectionId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'modelgateway-connection-static'), '2022-09-01').outputs.connectionId.value]"
+    },
+    "targetUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'modelgateway-connection-static'), '2022-09-01').outputs.targetUrl.value]"
+    },
+    "authType": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'modelgateway-connection-static'), '2022-09-01').outputs.authType.value]"
+    },
+    "metadata": {
+      "type": "object",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'modelgateway-connection-static'), '2022-09-01').outputs.metadata.value]"
+    }
+  }
+}

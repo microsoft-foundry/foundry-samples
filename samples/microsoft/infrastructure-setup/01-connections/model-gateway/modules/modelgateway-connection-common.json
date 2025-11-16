@@ -1,0 +1,79 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "10077070729719288643"
+    }
+  },
+  "parameters": {
+    "projectResourceId": {
+      "type": "string"
+    },
+    "connectionName": {
+      "type": "string"
+    },
+    "targetUrl": {
+      "type": "string"
+    },
+    "authType": {
+      "type": "string",
+      "defaultValue": "ApiKey"
+    },
+    "isSharedToAll": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "apiKey": {
+      "type": "securestring"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "variables": {
+    "aiFoundryName": "[split(parameters('projectResourceId'), '/')[8]]",
+    "projectName": "[split(parameters('projectResourceId'), '/')[10]]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('aiFoundryName'), variables('projectName'), parameters('connectionName'))]",
+      "properties": {
+        "category": "ModelGateway",
+        "target": "[parameters('targetUrl')]",
+        "authType": "ApiKey",
+        "isSharedToAll": "[parameters('isSharedToAll')]",
+        "credentials": {
+          "key": "[parameters('apiKey')]"
+        },
+        "metadata": "[parameters('metadata')]"
+      }
+    }
+  ],
+  "outputs": {
+    "connectionName": {
+      "type": "string",
+      "value": "[parameters('connectionName')]"
+    },
+    "connectionId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('aiFoundryName'), variables('projectName'), parameters('connectionName'))]"
+    },
+    "targetUrl": {
+      "type": "string",
+      "value": "[parameters('targetUrl')]"
+    },
+    "authType": {
+      "type": "string",
+      "value": "[parameters('authType')]"
+    },
+    "metadata": {
+      "type": "object",
+      "value": "[parameters('metadata')]"
+    }
+  }
+}

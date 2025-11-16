@@ -1,0 +1,220 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "10941455783336539685"
+    }
+  },
+  "parameters": {
+    "projectResourceId": {
+      "type": "string",
+      "defaultValue": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/rg-sample/providers/Microsoft.CognitiveServices/accounts/sample-foundry-account/projects/sample-project"
+    },
+    "targetUrl": {
+      "type": "string",
+      "defaultValue": "https://your-model-gateway.example.com"
+    },
+    "gatewayName": {
+      "type": "string",
+      "defaultValue": "example-gateway"
+    },
+    "authType": {
+      "type": "string",
+      "defaultValue": "ApiKey"
+    },
+    "isSharedToAll": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "connectionName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "apiKey": {
+      "type": "securestring"
+    },
+    "deploymentInPath": {
+      "type": "string",
+      "defaultValue": "false",
+      "allowedValues": [
+        "true",
+        "false"
+      ]
+    },
+    "inferenceAPIVersion": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "deploymentAPIVersion": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "listModelsEndpoint": {
+      "type": "string",
+      "defaultValue": "/v1/models"
+    },
+    "getModelEndpoint": {
+      "type": "string",
+      "defaultValue": "/v1/models/{deploymentName}"
+    },
+    "deploymentProvider": {
+      "type": "string",
+      "defaultValue": "OpenAI"
+    }
+  },
+  "variables": {
+    "generatedConnectionName": "[format('modelgateway-{0}-dynamic', parameters('gatewayName'))]",
+    "finalConnectionName": "[if(not(equals(parameters('connectionName'), '')), parameters('connectionName'), variables('generatedConnectionName'))]",
+    "modelDiscoveryObject": {
+      "listModelsEndpoint": "[parameters('listModelsEndpoint')]",
+      "getModelEndpoint": "[parameters('getModelEndpoint')]",
+      "deploymentProvider": "[parameters('deploymentProvider')]"
+    },
+    "modelGatewayMetadata": {
+      "deploymentInPath": "[parameters('deploymentInPath')]",
+      "inferenceAPIVersion": "[parameters('inferenceAPIVersion')]",
+      "deploymentAPIVersion": "[parameters('deploymentAPIVersion')]",
+      "modelDiscovery": "[string(variables('modelDiscoveryObject'))]"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "modelgateway-connection-dynamic",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "projectResourceId": {
+            "value": "[parameters('projectResourceId')]"
+          },
+          "connectionName": {
+            "value": "[variables('finalConnectionName')]"
+          },
+          "targetUrl": {
+            "value": "[parameters('targetUrl')]"
+          },
+          "authType": {
+            "value": "[parameters('authType')]"
+          },
+          "isSharedToAll": {
+            "value": "[parameters('isSharedToAll')]"
+          },
+          "apiKey": {
+            "value": "[parameters('apiKey')]"
+          },
+          "metadata": {
+            "value": "[variables('modelGatewayMetadata')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "10077070729719288643"
+            }
+          },
+          "parameters": {
+            "projectResourceId": {
+              "type": "string"
+            },
+            "connectionName": {
+              "type": "string"
+            },
+            "targetUrl": {
+              "type": "string"
+            },
+            "authType": {
+              "type": "string",
+              "defaultValue": "ApiKey"
+            },
+            "isSharedToAll": {
+              "type": "bool",
+              "defaultValue": false
+            },
+            "apiKey": {
+              "type": "securestring"
+            },
+            "metadata": {
+              "type": "object"
+            }
+          },
+          "variables": {
+            "aiFoundryName": "[split(parameters('projectResourceId'), '/')[8]]",
+            "projectName": "[split(parameters('projectResourceId'), '/')[10]]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}/{2}', variables('aiFoundryName'), variables('projectName'), parameters('connectionName'))]",
+              "properties": {
+                "category": "ModelGateway",
+                "target": "[parameters('targetUrl')]",
+                "authType": "ApiKey",
+                "isSharedToAll": "[parameters('isSharedToAll')]",
+                "credentials": {
+                  "key": "[parameters('apiKey')]"
+                },
+                "metadata": "[parameters('metadata')]"
+              }
+            }
+          ],
+          "outputs": {
+            "connectionName": {
+              "type": "string",
+              "value": "[parameters('connectionName')]"
+            },
+            "connectionId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('aiFoundryName'), variables('projectName'), parameters('connectionName'))]"
+            },
+            "targetUrl": {
+              "type": "string",
+              "value": "[parameters('targetUrl')]"
+            },
+            "authType": {
+              "type": "string",
+              "value": "[parameters('authType')]"
+            },
+            "metadata": {
+              "type": "object",
+              "value": "[parameters('metadata')]"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "connectionName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'modelgateway-connection-dynamic'), '2022-09-01').outputs.connectionName.value]"
+    },
+    "connectionId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'modelgateway-connection-dynamic'), '2022-09-01').outputs.connectionId.value]"
+    },
+    "targetUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'modelgateway-connection-dynamic'), '2022-09-01').outputs.targetUrl.value]"
+    },
+    "authType": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'modelgateway-connection-dynamic'), '2022-09-01').outputs.authType.value]"
+    },
+    "metadata": {
+      "type": "object",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'modelgateway-connection-dynamic'), '2022-09-01').outputs.metadata.value]"
+    }
+  }
+}

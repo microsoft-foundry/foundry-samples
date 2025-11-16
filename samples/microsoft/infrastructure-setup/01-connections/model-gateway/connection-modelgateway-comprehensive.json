@@ -1,0 +1,236 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "18428358011976190984"
+    }
+  },
+  "parameters": {
+    "projectResourceId": {
+      "type": "string",
+      "defaultValue": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/rg-sample/providers/Microsoft.CognitiveServices/accounts/sample-foundry-account/projects/sample-project"
+    },
+    "targetUrl": {
+      "type": "string",
+      "defaultValue": "https://your-model-gateway.example.com"
+    },
+    "gatewayName": {
+      "type": "string",
+      "defaultValue": "example-gateway"
+    },
+    "connectionName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "authType": {
+      "type": "string",
+      "defaultValue": "ApiKey"
+    },
+    "isSharedToAll": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "apiKey": {
+      "type": "securestring"
+    },
+    "deploymentInPath": {
+      "type": "string",
+      "defaultValue": "false"
+    },
+    "inferenceAPIVersion": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "deploymentAPIVersion": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "listModelsEndpoint": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "getModelEndpoint": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "deploymentProvider": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "staticModels": {
+      "type": "array",
+      "defaultValue": []
+    },
+    "customHeaders": {
+      "type": "object",
+      "defaultValue": {}
+    }
+  },
+  "variables": {
+    "generatedConnectionName": "[format('modelgateway-{0}-comprehensive', parameters('gatewayName'))]",
+    "finalConnectionName": "[if(not(equals(parameters('connectionName'), '')), parameters('connectionName'), variables('generatedConnectionName'))]",
+    "hasModelDiscovery": "[and(and(not(equals(parameters('listModelsEndpoint'), '')), not(equals(parameters('getModelEndpoint'), ''))), not(equals(parameters('deploymentProvider'), '')))]",
+    "hasStaticModels": "[greater(length(parameters('staticModels')), 0)]",
+    "hasCustomHeaders": "[not(empty(parameters('customHeaders')))]",
+    "bothConfiguredError": "[and(variables('hasModelDiscovery'), variables('hasStaticModels'))]",
+    "validationMessage": "[if(variables('bothConfiguredError'), 'ERROR: Cannot configure both static models and dynamic discovery. Use either staticModels array OR modelDiscovery parameters, not both.', '')]",
+    "metadata": "[union(createObject('deploymentInPath', parameters('deploymentInPath'), 'inferenceAPIVersion', parameters('inferenceAPIVersion')), if(not(equals(parameters('deploymentAPIVersion'), '')), createObject('deploymentAPIVersion', parameters('deploymentAPIVersion')), createObject()), if(variables('hasModelDiscovery'), createObject('modelDiscovery', string(createObject('listModelsEndpoint', parameters('listModelsEndpoint'), 'getModelEndpoint', parameters('getModelEndpoint'), 'deploymentProvider', parameters('deploymentProvider')))), createObject()), if(and(variables('hasStaticModels'), not(variables('hasModelDiscovery'))), createObject('models', string(parameters('staticModels'))), createObject()), if(variables('hasCustomHeaders'), createObject('customHeaders', string(parameters('customHeaders'))), createObject()))]"
+  },
+  "resources": [
+    {
+      "condition": "[variables('bothConfiguredError')]",
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2023-08-01",
+      "name": "validation-error",
+      "location": "westus2",
+      "kind": "AzurePowerShell",
+      "properties": {
+        "retentionInterval": "PT1H",
+        "azPowerShellVersion": "8.0",
+        "scriptContent": "[format('throw \"{0}\"', variables('validationMessage'))]"
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "modelgateway-connection-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "projectResourceId": {
+            "value": "[parameters('projectResourceId')]"
+          },
+          "targetUrl": {
+            "value": "[parameters('targetUrl')]"
+          },
+          "connectionName": {
+            "value": "[variables('finalConnectionName')]"
+          },
+          "authType": {
+            "value": "[parameters('authType')]"
+          },
+          "isSharedToAll": {
+            "value": "[parameters('isSharedToAll')]"
+          },
+          "apiKey": {
+            "value": "[parameters('apiKey')]"
+          },
+          "metadata": {
+            "value": "[variables('metadata')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "10077070729719288643"
+            }
+          },
+          "parameters": {
+            "projectResourceId": {
+              "type": "string"
+            },
+            "connectionName": {
+              "type": "string"
+            },
+            "targetUrl": {
+              "type": "string"
+            },
+            "authType": {
+              "type": "string",
+              "defaultValue": "ApiKey"
+            },
+            "isSharedToAll": {
+              "type": "bool",
+              "defaultValue": false
+            },
+            "apiKey": {
+              "type": "securestring"
+            },
+            "metadata": {
+              "type": "object"
+            }
+          },
+          "variables": {
+            "aiFoundryName": "[split(parameters('projectResourceId'), '/')[8]]",
+            "projectName": "[split(parameters('projectResourceId'), '/')[10]]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}/{2}', variables('aiFoundryName'), variables('projectName'), parameters('connectionName'))]",
+              "properties": {
+                "category": "ModelGateway",
+                "target": "[parameters('targetUrl')]",
+                "authType": "ApiKey",
+                "isSharedToAll": "[parameters('isSharedToAll')]",
+                "credentials": {
+                  "key": "[parameters('apiKey')]"
+                },
+                "metadata": "[parameters('metadata')]"
+              }
+            }
+          ],
+          "outputs": {
+            "connectionName": {
+              "type": "string",
+              "value": "[parameters('connectionName')]"
+            },
+            "connectionId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('aiFoundryName'), variables('projectName'), parameters('connectionName'))]"
+            },
+            "targetUrl": {
+              "type": "string",
+              "value": "[parameters('targetUrl')]"
+            },
+            "authType": {
+              "type": "string",
+              "value": "[parameters('authType')]"
+            },
+            "metadata": {
+              "type": "object",
+              "value": "[parameters('metadata')]"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "connectionName": {
+      "type": "string",
+      "value": "[variables('finalConnectionName')]"
+    },
+    "targetUrl": {
+      "type": "string",
+      "value": "[parameters('targetUrl')]"
+    },
+    "metadata": {
+      "type": "object",
+      "value": "[variables('metadata')]"
+    },
+    "hasStaticModels": {
+      "type": "bool",
+      "value": "[variables('hasStaticModels')]"
+    },
+    "hasModelDiscovery": {
+      "type": "bool",
+      "value": "[variables('hasModelDiscovery')]"
+    },
+    "hasCustomHeaders": {
+      "type": "bool",
+      "value": "[variables('hasCustomHeaders')]"
+    }
+  }
+}

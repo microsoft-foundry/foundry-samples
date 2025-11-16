@@ -1,0 +1,79 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "7463354222476831858"
+    }
+  },
+  "parameters": {
+    "aiFoundryName": {
+      "type": "string",
+      "defaultValue": "byo-model-gw"
+    },
+    "connectedResourceName": {
+      "type": "string",
+      "defaultValue": "[format('aoai-{0}', parameters('aiFoundryName'))]"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "westus"
+    },
+    "newOrExisting": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ]
+    },
+    "authType": {
+      "type": "string",
+      "defaultValue": "ApiKey",
+      "allowedValues": [
+        "ApiKey",
+        "AAD"
+      ]
+    },
+    "isSharedToAll": {
+      "type": "bool",
+      "defaultValue": true
+    }
+  },
+  "resources": [
+    {
+      "condition": "[equals(parameters('newOrExisting'), 'new')]",
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2023-05-01",
+      "name": "[parameters('connectedResourceName')]",
+      "location": "[parameters('location')]",
+      "kind": "OpenAI",
+      "sku": {
+        "name": "S0"
+      },
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}', parameters('aiFoundryName'), format('{0}-openai', parameters('aiFoundryName')))]",
+      "properties": {
+        "category": "AzureOpenAI",
+        "target": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName')), '2023-05-01').endpoint]",
+        "authType": "[parameters('authType')]",
+        "isSharedToAll": "[parameters('isSharedToAll')]",
+        "credentials": "[if(equals(parameters('authType'), 'ApiKey'), createObject('key', listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName')), '2023-05-01').key1), createObject())]",
+        "metadata": {
+          "ApiType": "Azure",
+          "ResourceId": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName'))]",
+          "location": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName')), '2023-05-01', 'full').location]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName'))]"
+      ]
+    }
+  ]
+}

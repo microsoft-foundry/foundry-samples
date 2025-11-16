@@ -1,0 +1,88 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "5234876543298765432"
+    }
+  },
+  "parameters": {
+    "aiFoundryName": {
+      "type": "string",
+      "defaultValue": "<your-account-name>"
+    },
+    "connectedResourceName": {
+      "type": "string",
+      "defaultValue": "[format('cosmos-{0}', parameters('aiFoundryName'))]"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "westus"
+    },
+    "newOrExisting": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ]
+    },
+    "isSharedToAll": {
+      "type": "bool",
+      "defaultValue": true
+    }
+  },
+  "variables": {
+    "canaryRegions": ["eastus2euap", "centraluseuap"],
+    "cosmosDbRegion": "[if(contains(variables('canaryRegions'), parameters('location')), 'westus', parameters('location'))]"
+  },
+  "resources": [
+    {
+      "condition": "[equals(parameters('newOrExisting'), 'new')]",
+      "type": "Microsoft.DocumentDB/databaseAccounts",
+      "apiVersion": "2024-11-15",
+      "name": "[parameters('connectedResourceName')]",
+      "location": "[variables('cosmosDbRegion')]",
+      "kind": "GlobalDocumentDB",
+      "properties": {
+        "consistencyPolicy": {
+          "defaultConsistencyLevel": "Session"
+        },
+        "disableLocalAuth": true,
+        "enableAutomaticFailover": false,
+        "enableMultipleWriteLocations": false,
+        "publicNetworkAccess": "Enabled",
+        "enableFreeTier": false,
+        "locations": [
+          {
+            "locationName": "[variables('cosmosDbRegion')]",
+            "failoverPriority": 0,
+            "isZoneRedundant": false
+          }
+        ],
+        "databaseAccountOfferType": "Standard"
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}', parameters('aiFoundryName'), format('{0}-cosmosdb', parameters('aiFoundryName')))]",
+      "properties": {
+        "category": "CosmosDb",
+        "target": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('connectedResourceName')), '2024-11-15').documentEndpoint]",
+        "authType": "AAD",
+        "isSharedToAll": "[parameters('isSharedToAll')]",
+        "metadata": {
+          "ApiType": "Azure",
+          "ResourceId": "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('connectedResourceName'))]",
+          "location": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('connectedResourceName')), '2024-11-15', 'full').location]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('connectedResourceName'))]"
+      ]
+    }
+  ]
+}

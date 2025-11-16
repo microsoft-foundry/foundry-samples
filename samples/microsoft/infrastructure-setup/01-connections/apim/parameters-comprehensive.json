@@ -1,0 +1,63 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "projectResourceId": {
+      "value": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/rg-sample/providers/Microsoft.CognitiveServices/accounts/sample-foundry-account/projects/sample-project"
+    },
+    "apimResourceId": {
+      "value": "/subscriptions/87654321-4321-4321-4321-cba987654321/resourceGroups/rg-sample-apim/providers/Microsoft.ApiManagement/service/sample-apim-service"
+    },
+    "apiName": {
+      "value": "foundry"
+    },
+    "connectionName": {
+      "value": "my-apim-comprehensive-connection"
+    },
+    "authType": {
+      "value": "ApiKey"
+    },
+    "isSharedToAll": {
+      "value": false
+    },
+    "deploymentInPath": {
+      "value": "false"
+    },
+    "inferenceAPIVersion": {
+      "value": "2024-02-01"
+    },
+    "deploymentAPIVersion": {
+      "value": "2025-01-01"
+    },
+    "listModelsEndpoint": {
+      "value": ""
+    },
+    "getModelEndpoint": {
+      "value": ""
+    },
+    "deploymentProvider": {
+      "value": ""
+    },
+    "staticModels": {
+      "value": [
+        {
+          "name": "gpt-4-deployment",
+          "properties": {
+            "model": {
+              "name": "gpt-4",
+              "version": "0613",
+              "format": "OpenAI"
+            }
+          }
+        }
+      ]
+    },
+    "customHeaders": {
+      "value": {
+        "X-Environment": "production",
+        "X-Route-Policy": "premium",
+        "X-Client-App": "foundry-agents"
+      }
+    }
+  }
+}

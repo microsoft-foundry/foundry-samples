@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "projectResourceId": {
+      "value": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/sample-test/providers/Microsoft.CognitiveServices/accounts/sample-foundry/projects/firstProject"
+    },
+    "apimResourceId": {
+      "value": "/subscriptions/87654321-4321-4321-4321-cba987654321/resourceGroups/rg-agent-test-westus2/providers/Microsoft.ApiManagement/service/rg-agent-aigateway-westus2"
+    },
+    "apiName": {
+      "value": "foundry"
+    },
+    "connectionName": {
+      "value": "my-apim-dynamic-discovery-connection"
+    },
+    "authType": {
+      "value": "ApiKey"
+    },
+    "isSharedToAll": {
+      "value": false
+    },
+    "deploymentInPath": {
+      "value": "true"
+    },
+    "listModelsEndpoint": {
+      "value": "v1/models"
+    },
+    "getModelEndpoint": {
+      "value": "v1/models/{deploymentName}"
+    },
+    "deploymentProvider": {
+      "value": "OpenAI"
+    }
+  }
+}
