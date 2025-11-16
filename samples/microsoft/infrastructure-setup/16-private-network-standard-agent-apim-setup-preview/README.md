@@ -1,5 +1,3 @@
-APIM Private Preview will be available on Sept 15 2025. Please do not deploy this template before then. To enable the Private Preview, please fill out this form (https://forms.office.com/r/qGP66N0UaC) or reach out to meerakurup@microsoft.com to enable your subscription.
-
 ---
 description: This set of templates demonstrates how to set up Azure AI Agent Service with virtual network isolation with private network links to connect the agent to your secure data.
 page_type: sample
@@ -19,6 +17,10 @@ languages:
 > Class A subnet support is GA and available in the following regions. **Supported regions: Australia East, Brazil South, Canada East, East US, East US 2, France Central, Germany West Central, Italy North, Japan East, South Africa North, South Central US, South India, Spain Central, Sweden Central, UAE North, UK South, West Europe, West US, West US 3.**
 >
 > Class B and C subnet support is already GA and available in all regions supported by Azure AI Foundry Agent Service. Deployment templates and setup steps are identical for Class A, B, and C subnets. For more on the supported regions of the Azure AI Foundry Agent service, see [Models supported by Azure AI Foundry Agent Service](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/concepts/model-region-support?tabs=global-standard)
+
+> **IMPORTANT**
+> 
+> To use your existing APIM resource with Azure AI Foundry in a network isolated environment to build Agents, please deploy this template. The feature is currently in preview with a code first experience and no Foundry UI support. 
 
 
 ---
