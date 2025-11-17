@@ -27,9 +27,10 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
     allowProjectManagement: true
     customSubDomainName: accountName
     networkAcls: {
-      defaultAction: 'Allow'
+      defaultAction: 'Deny'
       virtualNetworkRules: []
       ipRules: []
+      bypass:'AzureServices'
     }
     publicNetworkAccess: 'Disabled'
     networkInjections:((networkInjection == 'true') ? [
