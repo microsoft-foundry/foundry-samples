@@ -1,0 +1,202 @@
+[project]
+name = "spec-to-agents"
+version = "0.0.1"
+description = "Backend for Spec-to-Agent sample demonstrating Microsoft Agent Framework"
+authors = [{ name = "Microsoft", email = "opensource@microsoft.com" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "agent-framework-core==1.0.0b251111",
+    "agent-framework-azure-ai==1.0.0b251111",
+    "agent-framework-a2a==1.0.0b251111",
+    "agent-framework-devui==1.0.0b251111",
+    "azure-identity>=1.25.0",
+    "python-dotenv>=1.1.1",
+    "httpx>=0.27.0",
+    "aiohttp>=3.9.0",
+    "icalendar>=5.0.11",
+    "pytz>=2024.1",
+    "rich>=13.7.0",
+    # OpenTelemetry packages for observability
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "azure-monitor-opentelemetry",
+    "azure-monitor-opentelemetry-exporter>=1.0.0b41",
+    "opentelemetry-exporter-otlp-proto-grpc",
+    "opentelemetry-semantic-conventions-ai",
+    "dependency-injector>=4.48.2",
+]
+
+[project.scripts]
+app = "main:main"
+
+[project.optional-dependencies]
+dev = [
+    # Development and testing
+    "pytest",
+    "ruff",
+    "pre-commit",
+]
+
+[tool.uv]
+prerelease = "allow"
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+    "pyright>=1.1.406",
+    "pytest-asyncio>=1.2.0",
+    "pytest-cov>=6.0.0",
+    "types-pytz>=2025.2.0.20250809",
+    "pip-audit>=2.6.0",
+    "ruff>=0.14.0",
+    "pre-commit>=4.0.0",
+]
+
+# [tool.uv.sources]
+# "agent-framework-core" = { git = "https://github.com/microsoft/agent-framework.git", branch = "main", subdirectory = "python/packages/core" }
+# "agent-framework-azure-ai" = { git = "https://github.com/microsoft/agent-framework.git", branch = "main", subdirectory = "python/packages/azure-ai" }
+# "agent-framework-a2a" = { git = "https://github.com/microsoft/agent-framework.git", branch = "main", subdirectory = "python/packages/a2a" }
+# "agent-framework-copilotstudio" = { git = "https://github.com/microsoft/agent-framework.git", branch = "main", subdirectory = "python/packages/copilotstudio" }
+# "agent-framework-mem0" = { git = "https://github.com/microsoft/agent-framework.git", branch = "main", subdirectory = "python/packages/mem0" }
+# "agent-framework-redis" = { git = "https://github.com/microsoft/agent-framework.git", branch = "main", subdirectory = "python/packages/redis" }
+# "agent-framework-devui" = { git = "https://github.com/microsoft/agent-framework.git", branch = "main", subdirectory = "python/packages/devui" }
+
+# Use this to get Victor's latest changes
+# [tool.uv.sources]
+# "agent-framework-core" = { git = "https://github.com/victordibia/agent-framework.git", branch = "devui_oai_responses", subdirectory = "python/packages/core" }
+# "agent-framework-azure-ai" = { git = "https://github.com/victordibia/agent-framework.git", branch = "devui_oai_responses", subdirectory = "python/packages/azure-ai" }
+# "agent-framework-a2a" = { git = "https://github.com/victordibia/agent-framework.git", branch = "devui_oai_responses", subdirectory = "python/packages/a2a" }
+# "agent-framework-copilotstudio" = { git = "https://github.com/victordibia/agent-framework.git", branch = "devui_oai_responses", subdirectory = "python/packages/copilotstudio" }
+# "agent-framework-mem0" = { git = "https://github.com/victordibia/agent-framework.git", branch = "devui_oai_responses", subdirectory = "python/packages/mem0" }
+# "agent-framework-redis" = { git = "https://github.com/victordibia/agent-framework.git", branch = "devui_oai_responses", subdirectory = "python/packages/redis" }
+# "agent-framework-devui" = { git = "https://github.com/victordibia/agent-framework.git", branch = "devui_oai_responses", subdirectory = "python/packages/devui" }
+
+# [tool.uv.sources]
+# "agent-framework-core" = { path = "third_party/agent-framework/python/packages/core", editable = true }
+# "agent-framework-azure-ai" = { path = "third_party/agent-framework/python/packages/azure-ai", editable = true }
+# "agent-framework-a2a" = { path = "third_party/agent-framework/python/packages/a2a", editable = true }
+# "agent-framework-copilotstudio" = { path = "third_party/agent-framework/python/packages/copilotstudio", editable = true }
+# "agent-framework-mem0" = { path = "third_party/agent-framework/python/packages/mem0", editable = true }
+# "agent-framework-redis" = { path = "third_party/agent-framework/python/packages/redis", editable = true }
+# "agent-framework-devui" = { path = "third_party/agent-framework/python/packages/devui", editable = true }
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+fix = true
+include = ["*.py", "*.pyi", "**/pyproject.toml", "*.ipynb"]
+exclude = ["docs/*"]
+preview = true
+
+[tool.ruff.lint]
+fixable = ["ALL"]
+unfixable = []
+select = [
+    "ASYNC", # async checks
+    "B",     # bugbear checks
+    "CPY",   # copyright
+    "D",     # pydocstyle checks
+    "E",     # pycodestyle error checks
+    "ERA",   # remove connected out code
+    "F",     # pyflakes checks
+    "FIX",   # fixme checks
+    "I",     # isort
+    "INP",   # implicit namespace package
+    "ISC",   # implicit string concat
+    "Q",     # flake8-quotes checks
+    "RET",   # flake8-return check
+    "RSE",   # raise exception parantheses check
+    "RUF",   # RUF specific rules
+    "SIM",   # flake8-simplify check
+    "T20",   # typing checks
+    "TD",    # todos
+    "W",     # pycodestyle warning checks
+    "T100",  # Debugger,
+    "S",     # Bandit checks
+]
+ignore = [
+    "D100",   # allow missing docstring in public module
+    "D104",   # allow missing docstring in public package
+    "D418",   # allow overload to have a docstring
+    "TD003",  # allow missing link to todo issue
+    "FIX002", # allow todo
+    "B027",   # allow empty non-abstract method in ABC
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore all directories named `tests` and `samples`.
+"**/tests/**" = ["D", "INP", "TD", "ERA001", "RUF", "S"]
+"samples/**" = ["D", "INP", "ERA001", "RUF", "S", "T201"]
+"*.ipynb" = ["CPY", "E501"]
+"**/console.py" = [
+    "T201",
+    "ASYNC250",
+    "D401",
+] # Allow print and blocking input in CLI
+
+
+[tool.ruff.lint.flake8-copyright]
+notice-rgx = "^# Copyright \\(c\\) Microsoft\\. All rights reserved\\."
+min-file-size = 1
+
+[tool.pyright]
+include = ["app"]
+exclude = ["**/tests/**", "docs", "**/.venv/**"]
+typeCheckingMode = "strict"
+reportUnnecessaryIsInstance = false
+reportMissingTypeStubs = false
+
+[tool.mypy]
+plugins = ['pydantic.mypy']
+strict = true
+python_version = "3.10"
+ignore_missing_imports = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+check_untyped_defs = true
+warn_return_any = true
+show_error_codes = true
+warn_unused_ignores = false
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+
+[tool.coverage.run]
+source = ["src/spec_to_agents"]
+omit = ["tests/*", "*/__pycache__/*", "*/migrations/*", "venv/*", ".venv/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+show_missing = true
+precision = 2
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
