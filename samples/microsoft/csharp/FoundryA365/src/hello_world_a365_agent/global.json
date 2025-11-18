@@ -1,0 +1,12 @@
+{
+  "sdk": {
+    "version": "9.0.305",
+    "rollForward": "latestFeature"
+  },
+
+  "msbuild-sdks": {
+    "Microsoft.Build.CentralPackageVersions": "2.1.3",
+    "Microsoft.Build.Traversal": "4.1.82",
+    "Microsoft.Build.NoTargets": "3.7.56"
+  }
+}

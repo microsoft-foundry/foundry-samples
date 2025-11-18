@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+    "profiles": {
+      "http": {
+        "commandName": "Project",
+        "dotnetRunMessages": true,
+        "launchBrowser": false,
+        "applicationUrl": "http://localhost:6280",
+        "environmentVariables": {
+          "ASPNETCORE_ENVIRONMENT": "Development",
+          "EnableKairoTracing": "true",
+          "KairoAppInsightsConnectionString": "",
+          "MCP_PLATFORM_ENDPOINT": "https://agent365.svc.cloud.microsoft"
+        }
+      },
+      "https": {
+        "commandName": "Project",
+        "dotnetRunMessages": true,
+        "launchBrowser": true,
+        "applicationUrl": "https://localhost:7268;http://localhost:6280",
+        "environmentVariables": {
+          "ASPNETCORE_ENVIRONMENT": "Development",
+          "EnableKairoTracing": "true",
+          "KairoAppInsightsConnectionString": "",
+          "MCP_PLATFORM_ENDPOINT": "https://agent365.svc.cloud.microsoft"
+        }
+      }
+    }
+  }

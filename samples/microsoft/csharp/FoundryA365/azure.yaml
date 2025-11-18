@@ -1,0 +1,20 @@
+name: foundry-a365
+
+hooks:
+  postprovision:
+    shell: pwsh
+    run: ./scripts/post-provision.ps1
+    interactive: true
+    continueOnError: false
+
+# services:
+#   web:
+#     project: ./src
+#     language: csharp
+#     host: foundry.containeragent
+    # hooks:
+    #   # This hook runs before this specific service is built
+    #   prebuild:
+    #     posix:
+    #       shell: sh
+    #       run: ./service-prebuild.sh

@@ -1,0 +1,12 @@
+{
+	"mcpServers": [
+		{
+			"mcpServerName": "mcp_OneDriveServer",
+			"mcpServerUniqueName": "mcp_OneDriveServer"
+		},
+		{
+			"mcpServerName": "mcp_WordServer",
+			"mcpServerUniqueName": "mcp_WordServer"
+		}
+	]
+}
