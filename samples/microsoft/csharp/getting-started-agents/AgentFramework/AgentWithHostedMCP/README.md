@@ -25,7 +25,7 @@ This sample uses a Hosted Model Context Protocol (MCP) server to provide externa
 4. When you ask questions, the Azure OpenAI Responses service automatically invokes the MCP tool to search Microsoft Learn documentation
 5. The agent returns answers based on the retrieved Microsoft Learn content
 
-**Note**: In this configuration, the OpenAI Responses service manages tool invocation directly - the Agent Framework does not handle MCP tool calls.
+**Note**: In this configuration, the Azure OpenAI Responses service manages tool invocation directly - the Agent Framework does not handle MCP tool calls.
 
 ### Agent Hosting
 
