@@ -111,7 +111,6 @@ After creating the operation, you need to configure a policy to route the reques
 <policies>
     <!-- Throttle, authorize, validate, cache, or transform the requests -->
     <inbound>
-        <base />
         <authentication-managed-identity resource="https://management.azure.com/" />
         <rewrite-uri template="/deployments/{deploymentName}?api-version=2023-05-01" copy-unmatched-params="false" />
         <!--Azure Resource Manager-->
@@ -175,7 +174,6 @@ Configure the policy for the list deployments operation:
 <policies>
     <!-- Throttle, authorize, validate, cache, or transform the requests -->
     <inbound>
-        <base />
         <authentication-managed-identity resource="https://management.azure.com/" />
         <rewrite-uri template="/deployments?api-version=2023-05-01" copy-unmatched-params="false" />
         <!--Azure Resource Manager-->
