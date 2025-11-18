@@ -11,7 +11,7 @@ Microsoft has no responsibility to you or others with respect to any of these sa
 This sample demonstrates how to use the TextSearchProvider to add retrieval augmented generation (RAG) capabilities to a 
 [Microsoft Agent Framework](https://learn.microsoft.com/en-us/agent-framework/overview/agent-framework-overview#ai-agents) AI agent and
 host it using [Azure AI AgentServer SDK](https://learn.microsoft.com/en-us/dotnet/api/overview/azure/ai.agentserver.agentframework-readme) and 
-deploy it to Microsoft Foundry using the Azure Developer CLI [ai agent](https://aka.ms/azdaiagent/docs) extension
+deploy it to Microsoft Foundry using the Azure Developer CLI [ai agent](https://aka.ms/azdaiagent/docs) extension.
 
 ## How It Works
 
