@@ -58,6 +58,7 @@ module existingVNet 'existing-vnet.bicep' = if (useExistingVnet) {
 
 // Provide unified outputs regardless of which module was used
 output virtualNetworkName string = useExistingVnet ? existingVNet.outputs.virtualNetworkName : newVNet.outputs.virtualNetworkName
+output virtualNetworkLocation string = useExistingVnet ? existingVNet.outputs.virtualNetworkLocation : newVNet.outputs.virtualNetworkLocation
 output virtualNetworkId string = useExistingVnet ? existingVNet.outputs.virtualNetworkId : newVNet.outputs.virtualNetworkId
 output virtualNetworkSubscriptionId string = useExistingVnet ? existingVNet.outputs.virtualNetworkSubscriptionId : newVNet.outputs.virtualNetworkSubscriptionId
 output virtualNetworkResourceGroup string = useExistingVnet ? existingVNet.outputs.virtualNetworkResourceGroup : newVNet.outputs.virtualNetworkResourceGroup

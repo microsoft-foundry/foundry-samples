@@ -84,6 +84,7 @@ output agentSubnetName string = agentSubnetName
 output agentSubnetId string = '${existingVNet.id}/subnets/${agentSubnetName}'
 output peSubnetId string = '${existingVNet.id}/subnets/${peSubnetName}'
 output virtualNetworkName string = existingVNet.name
+output virtualNetworkLocation string = existingVNet.location
 output virtualNetworkId string = existingVNet.id
 output virtualNetworkResourceGroup string = vnetResourceGroupName
 output virtualNetworkSubscriptionId string = vnetSubscriptionId

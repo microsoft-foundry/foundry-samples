@@ -78,6 +78,7 @@ output agentSubnetName string = agentSubnetName
 output agentSubnetId string = '${virtualNetwork.id}/subnets/${agentSubnetName}'
 output peSubnetId string = '${virtualNetwork.id}/subnets/${peSubnetName}'
 output virtualNetworkName string = virtualNetwork.name
+output virtualNetworkLocation string = virtualNetwork.location
 output virtualNetworkId string = virtualNetwork.id
 output virtualNetworkResourceGroup string = resourceGroup().name
 output virtualNetworkSubscriptionId string = subscription().subscriptionId

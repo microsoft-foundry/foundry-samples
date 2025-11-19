@@ -248,6 +248,7 @@ resource cosmosDB 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' existing = 
 module privateEndpointAndDNS 'modules-network-secured/private-endpoint-and-dns.bicep' = {
     name: '${uniqueSuffix}-private-endpoint'
     params: {
+      location: vnet.outputs.virtualNetworkLocation
       aiAccountName: aiAccount.outputs.accountName    // AI Services to secure
       aiSearchName: aiDependencies.outputs.aiSearchName       // AI Search to secure
       storageName: aiDependencies.outputs.azureStorageName        // Storage to secure
