@@ -89,8 +89,7 @@ if (Environment.GetEnvironmentVariable("EnableKairoTracing") == "true")
         };
     });
 
-    builder.Services
-        .AddTracing(config => config
+    builder.AddA365Tracing(config => config
             .WithSemanticKernel());
 }
 

@@ -35,7 +35,7 @@ public class A365AgentApplication : AgentApplication
         this.OnAgenticEmailNotification(async (turnContext, turnState, agentNotificationActivity, cancellationToken) =>
         {
             var agent = await GetAgentFromRecipient(turnContext.Activity);
-            var agentService = await _factory.GetService(agent);
+            var agentService = await _factory.GetService(agent, turnContext);
             if (agent.IsMessagingEnabled || true)
             {
                 // Use the specific email notification handler
@@ -51,7 +51,7 @@ public class A365AgentApplication : AgentApplication
         this.OnAgenticWordNotification(async (turnContext, turnState, agentNotificationActivity, cancellationToken) =>
         {
             var agent = await GetAgentFromRecipient(turnContext.Activity);
-            var agentService = await _factory.GetService(agent);
+            var agentService = await _factory.GetService(agent, turnContext);
 
             if (agent.IsMessagingEnabled)
             {
@@ -68,7 +68,7 @@ public class A365AgentApplication : AgentApplication
         this.OnAgenticExcelNotification(async (turnContext, turnState, agentNotificationActivity, cancellationToken) =>
         {
             var agent = await GetAgentFromRecipient(turnContext.Activity);
-            var agentService = await _factory.GetService(agent);
+            var agentService = await _factory.GetService(agent, turnContext);
 
             if (agent.IsMessagingEnabled)
             {
@@ -85,7 +85,7 @@ public class A365AgentApplication : AgentApplication
         this.OnAgenticPowerPointNotification(async (turnContext, turnState, agentNotificationActivity, cancellationToken) =>
         {
             var agent = await GetAgentFromRecipient(turnContext.Activity);
-            var agentService = await _factory.GetService(agent);
+            var agentService = await _factory.GetService(agent, turnContext);
 
             if (agent.IsMessagingEnabled)
             {
@@ -104,7 +104,7 @@ public class A365AgentApplication : AgentApplication
             var agent = await GetAgentFromRecipient(turnContext.Activity);
 
             // Get agent logic service from factory
-            var agentService = await _factory.GetService(agent);
+            var agentService = await _factory.GetService(agent, turnContext);
 
             // Ignoring all other channel Ids to prevent duplicate notifications.
 			if (agent.IsMessagingEnabled && turnContext.Activity.ChannelId != "msteams")
@@ -120,7 +120,7 @@ public class A365AgentApplication : AgentApplication
         OnActivity(ActivityTypes.Event, async (turnContext, turnState, cancellationToken) =>
         {
             var agent = await GetAgentFromRecipient(turnContext.Activity);
-            var agentService = await _factory.GetService(agent);
+            var agentService = await _factory.GetService(agent, turnContext);
 
             await agentService.NewActivityReceived(turnContext, turnState, cancellationToken);
         });
@@ -128,8 +128,8 @@ public class A365AgentApplication : AgentApplication
         OnActivity(ActivityTypes.InstallationUpdate, async (turnContext, turnState, cancellationToken) =>
         {
             var agent = await GetAgentFromRecipient(turnContext.Activity);
-            var agentService = await _factory.GetService(agent);
-            
+            var agentService = await _factory.GetService(agent, turnContext);
+
             if (agent.IsMessagingEnabled)
             {
 				// Create AgentNotificationActivity for installation updates

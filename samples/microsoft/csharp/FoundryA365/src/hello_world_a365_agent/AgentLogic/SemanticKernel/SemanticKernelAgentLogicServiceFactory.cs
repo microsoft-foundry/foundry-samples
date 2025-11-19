@@ -31,12 +31,12 @@ public sealed class SemanticKernelAgentLogicServiceFactory(
 {
     private readonly string certificateData = configuration.GetCertificateData() ?? string.Empty;
 
-    public async Task<IAgentLogicService> CreateAsync(AgentMetadata agent)
+    public async Task<IAgentLogicService> CreateAsync(AgentMetadata agent, ITurnContext turnContext)
     {
         var kernelBuilder = Kernel.CreateBuilder();
         AddModel(kernelBuilder);
         var kernel = kernelBuilder.Build();
-        await ConfigureKernelPlugins(agent, kernel);
+        await ConfigureKernelPlugins(agent, kernel, turnContext);
         // Resolve GraphService for constructor injection
         var scopedServiceProvider = serviceProvider.CreateScope().ServiceProvider;
 
@@ -45,7 +45,7 @@ public sealed class SemanticKernelAgentLogicServiceFactory(
         return new SemanticKernelAgentLogicService(tokenHelper, agent, kernel, certificateData, configuration, logger, mcpToolRegistrationService, tokenCache);
     }
 
-    private async Task ConfigureKernelPlugins(AgentMetadata agent, Kernel kernel)
+    private async Task ConfigureKernelPlugins(AgentMetadata agent, Kernel kernel, ITurnContext turnContext)
     {
         var scopedServiceProvider = serviceProvider.CreateScope().ServiceProvider;
         // Prod scope for MCP servers.
@@ -61,8 +61,9 @@ public sealed class SemanticKernelAgentLogicServiceFactory(
             environmentId = $"Default-{agent.TenantId.ToString()}";
         }
         UserAuthorization userAuthorization = null;
-        ITurnContext turnContext = null;
-        mcpToolRegistrationService.AddToolServersToAgent(kernel, agentUserId, environmentId, userAuthorization, turnContext, accessToken.Token);
+        string authHandlerName = string.Empty;
+
+        await mcpToolRegistrationService.AddToolServersToAgentAsync(kernel, userAuthorization, authHandlerName, turnContext, accessToken.Token);
     }
 
     private IKernelBuilder AddModel(IKernelBuilder kernelBuilder)

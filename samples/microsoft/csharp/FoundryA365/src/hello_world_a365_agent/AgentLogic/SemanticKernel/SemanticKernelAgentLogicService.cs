@@ -18,6 +18,7 @@ using Microsoft.Agents.A365.Tooling.Extensions.SemanticKernel.Services;
 using Microsoft.Agents.A365.Observability.Runtime.Common;
 using Microsoft.Agents.A365.Observability.Extensions.SemanticKernel;
 using Microsoft.Agents.A365.Notifications.Models;
+using Microsoft.Agents.A365.Observability.Common;
 
 /// <summary>
 /// Semantic Kernel-based implementation of AgentLogicService.

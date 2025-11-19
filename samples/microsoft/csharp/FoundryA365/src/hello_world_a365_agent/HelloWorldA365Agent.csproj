@@ -13,23 +13,11 @@
         <OpenTelemetryVersion>1.12.0</OpenTelemetryVersion>
     </PropertyGroup>
         
-	<!--<ItemGroup>
-		<PackageReference Include="Microsoft.Kairo.Sdk.Observability" Version="*-preview.*" />
-		<PackageReference Include="Microsoft.Kairo.Sdk.Observability.OpenAI" Version="*-preview.*" />
-		<PackageReference Include="Microsoft.Kairo.Sdk.Observability.SemanticKernel" Version="*-preview.*" />
-		<PackageReference Include="Microsoft.Kairo.Sdk.Runtime.Common" Version="*-preview.*" />
-		<PackageReference Include="Microsoft.Kairo.Sdk.Tooling.SemanticKernel" Version="*-preview.*" />
-	</ItemGroup>-->
-
-	<!-- Use the A365 packages for production code https://msazure.visualstudio.com/OneAgile/_artifacts/feed/Agent365@Local 
-	https://github.com/microsoft/Agent365/blob/main/dotnet/sdk/publish.ps1#L35 -->
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Agents.A365.Observability" Version="2025.11.6-preview.1903" />
-		<PackageReference Include="Microsoft.Agents.A365.Observability.OpenAI" Version="2025.11.6-preview.1903" />
-		<PackageReference Include="Microsoft.Agents.A365.Observability.SemanticKernel" Version="2025.11.6-preview.1903" />
-		<PackageReference Include="Microsoft.Agents.A365.Tooling.SemanticKernel" Version="2025.10.27-preview.1758" />
-		<PackageReference Include="Microsoft.Agents.A365.Notifications" Version="2025.11.6-preview.1903" />
-		<PackageReference Include="Microsoft.Agents.A365.Runtime.Common" Version="2025.11.6-preview.1903" />
+		<PackageReference Include="Microsoft.Agents.A365.Observability" Version="0.1.75-beta" />
+		<PackageReference Include="Microsoft.Agents.A365.Observability.Extensions.SemanticKernel" Version="0.1.75-beta" />
+		<PackageReference Include="Microsoft.Agents.A365.Tooling.Extensions.SemanticKernel" Version="0.1.75-beta" />
+		<PackageReference Include="Microsoft.Agents.A365.Notifications" Version="0.1.75-beta" />
 	</ItemGroup>
 
 	<ItemGroup>
