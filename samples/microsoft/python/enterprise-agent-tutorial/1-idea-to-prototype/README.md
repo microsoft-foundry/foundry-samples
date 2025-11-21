@@ -48,13 +48,13 @@ This sample contains only **10 essential files** - nothing extraneous:
 - **`evaluate.py`** - Business evaluation framework (54 lines)
 - **`questions.jsonl`** - Business test scenarios (4 questions)
 
-### Setup & Documentation (7 files)
+### Setup & Documentation (10 files)
 
 - **`requirements.txt`** - Python dependencies
 - **`.env.template`** - Environment variables template
 - **`setup_sharepoint.py`** - SharePoint diagnostic tool
 - **`MCP_SERVERS.md`** - MCP server configuration guide
-- **`SAMPLE_SHAREPOINT_CONTENT.md`** - Sample business documents
+- **`sharepoint-sample-data`**, - Folder with 3 sample business documents
 - **`README.md`** - Complete setup instructions
 - **`.env`** - Your actual configuration (create from template)
 
