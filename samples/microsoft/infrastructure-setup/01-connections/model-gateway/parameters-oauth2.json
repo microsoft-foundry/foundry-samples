@@ -12,13 +12,25 @@
       "value": "example-gateway"
     },
     "connectionName": {
-      "value": "my-modelgateway-comprehensive-connection"
+      "value": "my-model-gateway-oauth2"
     },
     "authType": {
-      "value": "ApiKey"
+      "value": "OAuth2"
     },
     "isSharedToAll": {
       "value": false
+    },
+    "clientId": {
+      "value": "your-client-id-here"
+    },
+    "clientSecret": {
+      "value": "your-client-secret-here"
+    },
+    "tokenUrl": {
+      "value": "https://login.microsoftonline.com/your-tenant-id/oauth2/v2.0/token"
+    },
+    "scopes": {
+      "value": ["https://cognitiveservices.azure.com/.default"]
     },
     "deploymentInPath": {
       "value": "false"
@@ -30,13 +42,37 @@
       "value": ""
     },
     "listModelsEndpoint": {
-      "value": "/deployments"
+      "value": ""
     },
     "getModelEndpoint": {
-      "value": "/deployments/{deploymentName}"
+      "value": ""
     },
     "deploymentProvider": {
-      "value": "AzureOpenAI"
+      "value": ""
+    },
+    "staticModels": {
+      "value": [
+        {
+          "name": "gpt-4o",
+          "properties": {
+            "model": {
+              "name": "gpt-4o",
+              "version": "",
+              "format": "OpenAI"
+            }
+          }
+        },
+        {
+          "name": "gpt-35-turbo",
+          "properties": {
+            "model": {
+              "name": "gpt-35-turbo",
+              "version": "",
+              "format": "OpenAI"
+            }
+          }
+        }
+      ]
     },
     "customHeaders": {
       "value": {

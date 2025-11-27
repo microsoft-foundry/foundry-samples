@@ -172,9 +172,8 @@ Use one of the available authentication methods supported by Azure AI Foundry co
 
 **4️⃣ Networking**  
 - **🌐 Public Networking**: If gateway endpoints are accessible on public internet, no separate setup required
-- **🔐 Fully Secured Network Setup (Coming Soon)**: Use Agents BYO VNet feature
+- **🔐 Fully Secured Network Setup**: Use Agents BYO VNet feature
   - **For APIM**: Use this [Bicep template for secure APIM setup](https://github.com/azure-ai-foundry/foundry-samples/tree/main/samples/microsoft/infrastructure-setup/16-private-network-standard-agent-apim-setup-preview)
-  - **For other model gateways**: Ensure your gateway is reachable within the BYO VNet
 
 ---
 
@@ -206,7 +205,7 @@ Unified connections for various AI model providers through self-hosted or third-
 - Uses `"category": "ModelGateway"` for proper routing
 - Single interface for multiple AI providers (Azure OpenAI, OpenAI, etc.)
 - Supports both static model configuration and dynamic model discovery
-- Supports API Key and OAuth Client Credentials Authentication (OAuth coming soon)
+- Supports API Key and OAuth Client Credentials Authentication
 
 📋 **Detailed Configuration**: [ModelGateway Connection Objects](./model-gateway/ModelGateway-Connection-Objects.md)
 

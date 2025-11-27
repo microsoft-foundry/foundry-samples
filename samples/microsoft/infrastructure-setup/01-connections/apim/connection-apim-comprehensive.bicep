@@ -92,7 +92,7 @@ var validationMessage = bothConfiguredError ? 'ERROR: Cannot configure both stat
 // Force deployment failure if both are configured
 resource deploymentValidation 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (bothConfiguredError) {
   name: 'validation-error'
-  location: 'westus2'
+  location: resourceGroup().location
   kind: 'AzurePowerShell'
   properties: {
     azPowerShellVersion: '8.0'

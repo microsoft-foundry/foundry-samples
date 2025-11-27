@@ -1,19 +1,19 @@
 /*
 Connections enable your AI applications to access tools and objects managed elsewhere in or outside of Azure.
 
-This comprehensive template demonstrates how to add a ModelGateway connection
+This template demonstrates how to add a ModelGateway connection with OAuth2 authentication
 with support for ALL ModelGateway metadata parameters. It includes only non-empty parameters in the final configuration.
 
-This template can handle all ModelGateway connection scenarios from the documentation:
-1. Basic ModelGateway with defaults (deploymentInPath + inferenceAPIVersion only)
-2. ModelGateway with Deployment API Version (adds deploymentAPIVersion)
-3. ModelGateway with Dynamic Discovery (adds modelDiscovery configuration)
-4. ModelGateway with Static Model List (adds models array)
-5. ModelGateway with Custom Headers (adds customHeaders)
+This template can handle all ModelGateway OAuth2 connection scenarios from the documentation:
+1. Basic ModelGateway OAuth2 with defaults (deploymentInPath + inferenceAPIVersion only)
+2. ModelGateway OAuth2 with Deployment API Version (adds deploymentAPIVersion)
+3. ModelGateway OAuth2 with Dynamic Discovery (adds modelDiscovery configuration)
+4. ModelGateway OAuth2 with Static Model List (adds models array)
+5. ModelGateway OAuth2 with Custom Headers (adds customHeaders)
 6. Any combination of the above
 
 The template uses conditional logic to include only non-empty parameters,
-making it flexible for any ModelGateway scenario while avoiding empty metadata.
+making it flexible for any ModelGateway OAuth2 scenario while avoiding empty metadata.
 
 IMPORTANT: Make sure you are logged into the subscription where the AI Foundry resource exists before deploying.
 The connection will be created in the AI Foundry project, so you need to be in that subscription context.
@@ -27,13 +27,17 @@ param gatewayName string = 'example-gateway'
 // Connection naming - can be overridden via parameter
 param connectionName string = ''  // Optional: specify custom connection name
 
-// Connection configuration (ModelGateway only supports ApiKey)
-param authType string = 'ApiKey'
+// Connection configuration (OAuth2 authentication)
+param authType string = 'OAuth2'
 param isSharedToAll bool = false
 
-// API key for the ModelGateway endpoint
+// OAuth2 credentials for the ModelGateway endpoint
 @secure()
-param apiKey string
+param clientId string
+@secure()
+param clientSecret string
+param tokenUrl string
+param scopes array = []
 
 // 1. REQUIRED - Basic ModelGateway Configuration
 param deploymentInPath string = 'false'  // Required: Controls how deployment names are passed
@@ -54,7 +58,7 @@ param staticModels array = []            // Optional: Predefined list of availab
 param customHeaders object = {}          // Optional: Custom HTTP headers as key-value pairs
 
 // Generate connection name if not provided
-var generatedConnectionName = 'modelgateway-${gatewayName}-comprehensive'
+var generatedConnectionName = 'modelgateway-${gatewayName}-oauth2'
 var finalConnectionName = connectionName != '' ? connectionName : generatedConnectionName
 
 // ========================================
@@ -112,16 +116,19 @@ var metadata = union(
   } : {}
 )
 
-// Deploy the ModelGateway connection using the common module
+// Deploy the ModelGateway OAuth2 connection using the common module
 module modelGatewayConnection 'modules/modelgateway-connection-common.bicep' = {
-  name: 'modelgateway-connection-deployment'
+  name: 'modelgateway-oauth2-connection-deployment'
   params: {
     projectResourceId: projectResourceId
-    targetUrl: targetUrl
     connectionName: finalConnectionName
+    targetUrl: targetUrl
     authType: authType
     isSharedToAll: isSharedToAll
-    apiKey: apiKey
+    clientId: clientId
+    clientSecret: clientSecret
+    tokenUrl: tokenUrl
+    scopes: scopes
     metadata: metadata
   }
 }

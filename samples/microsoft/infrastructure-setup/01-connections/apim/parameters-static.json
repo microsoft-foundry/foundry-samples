@@ -3,10 +3,10 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "projectResourceId": {
-      "value": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/sample-test/providers/Microsoft.CognitiveServices/accounts/sample-foundry/projects/firstProject"
+      "value": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/rg-sample/providers/Microsoft.CognitiveServices/accounts/sample-foundry-account/projects/sample-project"
     },
     "apimResourceId": {
-      "value": "/subscriptions/87654321-4321-4321-4321-cba987654321/resourceGroups/rg-agent-test-westus2/providers/Microsoft.ApiManagement/service/rg-agent-aigateway-westus2"
+      "value": "/subscriptions/87654321-4321-4321-4321-cba987654321/resourceGroups/rg-sample-apim/providers/Microsoft.ApiManagement/service/sample-apim-service"
     },
     "apiName": {
       "value": "foundry"
@@ -21,39 +21,19 @@
       "value": false
     },
     "deploymentInPath": {
-      "value": "true"
+      "value": "false"
     },
     "inferenceAPIVersion": {
-      "value": "2025-01-01-preview"
+      "value": ""
     },
     "staticModels": {
       "value": [
         {
-          "name": "gpt-4-deployment",
+          "name": "gpt-4o",
           "properties": {
             "model": {
-              "name": "gpt-4",
-              "version": "0613",
-              "format": "OpenAI"
-            }
-          }
-        },
-        {
-          "name": "gpt-35-turbo-deployment",
-          "properties": {
-            "model": {
-              "name": "gpt-35-turbo", 
-              "version": "0613",
-              "format": "OpenAI"
-            }
-          }
-        },
-        {
-          "name": "text-embedding-ada-002-deployment",
-          "properties": {
-            "model": {
-              "name": "text-embedding-ada-002",
-              "version": "2",
+              "name": "gpt-4o",
+              "version": "",
               "format": "OpenAI"
             }
           }

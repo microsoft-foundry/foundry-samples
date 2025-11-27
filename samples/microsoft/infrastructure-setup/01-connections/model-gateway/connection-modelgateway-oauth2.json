@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "5762901449678861171"
+      "templateHash": "5940038049943877482"
     }
   },
   "parameters": {
@@ -27,14 +27,24 @@
     },
     "authType": {
       "type": "string",
-      "defaultValue": "ApiKey"
+      "defaultValue": "OAuth2"
     },
     "isSharedToAll": {
       "type": "bool",
       "defaultValue": false
     },
-    "apiKey": {
+    "clientId": {
       "type": "securestring"
+    },
+    "clientSecret": {
+      "type": "securestring"
+    },
+    "tokenUrl": {
+      "type": "string"
+    },
+    "scopes": {
+      "type": "array",
+      "defaultValue": []
     },
     "deploymentInPath": {
       "type": "string",
@@ -70,7 +80,7 @@
     }
   },
   "variables": {
-    "generatedConnectionName": "[format('modelgateway-{0}-comprehensive', parameters('gatewayName'))]",
+    "generatedConnectionName": "[format('modelgateway-{0}-oauth2', parameters('gatewayName'))]",
     "finalConnectionName": "[if(not(equals(parameters('connectionName'), '')), parameters('connectionName'), variables('generatedConnectionName'))]",
     "hasModelDiscovery": "[and(and(not(equals(parameters('listModelsEndpoint'), '')), not(equals(parameters('getModelEndpoint'), ''))), not(equals(parameters('deploymentProvider'), '')))]",
     "hasStaticModels": "[greater(length(parameters('staticModels')), 0)]",
@@ -96,7 +106,7 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
-      "name": "modelgateway-connection-deployment",
+      "name": "modelgateway-oauth2-connection-deployment",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -106,11 +116,11 @@
           "projectResourceId": {
             "value": "[parameters('projectResourceId')]"
           },
-          "targetUrl": {
-            "value": "[parameters('targetUrl')]"
-          },
           "connectionName": {
             "value": "[variables('finalConnectionName')]"
+          },
+          "targetUrl": {
+            "value": "[parameters('targetUrl')]"
           },
           "authType": {
             "value": "[parameters('authType')]"
@@ -118,8 +128,17 @@
           "isSharedToAll": {
             "value": "[parameters('isSharedToAll')]"
           },
-          "apiKey": {
-            "value": "[parameters('apiKey')]"
+          "clientId": {
+            "value": "[parameters('clientId')]"
+          },
+          "clientSecret": {
+            "value": "[parameters('clientSecret')]"
+          },
+          "tokenUrl": {
+            "value": "[parameters('tokenUrl')]"
+          },
+          "scopes": {
+            "value": "[parameters('scopes')]"
           },
           "metadata": {
             "value": "[variables('metadata')]"

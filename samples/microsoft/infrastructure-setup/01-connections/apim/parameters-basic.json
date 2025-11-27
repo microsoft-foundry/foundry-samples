@@ -3,10 +3,10 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "projectResourceId": {
-      "value": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/sample-test/providers/Microsoft.CognitiveServices/accounts/sample-foundry/projects/firstProject"
+      "value": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/rg-sample/providers/Microsoft.CognitiveServices/accounts/sample-foundry-account/projects/sample-project"
     },
     "apimResourceId": {
-      "value": "/subscriptions/87654321-4321-4321-4321-cba987654321/resourceGroups/rg-agent-test-westus2/providers/Microsoft.ApiManagement/service/rg-agent-aigateway-westus2"
+      "value": "/subscriptions/87654321-4321-4321-4321-cba987654321/resourceGroups/rg-sample-apim/providers/Microsoft.ApiManagement/service/sample-apim-service"
     },
     "apiName": {
       "value": "foundry"
@@ -21,10 +21,10 @@
       "value": false
     },
     "deploymentInPath": {
-      "value": "true"
+      "value": "false"
     },
     "inferenceAPIVersion": {
-      "value": "2025-01-01-preview"
+      "value": ""
     }
   }
 }
