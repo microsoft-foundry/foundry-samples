@@ -31,7 +31,7 @@ param location string = 'eastus'
 
 @maxLength(9)
 @description('The name of the Azure AI Foundry resource.')
-param aiServices string = 'foundy'
+param aiServices string = 'foundry'
 
 @description('Name for your project resource.')
 param firstProjectName string = 'project'
@@ -202,7 +202,7 @@ module storageAccountRoleAssignment 'modules-standard/azure-storage-account-role
   }
 }
 
-// The Comos DB Operator role must be assigned before the caphost is created
+// The Cosmos DB Operator role must be assigned before the caphost is created
 module cosmosAccountRoleAssignments 'modules-standard/cosmosdb-account-role-assignment.bicep' = {
   name: 'cosmos-account-ra-${uniqueSuffix}-deployment'
   scope: resourceGroup(cosmosDBSubscriptionId, cosmosDBResourceGroupName)
