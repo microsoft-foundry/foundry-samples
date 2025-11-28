@@ -1,0 +1,36 @@
+name: EventPlanningAgent
+description: A multi-agent event planning workflow built with Microsoft Agent Framework - combining Semantic Kernel's enterprise orchestration with AutoGen's multi-agent patterns.
+metadata:
+  example:
+    - role: user
+      content: |-
+        Plan a corporate holiday party for 50 people on December 6th, 2025 in Seattle 
+        with a budget of $5,000. Include venue options, catering for dietary restrictions, 
+        and check the weather forecast.
+  tags:
+    - AI Agent Hosting
+    - Azure AI AgentServer
+    - Microsoft Agent Framework
+  authors:
+    - JC-386
+template:
+  name: EventPlanningAgent
+  kind: hosted
+  environment_variables:
+    - name: AZURE_AI_PROJECT_ENDPOINT
+      value: ${AZURE_AI_PROJECT_ENDPOINT}
+    - name: AI_FOUNDRY_PROJECT_RESOURCE_ID
+      value: ${AI_FOUNDRY_PROJECT_RESOURCE_ID}
+    - name: BING_CONNECTION_ID
+      # TODO: Change back to BING_CONNECTION_NAME once Foundry bug is fixed (currently requires full resource ID)
+      # /subscriptions/YOUR_SUB/resourceGroups/YOUR_RG/providers/Microsoft.CognitiveServices/accounts/YOUR_ACCOUNT/projects/YOUR_PROJECT/connections/YOUR_CONNECTION
+      value: ${BING_CONNECTION_ID}
+    - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
+      value: gpt-4o-mini
+    - name: WEB_SEARCH_MODEL
+      value: gpt-4o-mini
+    - name: AZURE_OPENAI_API_VERSION
+      value: 2024-05-01-preview
+resources:
+  - kind: model
+    id: gpt-4o-mini
