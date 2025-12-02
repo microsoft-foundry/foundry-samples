@@ -19,6 +19,19 @@
 
 The **Bring Your Own AI Gateway** feature in Foundry enables organizations to connect and use AI models hosted behind their enterprise gateways directly within the Foundry platform. This capability allows you to maintain control over your model endpoints while leveraging the power of Foundry's agent capabilities.
 
+### 🎯 Connection Type Selection
+
+**Choose the right connection type for your gateway:**
+
+| Gateway Type | Connection Type | When to Use | Setup Guide |
+|--------------|-----------------|-------------|-------------|
+| **🏢 Azure API Management** | APIM Connection | If you are using Azure API Management service directly as your gateway | [APIM Setup](./apim/) |
+| **🌐 Other Gateways** | ModelGateway Connection | If you are using any other gateway (self-hosted, third-party, or custom solutions) | [ModelGateway Setup](./model-gateway/) |
+
+> **💡 Quick Decision**: 
+> - **Azure API Management service** → Use **APIM Connection**
+> - **Everything else** (Kong, MuleSoft, custom gateways, etc.) → Use **ModelGateway Connection**
+
 ### 💡 Key Benefits
 
 | Benefit | Description |
@@ -278,8 +291,8 @@ Unified connections for various AI model providers through self-hosted or third-
 ### Step 2️⃣: Create Your Gateway Connection
 
 📚 **Detailed Instructions**:
-- **APIM Connections**: [APIM Connection Setup Guide](./apim/README.md) - Complete walkthrough for Azure API Management
-- **ModelGateway Connections**: [ModelGateway Setup Guide](./model-gateway/README.md) - Step-by-step for self-hosted/third-party gateways
+- **APIM Connections**: [APIM Setup Guide](./apim/apim-setup-guide-for-agents.md) - Complete walkthrough for Azure API Management
+- **ModelGateway Connections**: [ModelGateway Setup Guide](./model-gateway/modelgateway-setup-guide-for-agents.md) - Step-by-step for self-hosted/third-party gateways
 
 1. **📋 Choose the appropriate template**:
    ```bash
@@ -327,16 +340,22 @@ Unified connections for various AI model providers through self-hosted or third-
 
 ## 📚 Resources & Links
 
-### 🔧 Setup Guides
+### 🏢 APIM Connections
 
 | Resource | Description | Link |
 |----------|-------------|------|
-| **🏢 Azure API Management Setup Guide** | Complete guide for importing AI Foundry and Azure OpenAI resources, adding list/get deployment endpoints, and verification | [APIM Setup Guide](./apim-setup-guide.md) |
+| **🏢 Azure API Management Setup Guide** | Complete guide for importing AI Foundry and Azure OpenAI resources, adding list/get deployment endpoints, and verification | [APIM Setup Guide](./apim/apim-setup-guide-for-agents.md) |
+| **🔗 APIM Connection Configuration** | Detailed JSON schema, examples, and configuration options for APIM connections | [APIM Connection Objects](./apim/APIM-Connection-Objects.md) |
+| **📋 How to Create APIM Connections** | Step-by-step instructions for creating Azure API Management gateway connections | [APIM Connection Setup README](./apim/README.md) |
+| **🔒 Private Network APIM Setup** | Bicep template for secure private network APIM gateway setup with Agents BYO VNet | [Private APIM Setup](https://github.com/azure-ai-foundry/foundry-samples/tree/main/samples/microsoft/infrastructure-setup/16-private-network-standard-agent-apim-setup-preview) |
 | **📖 Azure API Management GenAI Gateway** | Official Microsoft documentation on Azure API Management GenAI gateway capabilities and features | [GenAI Gateway Capabilities](https://learn.microsoft.com/en-in/azure/api-management/genai-gateway-capabilities) |
 | **🔗 Azure AI Foundry API in APIM** | Official Microsoft documentation on integrating Azure AI Foundry APIs with Azure API Management | [Azure AI Foundry API](https://learn.microsoft.com/en-in/azure/api-management/azure-ai-foundry-api) |
 | **🔗 Azure OpenAI API from Specification** | Official Microsoft documentation on importing Azure OpenAI APIs into Azure API Management from specification | [Azure OpenAI API Import](https://learn.microsoft.com/en-in/azure/api-management/azure-openai-api-from-specification) |
-| **🔒 Private Network APIM Setup** | Bicep template for secure private network APIM gateway setup with Agents BYO VNet | [Private APIM Setup](https://github.com/azure-ai-foundry/foundry-samples/tree/main/samples/microsoft/infrastructure-setup/16-private-network-standard-agent-apim-setup-preview) |
-| **�🔗 APIM Connection Configuration** | Detailed JSON schema, examples, and configuration options for APIM connections | [APIM Connection Objects](./apim/APIM-Connection-Objects.md) |
+
+### 🌉 ModelGateway Connections
+
+| Resource | Description | Link |
+|----------|-------------|------|
+| **🌉 ModelGateway Setup Guide** | Complete guide for configuring self-hosted and third-party gateways for Foundry Agents integration | [ModelGateway Setup Guide](./model-gateway/modelgateway-setup-guide-for-agents.md) |
 | **🔗 ModelGateway Connection Configuration** | Detailed JSON schema, examples, and configuration options for ModelGateway connections | [ModelGateway Connection Objects](./model-gateway/ModelGateway-Connection-Objects.md) |
-| **📋 How to Create APIM Connections** | Step-by-step instructions for creating Azure API Management gateway connections | [APIM Connection Setup README](./apim/README.md) |
 | **📋 How to Create ModelGateway Connections** | Step-by-step instructions for creating ModelGateway connections for self-hosted/third-party gateways | [ModelGateway Setup README](./model-gateway/README.md) |

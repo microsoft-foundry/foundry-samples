@@ -2,16 +2,12 @@
 
 This folder contains Azure Bicep templates for creating ModelGateway connections to Azure AI Foundry projects.
 
-## ⚠️ Important Notice
-
-**ModelGateway connections are currently not supported in Azure AI Foundry.** These templates are provided as examples for future use when ModelGateway support becomes available.
-
 ## Prerequisites
 
 1. **Azure CLI** installed and configured
 2. **AI Foundry account and project** already created
 
-## How to Deploy (When Supported)
+## How to Deploy
 
 ### Basic ModelGateway Connection
 ```bash
