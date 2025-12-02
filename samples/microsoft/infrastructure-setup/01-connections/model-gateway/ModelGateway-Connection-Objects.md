@@ -64,20 +64,69 @@ The `modelDiscovery` object enables runtime model detection through API endpoint
 
 We support exactly **2 deployment API formats** for model discovery:
 
-**1. OpenAI Format Responses:**
+**1. AzureOpenAI Format Responses:**
+
+*List Deployments Response (`listModelsEndpoint`):`*
+```json
+{
+  "value": [
+    {
+      "name": "gpt-4o-deployment",
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "gpt-4o",
+          "version": "2024-11-20"
+        }
+      }
+    },
+    {
+      "name": "gpt-5-deployment",
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "gpt-5",
+          "version": ""
+        }
+      }
+    }
+  ]
+}
+```
+
+*Get Deployment by Name Response (`getModelEndpoint`):`*
+```json
+{
+  "name": "gpt-4o-deployment",
+  "properties": {
+    "model": {
+      "format": "OpenAI",
+      "name": "gpt-4o",
+      "version": "2024-11-20"
+    }
+  }
+}
+```
+
+- Uses `value` array for list, single object for get-by-name
+- Follows Azure ARM resource structure
+- Separate deployment `name` and model details in `properties.model`
+- Includes model `name`, `version`, and `format`
+
+**2. OpenAI Format Responses:**
 
 *List Models Response (`listModelsEndpoint`):`*
 ```json
 {
   "data": [
     {
-      "id": "gpt-4",
+      "id": "gpt-4o",
       "object": "model",
       "created": 1687882411,
       "owned_by": "openai"
     },
     {
-      "id": "gpt-3.5-turbo",
+      "id": "gpt-5",
       "object": "model",
       "created": 1677610602,
       "owned_by": "openai"
@@ -89,7 +138,7 @@ We support exactly **2 deployment API formats** for model discovery:
 *Get Model by Name Response (`getModelEndpoint`):`*
 ```json
 {
-  "id": "gpt-4",
+  "id": "gpt-4o",
   "object": "model",
   "created": 1687882411,
   "owned_by": "openai"
@@ -100,58 +149,6 @@ We support exactly **2 deployment API formats** for model discovery:
 - `id` serves as both deployment name and model name
 - No version information provided in API responses
 
-**2. AzureOpenAI Format Responses:**
-
-*List Deployments Response (`listModelsEndpoint`):`*
-```json
-{
-  "value": [
-    {
-      "name": "gpt-4-deployment",
-      "properties": {
-        "model": {
-          "format": "OpenAI",
-          "name": "gpt-4",
-          "version": "0613"
-        }
-      }
-    },
-    {
-      "id": "/subscriptions/.../deployments/gpt-35-turbo-deployment",
-      "name": "gpt-35-turbo-deployment",
-      "type": "Microsoft.CognitiveServices/accounts/deployments",
-      "properties": {
-        "model": {
-          "format": "OpenAI",
-          "name": "gpt-35-turbo",
-          "version": "0613"
-        },
-        "provisioningState": "Succeeded"
-      }
-    }
-  ]
-}
-```
-
-*Get Deployment by Name Response (`getModelEndpoint`):`*
-```json
-{
-  "name": "gpt-4-deployment",
-  "properties": {
-    "model": {
-      "format": "OpenAI",
-      "name": "gpt-4",
-      "version": "0613"
-    }
-  }
-}
-```
-
-- Uses `value` array for list, single object for get-by-name
-- Follows Azure ARM resource structure
-- Separate deployment `name` and model details in `properties.model`
-- Includes model `name`, `version`, and `format`
-
 ### 2. Static Discovery
 
 Static discovery uses a predefined `models` array in metadata. Models are defined using the `ModelInfo` structure:
@@ -160,11 +157,11 @@ Static discovery uses a predefined `models` array in metadata. Models are define
 {
   "models": [
     {
-      "name": "deployment-name",
+      "name": "gpt-4o-deployment",
       "properties": {
         "model": {
-          "name": "model-name",
-          "version": "model-version",
+          "name": "gpt-4o",
+          "version": "2024-11-20",
           "format": "OpenAI"
         }
       }
@@ -325,21 +322,21 @@ Specifies custom headers to be passed to ModelGateway for chat completion and in
     "metadata": {
       "models": [
         {
-          "name": "gpt-4",
+          "name": "gpt-4o",
           "properties": {
             "model": {
-              "name": "gpt-4",
-              "version": "0613",
+              "name": "gpt-4o",
+              "version": "2024-11-20",
               "format": "OpenAI"
             }
           }
         },
         {
-          "name": "gpt-3.5-turbo",
+          "name": "gpt-5",
           "properties": {
             "model": {
-              "name": "gpt-3.5-turbo",
-              "version": "0613",
+              "name": "gpt-5",
+              "version": "",
               "format": "OpenAI"
             }
           }
@@ -405,21 +402,21 @@ Specifies custom headers to be passed to ModelGateway for chat completion and in
     "metadata": {
       "models": [
         {
-          "name": "openai-gpt-4",
+          "name": "openai-gpt-4o",
           "properties": {
             "model": {
-              "name": "gpt-4",
-              "version": "0613",
+              "name": "gpt-4o",
+              "version": "2024-11-20",
               "format": "OpenAI"
             }
           }
         },
         {
-          "name": "openai-gpt-3.5-turbo",
+          "name": "openai-gpt-5",
           "properties": {
             "model": {
-              "name": "gpt-3.5-turbo",
-              "version": "0613",
+              "name": "gpt-5",
+              "version": "",
               "format": "OpenAI"
             }
           }

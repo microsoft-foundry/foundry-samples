@@ -141,29 +141,23 @@ We support exactly **2 deployment API formats** for model discovery through APIM
 {
   "value": [
     {
-      "id": "/subscriptions/.../deployments/gpt-4-deployment",
-      "name": "gpt-4-deployment",
-      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "name": "gpt-4o-deployment",
       "properties": {
         "model": {
           "format": "OpenAI",
-          "name": "gpt-4",
-          "version": "0613"
-        },
-        "provisioningState": "Succeeded"
+          "name": "gpt-4o",
+          "version": "2024-11-20"
+        }
       }
     },
     {
-      "id": "/subscriptions/.../deployments/gpt-35-turbo-deployment",
-      "name": "gpt-35-turbo-deployment", 
-      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "name": "gpt-5-deployment", 
       "properties": {
         "model": {
           "format": "OpenAI",
-          "name": "gpt-35-turbo",
-          "version": "0613"
-        },
-        "provisioningState": "Succeeded"
+          "name": "gpt-5",
+          "version": ""
+        }
       }
     }
   ]
@@ -173,16 +167,13 @@ We support exactly **2 deployment API formats** for model discovery through APIM
 *Get Deployment by Name Response (`getModelEndpoint`):`*
 ```json
 {
-  "id": "/subscriptions/.../deployments/gpt-4-deployment",
-  "name": "gpt-4-deployment",
-  "type": "Microsoft.CognitiveServices/accounts/deployments",
+  "name": "gpt-4o-deployment",
   "properties": {
     "model": {
       "format": "OpenAI",
-      "name": "gpt-4",
-      "version": "0613"
-    },
-    "provisioningState": "Succeeded"
+      "name": "gpt-4o",
+      "version": "2024-11-20"
+    }
   }
 }
 ```
@@ -191,7 +182,6 @@ We support exactly **2 deployment API formats** for model discovery through APIM
 - Follows Azure ARM resource structure
 - Separate deployment `name` and model details in `properties.model`
 - Includes model `name`, `version`, and `format`
-- Provides deployment provisioning state
 
 **2. OpenAI Format Responses (`deploymentProvider: "OpenAI"`):**
 
@@ -200,13 +190,13 @@ We support exactly **2 deployment API formats** for model discovery through APIM
 {
   "data": [
     {
-      "id": "gpt-4",
+      "id": "gpt-4o",
       "object": "model",
       "created": 1687882411,
       "owned_by": "openai"
     },
     {
-      "id": "gpt-3.5-turbo",
+      "id": "gpt-5",
       "object": "model", 
       "created": 1677610602,
       "owned_by": "openai"
@@ -218,7 +208,7 @@ We support exactly **2 deployment API formats** for model discovery through APIM
 *Get Model by Name Response (`getModelEndpoint`):`*
 ```json
 {
-  "id": "gpt-4",
+  "id": "gpt-4o",
   "object": "model",
   "created": 1687882411,
   "owned_by": "openai"
@@ -237,12 +227,22 @@ Static discovery uses a predefined `models` array in metadata. Models are define
 {
   "models": [
     {
-      "name": "deployment-name",
+      "name": "gpt-4o-deployment",
       "properties": {
         "model": {
-          "name": "model-name",
-          "version": "model-version",
-          "format": "provider-format"
+          "name": "gpt-4o",
+          "version": "2024-11-20",
+          "format": "OpenAI"
+        }
+      }
+    },
+    {
+      "name": "gpt-5-deployment",
+      "properties": {
+        "model": {
+          "name": "gpt-5",
+          "version": "",
+          "format": "OpenAI"
         }
       }
     }
@@ -420,21 +420,21 @@ Predefined static list of models without dynamic discovery.
     "metadata": {
       "models": [
         {
-          "name": "gpt-4-deployment",
+          "name": "gpt-4o-deployment",
           "properties": {
             "model": {
-              "name": "gpt-4",
-              "version": "0613",
+              "name": "gpt-4o",
+              "version": "2024-11-20",
               "format": "OpenAI"
             }
           }
         },
         {
-          "name": "gpt-35-turbo-deployment",
+          "name": "gpt-5-deployment",
           "properties": {
             "model": {
-              "name": "gpt-35-turbo",
-              "version": "0613",
+              "name": "gpt-5",
+              "version": "",
               "format": "OpenAI"
             }
           }
