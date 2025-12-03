@@ -251,7 +251,7 @@ Unified connections for various AI model providers through self-hosted or third-
 | Tool | Description | Link |
 |------|-------------|------|
 | **Azure CLI** | Latest version installed and configured | *Installation instructions available in official Azure documentation* |
-| **Foundry SDK** | Agents V2 SDK for development | [Agents V2 Preview SDK](https://github.com/microsoft/agentsv2-preview/tree/main/python/azure-ai-projects) \| [Agent Basic Sample](https://github.com/Azure/azure-sdk-for-python/blob/main/sdk/ai/azure-ai-projects/samples/agents/sample_agent_basic_async.py) |
+| **Foundry SDK** | Agents V2 SDK for development | [Azure AI Projects Agent Samples](https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/ai/azure-ai-projects/samples/agents) \| [Agent Basic Sample](https://github.com/Azure/azure-sdk-for-python/blob/main/sdk/ai/azure-ai-projects/samples/agents/sample_agent_basic_async.py) |
 | **Connection Setup** | Bicep templates for connections | [APIM Templates](./apim) \| [Model Gateway Templates](./model-gateway) |
 
 ### 🚪 Gateway Prerequisites
@@ -319,7 +319,7 @@ Unified connections for various AI model providers through self-hosted or third-
 
 ### Step 3️⃣: Deploy and Test an Agent
 
-📚 **Agent Development Guide**: [Azure AI Projects Agent Samples](https://github.com/Azure/azure-sdk-for-python/tree/feature/azure-ai-projects/2.0.0b1/sdk/ai/azure-ai-projects/samples/agents) - Complete samples and tutorials
+📚 **Agent Development Guide**: [Azure AI Projects Agent Samples](https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/ai/azure-ai-projects/samples/agents) - Complete samples and tutorials
 
 1. **🔧 Configure model deployment name**:
    ```bash
@@ -329,7 +329,7 @@ Unified connections for various AI model providers through self-hosted or third-
 
 2. **🤖 Create and run an agent**:
 
-   Use one of the agent samples from the [Azure AI Projects Agent Samples](https://github.com/Azure/azure-sdk-for-python/tree/feature/azure-ai-projects/2.0.0b1/sdk/ai/azure-ai-projects/samples/agents) repository to test your gateway connection.
+   Use one of the agent samples from the [Azure AI Projects Agent Samples](https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/ai/azure-ai-projects/samples/agents) repository to test your gateway connection.
 
 3. **✅ Validate the setup**:
    - Check connection status in Foundry portal
