@@ -1,5 +1,6 @@
 # See for instructions on this file https://help.github.com/articles/about-codeowners/
-
+#### TEMPORARY CODEOWNER FOR THIS BRANCH
+/samples-v2/ @sdgilley
 #### files referenced in docs (DO NOT EDIT, except for Docs team!!!) #############################################################################
 /samples/microsoft/REST/mslearn-resources/quickstart/quickstart.sh @azure-ai-foundry/AI-Platform-Docs
 /samples/microsoft/csharp/mslearn-resources/quickstart/Samples/.env.example @azure-ai-foundry/AI-Platform-Docs

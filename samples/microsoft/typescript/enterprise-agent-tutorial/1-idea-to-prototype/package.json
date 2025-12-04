@@ -1,0 +1,36 @@
+{
+  "name": "modern-workplace-assistant",
+  "version": "1.0.0",
+  "description": "Azure AI Foundry Agent Sample - Tutorial 1: Modern Workplace Assistant (TypeScript)",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "evaluate": "node dist/evaluate.js",
+    "dev": "tsc && node dist/main.js",
+    "clean": "rimraf dist/"
+  },
+  "keywords": [
+    "azure",
+    "ai",
+    "agents",
+    "typescript"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "MIT",
+  "dependencies": {
+    "@azure/ai-agents-ii": "file:f:/git/agentsv2-preview/javascript/package/ai-agents-ii-2.0.0-alpha.20251020.12.tgz",
+    "@azure/ai-projects": "^1.0.0-beta.1",
+    "@azure/identity": "^4.11.1",
+    "dotenv": "^16.4.5",
+    "openai": "^6.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
