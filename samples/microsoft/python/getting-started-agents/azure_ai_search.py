@@ -36,7 +36,6 @@ model_deployment_name = os.environ["MODEL_DEPLOYMENT_NAME"]  # Ensure the MODEL_
 project_client = AIProjectClient(
     endpoint=project_endpoint,
     credential=DefaultAzureCredential(exclude_interactive_browser_credential=False),  # Use Azure Default Credential for authentication
-    api_version="latest",
 )
 
 with project_client:
@@ -81,7 +80,7 @@ with project_client:
 
     # Fetch and log all messages from the thread
     messages = project_client.agents.messages.list(thread_id=thread.id, order=ListSortOrder.ASCENDING)
-    for message in messages.data:
+    for message in messages:
         print(f"Role: {message.role}, Content: {message.content}")
 
     # Delete the agent when done to clean up resources

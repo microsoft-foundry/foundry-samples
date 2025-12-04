@@ -37,7 +37,6 @@ from azure.ai.projects import FileSearchTool
 project_client = AIProjectClient(
     endpoint=os.environ["PROJECT_ENDPOINT"],  # Ensure the PROJECT_ENDPOINT environment variable is set
     credential=DefaultAzureCredential(),  # Use Azure Default Credential for authentication
-    api_version="latest",
 )
 
 # Access the Azure OpenAI client for chat completions
@@ -85,7 +84,7 @@ if run.status == "failed":
 
 # Fetch and log all messages from the thread
 messages = project_client.agents.messages.list(thread_id=thread.id)
-for message in messages.data:
+for message in messages:
     print(f"Role: {message.role}, Content: {message.content}")
 
 # Delete the agent after use
@@ -133,7 +132,7 @@ from azure.ai.projects import EvaluatorIds
 
 result = project.evaluation.create_agent_evaluation(
     thread=thread.id,
-    run=run.id, 
+    run=run.id,
     evaluators=[EvaluatorIds.AGENT_QUALITY_EVALUATOR])
 
 # wait for evaluation to complete

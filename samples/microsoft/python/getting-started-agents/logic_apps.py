@@ -7,24 +7,24 @@
 """
 DESCRIPTION:
     This sample demonstrates how to use agents with Logic Apps to execute the task of sending an email.
- 
+
 PREREQUISITES:
     1) Create a Logic App within the same resource group as your Azure AI Project in Azure Portal
-    2) To configure your Logic App to send emails, you must include an HTTP request trigger that is 
+    2) To configure your Logic App to send emails, you must include an HTTP request trigger that is
     configured to accept JSON with 'to', 'subject', and 'body'. The guide to creating a Logic App Workflow
-    can be found here: 
+    can be found here:
     https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/agents-logic-apps#create-logic-apps-workflows-for-function-calling
-    
+
 USAGE:
     python sample_agents_logic_apps.py
- 
+
     Before running the sample:
- 
+
     pip install azure-ai-agents azure-identity
 
     Set this environment variables with your own values:
     1) PROJECT_ENDPOINT - the Azure AI Agents endpoint.
-    2) MODEL_DEPLOYMENT_NAME - The deployment name of the AI model, as found under the "Name" column in 
+    2) MODEL_DEPLOYMENT_NAME - The deployment name of the AI model, as found under the "Name" column in
        the "Models + endpoints" tab in your Azure AI Foundry project.
 
     Replace the following values in the sample with your own values:
@@ -40,7 +40,7 @@ import os
 from typing import Set
 from azure.ai.agents.models import ToolSet, FunctionTool
 from azure.identity import DefaultAzureCredential
-from azure.ai.projects import AIProjectClient  
+from azure.ai.projects import AIProjectClient
 
 # Import user-defined functions and tools
 from user_functions import fetch_current_datetime  # Example user function to fetch current datetime
@@ -52,7 +52,6 @@ from user_logic_apps import AzureLogicAppTool, create_send_email_function  # Log
 project_client = AIProjectClient(
     endpoint=os.environ["PROJECT_ENDPOINT"],  # Azure AI Agents endpoint from environment variables
     credential=DefaultAzureCredential(),  # Use Azure Default Credential for authentication
-    api_version="latest",  # Use the latest API version
 )
 
 # Extract subscription ID and resource group name from environment variables

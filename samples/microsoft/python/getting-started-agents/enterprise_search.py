@@ -19,7 +19,7 @@ USAGE:
 
     Set these environment variables with your own values:
     1) PROJECT_ENDPOINT - The Azure AI Agents endpoint.
-    2) MODEL_DEPLOYMENT_NAME - The deployment name of the AI model, as found under the "Name" column in 
+    2) MODEL_DEPLOYMENT_NAME - The deployment name of the AI model, as found under the "Name" column in
        the "Models + endpoints" tab in your Azure AI Foundry project.
 """
 
@@ -43,7 +43,6 @@ model_deployment_name = os.environ["MODEL_DEPLOYMENT_NAME"]  # Ensure the MODEL_
 project_client = AIProjectClient(
     endpoint=project_endpoint,
     credential=DefaultAzureCredential(exclude_interactive_browser_credential=False),  # Use Azure Default Credential for authentication
-    api_version="latest",
 )
 
 with project_client:
@@ -85,7 +84,7 @@ with project_client:
 
     # Fetch and log all messages from the thread
     messages = project_client.agents.messages.list(thread_id=thread.id)
-    for message in messages.data:
+    for message in messages:
         print(f"Role: {message.role}, Content: {message.content}")
 
     # Delete the agent after use

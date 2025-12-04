@@ -37,7 +37,6 @@ model_deployment_name = os.environ["MODEL_DEPLOYMENT_NAME"]  # Ensure the MODEL_
 project_client = AIProjectClient(
     endpoint=project_endpoint,
     credential=DefaultAzureCredential(exclude_interactive_browser_credential=False),  # Use Azure Default Credential for authentication
-    api_version="latest",
 )
 
 with project_client:

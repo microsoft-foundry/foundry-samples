@@ -17,7 +17,7 @@ USAGE:
 
     Set these environment variables with your own values:
     1) PROJECT_ENDPOINT - the Azure AI Agents endpoint.
-    2) MODEL_DEPLOYMENT_NAME - The deployment name of the AI model, as found under the "Name" column in 
+    2) MODEL_DEPLOYMENT_NAME - The deployment name of the AI model, as found under the "Name" column in
        the "Models + endpoints" tab in your Azure AI Foundry project.
 """
 # Import necessary modules
@@ -33,7 +33,6 @@ project_endpoint = os.environ["PROJECT_ENDPOINT"]
 project_client = AIProjectClient(
     endpoint=project_endpoint,  # Azure AI Agents endpoint
     credential=DefaultAzureCredential(),  # Use Azure Default Credential for authentication
-    api_version="latest",  # Use the latest API version
 )
 
 # Initialize the FunctionTool with user-defined functions
