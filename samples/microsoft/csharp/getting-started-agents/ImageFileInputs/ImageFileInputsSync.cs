@@ -52,6 +52,12 @@ while (run.Status == RunStatus.Queued
     || run.Status == RunStatus.InProgress
     || run.Status == RunStatus.RequiresAction);
 
+// Confirm that the run completed successfully
+if (run.Status != RunStatus.Completed)
+{
+    throw new Exception("Run did not complete successfully, error: " + run.LastError?.Message);
+}
+
 Pageable<ThreadMessage> messages = client.Messages.GetMessages(
     threadId: thread.Id,
     order: ListSortOrder.Ascending);

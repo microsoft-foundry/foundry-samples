@@ -102,6 +102,12 @@ do
 while (run.Status == RunStatus.Queued
     || run.Status == RunStatus.InProgress
     || run.Status == RunStatus.RequiresAction);
+
+// Confirm that the run completed successfully
+if (run.Status != RunStatus.Completed)
+{
+    throw new Exception("Run did not complete successfully, error: " + run.LastError?.Message);
+}
 ```
 
 Asynchronous sample:
@@ -120,6 +126,48 @@ do
 while (run.Status == RunStatus.Queued
     || run.Status == RunStatus.InProgress
     || run.Status == RunStatus.RequiresAction);
+
+// Confirm that the run completed successfully
+if (run.Status != RunStatus.Completed)
+{
+    throw new Exception("Run did not complete successfully, error: " + run.LastError?.Message);
+}
+```
+
+**Comprehensive Error Handling:**
+
+For debugging purposes, you may want to capture more detailed error information when a run fails. Here's how to get comprehensive error details:
+
+Synchronous sample:
+
+```C# Snippet:AgentsImageFileStep3ErrorHandlingSync
+if (run.Status != RunStatus.Completed)
+{
+    Console.WriteLine($"Run failed with status: {run.Status}");
+    Console.WriteLine($"Failed at: {run.FailedAt}");
+    Console.WriteLine($"Error message: {run.LastError?.Message}");
+    Console.WriteLine($"Error code: {run.LastError?.Code}");
+    
+    // Throw exception with comprehensive error information
+    throw new Exception($"Run did not complete successfully. Status: {run.Status}, " +
+                       $"Failed at: {run.FailedAt}, Error: {run.LastError?.Message}");
+}
+```
+
+Asynchronous sample:
+
+```C# Snippet:AgentsImageFileStep3ErrorHandlingAsync
+if (run.Status != RunStatus.Completed)
+{
+    Console.WriteLine($"Run failed with status: {run.Status}");
+    Console.WriteLine($"Failed at: {run.FailedAt}");
+    Console.WriteLine($"Error message: {run.LastError?.Message}");
+    Console.WriteLine($"Error code: {run.LastError?.Code}");
+    
+    // Throw exception with comprehensive error information
+    throw new Exception($"Run did not complete successfully. Status: {run.Status}, " +
+                       $"Failed at: {run.FailedAt}, Error: {run.LastError?.Message}");
+}
 ```
 
 4. After the run is complete, retrieve all messages from the thread to see the agent's response and print them to the console.
