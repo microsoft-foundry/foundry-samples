@@ -77,7 +77,7 @@ def llm():
         )
         return llm
     except Exception:
-        logger.exception("Calculator Agent failed to start")
+        logger.exception("Failed to initialize client of large language model")
         raise
 
 def llm_with_tools():
