@@ -19,9 +19,10 @@ async function main(): Promise<void> {
   });
   console.log(`Agent created (id: ${agent.id}, name: ${agent.name}, version: ${agent.version})`);
 
+  const openAIClient = await project.getOpenAIClient();
   // Create conversation with initial user message
   console.log("\nCreating conversation with initial user message...");
-  const conversation = await project.conversations.create({
+  const conversation = await openAIClient.conversations.create({
     items: [
       { type: "message", role: "user", content: "What is the size of France in square miles?" },
     ],
@@ -30,7 +31,7 @@ async function main(): Promise<void> {
 
   // Generate response using the agent
   console.log("\nGenerating response...");
-  const response = await project.responses.create(
+  const response = await openAIClient.responses.create(
     {
       conversation: conversation.id,
       input: "", // TODO: Remove 'input' once service is fixed
