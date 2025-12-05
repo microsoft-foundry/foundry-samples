@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "projectResourceId": {
+      "value": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/rg-sample/providers/Microsoft.CognitiveServices/accounts/sample-foundry-account/projects/sample-project"
+    },
+    "targetUrl": {
+      "value": "https://your-model-gateway.example.com"
+    },
+    "gatewayName": {
+      "value": "example-gateway"
+    },
+    "connectionName": {
+      "value": "my-modelgateway-comprehensive-connection"
+    },
+    "authType": {
+      "value": "ApiKey"
+    },
+    "isSharedToAll": {
+      "value": false
+    },
+    "deploymentInPath": {
+      "value": "false"
+    },
+    "inferenceAPIVersion": {
+      "value": ""
+    },
+    "deploymentAPIVersion": {
+      "value": ""
+    },
+    "listModelsEndpoint": {
+      "value": "/deployments"
+    },
+    "getModelEndpoint": {
+      "value": "/deployments/{deploymentName}"
+    },
+    "deploymentProvider": {
+      "value": "AzureOpenAI"
+    },
+    "customHeaders": {
+      "value": {
+        "X-Environment": "production",
+        "X-Route-Policy": "premium",
+        "X-Client-App": "foundry-agents"
+      }
+    }
+  }
+}

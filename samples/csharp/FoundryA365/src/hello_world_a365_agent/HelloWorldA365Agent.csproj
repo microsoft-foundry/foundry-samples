@@ -1,0 +1,62 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>HelloWorldA365</RootNamespace>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>6d3109d3-6ff5-438e-aa23-cddd3703b4cb</UserSecretsId>
+    <NoWarn>SKEXP0001;SKEXP0110;SKEXP0130</NoWarn>
+  </PropertyGroup>
+    
+    <PropertyGroup>
+        <OpenTelemetryVersion>1.12.0</OpenTelemetryVersion>
+    </PropertyGroup>
+        
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Agents.A365.Observability" Version="0.1.75-beta" />
+		<PackageReference Include="Microsoft.Agents.A365.Observability.Extensions.SemanticKernel" Version="0.1.75-beta" />
+		<PackageReference Include="Microsoft.Agents.A365.Tooling.Extensions.SemanticKernel" Version="0.1.75-beta" />
+		<PackageReference Include="Microsoft.Agents.A365.Notifications" Version="0.1.75-beta" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Azure.AI.Agents.Persistent" Version="1.1.0-beta.2" />
+		<PackageReference Include="Azure.AI.OpenAI" Version="2.5.0-beta.1" />
+		<PackageReference Include="Azure.Data.Tables" Version="12.11.0" />
+		<PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.3.2" />
+		<PackageReference Include="Azure.Identity" Version="1.14.2" />
+		<PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
+		<PackageReference Include="LangChain" Version="0.17.0" />
+		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
+		<PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.1" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.5" />
+		<PackageReference Include="Microsoft.Graph" Version="5.56.0" />
+		<PackageReference Include="Microsoft.PowerPlatform.Dataverse.Client" Version="1.1.32" />
+		<PackageReference Include="Microsoft.SemanticKernel" Version="1.66.0" />
+		<PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.66.0" />
+		<PackageReference Include="Microsoft.SemanticKernel.Connectors.AzureOpenAI" Version="1.66.0" />
+		<PackageReference Include="ModelContextProtocol" Version="0.3.0-preview.4" />
+		<PackageReference Include="OpenAI" Version="2.5.0" />
+		<PackageReference Include="OpenTelemetry.Exporter.Console" Version="$(OpenTelemetryVersion)" />
+		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="$(OpenTelemetryVersion)" />
+		<PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="$(OpenTelemetryVersion)" />
+		<PackageReference Include="System.Text.Json" Version="9.0.5" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+		<PackageReference Include="Microsoft.Agents.Authentication.Msal" Version="1.3.*-*" />
+		<PackageReference Include="Microsoft.Agents.Hosting.AspNetCore" Version="1.3.*-*" />
+		<PackageReference Include="Microsoft.Agents.Storage" Version="1.3.*-*" />
+		<PackageReference Include="Microsoft.Agents.Storage.Transcript" Version="1.3.*-*" />
+		<PackageReference Include="xunit" Version="2.9.3" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+		<PackageReference Include="Moq" Version="4.20.72" />
+		<PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.23.0" />
+		<PackageReference Include="Microsoft.Bcl.Memory" Version="9.0.0" />
+		<PackageReference Include="System.Runtime.Caching" Version="9.0.10" />
+		
+	</ItemGroup>
+</Project>

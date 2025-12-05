@@ -1,0 +1,31 @@
+name: CalculatorAgent
+description: This LangGraph agent can perform arithmetic calculations such as addition, subtraction, multiplication, and division.
+metadata:
+  example:
+    - role: user
+      content: |-
+        What is the size of France in square miles, divided by 27?
+  tags:
+    - example
+    - learning
+  authors:
+    - migu
+template:
+  name: CalculatorAgentLG
+  kind: hosted
+  protocols:
+    - protocol: responses
+      version: v1
+  environment_variables:
+    - name: AZURE_OPENAI_ENDPOINT
+      value: ${AZURE_OPENAI_ENDPOINT}
+    - name: OPENAI_API_VERSION
+      value: 2025-03-01-preview
+    - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+      value: ${APPLICATIONINSIGHTS_CONNECTION_STRING}
+    - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
+      value: "{{chat}}"
+resources:
+  - kind: model
+    id: gpt-4o-mini
+    name: chat

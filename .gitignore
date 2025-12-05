@@ -456,5 +456,6 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
-samples/microsoft/developer-journey-stage-1-idea-to-prototype.md
+samples/microsoft/nul
 samples/microsoft/microsoft.sln
+samples/microsoft/developer-journey-stage-1-idea-to-prototype.md

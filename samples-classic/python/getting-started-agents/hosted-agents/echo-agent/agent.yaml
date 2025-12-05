@@ -1,0 +1,22 @@
+# Unique identifier/name for this agent
+name: echo-agent
+# Brief description of what this agent does
+description: >
+  This sample demonstrates how to create a custom AI agent that echoes user input.
+  It is useful for testing, debugging, and learning how to build custom agents.
+metadata:
+  # Categorization tags for organizing and discovering agents
+  tags:
+    - AI Agent Hosting
+    - Azure AI AgentServer
+    - Custom Agent Implementation
+    - Microsoft Agent Framework
+template:
+  name: echo-agent
+  kind: hosted
+  protocols:
+    - protocol: responses
+      version: v1
+  environment_variables:
+    - name: AZURE_AI_PROJECT_ENDPOINT
+      value: ${AZURE_AI_PROJECT_ENDPOINT}
