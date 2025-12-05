@@ -91,7 +91,30 @@ module project 'modules/project.bicep' = {
   }
 }
 
-// 2. Deploy the application module (depends on project)
+// 2. Create deployment script UMI and grant roles on RG.
+module deploymentScriptUmi 'modules/deployment-script-umi.bicep' = {
+  name: 'deployment-script-umi'
+  dependsOn: [
+    project
+  ]
+}
+
+// 3. Create agent definition as deployment script.
+module deploymentScriptAgent 'modules/agent-deployment-script.bicep' = {
+  name: 'agent-deployment-script'
+  params: {
+    uamiResourceId: deploymentScriptUmi.outputs.uamiResourceId
+    azureAIProjectEndpoint: project.outputs.foundryProjectEndpoint
+    agentName: agentName
+    azureContainerRegistryEndpoint: project.outputs.acrloginServer
+  }
+  dependsOn: [
+    deploymentScriptUmi
+  ]
+}
+
+
+// 4. Deploy the application module (depends on project)
 module application 'modules/application.bicep' = {
   name: 'application-deployment'
   params: {
@@ -102,11 +125,11 @@ module application 'modules/application.bicep' = {
     agents: agents
   }
   dependsOn: [
-    project
+    deploymentScriptAgent
   ]
 }
 
-// 3. Deploy the bot service module
+// 5. Deploy the bot service module
 module botService 'modules/botservice.bicep' = {
   name: 'botservice-deployment'
   params: {

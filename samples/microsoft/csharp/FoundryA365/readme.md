@@ -32,6 +32,10 @@ Login to your Azure tenant and authenticate with Azure Developer CLI:
 # Login to Azure CLI
 az login
 
+az login --scope https://ai.azure.com/.default
+
+az login --scope https://graph.microsoft.com//.default
+
 # Login to Azure Developer CLI
 azd auth login
 ```

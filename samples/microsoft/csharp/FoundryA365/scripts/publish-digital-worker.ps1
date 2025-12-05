@@ -13,7 +13,7 @@ $body = @{
     appPublishScope     = "Tenant"
     subscriptionId      = $env:SUBSCRIPTION_ID
     agentName           = $env:APPLICATION_NAME
-    appVersion          = "1.2.0"
+    appVersion          = "1.6.0"
     shortDescription    = "Foundry A365 Agent deployed via Azure Developer CLI"
     fullDescription     = "A Foundry A365 agent example that demonstrates integration with Microsoft 365 and Azure Cognitive Services."
     developerName       = "Azure Developer"
@@ -41,7 +41,9 @@ Write-Host $jsonBody
 
 $workspaceName = "$($env:ACCOUNT_NAME)@$($env:PROJECT_NAME)@AML"
 # Send POST request
-$response = Invoke-RestMethod -Uri "https://$($env:LOCATION).api.azureml.ms/agent-asset/v2.0/subscriptions/$($env:SUBSCRIPTION_ID)/resourceGroups/$($env:AZURE_RESOURCE_GROUP)/providers/Microsoft.MachineLearningServices/workspaces/$($workspaceName)/microsoft365/publish" `
+
+try{
+    $response = Invoke-RestMethod -Uri "https://$($env:LOCATION).api.azureml.ms/agent-asset/v2.0/subscriptions/$($env:SUBSCRIPTION_ID)/resourceGroups/$($env:AZURE_RESOURCE_GROUP)/providers/Microsoft.MachineLearningServices/workspaces/$($workspaceName)/microsoft365/publish" `
     -Method Post `
     -Headers @{
         "Content-Type" = "application/json"
@@ -50,9 +52,21 @@ $response = Invoke-RestMethod -Uri "https://$($env:LOCATION).api.azureml.ms/agen
     } `
     -Body $jsonBody
 
-Write-Host ""
-Write-Host "Response:"
-$response | ConvertTo-Json -Depth 5 | Write-Host
+    Write-Host ""
+    Write-Host "Response:"
+    $response | ConvertTo-Json -Depth 5 | Write-Host
+}
+catch {
+        $err = $_.ErrorDetails.Message | ConvertFrom-Json
+    if ($err.error.code -eq "UserError" -and
+        $err.error.message -like "*version already exists*") {
+
+        Write-Host "A digital worker is already published with this version. Ignoring."
+    }
+    else {
+        throw
+    }
+}
 
 Write-Host ""
 Write-Host "Publish digital worker script finished."
