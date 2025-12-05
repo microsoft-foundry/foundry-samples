@@ -5,9 +5,8 @@ import "dotenv/config";
 const projectEndpoint: string = process.env["AZURE_AI_PROJECT_ENDPOINT"] || "<project endpoint>";
 const agentName: string = process.env["AZURE_AI_FOUNDRY_AGENT_NAME"] || "<agent name>";
 
-const credential = new DefaultAzureCredential();
-const projectClient = new AIProjectClient(projectEndpoint, credential);
 async function main(): Promise<void> {
+    const projectClient = new AIProjectClient(projectEndpoint, new DefaultAzureCredential());
     const openAIClient = await  projectClient.getOpenAIClient();
 
     // Optional step: Create a conversation to use with the agent

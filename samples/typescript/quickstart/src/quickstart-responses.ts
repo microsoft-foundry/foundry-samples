@@ -5,9 +5,8 @@ import "dotenv/config";
 const projectEndpoint: string = process.env["AZURE_AI_PROJECT_ENDPOINT"] || "<project endpoint>";
 const modelDeploymentName: string = process.env["AZURE_AI_FOUNDRY_MODEL_DEPLOYMENT_NAME"] || "<model deployment name>";
 
-const credential = new DefaultAzureCredential();
-const projectClient = new AIProjectClient(projectEndpoint, credential);
 async function main(): Promise<void> {
+    const projectClient = new AIProjectClient(projectEndpoint, new DefaultAzureCredential());
     const openAIClient = await  projectClient.getOpenAIClient();
 
     const response = await openAIClient.responses.create({

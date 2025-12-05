@@ -6,9 +6,8 @@ const projectEndpoint: string = process.env["AZURE_AI_PROJECT_ENDPOINT"] || "<pr
 const modelDeploymentName: string = process.env["AZURE_AI_FOUNDRY_MODEL_DEPLOYMENT_NAME"] || "<model deployment name>";
 const agentName: string = process.env["AZURE_AI_FOUNDRY_AGENT_NAME"] || "<agent name>";
 
-const credential = new DefaultAzureCredential();
-const projectClient = new AIProjectClient(projectEndpoint, credential);
 async function main(): Promise<void> {
+    const projectClient = new AIProjectClient(projectEndpoint, new DefaultAzureCredential());
     // Create agent
     console.log("Creating agent...");
     const agent = await projectClient.agents.createVersion(agentName, {
