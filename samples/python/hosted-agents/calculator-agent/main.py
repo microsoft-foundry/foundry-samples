@@ -81,7 +81,6 @@ def llm():
         raise
 
 def llm_with_tools():
-    raise ValueError("llm_with_tools: BOOM!")
     global _llm_with_tools
     if _llm_with_tools is None:
         _llm_with_tools = llm().bind_tools(tools)
