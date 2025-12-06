@@ -1,6 +1,8 @@
 langgraph==1.0.2
 
-azure-ai-agentserver-langgraph==1.0.0b3
+#azure-ai-agentserver-langgraph==1.0.0b3
+./azure_ai_agentserver_core-1.0.0b7-py3-none-any.whl
+./azure_ai_agentserver_langgraph-1.0.0b7-py3-none-any.whl
 
 pytest==8.4.2
 azure-identity==1.25.0
