@@ -7,14 +7,6 @@ from azure.identity.aio import DefaultAzureCredential
 
 
 def create_agent() -> ChatAgent:
-    """Factory function that creates a BingSearchAgent.
-
-    :param tools: The list of AIFunction tools (unused by BingSearchAgent).
-    :type tools: List[AIFunction]
-    :return: A ChatAgent instance.
-    :rtype: ChatAgent
-    """
-
     """Create and return a ChatAgent with Bing Grounding search tool."""
     assert "AZURE_AI_PROJECT_ENDPOINT" in os.environ, (
         "AZURE_AI_PROJECT_ENDPOINT environment variable must be set."

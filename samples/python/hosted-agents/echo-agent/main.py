@@ -148,13 +148,6 @@ class EchoAgent(BaseAgent):
 
 
 def create_agent() -> EchoAgent:
-    """Factory function that creates an EchoAgent.
-
-    :param tools: The list of AIFunction tools (unused by EchoAgent).
-    :type tools: List[AIFunction]
-    :return: An EchoAgent instance.
-    :rtype: EchoAgent
-    """
     agent = EchoAgent(
         name="EchoBot", description="A simple agent that echoes messages with a prefix", echo_prefix="🔊 Echo: "
     )
