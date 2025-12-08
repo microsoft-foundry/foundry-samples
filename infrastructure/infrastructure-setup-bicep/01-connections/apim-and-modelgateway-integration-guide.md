@@ -186,7 +186,7 @@ Use one of the available authentication methods supported by Azure AI Foundry co
 **4️⃣ Networking**  
 - **🌐 Public Networking**: If gateway endpoints are accessible on public internet, no separate setup required
 - **🔐 Fully Secured Network Setup**: Use Agents BYO VNet feature
-  - **For APIM**: Use this [Bicep template for secure APIM setup](https://github.com/azure-ai-foundry/foundry-samples/tree/main/samples/microsoft/infrastructure-setup/16-private-network-standard-agent-apim-setup-preview)
+  - **For APIM**: Use this [Bicep template for secure APIM setup](https://github.com/azure-ai-foundry/foundry-samples/tree/main/infrastructure/infrastructure-setup-bicep/16-private-network-standard-agent-apim-setup-preview)
 
 ---
 
@@ -281,7 +281,7 @@ Unified connections for various AI model providers through self-hosted or third-
 1. **📥 Clone the samples repository**:
    ```bash
    git clone https://github.com/azure-ai-foundry/foundry-samples.git
-   cd foundry-samples/samples/microsoft/infrastructure-setup/01-connections
+   cd foundry-samples/infrastructure/infrastructure-setup-bicep/01-connections
    ```
 
 2. **🎯 Identify your connection type**:
@@ -347,7 +347,7 @@ Unified connections for various AI model providers through self-hosted or third-
 | **🏢 Azure API Management Setup Guide** | Complete guide for importing AI Foundry and Azure OpenAI resources, adding list/get deployment endpoints, and verification | [APIM Setup Guide](./apim/apim-setup-guide-for-agents.md) |
 | **🔗 APIM Connection Configuration** | Detailed JSON schema, examples, and configuration options for APIM connections | [APIM Connection Objects](./apim/APIM-Connection-Objects.md) |
 | **📋 How to Create APIM Connections** | Step-by-step instructions for creating Azure API Management gateway connections | [APIM Connection Setup README](./apim/README.md) |
-| **🔒 Private Network APIM Setup** | Bicep template for secure private network APIM gateway setup with Agents BYO VNet | [Private APIM Setup](https://github.com/azure-ai-foundry/foundry-samples/tree/main/samples/microsoft/infrastructure-setup/16-private-network-standard-agent-apim-setup-preview) |
+| **🔒 Private Network APIM Setup** | Bicep template for secure private network APIM gateway setup with Agents BYO VNet | [Private APIM Setup](https://github.com/azure-ai-foundry/foundry-samples/tree/main/infrastructure/infrastructure-setup-bicep/16-private-network-standard-agent-apim-setup-preview) |
 | **📖 Azure API Management GenAI Gateway** | Official Microsoft documentation on Azure API Management GenAI gateway capabilities and features | [GenAI Gateway Capabilities](https://learn.microsoft.com/en-in/azure/api-management/genai-gateway-capabilities) |
 | **🔗 Azure AI Foundry API in APIM** | Official Microsoft documentation on integrating Azure AI Foundry APIs with Azure API Management | [Azure AI Foundry API](https://learn.microsoft.com/en-in/azure/api-management/azure-ai-foundry-api) |
 | **🔗 Azure OpenAI API from Specification** | Official Microsoft documentation on importing Azure OpenAI APIs into Azure API Management from specification | [Azure OpenAI API Import](https://learn.microsoft.com/en-in/azure/api-management/azure-openai-api-from-specification) |

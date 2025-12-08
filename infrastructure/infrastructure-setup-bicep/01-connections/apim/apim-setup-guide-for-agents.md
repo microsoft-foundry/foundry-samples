@@ -13,7 +13,7 @@ If you already have an Azure API Management instance (Standard v2 or Premium tie
 
 ### Option 2: 🔒 Deploy New Private APIM Setup
 
-For a fully secured private network setup, use the Bicep template mentioned in the [Private Network APIM Setup guide](https://github.com/azure-ai-foundry/foundry-samples/tree/main/samples/microsoft/infrastructure-setup/16-private-network-standard-agent-apim-setup-preview).
+For a fully secured private network setup, use the Bicep template mentioned in the [Private Network APIM Setup guide](https://github.com/azure-ai-foundry/foundry-samples/tree/main/infrastructure/infrastructure-setup-bicep/16-private-network-standard-agent-apim-setup-preview).
 
 This template provides:
 - **🔐 Secure Network Configuration**: Private network setup with Agents BYO VNet
