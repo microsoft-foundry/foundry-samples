@@ -1,0 +1,13 @@
+{
+  "id": "/subscriptions/{sub-id}/resourceGroups/{rg-name}/providers/Microsoft.CognitiveServices/accounts/{foundry-account-name}/managednetworks/default/outboundRules/test-rule-search",
+  "name": "test-rule-search",
+  "type": "Microsoft.CognitiveServices/accounts/managednetworks/outboundRules",
+  "properties": {
+    "type": "PrivateEndpoint",
+    "destination": {
+      "serviceResourceId": "/subscriptions/{sub-id}/resourceGroups/{rg-name}/providers/Microsoft.Search/searchServices/{search-service-name}",
+      "subresourceTarget": "searchService"
+    },
+    "category": "UserDefined"
+  }
+}

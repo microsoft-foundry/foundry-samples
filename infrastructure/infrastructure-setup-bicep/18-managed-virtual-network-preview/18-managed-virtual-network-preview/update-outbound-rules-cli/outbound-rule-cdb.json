@@ -1,0 +1,13 @@
+{
+  "id": "/subscriptions/{sub-id}/resourceGroups/{rg-name}/providers/Microsoft.CognitiveServices/accounts/{foundry-resource-name}/managednetworks/default/outboundRules/test-rule-cdb",
+  "name": "test-rule-cdb",
+  "type": "Microsoft.CognitiveServices/accounts/managednetworks/outboundRules",
+  "properties": {
+    "type": "PrivateEndpoint",
+    "destination": {
+      "serviceResourceId": "/subscriptions/{sub-id}/resourceGroups/{rg-name}/providers/Microsoft.DocumentDB/databaseAccounts/{cdb-name}",
+      "subresourceTarget": "Sql"
+    },
+    "category": "UserDefined"
+  }
+}
