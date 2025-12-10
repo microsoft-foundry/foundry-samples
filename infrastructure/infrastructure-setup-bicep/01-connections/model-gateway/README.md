@@ -59,6 +59,16 @@ az deployment group create \
   --parameters @parameters-oauth2.json
 ```
 
+### Gemini ModelGateway Connection
+```bash
+# 1. Edit parameters-gemini-modelgateway.json with your resource IDs and Gemini API key
+# 2. Deploy using the parameters file (API key will be prompted)
+az deployment group create \
+  --resource-group <your-resource-group> \
+  --template-file connection-modelgateway-comprehensive.bicep \
+  --parameters @parameters-gemini-modelgateway.json
+```
+
 ## Parameter Files
 
 - `parameters-basic.json`: For basic ModelGateway connections with ApiKey authentication
@@ -66,6 +76,7 @@ az deployment group create \
 - `parameters-static.json`: For static model list connections with ApiKey authentication
 - `parameters-comprehensive.json`: For connections with all possible metadata parameters and ApiKey authentication
 - `parameters-oauth2.json`: For OAuth2 authentication connections with all metadata features
+- `parameters-gemini-modelgateway.json`: For Google Gemini API connections with static model configuration and Bearer token authentication
 
 Edit these files to update the resource IDs and target URLs for your environment. API keys or OAuth2 credentials will be prompted securely during deployment.
 

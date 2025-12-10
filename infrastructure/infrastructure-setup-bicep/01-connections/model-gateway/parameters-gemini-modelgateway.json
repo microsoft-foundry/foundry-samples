@@ -1,0 +1,58 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "projectResourceId": {
+      "value": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myResourceGroup/providers/Microsoft.CognitiveServices/accounts/myAccount/projects/myProject"
+    },
+    "targetUrl": {
+      "value": "https://generativelanguage.googleapis.com/v1beta/openai/"
+    },
+    "gatewayName": {
+      "value": "gemini-gateway"
+    },
+    "connectionName": {
+      "value": "gemini-gateway-connection"
+    },
+    "authType": {
+      "value": "ApiKey"
+    },
+    "isSharedToAll": {
+      "value": false
+    },
+    "deploymentInPath": {
+      "value": "false"
+    },
+    "staticModels": {
+      "value": [
+        {
+          "name": "gemini-2.5-flash",
+          "properties": {
+            "model": {
+              "name": "gemini-2.5-flash",
+              "version": "",
+              "format": "OpenAI"
+            }
+          }
+        },
+        {
+          "name": "gemini-2.5-flash-lite",
+          "properties": {
+            "model": {
+              "name": "gemini-2.5-flash-lite",
+              "version": "",
+              "format": "OpenAI"
+            }
+          }
+        }
+      ]
+    },
+    "authConfig": {
+      "value": {
+        "type": "api_key",
+        "name": "Authorization",
+        "format": "Bearer {api_key}"
+      }
+    }
+  }
+}

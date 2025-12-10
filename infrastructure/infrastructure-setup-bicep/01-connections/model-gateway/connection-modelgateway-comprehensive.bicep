@@ -53,6 +53,9 @@ param staticModels array = []            // Optional: Predefined list of availab
 // 5. OPTIONAL - Custom Headers
 param customHeaders object = {}          // Optional: Custom HTTP headers as key-value pairs
 
+// 6. OPTIONAL - Custom Authentication Configuration
+param authConfig object = {}
+
 // Generate connection name if not provided
 var generatedConnectionName = 'modelgateway-${gatewayName}-comprehensive'
 var finalConnectionName = connectionName != '' ? connectionName : generatedConnectionName
@@ -66,6 +69,7 @@ var finalConnectionName = connectionName != '' ? connectionName : generatedConne
 var hasModelDiscovery = listModelsEndpoint != '' && getModelEndpoint != '' && deploymentProvider != ''
 var hasStaticModels = length(staticModels) > 0
 var hasCustomHeaders = !empty(customHeaders)
+var hasAuthConfig = !empty(authConfig)
 
 // Validation: Fail deployment if both static models and dynamic discovery are configured
 var bothConfiguredError = hasModelDiscovery && hasStaticModels
@@ -109,6 +113,10 @@ var metadata = union(
   // Conditionally include custom headers
   hasCustomHeaders ? {
     customHeaders: string(customHeaders)
+  } : {},
+  // Conditionally include custom auth configuration
+  hasAuthConfig ? {
+    authConfig: string(authConfig)
   } : {}
 )
 

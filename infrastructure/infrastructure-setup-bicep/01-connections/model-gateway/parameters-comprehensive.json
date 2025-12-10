@@ -44,6 +44,13 @@
         "X-Route-Policy": "premium",
         "X-Client-App": "foundry-agents"
       }
+    },
+    "authConfig": {
+      "value": {
+        "type": "api_key",
+        "name": "Authorization",
+        "format": "Bearer {api_key}"
+      }
     }
   }
 }
