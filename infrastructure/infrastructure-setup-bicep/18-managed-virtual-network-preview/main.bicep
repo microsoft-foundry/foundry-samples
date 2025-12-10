@@ -1,5 +1,5 @@
 /*
-Standard Setup Network Secured Steps for main.bicep
+Standard Setup Managed Network Secured Steps for main.bicep
 -----------------------------------
 */
 @description('Location for all resources.')
@@ -7,26 +7,9 @@ Standard Setup Network Secured Steps for main.bicep
   'westus'
   'eastus'
   'eastus2'
-  'japaneast'
   'francecentral'
-  'spaincentral'
   'uaenorth'
-  'southcentralus'
-  'italynorth'
-  'germanywestcentral'
-  'brazilsouth'
-  'southafricanorth'
-  'australiaeast'
-  'swedencentral'
   'canadaeast'
-  'westeurope'
-  'westus3'
-  'uksouth'
-  'southindia'
-  'koreacentral'
-  'polandcentral'
-  'switzerlandnorth'
-  'norwayeast'
 ])
 param location string = 'eastus2'
 
@@ -54,10 +37,10 @@ var accountName = toLower('${aiServices}${uniqueSuffix}')
 param firstProjectName string = 'project'
 
 @description('This project will be a sub-resource of your account')
-param projectDescription string = 'A project for the AI Foundry account with network secured deployed Agent'
+param projectDescription string = 'A project for the AI Foundry account with managed network secured deployed Agent'
 
 @description('The display name of the project')
-param displayName string = 'network secured agent project'
+param displayName string = 'managed network secured agent project'
 
 // Existing Virtual Network parameters
 @description('Virtual Network name for the Agent to create new or existing virtual network')

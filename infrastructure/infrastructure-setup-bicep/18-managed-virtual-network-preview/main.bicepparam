@@ -1,16 +1,16 @@
 using './main.bicep'
 
-param location = 'uaenorth'
+param location = 'eastus2'
 param aiServices = 'aiservices'
 param firstProjectName = 'project'
-param projectDescription = 'A project for the AI Foundry account with network secured deployed Agent'
+param projectDescription = 'A project for the AI Foundry account with managed network secured deployed Agent'
 param displayName = 'project'
 param peSubnetName = 'pe-subnet'
 
 // Resource IDs for existing resources
 // If you provide these, the deployment will use the existing resources instead of creating new ones
 param existingVnetResourceId = ''
-param vnetName = 'agent-vnet-test'
+param vnetName = 'my-vnet'
 param aiSearchResourceId = ''
 param azureStorageAccountResourceId = ''
 param azureCosmosDBAccountResourceId = ''

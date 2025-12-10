@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "8507305143222279840"
+      "templateHash": "739301657298739367"
     }
   },
   "parameters": {
@@ -16,26 +16,9 @@
         "westus",
         "eastus",
         "eastus2",
-        "japaneast",
         "francecentral",
-        "spaincentral",
         "uaenorth",
-        "southcentralus",
-        "italynorth",
-        "germanywestcentral",
-        "brazilsouth",
-        "southafricanorth",
-        "australiaeast",
-        "swedencentral",
-        "canadaeast",
-        "westeurope",
-        "westus3",
-        "uksouth",
-        "southindia",
-        "koreacentral",
-        "polandcentral",
-        "switzerlandnorth",
-        "norwayeast"
+        "canadaeast"
       ],
       "metadata": {
         "description": "Location for all resources."
@@ -61,14 +44,14 @@
     },
     "projectDescription": {
       "type": "string",
-      "defaultValue": "A project for the AI Foundry account with network secured deployed Agent",
+      "defaultValue": "A project for the AI Foundry account with managed network secured deployed Agent",
       "metadata": {
         "description": "This project will be a sub-resource of your account"
       }
     },
     "displayName": {
       "type": "string",
-      "defaultValue": "network secured agent project",
+      "defaultValue": "managed network secured agent project",
       "metadata": {
         "description": "The display name of the project"
       }
@@ -678,7 +661,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "304317876640640043"
+              "templateHash": "8798681219838722072"
             }
           },
           "parameters": {
@@ -706,7 +689,7 @@
                 "allowProjectManagement": true,
                 "customSubDomainName": "[parameters('accountName')]",
                 "networkAcls": {
-                  "defaultAction": "Allow",
+                  "defaultAction": "Deny",
                   "virtualNetworkRules": [],
                   "ipRules": []
                 },

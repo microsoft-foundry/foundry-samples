@@ -23,7 +23,7 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
     allowProjectManagement: true
     customSubDomainName: accountName
     networkAcls: {
-      defaultAction: 'Allow'
+      defaultAction: 'Deny'
       virtualNetworkRules: []
       ipRules: []
     }
@@ -39,7 +39,7 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
   }
 }
 
-// Role assignment for the AI Services account managed identity, Azure AI Network connection approver role / Contributor (Change back!)
+// Role assignment for the AI Services account managed identity, Azure AI Network connection approver role / Contributor (Change back when available)
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(account.id, 'b24988ac-6180-42a0-ab88-20f7382dd24c', resourceGroup().id)
   scope: resourceGroup()

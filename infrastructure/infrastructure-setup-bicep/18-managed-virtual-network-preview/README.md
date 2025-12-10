@@ -1,22 +1,22 @@
 ---
-description: This set of templates demonstrates how to set up Azure AI Agent Service with virtual network isolation with private network links to connect the agent to your secure data.
+description: This set of templates demonstrates how to set up Azure AI Agent Service with managed virtual network isolation with private network links to connect the agent to your secure data.
 page_type: sample
 products:
 - azure
 - azure-resource-manager
-urlFragment: network-secured-agent
+urlFragment: managed-network-secured-agent
 languages:
 - bicep
 - json
 ---
 
-# Azure AI Agent Service: Standard Agent Setup with Managed Virutal Network
+# Azure AI Agent Service: Standard Agent Setup with Managed Virtual Network
 
 ---
 ## Overview
 This infrastructure-as-code (IaC) solution deploys a network-secured Azure AI agent environment with private networking and role-based access control (RBAC).
 
-Standard setup supports private network isolation through utilizing **Managed Virtual Network** approach. Managed Virtual Network support is a public preview feature and requires a feature flag to allowlst your subscription. Instructions to allowlist are below. 
+Standard setup supports private network isolation through utilizing **Managed Virtual Network** approach. Managed Virtual Network support is a public preview feature and requires a feature flag to allowlst your subscription. Preview feature is titled "AI.ManagedVnetPreview" in the Azure Portal
 
 ---
 
@@ -28,11 +28,13 @@ Standard setup supports private network isolation through utilizing **Managed Vi
 
 ## Prerequisites
 
+1. **Register your subscription with the Preview Features in Azure Portal for Managed VNET**
+  - The feature is titled "AI.ManagedVnetPreview" in the Azure Portal under "Preview Features". Register your subscription for the preview. It will take a few hours to approve your subscription. 
+
 1. **Active Azure subscription with appropriate permissions**
    - **Azure AI Account Owner**: Needed to create a Foundry account and project 
    - **Owner or Role Based Access Administrator**: Needed to assign RBAC to the required resources (Cosmos DB, Azure AI Search, Storage) 
    - **Azure AI User**: Needed to create and edit agents
-
 
 1. Azure CLI installed and configured on your local workstation or deployment pipeline server. Azure CLI support is required to run the 'az rest' commands to update your managed virtual network. 
 
@@ -61,12 +63,15 @@ Standard setup supports private network isolation through utilizing **Managed Vi
 
 ### Limitations 
 1. Do not support Evaluations in Foundry currently, and only secure Agents service. 
-
+2. The private endpoints created for your CosmosDB account and Search resource must be done manually using the files in the "update-outbound-rules-cli" folder. Please run the commands as the "outbound-rule-cli.md" files outline for the additional resources you require private endpoints to in your managed vnet set-up. Keep in mind these are only the commands to create the Private endpoints. You will also need connections to those resources - these are covered in the template for CosmosDB, Search, and Storage but additional new resources will need both a connection created and a private endpoint created.
+3. The managed VNET is supported for Agents v1 created and ingested through the Foundry classic experience. Agent v2 support is coming soon in GA. 
+4. We do not support private VNET support for Agent tools such as MCP yet. The tools must be public traffic facing for now. The support is coming soon in GA. 
+5. For any feedback, please directly email meerakurup@microsoft.com 
 
 ### Template Customization
 
 Note: If not provided, the following resources will be created automatically for you:
-- VNet and one subnets
+- VNet and one subnet
 - Azure Cosmos DB for NoSQL  
 - Azure AI Search
 - Azure Storage
@@ -77,7 +82,7 @@ Note: If not provided, the following resources will be created automatically for
 
 1. **Use Existing Virtual Network and Subnets**
 
-To use an existing VNet and subnets, set the existingVnetResourceId parameter to the full Azure Resource ID of the target VNet and its address range, and provide the names of the required subnet.  If the existing VNet is associated with private DNS zones, set the existingDnsZones parameter to the resource group name in which the zones are located. For example:
+To use an existing VNet and subnet, set the existingVnetResourceId parameter to the full Azure Resource ID of the target VNet and its address range, and provide the names of the required subnet.  If the existing VNet is associated with private DNS zones, set the existingDnsZones parameter to the resource group name in which the zones are located. For example:
 - param existingVnetResourceId = "/subscriptions/<subscription-id>/resourceGroups/<resource-group-name>/providers/Microsoft.Network/virtualNetworks/<vnet-name>"
 - param peSubnetName string = 'pe-subnet' //optional, default is 'pe-subnet'
 - param peSubnetPrefix string = '192.168.1.0/24' //optional, default is '192.168.1.0/24'
@@ -106,11 +111,6 @@ To use an existing Azure AI Search resource, set aiSearchServiceResourceId param
 
 To use an existing Azure Storage account, set aiStorageAccountResourceId parameter to the full Azure resource Id of the target Azure Storage account resource. 
 - param aiStorageAccountResourceId string = /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Storage/storageAccounts/{storageAccountName}
-
-5. **Use an existing Azure API Management service**
-
-To use an existing Azure API Management service, set apiManagementResourceId parameter to the full Azure resource Id of the target Azure API Management service.
-- param apiManagementResourceId string = /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiManagement/service/{apiManagementServiceName}
 
 ---
 
@@ -222,7 +222,6 @@ Cosmos DB Account
   - Single region deployment 
 
 ### Network Security Design
-This implementation utilizes a BYO VNet (Bring Your Own Virtual Network) approach, also known as custom VNet support with subnet delegation. Within your existing virtual network, one delegated subnet will be created.
 
 Network Security
 - Public network access disabled
@@ -239,7 +238,6 @@ Private endpoints ensure secure, internal-only connectivity. Private endpoints a
 - Azure AI Search
 - Azure Storage
 - Azure Cosmos DB
-- Azure API Management (if provided)
 
 **Private DNS Zones**
 | Private Link Resource Type | Sub Resource | Private DNS Zone Name | Public DNS Zone Forwarders |
@@ -248,7 +246,7 @@ Private endpoints ensure secure, internal-only connectivity. Private endpoints a
 | **Azure AI Search**        | searchService| `privatelink.search.windows.net` | `search.windows.net` |
 | **Azure Cosmos DB**        | Sql          | `privatelink.documents.azure.com` | `documents.azure.com` |
 | **Azure Storage**          | blob         | `privatelink.blob.core.windows.net` | `blob.core.windows.net` |
-| **Azure API Management** (Optional) | Gateway     | `privatelink.azure-api.net` | `azure-api.net` |
+
 
 ### Authentication & Authorization
 
@@ -274,9 +272,8 @@ Private endpoints ensure secure, internal-only connectivity. Private endpoints a
   - **Cosmos DB for NoSQL**
     - Cosmos DB Operator (`230815da-be43-4aae-9cb4-875f7bd000aa`)
     - Cosmos DB Built-in Data Contributor(`00000000-0000-0000-0000-000000000002`)
-  - ** **
-
-
+  - **Azure AI Foundry Resource**
+    - Contributor (`b24988ac-6180-42a0-ab88-20f7382dd24c`) Required role for the Foundry account to accept all private endpoints created in the managed VNET. This role will be updated to the Azure AI Enterprise Network Connection Approver role which has a smaller scope. 
 ---
 
 ## Module Structure
@@ -287,21 +284,20 @@ modules-network-secured/
 ├── ai-account-identity.bicep                       # Azure AI Foundry deployment and configuration
 ├── ai-project-identity.bicep                       # Foundry project deployment and connection configuration           
 ├── ai-search-role-assignments.bicep                # AI Search RBAC configuration
-├── azure-storage-account-role-assignments.bicep    # Storage Account RBAC configuration  
+├── azure-storage-account-role-assignment.bicep     # Storage Account RBAC configuration  
 ├── blob-storage-container-role-assignments.bicep   # Blob Storage Container RBAC configuration
 ├── cosmos-container-role-assignments.bicep         # CosmosDB container Account RBAC configuration
 ├── cosmosdb-account-role-assignment.bicep          # CosmosDB Account RBAC configuration
 ├── existing-vnet.bicep                             # Bring your existing virtual network to template deployment
 ├── format-project-workspace-id.bicep               # Formatting the project workspace ID
+├── managed-network.bicep                           # Managed virtual network and outbound rules configuration
 ├── network-agent-vnet.bicep                        # Logic for routing virtual network set-up if existing virtual network is selected
-├── private-endpoint-and-dns.bicep                  # Creating virtual networks and DNS zones. 
+├── private-endpoint-and-dns.bicep                  # Creating private endpoints and DNS zones for dependent resources
 ├── standard-dependent-resources.bicep              # Deploying CosmosDB, Storage, and Search
 ├── subnet.bicep                                    # Setting the subnet for Agent network injection
 ├── validate-existing-resources.bicep               # Validate existing CosmosDB, Storage, and Search to template deployment
 └── vnet.bicep                                      # Deploying a new virtual network
 ```
-
-> **Note:** If you bring your own VNET for this template, ensure the subnet for Agents has the correct subnet delegation to `Microsoft.App/environments`. If you have not specified the delegated subnet, the template will complete this for you.
 
 ## Maintenance
 
@@ -328,3 +324,4 @@ modules-network-secured/
 - [Private Endpoint Documentation](https://learn.microsoft.com/en-us/azure/private-link/)
 - [RBAC Documentation](https://learn.microsoft.com/en-us/azure/role-based-access-control/)
 - [Network Security Best Practices](https://learn.microsoft.com/en-us/azure/security/fundamentals/network-best-practices)
+- Managed virtual network (public documentation coming soon)
