@@ -22,7 +22,7 @@ Standard setup supports private network isolation through utilizing **Managed Vi
 
 ## Deploy to Azure
 
-[![Deploy To Azure](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/deploytoazure.svg?sanitize=true)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fazure-ai-foundry%2Ffoundry-samples%2Frefs%2Fheads%2Fmain%2Fsamples%2Fmicrosoft%2Finfrastructure-setup%2F16-private-network-standard-agent-apim-setup-preview%2Fazuredeploy.json)
+[![Deploy To Azure](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/deploytoazure.svg?sanitize=true)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fazure-ai-foundry%2Ffoundry-samples%2Frefs%2Fheads%2Fmain%2Finfrastructure%2Finfrastructure-setup-bicep%2F18-managed-virtual-network-preview%2Fazuredeploy.json)
 
 ---
 
@@ -231,7 +231,6 @@ Network Security
 
 **Network Infrastructure**
 - A Virtual Network (192.168.0.0/16) is created (if existing isn't passed in)
-- Agent Subnet (192.168.0.0/24): Hosts Agent client
 - Private endpoint Subnet (192.168.1.0/24): Hosts private endpoints
 
 **Private Endpoints** 
@@ -274,11 +273,8 @@ Private endpoints ensure secure, internal-only connectivity. Private endpoints a
         - Storage Blob Data Owner
   - **Cosmos DB for NoSQL**
     - Cosmos DB Operator (`230815da-be43-4aae-9cb4-875f7bd000aa`)
-    - Cosmos DB Built-in Data Contributor
-    - Three containers will automatically be provisioned during the create capability host process:
-      - Cosmos DB for NoSQL container: `<${projectWorkspaceId}>-thread-message-store`
-      - Cosmos DB for NoSQL container: `<${projectWorkspaceId}>-system-thread-message-store`
-      - Cosmos DB for NoSQL container: `<${projectWorkspaceId}>-agent-entity-store`
+    - Cosmos DB Built-in Data Contributor(`00000000-0000-0000-0000-000000000002`)
+  - ** **
 
 
 ---

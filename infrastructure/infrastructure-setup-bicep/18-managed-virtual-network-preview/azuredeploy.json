@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "2936604706314649338"
+      "templateHash": "8507305143222279840"
     }
   },
   "parameters": {
@@ -2600,7 +2600,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "9200812566893470395"
+              "templateHash": "16291470712974205281"
             }
           },
           "parameters": {
@@ -2621,15 +2621,14 @@
             }
           },
           "variables": {
-            "userThreadName": "[format('{0}-thread-message-store', parameters('projectWorkspaceId'))]",
             "roleDefinitionId": "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions', parameters('cosmosAccountName'), '00000000-0000-0000-0000-000000000002')]",
-            "accountScope": "[format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.DocumentDB/databaseAccounts/{2}/dbs/enterprise_memory', subscription().subscriptionId, resourceGroup().name, parameters('cosmosAccountName'))]"
+            "accountScope": "[format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.DocumentDB/databaseAccounts/{2}', subscription().subscriptionId, resourceGroup().name, parameters('cosmosAccountName'))]"
           },
           "resources": [
             {
               "type": "Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments",
               "apiVersion": "2022-05-15",
-              "name": "[format('{0}/{1}', parameters('cosmosAccountName'), guid(parameters('projectWorkspaceId'), resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers', parameters('cosmosAccountName'), 'enterprise_memory', variables('userThreadName')), variables('roleDefinitionId'), parameters('projectPrincipalId')))]",
+              "name": "[format('{0}/{1}', parameters('cosmosAccountName'), guid(parameters('projectWorkspaceId'), parameters('cosmosAccountName'), variables('roleDefinitionId'), parameters('projectPrincipalId')))]",
               "properties": {
                 "principalId": "[parameters('projectPrincipalId')]",
                 "roleDefinitionId": "[variables('roleDefinitionId')]",
