@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "projectResourceId": {
+      "value": "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-RG/providers/Microsoft.CognitiveServices/accounts/YOUR-AI-FOUNDRY-ACCOUNT/projects/YOUR-PROJECT"
+    },
+    "apimResourceId": {
+      "value": "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-APIM-RG/providers/Microsoft.ApiManagement/service/YOUR-APIM-SERVICE"
+    },
+    "apiName": {
+      "value": "YOUR-API-NAME"
+    },
+    "connectionName": {
+      "value": "YOUR-CONNECTION-NAME"
+    },
+    "authType": {
+      "value": "ApiKey"
+    },
+    "isSharedToAll": {
+      "value": false
+    },
+    "deploymentInPath": {
+      "value": "false"
+    },
+    "inferenceAPIVersion": {
+      "value": ""
+    },
+    "deploymentAPIVersion": {
+      "value": ""
+    },
+    "staticModels": {
+      "value": [
+        {
+          "name": "YOUR-MODEL-DEPLOYMENT-NAME-1",
+          "properties": {
+            "model": {
+              "name": "YOUR-MODEL-NAME-1",
+              "version": "YOUR-MODEL-VERSION-1",
+              "format": "OpenAI"
+            }
+          }
+        },
+        {
+          "name": "YOUR-MODEL-DEPLOYMENT-NAME-2",
+          "properties": {
+            "model": {
+              "name": "YOUR-MODEL-NAME-2",
+              "version": "YOUR-MODEL-VERSION-2",
+              "format": "OpenAI"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

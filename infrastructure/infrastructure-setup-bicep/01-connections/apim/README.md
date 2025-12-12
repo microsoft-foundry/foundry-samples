@@ -10,63 +10,51 @@ This folder contains Azure Bicep templates for creating APIM (API Management) co
 
 ## How to Deploy
 
-### Basic APIM Connection
+### Static Models APIM Connection
 ```bash
-# 1. Edit parameters-basic.json with your resource IDs
+# 1. Modify samples/parameters-static-models.json for your requirements
 # 2. Deploy using the parameters file
 az deployment group create \
   --resource-group <your-resource-group> \
-  --template-file connection-apim-basic.bicep \
-  --parameters @parameters-basic.json
-```
-
-### Deployment API Version APIM Connection
-```bash
-# 1. Edit parameters-deployment-api.json with your resource IDs
-# 2. Deploy using the parameters file
-az deployment group create \
-  --resource-group <your-resource-group> \
-  --template-file connection-apim-deployment-api-version.bicep \
-  --parameters @parameters-deployment-api.json
+  --template-file connection-apim.bicep \
+  --parameters @samples/parameters-static-models.json
 ```
 
 ### Dynamic Discovery APIM Connection
 ```bash
-# 1. Edit parameters-dynamic.json with your resource IDs
+# 1. Modify samples/parameters-dynamic-discovery.json for your requirements
 # 2. Deploy using the parameters file
 az deployment group create \
   --resource-group <your-resource-group> \
-  --template-file connection-apim-dynamic-discovery.bicep \
-  --parameters @parameters-dynamic.json
+  --template-file connection-apim.bicep \
+  --parameters @samples/parameters-dynamic-discovery.json
 ```
 
-### Static Models APIM Connection
+### Custom Headers APIM Connection
 ```bash
-# 1. Edit parameters-static.json with your resource IDs
+# 1. Modify samples/parameters-custom-headers.json for your requirements
 # 2. Deploy using the parameters file
 az deployment group create \
   --resource-group <your-resource-group> \
-  --template-file connection-apim-static-models.bicep \
-  --parameters @parameters-static.json
+  --template-file connection-apim.bicep \
+  --parameters @samples/parameters-custom-headers.json
 ```
 
-### Comprehensive APIM Connection
+### Custom Auth APIM Connection
 ```bash
-# 1. Edit parameters-comprehensive.json with your resource IDs
-# 2. Set only the parameters you need (make others empty/default)
-# 3. Deploy using the parameters file
+# 1. Modify samples/parameters-custom-auth-config.json for your requirements
+# 2. Deploy using the parameters file
 az deployment group create \
   --resource-group <your-resource-group> \
-  --template-file connection-apim-comprehensive.bicep \
-  --parameters @parameters-comprehensive.json
+  --template-file connection-apim.bicep \
+  --parameters @samples/parameters-custom-auth-config.json
 ```
 
 ## Parameter Files
 
-- `parameters-basic.json`: For basic APIM connections with minimal configuration
-- `parameters-deployment-api.json`: For APIM connections with API versioning (includes inferenceAPIVersion and deploymentAPIVersion)
-- `parameters-dynamic.json`: For APIM connections with dynamic model discovery (includes OpenAI endpoint configurations)
-- `parameters-static.json`: For APIM connections with static model lists (includes customizable staticModels array)
-- `parameters-comprehensive.json`: For comprehensive APIM connections supporting all metadata options (set only parameters you need, leave others empty)
+- `samples/parameters-static-models.json`: For APIM connections with predefined static model lists
+- `samples/parameters-dynamic-discovery.json`: For APIM connections with dynamic model discovery (includes endpoint configurations)
+- `samples/parameters-custom-headers.json`: For APIM connections with custom request headers
+- `samples/parameters-custom-auth.json`: For APIM connections with custom authentication configuration
 
-Edit these files to update the resource IDs for your environment.
+Modify these parameter files for your requirements, or create a new parameter file with comprehensive parameters.

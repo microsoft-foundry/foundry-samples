@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "projectResourceId": {
+      "value": "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-RG/providers/Microsoft.CognitiveServices/accounts/YOUR-AI-FOUNDRY-ACCOUNT/projects/YOUR-PROJECT"
+    },
+    "targetUrl": {
+      "value": "YOUR-MODEL-GATEWAY-URL"
+    },
+    "gatewayName": {
+      "value": "YOUR-GATEWAY-NAME"
+    },
+    "connectionName": {
+      "value": "YOUR-CONNECTION-NAME"
+    },
+    "authType": {
+      "value": "ApiKey"
+    },
+    "isSharedToAll": {
+      "value": false
+    },
+    "listModelsEndpoint": {
+      "value": "/deployments"
+    },
+    "getModelEndpoint": {
+      "value": "/deployments/{deploymentName}"
+    },
+    "deploymentProvider": {
+      "value": "AzureOpenAI"
+    },
+    "deploymentAPIVersion": {
+      "value": "2024-02-01"
+    },
+    "deploymentInPath": {
+      "value": "false"
+    },
+    "inferenceAPIVersion": {
+      "value": ""
+    },
+    "customHeaders": {
+      "value": {
+        "YOUR-HEADER-NAME-1": "YOUR-HEADER-VALUE-1",
+        "YOUR-HEADER-NAME-2": "YOUR-HEADER-VALUE-2"
+      }
+    }
+  }
+}

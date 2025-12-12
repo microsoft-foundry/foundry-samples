@@ -3,16 +3,16 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "projectResourceId": {
-      "value": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myResourceGroup/providers/Microsoft.CognitiveServices/accounts/myAccount/projects/myProject"
+      "value": "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-RG/providers/Microsoft.CognitiveServices/accounts/YOUR-AI-FOUNDRY-ACCOUNT/projects/YOUR-PROJECT"
     },
     "targetUrl": {
-      "value": "https://generativelanguage.googleapis.com/v1beta/openai/"
+      "value": "YOUR-MODEL-GATEWAY-URL"
     },
     "gatewayName": {
-      "value": "gemini-gateway"
+      "value": "YOUR-GATEWAY-NAME"
     },
     "connectionName": {
-      "value": "gemini-gateway-connection"
+      "value": "YOUR-CONNECTION-NAME"
     },
     "authType": {
       "value": "ApiKey"
@@ -23,36 +23,32 @@
     "deploymentInPath": {
       "value": "false"
     },
+    "inferenceAPIVersion": {
+      "value": ""
+    },
     "staticModels": {
       "value": [
         {
-          "name": "gemini-2.5-flash",
+          "name": "YOUR-DEPLOYMENT-NAME-1",
           "properties": {
             "model": {
-              "name": "gemini-2.5-flash",
-              "version": "",
+              "name": "YOUR-MODEL-NAME-1",
+              "version": "YOUR-MODEL-VERSION-1",
               "format": "OpenAI"
             }
           }
         },
         {
-          "name": "gemini-2.5-flash-lite",
+          "name": "YOUR-DEPLOYMENT-NAME-2",
           "properties": {
             "model": {
-              "name": "gemini-2.5-flash-lite",
-              "version": "",
+              "name": "YOUR-MODEL-NAME-2",
+              "version": "YOUR-MODEL-VERSION-2",
               "format": "OpenAI"
             }
           }
         }
       ]
-    },
-    "authConfig": {
-      "value": {
-        "type": "api_key",
-        "name": "Authorization",
-        "format": "Bearer {api_key}"
-      }
     }
   }
 }

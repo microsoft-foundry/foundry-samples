@@ -263,7 +263,63 @@ Static discovery uses a predefined `models` array in metadata. Models are define
 
 **If not specified**: Azure Agents will attempt dynamic discovery using `modelDiscovery` settings or APIM defaults
 
-### 6. CustomHeaders - **OPTIONAL**
+### 6. AuthConfig - **OPTIONAL**
+
+The `authConfig` metadata field allows customization of the API key header name and format sent to the APIM gateway. This lets you send the API key using different header names (like `x-api-key` instead of `api-key`) or different value formats (like `Bearer {api_key}` instead of just the key).
+
+```json
+{
+  "authConfig": {
+    "type": "api_key",
+    "name": "x-api-key",
+    "format": "Key {api_key}"
+  }
+}
+```
+
+**Structure:**
+- **Type**: Must be stored as a JSON string (serialized)
+- **Fields**:
+  - `type`: Must be "api_key" for API key authentication
+  - `name`: Custom header name for the API key (instead of default `api-key`)
+  - `format`: Template for the header value with `{api_key}` placeholder
+
+**Usage by Azure Agents:**
+- Customizes how the APIM subscription key is sent in headers
+- The `{api_key}` placeholder is replaced with the actual APIM subscription key
+- Applied to all requests to APIM (chat completions, model discovery)
+
+**Common AuthConfig Examples:**
+
+*Custom Header Name:*
+```json
+"authConfig": "{\"type\":\"api_key\",\"name\":\"x-api-key\",\"format\":\"{api_key}\"}"
+```
+
+*Bearer Token Format:*
+```json
+"authConfig": "{\"type\":\"api_key\",\"name\":\"Authorization\",\"format\":\"Bearer {api_key}\"}"
+```
+
+*Custom Format:*
+```json
+"authConfig": "{\"type\":\"api_key\",\"name\":\"X-API-Token\",\"format\":\"Token {api_key}\"}"
+```
+
+*Default APIM Format (when authConfig not specified):*
+```
+api-key: {api_key}
+```
+
+**When to use authConfig:**
+- Your APIM policies expect a different header name than `api-key`
+- Need Bearer token format: `Authorization: Bearer {api_key}`
+- Custom header formats required by APIM configuration
+- Integration with specific APIM policy configurations
+
+**If not specified**: Azure Agents will use the standard `api-key` header with the raw subscription key value
+
+### 7. CustomHeaders - **OPTIONAL**
 
 Specifies custom headers to be passed to APIM gateway for chat completion and inference calls. This allows you to include additional headers required by your APIM policies or routing logic.
 

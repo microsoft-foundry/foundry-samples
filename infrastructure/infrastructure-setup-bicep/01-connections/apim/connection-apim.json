@@ -5,29 +5,44 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "18152794205285043328"
+      "templateHash": "4554347741480687505"
     }
   },
   "parameters": {
     "projectResourceId": {
       "type": "string",
-      "defaultValue": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/rg-sample/providers/Microsoft.CognitiveServices/accounts/sample-foundry-account/projects/sample-project"
+      "defaultValue": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/rg-sample/providers/Microsoft.CognitiveServices/accounts/sample-foundry-account/projects/sample-project",
+      "metadata": {
+        "description": "Resource ID of the AI Foundry project"
+      }
     },
     "apimResourceId": {
       "type": "string",
-      "defaultValue": "/subscriptions/87654321-4321-4321-4321-cba987654321/resourceGroups/rg-sample-apim/providers/Microsoft.ApiManagement/service/sample-apim-service"
+      "defaultValue": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/rg-sample/providers/Microsoft.ApiManagement/service/sample-apim",
+      "metadata": {
+        "description": "Resource ID of the APIM service"
+      }
     },
     "apiName": {
       "type": "string",
-      "defaultValue": "foundry"
-    },
-    "apimSubscriptionName": {
-      "type": "string",
-      "defaultValue": "master"
+      "defaultValue": "sample-api",
+      "metadata": {
+        "description": "Name of the API in APIM"
+      }
     },
     "connectionName": {
       "type": "string",
-      "defaultValue": ""
+      "defaultValue": "",
+      "metadata": {
+        "description": "Name for the connection (auto-generated if empty)"
+      }
+    },
+    "apimSubscriptionName": {
+      "type": "string",
+      "defaultValue": "master",
+      "metadata": {
+        "description": "APIM subscription name for API key auth"
+      }
     },
     "authType": {
       "type": "string",
@@ -35,65 +50,118 @@
       "allowedValues": [
         "ApiKey",
         "AAD"
-      ]
+      ],
+      "metadata": {
+        "description": "Authentication type"
+      }
     },
     "isSharedToAll": {
       "type": "bool",
-      "defaultValue": false
+      "defaultValue": false,
+      "metadata": {
+        "description": "Share connection to all project users"
+      }
     },
     "deploymentInPath": {
       "type": "string",
-      "defaultValue": "false",
+      "defaultValue": "true",
       "allowedValues": [
         "true",
         "false"
-      ]
+      ],
+      "metadata": {
+        "description": "Whether deployment name is in URL path vs query parameter"
+      }
     },
     "inferenceAPIVersion": {
       "type": "string",
-      "defaultValue": "2024-02-01"
+      "defaultValue": "",
+      "metadata": {
+        "description": "API version for inference calls (chat completions, embeddings)"
+      }
+    },
+    "deploymentAPIVersion": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "API version for deployment management (optional)"
+      }
+    },
+    "listModelsEndpoint": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Endpoint for listing models (enables dynamic discovery)"
+      }
+    },
+    "getModelEndpoint": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Endpoint for getting model details (enables dynamic discovery)"
+      }
+    },
+    "deploymentProvider": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Provider for model discovery (AzureOpenAI, etc.)"
+      }
     },
     "staticModels": {
       "type": "array",
-      "defaultValue": [
-        {
-          "name": "gpt-4-deployment",
-          "properties": {
-            "model": {
-              "name": "gpt-4",
-              "version": "0613",
-              "format": "OpenAI"
-            }
-          }
-        },
-        {
-          "name": "gpt-35-turbo-deployment",
-          "properties": {
-            "model": {
-              "name": "gpt-35-turbo",
-              "version": "0613",
-              "format": "OpenAI"
-            }
-          }
-        }
-      ]
+      "defaultValue": [],
+      "metadata": {
+        "description": "Static model list (array of model objects, optional)"
+      }
+    },
+    "customHeaders": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Custom headers (object with string key-value pairs, optional)"
+      }
+    },
+    "authConfig": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Authentication configuration (object for custom auth headers)"
+      }
     }
   },
   "variables": {
     "apimServiceName": "[split(parameters('apimResourceId'), '/')[8]]",
-    "generatedConnectionName": "[format('apim-{0}-{1}-v5', variables('apimServiceName'), parameters('apiName'))]",
+    "generatedConnectionName": "[format('apim-{0}-{1}', variables('apimServiceName'), parameters('apiName'))]",
     "finalConnectionName": "[if(not(equals(parameters('connectionName'), '')), parameters('connectionName'), variables('generatedConnectionName'))]",
-    "example5Metadata": {
-      "deploymentInPath": "[parameters('deploymentInPath')]",
-      "inferenceAPIVersion": "[parameters('inferenceAPIVersion')]",
-      "models": "[string(parameters('staticModels'))]"
-    }
+    "hasDeploymentAPIVersion": "[not(equals(parameters('deploymentAPIVersion'), ''))]",
+    "hasInferenceAPIVersion": "[not(equals(parameters('inferenceAPIVersion'), ''))]",
+    "hasModelDiscovery": "[and(and(not(equals(parameters('listModelsEndpoint'), '')), not(equals(parameters('getModelEndpoint'), ''))), not(equals(parameters('deploymentProvider'), '')))]",
+    "hasStaticModels": "[greater(length(parameters('staticModels')), 0)]",
+    "hasCustomHeaders": "[not(empty(parameters('customHeaders')))]",
+    "hasAuthConfig": "[not(empty(parameters('authConfig')))]",
+    "bothConfiguredError": "[and(variables('hasModelDiscovery'), variables('hasStaticModels'))]",
+    "validationMessage": "[if(variables('bothConfiguredError'), 'ERROR: Cannot configure both static models and dynamic discovery. Use either staticModels array OR modelDiscovery parameters, not both.', '')]",
+    "metadata": "[union(createObject('deploymentInPath', parameters('deploymentInPath')), if(variables('hasInferenceAPIVersion'), createObject('inferenceAPIVersion', parameters('inferenceAPIVersion')), createObject()), if(variables('hasDeploymentAPIVersion'), createObject('deploymentAPIVersion', parameters('deploymentAPIVersion')), createObject()), if(variables('hasModelDiscovery'), createObject('modelDiscovery', string(createObject('listModelsEndpoint', parameters('listModelsEndpoint'), 'getModelEndpoint', parameters('getModelEndpoint'), 'deploymentProvider', parameters('deploymentProvider')))), createObject()), if(and(variables('hasStaticModels'), not(variables('hasModelDiscovery'))), createObject('models', string(parameters('staticModels'))), createObject()), if(variables('hasCustomHeaders'), createObject('customHeaders', string(parameters('customHeaders'))), createObject()), if(variables('hasAuthConfig'), createObject('authConfig', string(parameters('authConfig'))), createObject()))]"
   },
   "resources": [
     {
+      "condition": "[variables('bothConfiguredError')]",
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2023-08-01",
+      "name": "[format('validation-error-{0}', uniqueString(resourceGroup().id))]",
+      "location": "[resourceGroup().location]",
+      "kind": "AzurePowerShell",
+      "properties": {
+        "azPowerShellVersion": "8.0",
+        "scriptContent": "[format('throw \"{0}\"', variables('validationMessage'))]",
+        "retentionInterval": "PT1H"
+      }
+    },
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
-      "name": "apim-connection-example5",
+      "name": "unified-apim-connection",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -122,7 +190,7 @@
             "value": "[parameters('isSharedToAll')]"
           },
           "metadata": {
-            "value": "[variables('example5Metadata')]"
+            "value": "[variables('metadata')]"
           }
         },
         "template": {
@@ -218,23 +286,50 @@
   "outputs": {
     "connectionName": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'apim-connection-example5'), '2022-09-01').outputs.connectionName.value]"
+      "metadata": {
+        "description": "Name of the created connection"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'unified-apim-connection'), '2022-09-01').outputs.connectionName.value]"
     },
     "connectionId": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'apim-connection-example5'), '2022-09-01').outputs.connectionId.value]"
+      "metadata": {
+        "description": "Resource ID of the created connection"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'unified-apim-connection'), '2022-09-01').outputs.connectionId.value]"
     },
     "targetUrl": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'apim-connection-example5'), '2022-09-01').outputs.targetUrl.value]"
+      "metadata": {
+        "description": "Target URL for the connection"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'unified-apim-connection'), '2022-09-01').outputs.targetUrl.value]"
     },
     "authType": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'apim-connection-example5'), '2022-09-01').outputs.authType.value]"
+      "metadata": {
+        "description": "Authentication type used"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'unified-apim-connection'), '2022-09-01').outputs.authType.value]"
     },
     "metadata": {
       "type": "object",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'apim-connection-example5'), '2022-09-01').outputs.metadata.value]"
+      "metadata": {
+        "description": "Final metadata configuration"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'unified-apim-connection'), '2022-09-01').outputs.metadata.value]"
+    },
+    "hasStaticModels": {
+      "type": "bool",
+      "value": "[variables('hasStaticModels')]"
+    },
+    "hasModelDiscovery": {
+      "type": "bool",
+      "value": "[variables('hasModelDiscovery')]"
+    },
+    "hasCustomHeaders": {
+      "type": "bool",
+      "value": "[variables('hasCustomHeaders')]"
     }
   }
 }

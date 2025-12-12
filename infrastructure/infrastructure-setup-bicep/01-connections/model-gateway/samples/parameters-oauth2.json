@@ -3,16 +3,16 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "projectResourceId": {
-      "value": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/rg-sample/providers/Microsoft.CognitiveServices/accounts/sample-foundry-account/projects/sample-project"
+      "value": "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-RG/providers/Microsoft.CognitiveServices/accounts/YOUR-AI-FOUNDRY-ACCOUNT/projects/YOUR-PROJECT"
     },
     "targetUrl": {
-      "value": "https://your-model-gateway.example.com"
+      "value": "YOUR-MODEL-GATEWAY-URL"
     },
     "gatewayName": {
-      "value": "example-gateway"
+      "value": "YOUR-GATEWAY-NAME"
     },
     "connectionName": {
-      "value": "my-model-gateway-oauth2"
+      "value": "YOUR-CONNECTION-NAME"
     },
     "authType": {
       "value": "OAuth2"
@@ -21,16 +21,13 @@
       "value": false
     },
     "clientId": {
-      "value": "your-client-id-here"
-    },
-    "clientSecret": {
-      "value": "your-client-secret-here"
+      "value": "YOUR-CLIENT-ID"
     },
     "tokenUrl": {
-      "value": "https://login.microsoftonline.com/your-tenant-id/oauth2/v2.0/token"
+      "value": "YOUR-TOKEN-URL"
     },
     "scopes": {
-      "value": ["https://cognitiveservices.azure.com/.default"]
+      "value": ["YOUR-SCOPE-1", "YOUR-SCOPE-2"]
     },
     "deploymentInPath": {
       "value": "false"
@@ -38,36 +35,24 @@
     "inferenceAPIVersion": {
       "value": ""
     },
-    "deploymentAPIVersion": {
-      "value": ""
-    },
-    "listModelsEndpoint": {
-      "value": ""
-    },
-    "getModelEndpoint": {
-      "value": ""
-    },
-    "deploymentProvider": {
-      "value": ""
-    },
     "staticModels": {
       "value": [
         {
-          "name": "gpt-4o",
+          "name": "YOUR-DEPLOYMENT-NAME-1",
           "properties": {
             "model": {
-              "name": "gpt-4o",
-              "version": "",
+              "name": "YOUR-MODEL-NAME-1",
+              "version": "YOUR-MODEL-VERSION-1",
               "format": "OpenAI"
             }
           }
         },
         {
-          "name": "gpt-35-turbo",
+          "name": "YOUR-DEPLOYMENT-NAME-2",
           "properties": {
             "model": {
-              "name": "gpt-35-turbo",
-              "version": "",
+              "name": "YOUR-MODEL-NAME-2",
+              "version": "YOUR-MODEL-VERSION-2",
               "format": "OpenAI"
             }
           }

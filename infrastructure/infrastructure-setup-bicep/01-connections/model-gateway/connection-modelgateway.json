@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "5762901449678861171"
+      "templateHash": "4050950970635711929"
     }
   },
   "parameters": {
@@ -27,14 +27,35 @@
     },
     "authType": {
       "type": "string",
-      "defaultValue": "ApiKey"
+      "defaultValue": "ApiKey",
+      "allowedValues": [
+        "ApiKey",
+        "OAuth2"
+      ]
     },
     "isSharedToAll": {
       "type": "bool",
       "defaultValue": false
     },
     "apiKey": {
-      "type": "securestring"
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "clientId": {
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "clientSecret": {
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "tokenUrl": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "scopes": {
+      "type": "array",
+      "defaultValue": []
     },
     "deploymentInPath": {
       "type": "string",
@@ -67,6 +88,10 @@
     "customHeaders": {
       "type": "object",
       "defaultValue": {}
+    },
+    "authConfig": {
+      "type": "object",
+      "defaultValue": {}
     }
   },
   "variables": {
@@ -75,9 +100,10 @@
     "hasModelDiscovery": "[and(and(not(equals(parameters('listModelsEndpoint'), '')), not(equals(parameters('getModelEndpoint'), ''))), not(equals(parameters('deploymentProvider'), '')))]",
     "hasStaticModels": "[greater(length(parameters('staticModels')), 0)]",
     "hasCustomHeaders": "[not(empty(parameters('customHeaders')))]",
+    "hasAuthConfig": "[not(empty(parameters('authConfig')))]",
     "bothConfiguredError": "[and(variables('hasModelDiscovery'), variables('hasStaticModels'))]",
     "validationMessage": "[if(variables('bothConfiguredError'), 'ERROR: Cannot configure both static models and dynamic discovery. Use either staticModels array OR modelDiscovery parameters, not both.', '')]",
-    "metadata": "[union(createObject('deploymentInPath', parameters('deploymentInPath'), 'inferenceAPIVersion', parameters('inferenceAPIVersion')), if(not(equals(parameters('deploymentAPIVersion'), '')), createObject('deploymentAPIVersion', parameters('deploymentAPIVersion')), createObject()), if(variables('hasModelDiscovery'), createObject('modelDiscovery', string(createObject('listModelsEndpoint', parameters('listModelsEndpoint'), 'getModelEndpoint', parameters('getModelEndpoint'), 'deploymentProvider', parameters('deploymentProvider')))), createObject()), if(and(variables('hasStaticModels'), not(variables('hasModelDiscovery'))), createObject('models', string(parameters('staticModels'))), createObject()), if(variables('hasCustomHeaders'), createObject('customHeaders', string(parameters('customHeaders'))), createObject()))]"
+    "metadata": "[union(createObject('deploymentInPath', parameters('deploymentInPath'), 'inferenceAPIVersion', parameters('inferenceAPIVersion')), if(not(equals(parameters('deploymentAPIVersion'), '')), createObject('deploymentAPIVersion', parameters('deploymentAPIVersion')), createObject()), if(variables('hasModelDiscovery'), createObject('modelDiscovery', string(createObject('listModelsEndpoint', parameters('listModelsEndpoint'), 'getModelEndpoint', parameters('getModelEndpoint'), 'deploymentProvider', parameters('deploymentProvider')))), createObject()), if(and(variables('hasStaticModels'), not(variables('hasModelDiscovery'))), createObject('models', string(parameters('staticModels'))), createObject()), if(variables('hasCustomHeaders'), createObject('customHeaders', string(parameters('customHeaders'))), createObject()), if(variables('hasAuthConfig'), createObject('authConfig', string(parameters('authConfig'))), createObject()))]"
   },
   "resources": [
     {
@@ -120,6 +146,18 @@
           },
           "apiKey": {
             "value": "[parameters('apiKey')]"
+          },
+          "clientId": {
+            "value": "[parameters('clientId')]"
+          },
+          "clientSecret": {
+            "value": "[parameters('clientSecret')]"
+          },
+          "tokenUrl": {
+            "value": "[parameters('tokenUrl')]"
+          },
+          "scopes": {
+            "value": "[parameters('scopes')]"
           },
           "metadata": {
             "value": "[variables('metadata')]"

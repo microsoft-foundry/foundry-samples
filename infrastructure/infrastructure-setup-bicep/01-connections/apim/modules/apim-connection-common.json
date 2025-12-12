@@ -1,0 +1,87 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "5161752358692660897"
+    }
+  },
+  "parameters": {
+    "projectResourceId": {
+      "type": "string"
+    },
+    "connectionName": {
+      "type": "string"
+    },
+    "apimResourceId": {
+      "type": "string"
+    },
+    "apiName": {
+      "type": "string"
+    },
+    "apimSubscriptionName": {
+      "type": "string",
+      "defaultValue": "master"
+    },
+    "authType": {
+      "type": "string",
+      "defaultValue": "ApiKey"
+    },
+    "isSharedToAll": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "variables": {
+    "aiFoundryName": "[split(parameters('projectResourceId'), '/')[8]]",
+    "projectName": "[split(parameters('projectResourceId'), '/')[10]]",
+    "apimSubscriptionId": "[split(parameters('apimResourceId'), '/')[2]]",
+    "apimResourceGroupName": "[split(parameters('apimResourceId'), '/')[4]]",
+    "apimServiceName": "[split(parameters('apimResourceId'), '/')[8]]"
+  },
+  "resources": [
+    {
+      "condition": "[equals(parameters('authType'), 'ApiKey')]",
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('aiFoundryName'), variables('projectName'), parameters('connectionName'))]",
+      "properties": {
+        "category": "ApiManagement",
+        "target": "[format('{0}/{1}', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', variables('apimSubscriptionId'), variables('apimResourceGroupName')), 'Microsoft.ApiManagement/service', variables('apimServiceName')), '2021-08-01').gatewayUrl, reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', variables('apimSubscriptionId'), variables('apimResourceGroupName')), 'Microsoft.ApiManagement/service/apis', variables('apimServiceName'), parameters('apiName')), '2021-08-01').path)]",
+        "authType": "ApiKey",
+        "isSharedToAll": "[parameters('isSharedToAll')]",
+        "credentials": {
+          "key": "[listSecrets(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', variables('apimSubscriptionId'), variables('apimResourceGroupName')), 'Microsoft.ApiManagement/service/subscriptions', variables('apimServiceName'), parameters('apimSubscriptionName')), '2021-08-01').primaryKey]"
+        },
+        "metadata": "[parameters('metadata')]"
+      }
+    }
+  ],
+  "outputs": {
+    "connectionName": {
+      "type": "string",
+      "value": "[if(equals(parameters('authType'), 'ApiKey'), parameters('connectionName'), '')]"
+    },
+    "connectionId": {
+      "type": "string",
+      "value": "[if(equals(parameters('authType'), 'ApiKey'), resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('aiFoundryName'), variables('projectName'), parameters('connectionName')), '')]"
+    },
+    "targetUrl": {
+      "type": "string",
+      "value": "[format('{0}/{1}', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', variables('apimSubscriptionId'), variables('apimResourceGroupName')), 'Microsoft.ApiManagement/service', variables('apimServiceName')), '2021-08-01').gatewayUrl, reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', variables('apimSubscriptionId'), variables('apimResourceGroupName')), 'Microsoft.ApiManagement/service/apis', variables('apimServiceName'), parameters('apiName')), '2021-08-01').path)]"
+    },
+    "authType": {
+      "type": "string",
+      "value": "[parameters('authType')]"
+    },
+    "metadata": {
+      "type": "object",
+      "value": "[parameters('metadata')]"
+    }
+  }
+}
