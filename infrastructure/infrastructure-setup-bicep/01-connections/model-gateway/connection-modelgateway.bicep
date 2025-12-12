@@ -39,7 +39,6 @@ param isSharedToAll bool = false
 param apiKey string = ''
 
 // OAuth2 credentials (required for OAuth2 auth)
-@secure()
 param clientId string = ''
 @secure()
 param clientSecret string = ''
@@ -86,6 +85,10 @@ var hasAuthConfig = !empty(authConfig)
 var bothConfiguredError = hasModelDiscovery && hasStaticModels
 var validationMessage = bothConfiguredError ? 'ERROR: Cannot configure both static models and dynamic discovery. Use either staticModels array OR modelDiscovery parameters, not both.' : ''
 
+// Validation: Fail deployment if neither static models nor dynamic discovery is configured
+var neitherConfiguredError = !hasModelDiscovery && !hasStaticModels
+var neitherConfiguredMessage = 'ERROR: Must configure either static models (staticModels array) OR dynamic discovery (listModelsEndpoint, getModelEndpoint, deploymentProvider). Cannot have neither.'
+
 // Force deployment failure if both are configured
 resource deploymentValidation 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (bothConfiguredError) {
   name: 'validation-error'
@@ -95,6 +98,36 @@ resource deploymentValidation 'Microsoft.Resources/deploymentScripts@2023-08-01'
     retentionInterval: 'PT1H'
     azPowerShellVersion: '8.0'
     scriptContent: 'throw "${validationMessage}"'
+  }
+}
+
+// Force deployment failure if neither are configured
+resource configValidation 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (neitherConfiguredError) {
+  name: 'config-validation-error'
+  location: resourceGroup().location
+  kind: 'AzurePowerShell'
+  properties: {
+    retentionInterval: 'PT1H'
+    azPowerShellVersion: '8.0'
+    scriptContent: 'throw "${neitherConfiguredMessage}"'
+  }
+}
+
+// Validation: Check required parameters for the selected auth type
+var isApiKeyMissing = authType == 'ApiKey' && empty(apiKey)
+var isOAuth2Missing = authType == 'OAuth2' && (empty(clientId) || empty(clientSecret) || empty(tokenUrl))
+var authValidationError = isApiKeyMissing || isOAuth2Missing
+var authValidationMessage = isApiKeyMissing ? 'ERROR: apiKey is required when authType is ApiKey.' : (isOAuth2Missing ? 'ERROR: clientId, clientSecret, and tokenUrl are required when authType is OAuth2.' : '')
+
+// Force deployment failure if auth validation fails
+resource authValidation 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (authValidationError) {
+  name: 'auth-validation-error'
+  location: resourceGroup().location
+  kind: 'AzurePowerShell'
+  properties: {
+    retentionInterval: 'PT1H'
+    azPowerShellVersion: '8.0'
+    scriptContent: 'throw "${authValidationMessage}"'
   }
 }
 
@@ -132,7 +165,7 @@ var metadata = union(
 )
 
 // Deploy the ModelGateway connection using the common module
-module modelGatewayConnection 'modules/modelgateway-connection-common.bicep' = {
+module modelGatewayConnection 'modules/modelgateway-connection-common.bicep' = if (!bothConfiguredError && !neitherConfiguredError && !authValidationError) {
   name: 'modelgateway-connection-deployment'
   params: {
     projectResourceId: projectResourceId

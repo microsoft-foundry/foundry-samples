@@ -24,7 +24,7 @@
       "value": "true"
     },
     "inferenceAPIVersion": {
-      "value": ""
+      "value": "2025-03-01-preview"
     },
     "deploymentAPIVersion": {
       "value": ""

@@ -17,6 +17,18 @@
     "authType": {
       "value": "ApiKey"
     },
+    "listModelsEndpoint": {
+      "value": "v1/models"
+    },
+    "getModelEndpoint": {
+      "value": "v1/models/{deploymentName}"
+    },
+    "deploymentProvider": {
+      "value": "OpenAI"
+    },
+    "deploymentInPath": {
+      "value": "false"
+    },    
     "authConfig": {
       "value": {
         "type": "api_key",

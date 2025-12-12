@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.37.4.10188",
-      "templateHash": "4554347741480687505"
+      "version": "0.39.26.7824",
+      "templateHash": "3070388862604795803"
     }
   },
   "parameters": {
@@ -48,8 +48,7 @@
       "type": "string",
       "defaultValue": "ApiKey",
       "allowedValues": [
-        "ApiKey",
-        "AAD"
+        "ApiKey"
       ],
       "metadata": {
         "description": "Authentication type"
@@ -142,6 +141,8 @@
     "hasAuthConfig": "[not(empty(parameters('authConfig')))]",
     "bothConfiguredError": "[and(variables('hasModelDiscovery'), variables('hasStaticModels'))]",
     "validationMessage": "[if(variables('bothConfiguredError'), 'ERROR: Cannot configure both static models and dynamic discovery. Use either staticModels array OR modelDiscovery parameters, not both.', '')]",
+    "neitherConfiguredError": "[and(not(variables('hasModelDiscovery')), not(variables('hasStaticModels')))]",
+    "neitherConfiguredMessage": "ERROR: Must configure either static models (staticModels array) OR dynamic discovery (listModelsEndpoint, getModelEndpoint, deploymentProvider). Cannot have neither.",
     "metadata": "[union(createObject('deploymentInPath', parameters('deploymentInPath')), if(variables('hasInferenceAPIVersion'), createObject('inferenceAPIVersion', parameters('inferenceAPIVersion')), createObject()), if(variables('hasDeploymentAPIVersion'), createObject('deploymentAPIVersion', parameters('deploymentAPIVersion')), createObject()), if(variables('hasModelDiscovery'), createObject('modelDiscovery', string(createObject('listModelsEndpoint', parameters('listModelsEndpoint'), 'getModelEndpoint', parameters('getModelEndpoint'), 'deploymentProvider', parameters('deploymentProvider')))), createObject()), if(and(variables('hasStaticModels'), not(variables('hasModelDiscovery'))), createObject('models', string(parameters('staticModels'))), createObject()), if(variables('hasCustomHeaders'), createObject('customHeaders', string(parameters('customHeaders'))), createObject()), if(variables('hasAuthConfig'), createObject('authConfig', string(parameters('authConfig'))), createObject()))]"
   },
   "resources": [
@@ -159,8 +160,22 @@
       }
     },
     {
+      "condition": "[variables('neitherConfiguredError')]",
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2023-08-01",
+      "name": "[format('config-validation-error-{0}', uniqueString(resourceGroup().id))]",
+      "location": "[resourceGroup().location]",
+      "kind": "AzurePowerShell",
+      "properties": {
+        "azPowerShellVersion": "8.0",
+        "scriptContent": "[format('throw \"{0}\"', variables('neitherConfiguredMessage'))]",
+        "retentionInterval": "PT1H"
+      }
+    },
+    {
+      "condition": "[and(not(variables('bothConfiguredError')), not(variables('neitherConfiguredError')))]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
+      "apiVersion": "2025-04-01",
       "name": "unified-apim-connection",
       "properties": {
         "expressionEvaluationOptions": {
@@ -199,8 +214,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "5161752358692660897"
+              "version": "0.39.26.7824",
+              "templateHash": "555869061841630591"
             }
           },
           "parameters": {
@@ -289,35 +304,21 @@
       "metadata": {
         "description": "Name of the created connection"
       },
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'unified-apim-connection'), '2022-09-01').outputs.connectionName.value]"
-    },
-    "connectionId": {
-      "type": "string",
-      "metadata": {
-        "description": "Resource ID of the created connection"
-      },
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'unified-apim-connection'), '2022-09-01').outputs.connectionId.value]"
-    },
-    "targetUrl": {
-      "type": "string",
-      "metadata": {
-        "description": "Target URL for the connection"
-      },
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'unified-apim-connection'), '2022-09-01').outputs.targetUrl.value]"
-    },
-    "authType": {
-      "type": "string",
-      "metadata": {
-        "description": "Authentication type used"
-      },
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'unified-apim-connection'), '2022-09-01').outputs.authType.value]"
+      "value": "[variables('finalConnectionName')]"
     },
     "metadata": {
       "type": "object",
       "metadata": {
         "description": "Final metadata configuration"
       },
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'unified-apim-connection'), '2022-09-01').outputs.metadata.value]"
+      "value": "[variables('metadata')]"
+    },
+    "authType": {
+      "type": "string",
+      "metadata": {
+        "description": "Authentication type used"
+      },
+      "value": "[parameters('authType')]"
     },
     "hasStaticModels": {
       "type": "bool",

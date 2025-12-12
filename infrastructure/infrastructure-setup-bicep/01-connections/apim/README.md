@@ -2,6 +2,14 @@
 
 This folder contains Azure Bicep templates for creating APIM (API Management) connections to Azure AI Foundry projects.
 
+> **⚠️ IMPORTANT**: Before running any deployment, follow the [Setup Guide](./apim-setup-guide-for-agents.md) guide to properly configure your APIM service and obtain all applicable parameters. Make sure to collect these parameters to avoid 404/deploymentNotFound errors during Agent API execution:
+> 1. **inferenceApiVersion** - The API version for chat completions calls if api-version is required
+> 2. **deploymentApiVersion** - The API version for deployment operations if using dynamic discovery and api-version is required. 
+> 3. **apiName** - The name of your API in APIM (e.g., "foundry", "openai")
+> 4. **deploymentInPath** - Whether deployment ID is in the URL path or in body as model field in chat completions API call.
+>
+> These parameters must match your actual APIM configuration to ensure successful deployments.
+
 ## Prerequisites
 
 1. **Azure CLI** installed and configured
@@ -12,8 +20,8 @@ This folder contains Azure Bicep templates for creating APIM (API Management) co
 
 ### Static Models APIM Connection
 ```bash
-# 1. Modify samples/parameters-static-models.json for your requirements
-# 2. Deploy using the parameters file
+# 1. Edit samples/parameters-static-models.json with your resource IDs
+# 2. Deploy (API key automatically retrieved from APIM service)
 az deployment group create \
   --resource-group <your-resource-group> \
   --template-file connection-apim.bicep \
@@ -22,8 +30,9 @@ az deployment group create \
 
 ### Dynamic Discovery APIM Connection
 ```bash
-# 1. Modify samples/parameters-dynamic-discovery.json for your requirements
-# 2. Deploy using the parameters file
+# 1. Follow the apim-setup-guide-for-agents.md to configure both list and get endpoints in APIM
+# 2. Edit samples/parameters-dynamic-discovery.json with your resource IDs
+# 3. Deploy (API key automatically retrieved from APIM service)
 az deployment group create \
   --resource-group <your-resource-group> \
   --template-file connection-apim.bicep \
@@ -32,8 +41,8 @@ az deployment group create \
 
 ### Custom Headers APIM Connection
 ```bash
-# 1. Modify samples/parameters-custom-headers.json for your requirements
-# 2. Deploy using the parameters file
+# 1. Edit samples/parameters-custom-headers.json with your resource IDs
+# 2. Deploy (API key automatically retrieved from APIM service)
 az deployment group create \
   --resource-group <your-resource-group> \
   --template-file connection-apim.bicep \
@@ -42,19 +51,25 @@ az deployment group create \
 
 ### Custom Auth APIM Connection
 ```bash
-# 1. Modify samples/parameters-custom-auth-config.json for your requirements
-# 2. Deploy using the parameters file
+# 1. Edit samples/parameters-custom-auth-config.json with your resource IDs
+# 2. Deploy (API key automatically retrieved from APIM service)
 az deployment group create \
   --resource-group <your-resource-group> \
   --template-file connection-apim.bicep \
   --parameters @samples/parameters-custom-auth-config.json
 ```
 
+## Validation Features
+
+The template includes built-in validation:
+- **Invalid Configuration**: Fails with "ERROR: Cannot configure both static models and dynamic discovery."
+- **Missing Configuration**: Fails with "ERROR: Must configure either static models (staticModels array) OR dynamic discovery (listModelsEndpoint, getModelEndpoint, deploymentProvider). Cannot have neither."
+
 ## Parameter Files
 
 - `samples/parameters-static-models.json`: For APIM connections with predefined static model lists
 - `samples/parameters-dynamic-discovery.json`: For APIM connections with dynamic model discovery (includes endpoint configurations)
 - `samples/parameters-custom-headers.json`: For APIM connections with custom request headers
-- `samples/parameters-custom-auth.json`: For APIM connections with custom authentication configuration
+- `samples/parameters-custom-auth-config.json`: For APIM connections with custom authentication configuration
 
-Modify these parameter files for your requirements, or create a new parameter file with comprehensive parameters.
+Edit these files to update the resource IDs and configuration for your environment.

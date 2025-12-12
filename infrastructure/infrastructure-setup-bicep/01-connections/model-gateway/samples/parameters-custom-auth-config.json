@@ -45,7 +45,7 @@
       ]
     },
     "deploymentInPath": {
-      "value": "false"
+      "value": "true"
     },
     "inferenceAPIVersion": {
       "value": ""

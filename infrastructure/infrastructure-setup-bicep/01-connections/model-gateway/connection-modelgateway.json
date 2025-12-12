@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.37.4.10188",
-      "templateHash": "4050950970635711929"
+      "version": "0.39.26.7824",
+      "templateHash": "17241521535998536253"
     }
   },
   "parameters": {
@@ -42,7 +42,7 @@
       "defaultValue": ""
     },
     "clientId": {
-      "type": "securestring",
+      "type": "string",
       "defaultValue": ""
     },
     "clientSecret": {
@@ -103,6 +103,12 @@
     "hasAuthConfig": "[not(empty(parameters('authConfig')))]",
     "bothConfiguredError": "[and(variables('hasModelDiscovery'), variables('hasStaticModels'))]",
     "validationMessage": "[if(variables('bothConfiguredError'), 'ERROR: Cannot configure both static models and dynamic discovery. Use either staticModels array OR modelDiscovery parameters, not both.', '')]",
+    "neitherConfiguredError": "[and(not(variables('hasModelDiscovery')), not(variables('hasStaticModels')))]",
+    "neitherConfiguredMessage": "ERROR: Must configure either static models (staticModels array) OR dynamic discovery (listModelsEndpoint, getModelEndpoint, deploymentProvider). Cannot have neither.",
+    "isApiKeyMissing": "[and(equals(parameters('authType'), 'ApiKey'), empty(parameters('apiKey')))]",
+    "isOAuth2Missing": "[and(equals(parameters('authType'), 'OAuth2'), or(or(empty(parameters('clientId')), empty(parameters('clientSecret'))), empty(parameters('tokenUrl'))))]",
+    "authValidationError": "[or(variables('isApiKeyMissing'), variables('isOAuth2Missing'))]",
+    "authValidationMessage": "[if(variables('isApiKeyMissing'), 'ERROR: apiKey is required when authType is ApiKey.', if(variables('isOAuth2Missing'), 'ERROR: clientId, clientSecret, and tokenUrl are required when authType is OAuth2.', ''))]",
     "metadata": "[union(createObject('deploymentInPath', parameters('deploymentInPath'), 'inferenceAPIVersion', parameters('inferenceAPIVersion')), if(not(equals(parameters('deploymentAPIVersion'), '')), createObject('deploymentAPIVersion', parameters('deploymentAPIVersion')), createObject()), if(variables('hasModelDiscovery'), createObject('modelDiscovery', string(createObject('listModelsEndpoint', parameters('listModelsEndpoint'), 'getModelEndpoint', parameters('getModelEndpoint'), 'deploymentProvider', parameters('deploymentProvider')))), createObject()), if(and(variables('hasStaticModels'), not(variables('hasModelDiscovery'))), createObject('models', string(parameters('staticModels'))), createObject()), if(variables('hasCustomHeaders'), createObject('customHeaders', string(parameters('customHeaders'))), createObject()), if(variables('hasAuthConfig'), createObject('authConfig', string(parameters('authConfig'))), createObject()))]"
   },
   "resources": [
@@ -120,8 +126,35 @@
       }
     },
     {
+      "condition": "[variables('neitherConfiguredError')]",
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2023-08-01",
+      "name": "config-validation-error",
+      "location": "[resourceGroup().location]",
+      "kind": "AzurePowerShell",
+      "properties": {
+        "retentionInterval": "PT1H",
+        "azPowerShellVersion": "8.0",
+        "scriptContent": "[format('throw \"{0}\"', variables('neitherConfiguredMessage'))]"
+      }
+    },
+    {
+      "condition": "[variables('authValidationError')]",
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2023-08-01",
+      "name": "auth-validation-error",
+      "location": "[resourceGroup().location]",
+      "kind": "AzurePowerShell",
+      "properties": {
+        "retentionInterval": "PT1H",
+        "azPowerShellVersion": "8.0",
+        "scriptContent": "[format('throw \"{0}\"', variables('authValidationMessage'))]"
+      }
+    },
+    {
+      "condition": "[and(and(not(variables('bothConfiguredError')), not(variables('neitherConfiguredError'))), not(variables('authValidationError')))]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
+      "apiVersion": "2025-04-01",
       "name": "modelgateway-connection-deployment",
       "properties": {
         "expressionEvaluationOptions": {
@@ -169,8 +202,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "7714127843843693811"
+              "version": "0.39.26.7824",
+              "templateHash": "15217823060306523247"
             }
           },
           "parameters": {

@@ -43,7 +43,7 @@ param connectionName string = ''
 @description('APIM subscription name for API key auth')
 param apimSubscriptionName string = 'master'
 
-@allowed(['ApiKey', 'AAD'])
+@allowed(['ApiKey'])
 @description('Authentication type')
 param authType string = 'ApiKey'
 
@@ -106,6 +106,10 @@ var hasAuthConfig = !empty(authConfig)
 var bothConfiguredError = hasModelDiscovery && hasStaticModels
 var validationMessage = bothConfiguredError ? 'ERROR: Cannot configure both static models and dynamic discovery. Use either staticModels array OR modelDiscovery parameters, not both.' : ''
 
+// Validation: Fail deployment if neither static models nor dynamic discovery is configured
+var neitherConfiguredError = !hasModelDiscovery && !hasStaticModels
+var neitherConfiguredMessage = 'ERROR: Must configure either static models (staticModels array) OR dynamic discovery (listModelsEndpoint, getModelEndpoint, deploymentProvider). Cannot have neither.'
+
 // Force deployment failure if both are configured
 resource deploymentValidation 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (bothConfiguredError) {
   name: 'validation-error-${uniqueString(resourceGroup().id)}'
@@ -114,6 +118,18 @@ resource deploymentValidation 'Microsoft.Resources/deploymentScripts@2023-08-01'
   properties: {
     azPowerShellVersion: '8.0'
     scriptContent: 'throw "${validationMessage}"'
+    retentionInterval: 'PT1H'
+  }
+}
+
+// Force deployment failure if neither are configured
+resource configValidation 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (neitherConfiguredError) {
+  name: 'config-validation-error-${uniqueString(resourceGroup().id)}'
+  location: resourceGroup().location
+  kind: 'AzurePowerShell'
+  properties: {
+    azPowerShellVersion: '8.0'
+    scriptContent: 'throw "${neitherConfiguredMessage}"'
     retentionInterval: 'PT1H'
   }
 }
@@ -158,7 +174,7 @@ var metadata = union(
 // DEPLOYMENT
 // ========================================
 
-module apimConnection 'modules/apim-connection-common.bicep' = {
+module apimConnection 'modules/apim-connection-common.bicep' = if (!bothConfiguredError && !neitherConfiguredError) {
   name: 'unified-apim-connection'
   params: {
     projectResourceId: projectResourceId
@@ -177,19 +193,13 @@ module apimConnection 'modules/apim-connection-common.bicep' = {
 // ========================================
 
 @description('Name of the created connection')
-output connectionName string = apimConnection.outputs.connectionName
-
-@description('Resource ID of the created connection')
-output connectionId string = apimConnection.outputs.connectionId
-
-@description('Target URL for the connection')
-output targetUrl string = apimConnection.outputs.targetUrl
-
-@description('Authentication type used')
-output authType string = apimConnection.outputs.authType
+output connectionName string = finalConnectionName
 
 @description('Final metadata configuration')
-output metadata object = apimConnection.outputs.metadata
+output metadata object = metadata
+
+@description('Authentication type used')
+output authType string = authType
 
 // Outputs for verification
 output hasStaticModels bool = hasStaticModels
