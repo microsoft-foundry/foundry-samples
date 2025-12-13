@@ -30,8 +30,6 @@ class EchoAgent(BaseAgent):
     and implementing the required run() and run_stream() methods.
     """
 
-    echo_prefix: str = "Echo: "
-
     def __init__(
         self,
         *,
@@ -48,10 +46,10 @@ class EchoAgent(BaseAgent):
             echo_prefix: The prefix to add to echoed messages.
             **kwargs: Additional keyword arguments passed to BaseAgent.
         """
+        self.echo_prefix = echo_prefix
         super().__init__(
             name=name,
             description=description,
-            echo_prefix=echo_prefix,  # type: ignore
             **kwargs,
         )
 
