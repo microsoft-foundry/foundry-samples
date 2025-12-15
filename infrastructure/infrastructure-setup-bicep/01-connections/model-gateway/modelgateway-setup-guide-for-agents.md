@@ -310,14 +310,14 @@ A friendly name for your gateway (used in connection naming).
 
 **Examples**: `company-gateway`, `production-ai-gateway`, `custom-proxy`
 
-#### 🔧 4. API Versions
+#### 🔧 3. API Versions
 
 Note any API versions query param (api-version) your endpoints require:
 
 - **Inference API Version**: Version for chat completions (e.g., `v1`, `2024-02-01`)
 - **Deployment API Version**: Version for model discovery (if using dynamic discovery)
 
-#### 🔍 5. Model Discovery Configuration
+#### 🔍 4. Model Discovery Configuration
 
 Based on your choice in Step 3:
 
