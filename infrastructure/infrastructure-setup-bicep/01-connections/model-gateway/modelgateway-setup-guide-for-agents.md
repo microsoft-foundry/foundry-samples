@@ -336,7 +336,7 @@ Configure how Foundry Agents will authenticate with your gateway:
 - Provide your token endpoint URL when configuring the connection
 
 **API Key Authentication**:
-- By default, API keys are sent in the `X-API-Key` header
+- By default, API keys are sent in the `api-key` header
 - If you want to customize the header name or format, use custom `authConfig`
 - Example custom authConfig to send API key in a different header:
 
@@ -352,6 +352,86 @@ Configure how Foundry Agents will authenticate with your gateway:
   "name": "Authorization",
   "format": "Bearer {api_key}"
 }
+```
+
+---
+
+## 🚀 Sample curl Commands for Verifying your conenction setup based on the parameters
+
+### Generic Curl Template with API Versions
+
+**Chat Completions Path:**
+- **If deploymentInPath: true** → `{chatCompletionsPath} = /deployments/{modelName}/chat/completions`
+- **If deploymentInPath: false** → `{chatCompletionsPath} = /chat/completions`
+
+**Request Body:**
+- **If deploymentInPath: true** → Model name is in the URL path (no "model" field in body)
+- **If deploymentInPath: false** → Include `"model": "{modelName}"` in the request body
+
+#### For API Key Authentication (default api-key header)
+
+```bash
+curl -X POST "{targetUrl}{chatCompletionsPath}?api-version={inferenceAPIVersion}" \
+  -H "Content-Type: application/json" \
+  -H "api-key: {apiKey}" \
+  -H "{customHeaders.key1}: {customHeaders.value1}" \
+  -H "{customHeaders.key2}: {customHeaders.value2}" \
+  -d '{
+    "model": "{modelName}",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello, can you help me?"
+      }
+    ]
+  }'
+```
+
+#### For API Key Authentication (custom authConfig)
+
+```bash
+curl -X POST "{targetUrl}{chatCompletionsPath}?api-version={inferenceAPIVersion}" \
+  -H "Content-Type: application/json" \
+  -H "{authConfig.name}: {apiKey}" \
+  -H "{customHeaders.key1}: {customHeaders.value1}" \
+  -H "{customHeaders.key2}: {customHeaders.value2}" \
+  -d '{
+    "model": "{modelName}",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello, can you help me?"
+      }
+    ]
+  }'
+```
+
+#### For OAuth2.0 Authentication
+
+```bash
+curl -X POST "{targetUrl}{chatCompletionsPath}?api-version={inferenceAPIVersion}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {accessToken}" \
+  -H "{customHeaders.key1}: {customHeaders.value1}" \
+  -H "{customHeaders.key2}: {customHeaders.value2}" \
+  -d '{
+    "model": "{modelName}",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello, can you help me?"
+      }
+    ]
+  }'
+```
+
+**Note**: For OAuth2.0, first obtain an access token from your token endpoint:
+
+```bash
+# Get OAuth2 access token
+curl -X POST "{tokenEndpoint}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials&client_id={clientId}&client_secret={clientSecret}&scope={scope}"
 ```
 
 ---
