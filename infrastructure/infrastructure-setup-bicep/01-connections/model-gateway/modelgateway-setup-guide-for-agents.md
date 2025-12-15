@@ -140,8 +140,8 @@ You need to choose how Foundry Agents will discover available models through you
 - How to set model.format field
 1. Use `OpenAI` if you are using an OpenAI model (hosted anywhere OpenAI, AzureOpenAI, Foundry or any other host provider), 
 2. Use `OpenAI` for Gemini models if you are using openai chat completions supported gemini endpoint.
-2. Use `Anthropic` if you are using an Anthropic model.
-3. Use `NonOpenAI` for everything else. 
+3. Use `Anthropic` if you are using an Anthropic model's /message API, use `OpenAI` if you are using Anthropic's /chat/completions API.
+4. Use `NonOpenAI` for everything else. 
 
 #### Option 2: 🌐 Dynamic Model Discovery
 
