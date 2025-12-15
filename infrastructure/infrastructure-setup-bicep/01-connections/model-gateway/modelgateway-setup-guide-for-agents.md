@@ -83,6 +83,8 @@ Your gateway must support one of the following authentication methods:
 - **API Key Header**: `X-API-Key: YOUR_API_KEY` 
 - **Custom Header Name**: Any custom auth config you configure via connection auth_config
 
+By default, apikey will be sent in `api-key` header to your gateway, if you need some other header for apiKey, use custom auth config section in the connection object.
+
 #### Option 2: 🛡️ OAuth2 Client Credentials
 
 **Implementation**: Your gateway should support OAuth2 client credentials flow:
@@ -323,6 +325,34 @@ Based on your choice in Step 3:
 
 **For Static Models**: Prepare your model list
 **For Dynamic Discovery**: Note your discovery endpoint paths
+
+#### 🔍 5. Authentication
+
+Configure how Foundry Agents will authenticate with your gateway:
+
+**OAuth2.0 Client Credentials**:
+- Foundry will fetch tokens from your token URL using client credentials flow
+- Tokens are sent in the standard `Authorization: Bearer {token}` header
+- Provide your token endpoint URL when configuring the connection
+
+**API Key Authentication**:
+- By default, API keys are sent in the `X-API-Key` header
+- If you want to customize the header name or format, use custom `authConfig`
+- Example custom authConfig to send API key in a different header:
+
+```json
+{
+  "type": "api_key",
+  "name": "x-api-key",
+  "format": "{api_key}"
+}
+
+{
+  "type": "api_key",
+  "name": "Authorization",
+  "format": "Bearer {api_key}"
+}
+```
 
 ---
 
