@@ -6,11 +6,11 @@ from azure.ai.projects import AIProjectClient
 load_dotenv()
 
 project_client = AIProjectClient(
-    endpoint=os.environ["AZURE_AI_FOUNDRY_PROJECT_ENDPOINT"],
+    endpoint=os.environ["PROJECT_ENDPOINT"],
     credential=DefaultAzureCredential(),
 )
 
-agent_name = os.environ["AZURE_AI_FOUNDRY_AGENT_NAME"]
+agent_name = os.environ["AGENT_NAME"]
 openai_client = project_client.get_openai_client()
 
 # Optional Step: Create a conversation to use with the agent

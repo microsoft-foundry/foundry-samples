@@ -7,14 +7,14 @@ from azure.ai.projects.models import PromptAgentDefinition
 load_dotenv()
 
 project_client = AIProjectClient(
-    endpoint=os.environ["AZURE_AI_FOUNDRY_PROJECT_ENDPOINT"],
+    endpoint=os.environ["PROJECT_ENDPOINT"],
     credential=DefaultAzureCredential(),
 )
 
 agent = project_client.agents.create_version(
-    agent_name=os.environ["AZURE_AI_FOUNDRY_AGENT_NAME"],
+    agent_name=os.environ["AGENT_NAME"],
     definition=PromptAgentDefinition(
-        model=os.environ["AZURE_AI_FOUNDRY_MODEL_DEPLOYMENT_NAME"],
+        model=os.environ["MODEL_DEPLOYMENT_NAME"],
         instructions="You are a helpful assistant that answers general questions",
     ),
 )
