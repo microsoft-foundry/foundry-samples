@@ -20,7 +20,6 @@ async function main(): Promise<void> {
   });
   console.log(`Agent created (id: ${agent.id}, name: ${agent.name}, version: ${agent.version})`);
 
-  const openAIClient = await project.getOpenAIClient();
   // Create conversation with initial user message
   console.log("\nCreating conversation with initial user message...");
   const conversation = await openAIClient.conversations.create({
