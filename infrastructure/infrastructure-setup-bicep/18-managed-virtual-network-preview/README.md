@@ -1,55 +1,42 @@
 ---
-description: This set of templates demonstrates how to set up Azure AI Agent Service with virtual network isolation with private network links to connect the agent to your secure data.
+description: This set of templates demonstrates how to set up Azure AI Agent Service with managed virtual network isolation with private network links to connect the agent to your secure data.
 page_type: sample
 products:
 - azure
 - azure-resource-manager
-urlFragment: network-secured-agent
+urlFragment: managed-network-secured-agent
 languages:
 - bicep
 - json
 ---
 
-# Azure AI Agent Service: Standard Agent Setup with E2E Network Isolation
-
-> **IMPORTANT**
-> 
-> Class A subnet support is GA and available in the following regions. **Supported regions: Australia East, Brazil South, Canada East, East US, East US 2, France Central, Germany West Central, Italy North, Japan East, South Africa North, South Central US, South India, Spain Central, Sweden Central, UAE North, UK South, West Europe, West US, West US 3.**
->
-> Class B and C subnet support is already GA and available in all regions supported by Azure AI Foundry Agent Service. Deployment templates and setup steps are identical for Class A, B, and C subnets. For more on the supported regions of the Azure AI Foundry Agent service, see [Models supported by Azure AI Foundry Agent Service](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/concepts/model-region-support?tabs=global-standard)
-
-> **IMPORTANT**
-> 
-> To use your existing APIM resource with Azure AI Foundry in a network isolated environment to build Agents, please deploy this template. The feature is currently in preview with a code first experience and no Foundry UI support. 
-
+# Azure AI Agent Service: Standard Agent Setup with Managed Virtual Network
 
 ---
 ## Overview
 This infrastructure-as-code (IaC) solution deploys a network-secured Azure AI agent environment with private networking and role-based access control (RBAC).
 
-Standard setup supports private network isolation through utilizing **Bring Your Own Virtual Network (BYO VNet)** approach, also known as **custom VNet support with subnet delegation.** 
-
-This implementation gives you full control over the inbound and outbound communication paths for your agent. You can restrict access to only the resources explicitly required by your agent, such as storage accounts, databases, or APIs, while blocking all other traffic by default. This approach ensures that your agent operates within a tightly scoped network boundary, reducing the risk of data leakage or unauthorized access. By default, this setup simplifies security configuration while enforcing strong isolation guarantees, ensuring that each agent deployment remains secure, compliant, and aligned with enterprise networking policies. 
+Standard setup supports private network isolation through utilizing **Managed Virtual Network** approach. Managed Virtual Network support is a public preview feature and requires a feature flag to allowlst your subscription. Preview feature is titled "AI.ManagedVnetPreview" in the Azure Portal
 
 ---
 
-## Key Information
+## Deploy to Azure
 
-**Region and Resource Placement Requirements**
-- **All Foundry workspace resources should be in the same region as the VNet**, including CosmosDB, Storage Account, AI Search, Foundry Account, Project, Managed Identity. The only exception is within the Foundry Account, you may choose to deploy your model to a different region, and any cross-region communication will be handled securely within our network infrastructure.
-  - **Note:** Your Virtual Network can be in a different resource group than your Foundry workspace resources
-
-
-[![Deploy To Azure](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/deploytoazure.svg?sanitize=true)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fazure-ai-foundry%2Ffoundry-samples%2Frefs%2Fheads%2Fmain%2Finfrastructure%2Finfrastructure-setup-bicep%2F16-private-network-standard-agent-apim-setup-preview%2Fazuredeploy.json)
+[![Deploy To Azure](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/deploytoazure.svg?sanitize=true)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fazure-ai-foundry%2Ffoundry-samples%2Frefs%2Fheads%2Fmain%2Finfrastructure%2Finfrastructure-setup-bicep%2F18-managed-virtual-network-preview%2Fazuredeploy.json)
 
 ---
 
 ## Prerequisites
 
+1. **Register your subscription with the Preview Features in Azure Portal for Managed VNET**
+  - The feature is titled "AI.ManagedVnetPreview" in the Azure Portal under "Preview Features". Register your subscription for the preview. It will take a few hours to approve your subscription. 
+
 1. **Active Azure subscription with appropriate permissions**
-   - **Azure AI Account Owner**: Needed to create a cognitive services account and project 
+   - **Azure AI Account Owner**: Needed to create a Foundry account and project 
    - **Owner or Role Based Access Administrator**: Needed to assign RBAC to the required resources (Cosmos DB, Azure AI Search, Storage) 
    - **Azure AI User**: Needed to create and edit agents
+
+1. Azure CLI installed and configured on your local workstation or deployment pipeline server. Azure CLI support is required to run the 'az rest' commands to update your managed virtual network. 
 
 1. **Register Resource Providers**
 
@@ -69,50 +56,22 @@ This implementation gives you full control over the inbound and outbound communi
 
 1. Sufficient quota for all resources in your target Azure region
     * If no parameters are passed in, this template creates an Azure AI Foundry resource, Foundry project, Azure Cosmos DB for NoSQL, Azure AI Search, and Azure Storage account
-1. Azure CLI installed and configured on your local workstation or deployment pipeline server
 
 ---
 
 ## Pre-Deployment Steps
 
-### Networking Requirements
-1. Review network requirements and plan Virtual Network address space (e.g., 192.168.0.0/16 or an alternative non-overlapping address space)
-
-2. Two subnets are needed as well:  
-    - **Agent Subnet** (e.g., 192.168.0.0/24): Hosts Agent client for Agent workloads, delegated to Microsoft.App/environments. The recommended size should be /24 for this delegated subnet. 
-    - **Private endpoint Subnet** (e.g. 192.168.1.0/24): Hosts private endpoints 
-    - Ensure that the address spaces for these subnets do not overlap with any existing networks in your Azure environment or reserved IP ranges like the following: 169.254.0.0/16, 172.30.0.0/16, 172.31.0.0/16, 192.0.2.0/24, 0.0.0.0/8, 127.0.0.0/8, 100.100.0.0/17, 100.100.192.0/19, 100.100.224.0/19, 10.0.0.0/8.
-  
-  > **Notes:** 
-  - If you do not provide an existing virtual network, the template will create a new virtual network with the default address spaces and subnets described above. If you use an existing virtual network, make sure it already contains two subnets (Agent and Private Endpoint) before deploying the template.
-  - You must ensure the Foundry account was successfully created so that underlying caphost has also succeeded. Then proceed to deploying the project caphost bicep. 
-  - You must ensure the subnet is not already in use by another account. It must be an exclusive subnet for the Foundry account.
-  - You must ensure the subnet is exclusively delegated to __Microsoft.App/environments__ and cannot be used by any other Azure resources.
-  
-
-### Account Deletion Prerequisites and Cleanup Guidance
-
-Before deleting an **Account** resource, it is essential to first delete the associated **Account Capability Host**.  
-Failure to do so may result in residual dependencies—such as subnets and other provisioned resources (e.g., ACA applications)—remaining linked to the capability host.  
-This can lead to errors such as **"Subnet already in use"** when attempting to reuse the same subnet in a different account deployment.
-
-**Cleanup Options**
-
-**1. Full Account Removal**:
-You may delete and purge the account.  
-The service will automatically handle the deletion of the associated capability host and any linked resources in the background.
-
-**2. Retain Account, Remove Capability Host**:
-If you intend to retain the account but remove the capability host, you can use the script `deleteCaphost.sh` located in this folder.
-
-> **Important**: Before deleting the account capability host, ensure that the **project capability host** is deleted.
-
-
+### Limitations 
+1. Do not support Evaluations in Foundry currently, and only secure Agents service. 
+2. The private endpoints created for your CosmosDB account and Search resource must be done manually using the files in the "update-outbound-rules-cli" folder. Please run the commands as the "outbound-rule-cli.md" files outline for the additional resources you require private endpoints to in your managed vnet set-up. Keep in mind these are only the commands to create the Private endpoints. You will also need connections to those resources - these are covered in the template for CosmosDB, Search, and Storage but additional new resources will need both a connection created and a private endpoint created.
+3. The managed VNET is supported for Agents v1 created and ingested through the Foundry classic experience. Agent v2 support is coming soon in GA. 
+4. We do not support private VNET support for Agent tools such as MCP yet. The tools must be public traffic facing for now. The support is coming soon in GA. 
+5. For any feedback, please directly email meerakurup@microsoft.com 
 
 ### Template Customization
 
 Note: If not provided, the following resources will be created automatically for you:
-- VNet and two subnets
+- VNet and one subnet
 - Azure Cosmos DB for NoSQL  
 - Azure AI Search
 - Azure Storage
@@ -123,10 +82,8 @@ Note: If not provided, the following resources will be created automatically for
 
 1. **Use Existing Virtual Network and Subnets**
 
-To use an existing VNet and subnets, set the existingVnetResourceId parameter to the full Azure Resource ID of the target VNet and its address range, and provide the names of the two required subnets.  If the existing VNet is associated with private DNS zones, set the existingDnsZones parameter to the resource group name in which the zones are located. For example:
+To use an existing VNet and subnet, set the existingVnetResourceId parameter to the full Azure Resource ID of the target VNet and its address range, and provide the names of the required subnet.  If the existing VNet is associated with private DNS zones, set the existingDnsZones parameter to the resource group name in which the zones are located. For example:
 - param existingVnetResourceId = "/subscriptions/<subscription-id>/resourceGroups/<resource-group-name>/providers/Microsoft.Network/virtualNetworks/<vnet-name>"
-- param agentSubnetName string = 'agent-subnet' //optional, default is 'agent-subnet'
-- param agentSubnetPrefix string = '192.168.0.0/24' //optional, default is '192.168.0.0/24'
 - param peSubnetName string = 'pe-subnet' //optional, default is 'pe-subnet'
 - param peSubnetPrefix string = '192.168.1.0/24' //optional, default is '192.168.1.0/24'
 - param existingDnsZones = {
@@ -154,11 +111,6 @@ To use an existing Azure AI Search resource, set aiSearchServiceResourceId param
 
 To use an existing Azure Storage account, set aiStorageAccountResourceId parameter to the full Azure resource Id of the target Azure Storage account resource. 
 - param aiStorageAccountResourceId string = /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Storage/storageAccounts/{storageAccountName}
-
-5. **Use an existing Azure API Management service**
-
-To use an existing Azure API Management service, set apiManagementResourceId parameter to the full Azure resource Id of the target Azure API Management service.
-- param apiManagementResourceId string = /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiManagement/service/{apiManagementServiceName}
 
 ---
 
@@ -270,7 +222,6 @@ Cosmos DB Account
   - Single region deployment 
 
 ### Network Security Design
-This implementation utilizes a BYO VNet (Bring Your Own Virtual Network) approach, also known as custom VNet support with subnet delegation. Within your existing virtual network, one delegated subnet will be created.
 
 Network Security
 - Public network access disabled
@@ -279,7 +230,6 @@ Network Security
 
 **Network Infrastructure**
 - A Virtual Network (192.168.0.0/16) is created (if existing isn't passed in)
-- Agent Subnet (192.168.0.0/24): Hosts Agent client
 - Private endpoint Subnet (192.168.1.0/24): Hosts private endpoints
 
 **Private Endpoints** 
@@ -288,7 +238,6 @@ Private endpoints ensure secure, internal-only connectivity. Private endpoints a
 - Azure AI Search
 - Azure Storage
 - Azure Cosmos DB
-- Azure API Management (if provided)
 
 **Private DNS Zones**
 | Private Link Resource Type | Sub Resource | Private DNS Zone Name | Public DNS Zone Forwarders |
@@ -297,7 +246,7 @@ Private endpoints ensure secure, internal-only connectivity. Private endpoints a
 | **Azure AI Search**        | searchService| `privatelink.search.windows.net` | `search.windows.net` |
 | **Azure Cosmos DB**        | Sql          | `privatelink.documents.azure.com` | `documents.azure.com` |
 | **Azure Storage**          | blob         | `privatelink.blob.core.windows.net` | `blob.core.windows.net` |
-| **Azure API Management** (Optional) | Gateway     | `privatelink.azure-api.net` | `azure-api.net` |
+
 
 ### Authentication & Authorization
 
@@ -322,13 +271,9 @@ Private endpoints ensure secure, internal-only connectivity. Private endpoints a
         - Storage Blob Data Owner
   - **Cosmos DB for NoSQL**
     - Cosmos DB Operator (`230815da-be43-4aae-9cb4-875f7bd000aa`)
-    - Cosmos DB Built-in Data Contributor
-    - Three containers will automatically be provisioned during the create capability host process:
-      - Cosmos DB for NoSQL container: `<${projectWorkspaceId}>-thread-message-store`
-      - Cosmos DB for NoSQL container: `<${projectWorkspaceId}>-system-thread-message-store`
-      - Cosmos DB for NoSQL container: `<${projectWorkspaceId}>-agent-entity-store`
-
-
+    - Cosmos DB Built-in Data Contributor(`00000000-0000-0000-0000-000000000002`)
+  - **Azure AI Foundry Resource**
+    - Contributor (`b24988ac-6180-42a0-ab88-20f7382dd24c`) Required role for the Foundry account to accept all private endpoints created in the managed VNET. This role will be updated to the Azure AI Enterprise Network Connection Approver role which has a smaller scope. 
 ---
 
 ## Module Structure
@@ -339,21 +284,20 @@ modules-network-secured/
 ├── ai-account-identity.bicep                       # Azure AI Foundry deployment and configuration
 ├── ai-project-identity.bicep                       # Foundry project deployment and connection configuration           
 ├── ai-search-role-assignments.bicep                # AI Search RBAC configuration
-├── azure-storage-account-role-assignments.bicep    # Storage Account RBAC configuration  
+├── azure-storage-account-role-assignment.bicep     # Storage Account RBAC configuration  
 ├── blob-storage-container-role-assignments.bicep   # Blob Storage Container RBAC configuration
 ├── cosmos-container-role-assignments.bicep         # CosmosDB container Account RBAC configuration
 ├── cosmosdb-account-role-assignment.bicep          # CosmosDB Account RBAC configuration
 ├── existing-vnet.bicep                             # Bring your existing virtual network to template deployment
 ├── format-project-workspace-id.bicep               # Formatting the project workspace ID
+├── managed-network.bicep                           # Managed virtual network and outbound rules configuration
 ├── network-agent-vnet.bicep                        # Logic for routing virtual network set-up if existing virtual network is selected
-├── private-endpoint-and-dns.bicep                  # Creating virtual networks and DNS zones. 
+├── private-endpoint-and-dns.bicep                  # Creating private endpoints and DNS zones for dependent resources
 ├── standard-dependent-resources.bicep              # Deploying CosmosDB, Storage, and Search
 ├── subnet.bicep                                    # Setting the subnet for Agent network injection
 ├── validate-existing-resources.bicep               # Validate existing CosmosDB, Storage, and Search to template deployment
 └── vnet.bicep                                      # Deploying a new virtual network
 ```
-
-> **Note:** If you bring your own VNET for this template, ensure the subnet for Agents has the correct subnet delegation to `Microsoft.App/environments`. If you have not specified the delegated subnet, the template will complete this for you.
 
 ## Maintenance
 
@@ -380,3 +324,4 @@ modules-network-secured/
 - [Private Endpoint Documentation](https://learn.microsoft.com/en-us/azure/private-link/)
 - [RBAC Documentation](https://learn.microsoft.com/en-us/azure/role-based-access-control/)
 - [Network Security Best Practices](https://learn.microsoft.com/en-us/azure/security/fundamentals/network-best-practices)
+- Managed virtual network (public documentation coming soon)

@@ -83,6 +83,8 @@ Your gateway must support one of the following authentication methods:
 - **API Key Header**: `X-API-Key: YOUR_API_KEY` 
 - **Custom Header Name**: Any custom auth config you configure via connection auth_config
 
+By default, apikey will be sent in `api-key` header to your gateway, if you need some other header for apiKey, use custom auth config section in the connection object.
+
 #### Option 2: 🛡️ OAuth2 Client Credentials
 
 **Implementation**: Your gateway should support OAuth2 client credentials flow:
@@ -135,6 +137,11 @@ You need to choose how Foundry Agents will discover available models through you
   ]
 }
 ```
+- How to set model.format field
+1. Use `OpenAI` if you are using an OpenAI model (hosted anywhere OpenAI, AzureOpenAI, Foundry or any other host provider), 
+2. Use `OpenAI` for Gemini models if you are using openai chat completions supported gemini endpoint.
+3. Use `Anthropic` if you are using an Anthropic model's /message API, use `OpenAI` if you are using Anthropic's /chat/completions API.
+4. Use `NonOpenAI` for everything else. 
 
 #### Option 2: 🌐 Dynamic Model Discovery
 
@@ -189,13 +196,13 @@ If you choose dynamic discovery, make these endpoints available on your gateway:
 {
   "data": [
     {
-      "id": "gpt-4o",
+      "id": "gpt-4o", // always ensure this is a valid openai model name (like gpt-4o, gpt-5 etc)
       "object": "model",
       "created": 1687882411,
       "owned_by": "openai"
     },
     {
-      "id": "gpt-5",
+      "id": "gpt-5", 
       "object": "model",
       "created": 1677610602,
       "owned_by": "openai"
@@ -225,7 +232,7 @@ If you choose dynamic discovery, make these endpoints available on your gateway:
 **OpenAI Format Response**:
 ```json
 {
-  "id": "gpt-4o",
+  "id": "gpt-4o", // always ensure this is a valid openai model name (like gpt-4o, gpt-5 etc)
   "object": "model",
   "created": 1687882411,
   "owned_by": "openai"
@@ -282,14 +289,22 @@ These headers will be included in all requests from Foundry to your gateway.
 
 Once your gateway is configured, collect these details for creating your Foundry connection:
 
-#### 🎯 1. Target URL
+#### 🎯 1. Target URL & Deployment in Path
 
-The base URL of your gateway where Foundry should send requests.
+The base URL of your gateway where Foundry should send requests. The target URL is derived by removing the chat completions path from your full endpoint URL. The `deploymentInPath` setting determines how your gateway handles deployment/model specification.
 
-**Examples**:
-- `https://my-gateway.company.com`
-- `https://api-gateway.example.org/v1`
-- `https://my-custom-ai-proxy.net/models`
+**How deploymentInPath Works:**
+- **✅ Set to "true"**: If model/deployment name is in the URL path (e.g., `/deployments/{deployment-name}/chat/completions`)
+- **❌ Set to "false"**: If model is passed in the request body parameter (e.g., `/chat/completions` with `"model": "gpt-4"`)
+
+**Mapping Chat Completions URL to Target URL**:
+
+| Chat Completions Full URL | Target URL | deploymentInPath | Notes |
+|---------------------------|------------|------------------|-------|
+| `https://my-gateway.company.com/chat/completions` | `https://my-gateway.company.com` | `false` | Simple gateway, model passed in request body |
+| `https://api-gateway.example.org/api/v1/custom/chat/completions` | `https://api-gateway.example.org/api/v1/custom` | `false` | Complex API path, model in request body |
+| `https://gateway.corp.com/deployments/gpt-4/chat/completions` | `https://gateway.corp.com` | `true` | Deployment in URL path |
+| `https://proxy.ai.com/v2/custom/deployments/gpt-4o/chat/completions` | `https://proxy.ai.com/v2/custom` | `true` | Versioned gateway with /deployments pattern |
 
 #### 🔧 2. Gateway Name
 
@@ -297,26 +312,127 @@ A friendly name for your gateway (used in connection naming).
 
 **Examples**: `company-gateway`, `production-ai-gateway`, `custom-proxy`
 
-#### 🛤️ 3. Deployment in Path
-
-Determine how your chat completions endpoint handles deployment specification:
-
-- **✅ Set to "true"**: If model is in the URL path (e.g., `/deployments/my-gpt-4o-deployment/chat/completions`)
-- **❌ Set to "false"**: If model is passed as a parameter (e.g., `/chat/completions` with model in request body)
-
-#### 🔧 4. API Versions
+#### 🔧 3. API Versions
 
 Note any API versions query param (api-version) your endpoints require:
 
 - **Inference API Version**: Version for chat completions (e.g., `v1`, `2024-02-01`)
 - **Deployment API Version**: Version for model discovery (if using dynamic discovery)
 
-#### 🔍 5. Model Discovery Configuration
+#### 🔍 4. Model Discovery Configuration
 
 Based on your choice in Step 3:
 
 **For Static Models**: Prepare your model list
 **For Dynamic Discovery**: Note your discovery endpoint paths
+
+#### 🔍 5. Authentication
+
+Configure how Foundry Agents will authenticate with your gateway:
+
+**OAuth2.0 Client Credentials**:
+- Foundry will fetch tokens from your token URL using client credentials flow
+- Tokens are sent in the standard `Authorization: Bearer {token}` header
+- Provide your token endpoint URL when configuring the connection
+
+**API Key Authentication**:
+- By default, API keys are sent in the `api-key` header
+- If you want to customize the header name or format, use custom `authConfig`
+- Example custom authConfig to send API key in a different header:
+
+```json
+{
+  "type": "api_key",
+  "name": "x-api-key",
+  "format": "{api_key}"
+}
+
+{
+  "type": "api_key",
+  "name": "Authorization",
+  "format": "Bearer {api_key}"
+}
+```
+
+---
+
+## 🚀 Sample curl Commands for Verifying your conenction setup based on the parameters
+
+### Generic Curl Template with API Versions
+
+**Chat Completions Path:**
+- **If deploymentInPath: true** → `{chatCompletionsPath} = /deployments/{modelName}/chat/completions`
+- **If deploymentInPath: false** → `{chatCompletionsPath} = /chat/completions`
+
+**Request Body:**
+- **If deploymentInPath: true** → Model name is in the URL path (no "model" field in body)
+- **If deploymentInPath: false** → Include `"model": "{modelName}"` in the request body
+
+#### For API Key Authentication (default api-key header)
+
+```bash
+curl -X POST "{targetUrl}{chatCompletionsPath}?api-version={inferenceAPIVersion}" \
+  -H "Content-Type: application/json" \
+  -H "api-key: {apiKey}" \
+  -H "{customHeaders.key1}: {customHeaders.value1}" \
+  -H "{customHeaders.key2}: {customHeaders.value2}" \
+  -d '{
+    "model": "{modelName}",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello, can you help me?"
+      }
+    ]
+  }'
+```
+
+#### For API Key Authentication (custom authConfig)
+
+```bash
+curl -X POST "{targetUrl}{chatCompletionsPath}?api-version={inferenceAPIVersion}" \
+  -H "Content-Type: application/json" \
+  -H "{authConfig.name}: {apiKey}" \
+  -H "{customHeaders.key1}: {customHeaders.value1}" \
+  -H "{customHeaders.key2}: {customHeaders.value2}" \
+  -d '{
+    "model": "{modelName}",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello, can you help me?"
+      }
+    ]
+  }'
+```
+
+#### For OAuth2.0 Authentication
+
+```bash
+curl -X POST "{targetUrl}{chatCompletionsPath}?api-version={inferenceAPIVersion}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {accessToken}" \
+  -H "{customHeaders.key1}: {customHeaders.value1}" \
+  -H "{customHeaders.key2}: {customHeaders.value2}" \
+  -d '{
+    "model": "{modelName}",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello, can you help me?"
+      }
+    ]
+  }'
+```
+
+**Note**: For OAuth2.0, first obtain an access token from your token endpoint:
+
+```bash
+# Get OAuth2 access token
+curl -X POST "{tokenEndpoint}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials&client_id={clientId}&client_secret={clientSecret}&scope={scope}"
+```
 
 ---
 

@@ -1,15 +1,12 @@
 // This sample combines each step of creating and running agents and conversations into a single example.
 // In practice, you would typically separate these steps into different applications.
 //
-#:package Azure.AI.Agents@2.*-*
-#:package Azure.Identity@1.*
-#:property PublishAot=false
-#:property NoWarn=OPENAI001
-
 using Azure.AI.Agents;
 using Azure.Identity;
 using OpenAI;
 using OpenAI.Responses;
+
+#pragma warning disable OPENAI001
 
 string RAW_PROJECT_ENDPOINT = Environment.GetEnvironmentVariable("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT")
     ?? throw new InvalidOperationException("Missing environment variable 'AZURE_AI_FOUNDRY_PROJECT_ENDPOINT'");

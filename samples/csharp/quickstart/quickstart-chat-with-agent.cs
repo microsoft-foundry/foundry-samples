@@ -1,15 +1,10 @@
-#:package Azure.AI.Projects@2.0.0-alpha.20251104.9
-#:package Azure.AI.Agents@2.*-*
-#:package Azure.Identity@1.*
-#:package OpenAI@2.6.*
-#:property PublishAot=false
-#:property NoWarn=OPENAI001
-
 using Azure.AI.Projects;
 using Azure.AI.Agents;
 using Azure.Identity;
 using OpenAI;
 using OpenAI.Responses;
+
+#pragma warning disable OPENAI001
 
 string AZURE_AI_FOUNDRY_PROJECT_ENDPOINT = Environment.GetEnvironmentVariable("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT")
     ?? throw new InvalidOperationException("Missing environment variable 'AZURE_AI_FOUNDRY_PROJECT_ENDPOINT'");

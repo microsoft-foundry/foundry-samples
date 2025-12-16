@@ -1,0 +1,75 @@
+/*****
+This is the sample to create a Cognitive Services account with a managed network using Azure Resource Manager (ARM) templates. 
+There is no e2e secured set-up with this template. Please deploy the main.bicep for the full e2e managed network secured set-up. 
+
+CLI command to run the sample:
+
+az deployment group create 
+--resource-group rg-name
+--template-file "file_path" 
+--parameters accounts_foundry_mvnet="my-mvnet"
+
+********/
+
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "accounts_foundry_mvnet": {
+            "defaultValue": "my-mvnet",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.CognitiveServices/accounts",
+            "apiVersion": "2025-10-01-preview",
+            "name": "[parameters('accounts_foundry_mvnet')]",
+            "location": "uaenorth",
+            "sku": {
+                "name": "S0"
+            },
+            "kind": "AIServices",
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "apiProperties": {},
+                "customSubDomainName": "[parameters('accounts_foundry_mvnet')]",
+                "networkAcls": {
+                    "defaultAction": "Allow",
+                    "virtualNetworkRules": [],
+                    "ipRules": []
+                },
+                "allowProjectManagement": true,
+                "defaultProject": "firstProject",
+                "associatedProjects": [
+                    "firstProject"
+                ],
+                "networkInjections": [
+                    {
+                        "scenario": "agent",
+                        "subnetArmId": "",
+                        "useMicrosoftManagedNetwork": true
+                    }
+                ],
+                "publicNetworkAccess": "Enabled"
+            }
+        },
+        {
+            "type": "Microsoft.CognitiveServices/accounts/managednetworks",
+            "apiVersion": "2025-10-01-preview",
+            "name": "[concat(parameters('accounts_foundry_mvnet'),'/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('accounts_foundry_mvnet'))]"
+            ],
+            "properties": {
+                "managedNetwork": {
+                    "IsolationMode": "AllowOnlyApprovedOutbound",
+                    "managedNetworkKind": "V2"
+                }
+            }
+        }
+    ]
+}

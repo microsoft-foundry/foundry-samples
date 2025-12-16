@@ -1,0 +1,13 @@
+{
+  "id": "/subscriptions/{sub-id}/resourceGroups/{rg-name}/providers/Microsoft.CognitiveServices/accounts/{foundry-account-name}/managednetworks/default/outboundRules/test-rule-str",
+  "name": "test-rule-str",
+  "type": "Microsoft.CognitiveServices/accounts/managednetworks/outboundRules",
+  "properties": {
+    "type": "PrivateEndpoint",
+    "destination": {
+      "serviceResourceId": "/subscriptions/{sub-id}/resourceGroups/{rg-name}/providers/Microsoft.Storage/storageAccounts/{storage-account}",
+      "subresourceTarget": "blob"
+    },
+    "category": "UserDefined"
+  }
+}

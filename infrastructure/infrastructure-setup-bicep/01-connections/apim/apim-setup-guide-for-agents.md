@@ -63,6 +63,39 @@ Once chat completions are working, you need to configure how Foundry Agents will
 
 **📝 Implementation**: Configure the static model list directly in the connection metadata when creating the Foundry connection. No additional APIM setup needed for this approach.
 
+**Example Static Model Configuration**:
+```json
+{
+  "staticModels": [
+    {
+      "name": "my-gpt-4o-deployment-name",
+      "properties": {
+        "model": {
+          "name": "gpt-4o",
+          "version": "2024-11-20",
+          "format": "OpenAI"
+        }
+      }
+    },
+    {
+      "name": "my-gpt-5-deployment-name",
+      "properties": {
+        "model": {
+          "name": "gpt-5", 
+          "version": "",
+          "format": "OpenAI"
+        }
+      }
+    }
+  ]
+}
+```
+- How to set model.format field
+1. Use `OpenAI` if you are using an OpenAI model (hosted anywhere OpenAI, AzureOpenAI, Foundry or any other host provider), 
+2. Use `OpenAI` for Gemini models if you are using openai chat completions supported gemini endpoint.
+3. Use `Anthropic` if you are using an Anthropic model's /message API, use `OpenAI` if you are using Anthropic's /chat/completions API.
+4. Use `NonOpenAI` for everything else. 
+
 #### Option 2: 🌐 Dynamic Model Discovery via APIM
 
 **📋 When to Use:**
@@ -212,7 +245,7 @@ Once your APIM operations are configured, you need to collect the following deta
 4. **✂️ Extract Base URL**: Take everything **before** `/chat/completions` or `/deployments/{deploymentId}/chat/completions`
 
 **Examples:**
-- If endpoint is: `https://my-apim.azure-api.net/foundrymodels/chat/completions`
+- If endpoint is: `https://my-apim.azure-api.net/foundry/models/chat/completions` or `https://my-apim.azure-api.net/foundry/models/deployments/gpt-4o/chat/completions`
 - Target URL would be: `https://my-apim.azure-api.net/foundry/models`
 
 #### 🔧 2. Inference API Version

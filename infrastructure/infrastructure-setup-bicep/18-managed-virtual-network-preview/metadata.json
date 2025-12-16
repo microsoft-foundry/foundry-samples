@@ -1,0 +1,12 @@
+{
+  "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
+  "type": "QuickStart",
+  "itemDisplayName": "Managed Network Secured Standard Agent Setup",
+  "description": "This set of templates demonstrates how to set up Azure AI Agent Service with the managed network secured standard setup environment.",
+  "summary": "This set of templates demonstrates how to use Azure AI Agent Service with a managed virtual network.",
+  "githubUsername": "meerakurup",
+  "dateUpdated": "2025-06-24",
+  "environments": [
+    "AzureCloud"
+  ]
+}
