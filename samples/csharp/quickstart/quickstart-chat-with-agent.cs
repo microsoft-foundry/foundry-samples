@@ -1,36 +1,30 @@
 using Azure.AI.Projects;
 using Azure.AI.Projects.OpenAI;
 using Azure.Identity;
+using OpenAI.Responses;
 
 #pragma warning disable OPENAI001
 
-string PROJECT_ENDPOINT = Environment.GetEnvironmentVariable("PROJECT_ENDPOINT")
+string projectEndpoint = Environment.GetEnvironmentVariable("PROJECT_ENDPOINT")
     ?? throw new InvalidOperationException("Missing environment variable 'PROJECT_ENDPOINT'");
-string MODEL_DEPLOYMENT_NAME = Environment.GetEnvironmentVariable("MODEL_DEPLOYMENT_NAME")
+string modelDeploymentName = Environment.GetEnvironmentVariable("MODEL_DEPLOYMENT_NAME")
     ?? throw new InvalidOperationException("Missing environment variable 'MODEL_DEPLOYMENT_NAME'");
-string AGENT_NAME = Environment.GetEnvironmentVariable("AGENT_NAME")
+string agentName = Environment.GetEnvironmentVariable("AGENT_NAME")
     ?? throw new InvalidOperationException("Missing environment variable 'AGENT_NAME'");
 
-AIProjectClient projectClient = new(new Uri(PROJECT_ENDPOINT), new AzureCliCredential());
-AgentClient agentClient = projectClient.GetAgentClient();
-OpenAIClient openAIClient = agentClient.GetOpenAIClient();
-OpenAIResponseClient responseClient = openAIClient.GetOpenAIResponseClient(MODEL_DEPLOYMENT_NAME);
+AIProjectClient projectClient = new(new Uri(projectEndpoint), new AzureCliCredential());
+
 // Optional Step: Create a conversation to use with the agent
-ConversationClient conversations = agentClient.GetConversationClient();
-AgentConversation conversation = conversations.CreateConversation();
+ProjectConversation conversation = projectClient.OpenAI.Conversations.CreateProjectConversation();
 
-ResponseCreationOptions responseCreationOptions = new();
-responseCreationOptions.SetAgentReference(new AgentReference(AGENT_NAME));
-responseCreationOptions.SetConversationReference(conversation.Id);
+ProjectResponsesClient responsesClient = projectClient.OpenAI.GetProjectResponsesClientForAgent(
+    defaultAgent: agentName,
+    defaultConversationId: conversation.Id);
+
 // Chat with the agent to answer questions
-OpenAIResponse response = responseClient.CreateResponse(
-    [ResponseItem.CreateUserMessageItem("What is the size of France in square miles?")],
-    responseCreationOptions);
-
+ResponseResult response = responsesClient.CreateResponse("What is the size of France in square miles?");
 Console.WriteLine(response.GetOutputText());
-// Optional Step: Ask a follow-up question in the same conversation
-response = responseClient.CreateResponse(
-    [ResponseItem.CreateUserMessageItem("And what is the capital city?")],
-    responseCreationOptions);
 
+// Optional Step: Ask a follow-up question in the same conversation
+response = responsesClient.CreateResponse("And what is the capital city?");
 Console.WriteLine(response.GetOutputText());
