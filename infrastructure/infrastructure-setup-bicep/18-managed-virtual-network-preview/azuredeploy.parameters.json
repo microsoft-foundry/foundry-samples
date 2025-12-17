@@ -1,54 +1,33 @@
 {
-  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
     "location": {
       "value": "eastus2"
     },
+    "isolationMode": {
+      "value": "AllowOnlyApprovedOutbound"
+    },
     "aiServices": {
-      "value": ""
-    },
-    "modelName": {
-      "value": ""
-    },
-    "modelFormat": {
-      "value": ""
-    },
-    "modelVersion": {
-      "value": ""
-    },
-    "modelSkuName": {
-      "value": ""
-    },
-    "modelCapacity": {
-      "value": 0
-    },
-    "deploymentTimestamp": {
-      "value": ""
+      "value": "aiservices"
     },
     "firstProjectName": {
-      "value": ""
+      "value": "project"
     },
     "projectDescription": {
-      "value": ""
+      "value": "A project for the AI Foundry account with managed network secured deployed Agent"
     },
     "displayName": {
-      "value": ""
-    },
-    "vnetName": {
-      "value": ""
+      "value": "project"
     },
     "peSubnetName": {
-      "value": ""
+      "value": "pe-subnet"
     },
     "existingVnetResourceId": {
       "value": ""
     },
-    "vnetAddressPrefix": {
-      "value": ""
-    },
-    "peSubnetPrefix": {
-      "value": ""
+    "vnetName": {
+      "value": "my-vnet"
     },
     "aiSearchResourceId": {
       "value": ""
@@ -57,9 +36,6 @@
       "value": ""
     },
     "azureCosmosDBAccountResourceId": {
-      "value": ""
-    },
-    "projectCapHost": {
       "value": ""
     },
     "apiManagementResourceId": {
@@ -75,6 +51,23 @@
         "privatelink.documents.azure.com": "",
         "privatelink.azure-api.net": ""
       }
+    },
+    "dnsZoneNames": {
+      "value": [
+        "privatelink.services.ai.azure.com",
+        "privatelink.openai.azure.com",
+        "privatelink.cognitiveservices.azure.com",
+        "privatelink.search.windows.net",
+        "privatelink.blob.core.windows.net",
+        "privatelink.documents.azure.com",
+        "privatelink.azure-api.net"
+      ]
+    },
+    "vnetAddressPrefix": {
+      "value": ""
+    },
+    "peSubnetPrefix": {
+      "value": ""
     }
   }
 }

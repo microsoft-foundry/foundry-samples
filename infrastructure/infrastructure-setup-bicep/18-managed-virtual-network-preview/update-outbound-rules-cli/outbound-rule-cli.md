@@ -57,3 +57,47 @@ az rest --method PUT --url 'https://management.azure.com/subscriptions/{sub-id}/
     "category": "UserDefined"
   }
 }'
+
+# Batch Outbound Rules CLI
+
+This folder contains the JSON payload for creating batch outbound rules via Azure REST API. This allows youto create all the outbound PE rules in one go instead of the individual PE rules one at a time. 
+
+## Usage
+
+Replace the placeholders in `batch-outbound-rules.json` with your actual values:
+- `{subscriptionId}` - Your Azure subscription ID
+- `{resourceGroupName}` - Your resource group name
+- `{accountName}` - Your AI Services account name
+- `{storageSubscriptionId}` - Storage account subscription ID
+- `{storageResourceGroupName}` - Storage account resource group
+- `{storageName}` - Storage account name
+- `{aiSearchSubscriptionId}` - AI Search subscription ID
+- `{aiSearchResourceGroupName}` - AI Search resource group
+- `{aiSearchName}` - AI Search service name
+- `{cosmosDBSubscriptionId}` - Cosmos DB subscription ID
+- `{cosmosDBResourceGroupName}` - Cosmos DB resource group
+- `{cosmosDBName}` - Cosmos DB account name
+
+## REST API Call
+
+```bash
+az rest --method POST \
+  --uri "https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CognitiveServices/accounts/{accountName}/managedNetworks/default/batchOutboundRules?api-version=2025-10-01-preview" \
+  --body @batch-outbound-rules.json
+```
+
+## PowerShell Example
+
+```powershell
+$body = Get-Content -Path "batch-outbound-rules.json" -Raw
+$uri = "https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CognitiveServices/accounts/{accountName}/managedNetworks/default/batchOutboundRules?api-version=2025-10-01-preview"
+
+az rest --method POST --uri $uri --body $body
+```
+
+## Notes
+
+- This is a POST action, not supported directly in Bicep
+- Run this after the main Bicep deployment completes
+- The managed network must already exist before running this command
+

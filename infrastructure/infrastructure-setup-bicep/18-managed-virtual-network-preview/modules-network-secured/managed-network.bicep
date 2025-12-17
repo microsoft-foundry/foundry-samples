@@ -1,6 +1,13 @@
 @description('The name of the AI Services account')
 param accountName string
 
+@description('The isolation mode for the managed network')
+@allowed([
+  'AllowOnlyApprovedOutbound'
+  'AllowInternetOutbound'
+])
+param isolationMode string = 'AllowOnlyApprovedOutbound'
+
 @description('The name of the storage account to create outbound rules for')
 param storageName string
 
@@ -10,7 +17,7 @@ param storageResourceGroupName string
 @description('The subscription ID where the storage account is located')
 param storageSubscriptionId string
 
-@description('The name of the AI Search service to create outbound rules for')
+// @description('The name of the AI Search service to create outbound rules for')
 // param aiSearchName string
 
 // @description('The resource group name where the AI Search service is located')
@@ -40,8 +47,9 @@ resource managedNetwork 'Microsoft.CognitiveServices/accounts/managednetworks@20
   name: 'default'
   properties: {
     managedNetwork: {
-      IsolationMode: 'AllowOnlyApprovedOutbound'
+      IsolationMode: isolationMode
       managedNetworkKind: 'V2'
+      //firewallSku: 'Standard' // Uncomment to enable firewall only when in AllowOnlyApprovedOutbound mode
     }
   }
 }

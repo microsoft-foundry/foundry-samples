@@ -4,14 +4,35 @@ Standard Setup Managed Network Secured Steps for main.bicep
 */
 @description('Location for all resources.')
 @allowed([
+  'spaincentral'
   'westus'
   'eastus'
-  'eastus2'
+  'japaneast'
   'francecentral'
+  'eastus2'
   'uaenorth'
+  'brazilsouth'
+  'germanywestcentral'
+  'italynorth'
+  'southcentralus'
+  'westcentralus'
+  'australiaeast'
+  'swedencentral'
   'canadaeast'
+  'southafricanorth'
+  'westeurope'
+  'westus3'
+  'southindia'
+  'uksouth'
 ])
 param location string = 'eastus2'
+
+@description('The isolation mode for the managed network')
+@allowed([
+  'AllowOnlyApprovedOutbound'
+  'AllowInternetOutbound'
+])
+param isolationMode string = 'AllowOnlyApprovedOutbound'
 
 @description('Name for your AI Services resource.')
 param aiServices string = 'aiservices'
@@ -223,6 +244,7 @@ module managedNetwork 'modules-network-secured/managed-network.bicep' = {
   name: 'managed-network-${uniqueSuffix}-deployment'
   params: {
     accountName: aiAccount.outputs.accountName
+    isolationMode: isolationMode
     storageName: aiDependencies.outputs.azureStorageName
     storageResourceGroupName: azureStorageResourceGroupName
     storageSubscriptionId: azureStorageSubscriptionId

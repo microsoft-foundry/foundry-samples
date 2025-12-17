@@ -1,6 +1,7 @@
 using './main.bicep'
 
 param location = 'eastus2'
+param isolationMode = 'AllowOnlyApprovedOutbound'
 param aiServices = 'aiservices'
 param firstProjectName = 'project'
 param projectDescription = 'A project for the AI Foundry account with managed network secured deployed Agent'

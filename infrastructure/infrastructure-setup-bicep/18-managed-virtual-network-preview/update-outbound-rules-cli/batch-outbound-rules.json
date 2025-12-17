@@ -1,0 +1,41 @@
+{
+  "id": "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CognitiveServices/accounts/{accountName}/managedNetworks/default",
+  "name": "default",
+  "type": "Microsoft.CognitiveServices/accounts/managedNetworks/outboundRules",
+  "properties": {
+    "IsolationMode": "AllowOnlyApprovedOutbound",
+    "outboundRules": {
+      "storage-rule": {
+        "type": "PrivateEndpoint",
+        "destination": {
+          "serviceResourceId": "/subscriptions/{storageSubscriptionId}/resourceGroups/{storageResourceGroupName}/providers/Microsoft.Storage/storageAccounts/{storageName}",
+          "subresourceTarget": "blob",
+          "sparkEnabled": false,
+          "sparkStatus": "Inactive"
+        },
+        "category": "UserDefined"
+      },
+      "aisearch-rule": {
+        "type": "PrivateEndpoint",
+        "destination": {
+          "serviceResourceId": "/subscriptions/{aiSearchSubscriptionId}/resourceGroups/{aiSearchResourceGroupName}/providers/Microsoft.Search/searchServices/{aiSearchName}",
+          "subresourceTarget": "searchService",
+          "sparkEnabled": false,
+          "sparkStatus": "Inactive"
+        },
+        "category": "UserDefined"
+      },
+      "cosmosdb-rule": {
+        "type": "PrivateEndpoint",
+        "destination": {
+          "serviceResourceId": "/subscriptions/{cosmosDBSubscriptionId}/resourceGroups/{cosmosDBResourceGroupName}/providers/Microsoft.DocumentDB/databaseAccounts/{cosmosDBName}",
+          "subresourceTarget": "Sql",
+          "sparkEnabled": false,
+          "sparkStatus": "Inactive"
+        },
+        "category": "UserDefined"
+      }
+    },
+    "managedNetworkKind": "V2"
+  }
+}
