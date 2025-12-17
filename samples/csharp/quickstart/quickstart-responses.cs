@@ -1,5 +1,4 @@
 using Azure.AI.Projects;
-using Azure.AI.Agents;
 using Azure.Identity;
 using OpenAI;
 using OpenAI.Responses;

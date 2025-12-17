@@ -1,4 +1,4 @@
-using Azure.AI.Agents;
+using Azure.AI.Projects;
 using Azure.Identity;
 
 string PROJECT_ENDPOINT = Environment.GetEnvironmentVariable("PROJECT_ENDPOINT")
