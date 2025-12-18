@@ -242,25 +242,14 @@ Once your APIM operations are configured, you need to collect the following deta
 
 #### 🎯 1. Target URL
 
-You need to provide the **complete base URL including the API URL suffix** from your APIM configuration.
-
-![APIM Base URL Configuration](images/apim-base-url-screenshot.png)
-
-**📋 How to get the Target URL:**
-
-1. **📍 Navigate to Your APIM API**: Go to your imported AI API in the APIM portal
-2. **🔧 Go to Settings Tab**: Click on the **"Settings"** tab 
-3. **📖 Copy Base URL**: Copy the complete **"Base URL"** value shown in the settings
-   - This includes both your APIM gateway URL AND the API URL suffix
-   - Example: `https://rg-agent-aigateway-westus2.azure-api.net/foundry/models`
-
-**✅ This Base URL is your Target URL** - use this exact value in your connection configuration.
+1. **📍 Navigate to Chat Completions**: Go to your chat completions operation in APIM
+2. **🧪 Open Test Tab**: Click on the **"Test"** tab for the chat completions operation
+3. **🔍 Check Request URL**: Look at the endpoint URL that **you are hitting** during the test
+4. **✂️ Extract Base URL**: Take everything **before** `/chat/completions` or `/deployments/{deploymentId}/chat/completions`
 
 **Examples:**
-- Base URL in APIM Settings: `https://my-apim.azure-api.net/foundry/models`
-- Target URL for connection: `https://my-apim.azure-api.net/foundry/models`
-
-> **⚠️ Important**: Always use the complete Base URL from APIM Settings tab (including the suffix like `/foundry/models`). Don't manually construct this URL.
+- If endpoint is: `https://my-apim.azure-api.net/foundry/models/chat/completions` or `https://my-apim.azure-api.net/foundry/models/deployments/gpt-4o/chat/completions`
+- Target URL would be: `https://my-apim.azure-api.net/foundry/models`
 
 #### 🔧 2. Inference API Version
 
