@@ -783,8 +783,7 @@ class ModelGatewayValidator:
                     "role": "user",
                     "content": "Hello! This is a test message from the ModelGateway validation script. Please respond with a simple confirmation that you received this message."
                 }
-            ],
-            "max_tokens": 50
+            ]
         }
         
         # Add model field only if deployment is not in path
