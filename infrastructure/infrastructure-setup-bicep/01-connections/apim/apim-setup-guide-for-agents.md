@@ -1,5 +1,8 @@
 # Azure API Management Setup Guide for Foundry Agents
 
+> **⚠️ IMPORTANT: Test Your Configuration First**  
+> **Before executing your APIM connection bicep in Azure AI Foundry, [jump to the validation section](#-connection-validation) to test your configuration and ensure it works with the Agents SDK.**
+
 > **🎯 Step-by-Step Configuration**  
 > This guide shows you how to configure Azure API Management (APIM) to make it ready for use by Foundry Agents as a connection.
 
@@ -239,14 +242,25 @@ Once your APIM operations are configured, you need to collect the following deta
 
 #### 🎯 1. Target URL
 
-1. **📍 Navigate to Chat Completions**: Go to your chat completions operation in APIM
-2. **🧪 Open Test Tab**: Click on the **"Test"** tab for the chat completions operation
-3. **🔍 Check Request URL**: Look at the endpoint URL that **you are hitting** during the test
-4. **✂️ Extract Base URL**: Take everything **before** `/chat/completions` or `/deployments/{deploymentId}/chat/completions`
+You need to provide the **complete base URL including the API URL suffix** from your APIM configuration.
+
+![APIM Base URL Configuration](images/apim-base-url-screenshot.png)
+
+**📋 How to get the Target URL:**
+
+1. **📍 Navigate to Your APIM API**: Go to your imported AI API in the APIM portal
+2. **🔧 Go to Settings Tab**: Click on the **"Settings"** tab 
+3. **📖 Copy Base URL**: Copy the complete **"Base URL"** value shown in the settings
+   - This includes both your APIM gateway URL AND the API URL suffix
+   - Example: `https://rg-agent-aigateway-westus2.azure-api.net/foundry/models`
+
+**✅ This Base URL is your Target URL** - use this exact value in your connection configuration.
 
 **Examples:**
-- If endpoint is: `https://my-apim.azure-api.net/foundry/models/chat/completions` or `https://my-apim.azure-api.net/foundry/models/deployments/gpt-4o/chat/completions`
-- Target URL would be: `https://my-apim.azure-api.net/foundry/models`
+- Base URL in APIM Settings: `https://my-apim.azure-api.net/foundry/models`
+- Target URL for connection: `https://my-apim.azure-api.net/foundry/models`
+
+> **⚠️ Important**: Always use the complete Base URL from APIM Settings tab (including the suffix like `/foundry/models`). Don't manually construct this URL.
 
 #### 🔧 2. Inference API Version
 
@@ -266,6 +280,55 @@ Determine if your chat completions URL includes the deployment name in the path:
 - `"false"`: `/chat/completions?deployment=gpt-4`
 
 > **📝 Note**: These values will be used when creating your APIM connection in Foundry using the Bicep templates.
+
+---
+
+## ✅ Connection Validation
+
+Before creating your APIM connection in Azure AI Foundry, follow these steps to validate your configuration:
+
+### 1. **Choose your parameter file** based on your APIM setup:
+   - `samples/parameters-static-models.json` - For APIM with predefined static models
+   - `samples/parameters-dynamic-discovery.json` - For APIM with dynamic model discovery
+   - `samples/parameters-custom-auth-config.json` - For custom authentication headers
+   - `samples/parameters-custom-headers.json` - For custom headers configuration
+
+### 2. **Update the parameter file** with your actual configuration values
+   Use the rest of this guide to decide the correct parameter values for your APIM setup.
+
+### 3. **Test your configuration** using the validation script:
+
+First, install the required Python package:
+```bash
+pip install requests
+```
+
+Then run the validation script:
+```bash
+# For APIM connection testing:
+python3 test_apim_connection.py --params samples/YOUR_CHOSEN_FILE.json --api-key YOUR_APIM_SUBSCRIPTION_KEY --deployment-name YOUR_DEPLOYMENT --target-url YOUR_APIM_BASE_URL
+```
+
+**Example:**
+```bash
+# Complete example with actual values
+python3 test_apim_connection.py --params samples/parameters-static-models.json --api-key abc123def456 --deployment-name gpt-4o --target-url https://my-apim.azure-api.net/foundry/models
+```
+
+This validation script tests:
+- ✅ Parameter validation and APIM-specific configuration parsing
+- ✅ Model discovery (static models or dynamic discovery via APIM)
+- ✅ APIM subscription key authentication and API access
+- ✅ Chat completions endpoint functionality through APIM
+- ✅ Provider format compatibility (AzureOpenAI vs OpenAI responses)
+
+**Testing saves time and prevents deployment issues! This validation ensures your APIM connection will work correctly when used with the Agents SDK.**
+
+**Key APIM-Specific Validations:**
+- APIM subscription key authentication
+- APIM gateway URL construction and accessibility
+- APIM API policies and routing functionality
+- Model deployment access through APIM policies
 
 ---
 
