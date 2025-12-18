@@ -1,0 +1,20 @@
+# Example Terraform Variables File
+# Copy this file to terraform.tfvars and update with your values
+subscription_id     = "%subscription_id%"
+resource_group_name = "foundry-mvnet-rg"
+location            = "eastus2"
+foundry_identifier = "foundry-v1"  # Avoid issues with soft delete, helps make the resource unique
+
+# Feature Flags - Enable/disable resources
+enable_networking = true  # Enable VNet and private endpoints
+enable_storage    = true  # Enable Storage Account
+enable_aisearch   = true  # Enable AI Search Service
+enable_cosmos     = true  # Enable Cosmos DB
+enable_dns        = true  # Enable Private DNS Zones
+
+# Network Configuration (only used if enable_networking = true)
+vnet_name                       = "foundry-vnet"
+vnet_address_prefix             = "10.0.0.0/16"
+private_endpoints_subnet_name   = "private-endpoints-subnet"
+private_endpoints_subnet_prefix = "10.0.1.0/24"
+
