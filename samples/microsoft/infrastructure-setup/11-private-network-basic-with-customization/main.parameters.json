@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "accountBaseName": {
+      "value": "foundry"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "projectName": {
+      "value": "foundry-proj"
+    },
+    "projectDisplayName": {
+      "value": "Foundry Project"
+    },
+    "projectDescription": {
+      "value": "Sample AI Foundry project deployment."
+    },
+    "vnetName": {
+      "value": "private-vnet"
+    },
+    "peSubnetName": {
+      "value": "pe-subnet"
+    },
+    "vnetAddressPrefix": {
+      "value": "192.168.0.0/16"
+    },
+    "peSubnetPrefix": {
+      "value": "192.168.0.0/24"
+    },
+    "existingAoaiResourceId": {
+      "value": "/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.CognitiveServices/accounts/<aoai-account>"
+    }
+  }
+}
