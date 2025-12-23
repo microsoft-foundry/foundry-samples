@@ -1,0 +1,190 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+@section Scripts
+{
+    <script>
+        //////////////////////////////////////////////////////////////////////
+        // Handle the send request and field validations.
+        //////////////////////////////////////////////////////////////////////
+        function handleRequestError(jqXHR, textStatus, errorThrown){
+            coverScreen(false);
+            alert(`The request returned error: ${jqXHR.status} ${jqXHR.responseText}`);
+        }
+
+        function handleRequestSuccess(jqXHR){
+            if (jqXHR !== undefined)
+            {
+                var initialText = $("#txtHistory").text() + `Created task: ${jqXHR.task}\n`
+                // Check results five times.
+                getResults(5, 1, jqXHR.task, initialText)
+            }
+            else{
+                coverScreen(false);
+                $("#txtHistory").text($("#txtHistory").text() + "<empty>\n");
+            }
+        }
+
+        function setVisible(error_box, visible, hiddenCls, shownCls){
+            if(visible){
+                $(error_box).removeClass(hiddenCls);
+                $(error_box).addClass(shownCls);
+            }
+            else{
+                $(error_box).removeClass(shownCls);
+                $(error_box).addClass(hiddenCls);
+            }
+        }
+
+        function validateInput(){
+            setVisible("#dvAgentErrBox", false, "errorbox-hidden", "errorbox-visible");
+            $("#dvAgentError").empty();
+            if ($("#txtAgent").val() === ""){
+                $("#dvAgentError").text("The agent ID is empty.");
+                setVisible("#dvAgentErrBox", true, "errorbox-hidden", "errorbox-visible");
+                return false;
+            }
+            else if(!$("#txtAgent").val().startsWith("asst_")){
+                $("#dvAgentError").text("The agent ID must start from asst_.");
+                $("#dvAgentErrBox").toggleClass("errorbox-visible");
+                return false;
+            }
+
+            setVisible("#dvMessageErrBox", false, "errorbox-hidden", "errorbox-visible");
+            $("#dvMessageError").empty();
+            if ($("#txtQuestion").val() === ""){
+                $("#dvMessageError").text("The message is empty.");
+                setVisible("#dvMessageErrBox", true, "errorbox-hidden", "errorbox-visible");
+                return false;
+            }
+            
+            return true;
+        }
+
+        function coverScreen(cover){
+            if (cover)
+                $('#page-inactivate').css("opacity", 0.7).fadeIn();
+            else
+                $('#page-inactivate').css("opacity", 0.7).fadeOut();
+        }
+
+        //////////////////////////////////////////////////////////////////////
+        // Handle the check for service listening for push notifications.
+        //////////////////////////////////////////////////////////////////////
+        function handlePushError(jqXHR, textStatus, errorThrown){
+            alert(`The request returned error: ${jqXHR.status} ${jqXHR.responseText}`);
+            pushService(false);
+        }
+
+        function handlePushSuccess(jqXHR, textStatus, errorThrown){
+            pushService(jqXHR === "c92189a7-a1eb-11ef-990f-8c1645fec84b")
+        }
+
+        function pushService(isOk){
+            $('#dvService').html(isOk ? "&#x2705;" : "&#x274C;");
+        }
+
+        //////////////////////////////////////////////////////////////////////
+        // Periodically check for task to complete.
+        //////////////////////////////////////////////////////////////////////
+        function handleResultsSuccess(jqXHR, textStatus, errorThrown, trials, currentTrial, taskID, initialText){
+            // .NET uses Newtonsoft Json, which makes first letters in JSON names lower case.
+            if(!jqXHR.isFinal){
+                if (currentTrial <= trials){
+                    setTimeout(function() {getResults(trials, currentTrial, taskID, initialText)}, 500);
+                }
+                else{
+                    $("#txtHistory").text(initialText + `No response from the A2A server.`);
+                }
+            }
+            else{
+                coverScreen(false);
+                $("#txtHistory").text(initialText + `A2A response: ${jqXHR.message}`);
+            }
+        }
+
+        function handleResultsFailure(jqXHR, textStatus, errorThrown, initialText){
+            coverScreen(false);
+            $("#txtHistory").text(initialText + `Unable to get update: ${jqXHR.status} ${jqXHR.responseText}`);
+        }
+
+        function getResults(trials, currentTrial, taskID, initialText){
+            $("#txtHistory").text(initialText + `Waiting... (${currentTrial})`);
+            $.ajax({
+                url: `${document.URL}Home/GetTaskResult`,
+                data: {"taskId": taskID},
+                dataType: 'json',
+                type: 'GET',
+                success: (function(jqXHR, textStatus, errorThrown) {handleResultsSuccess(jqXHR, textStatus, errorThrown, trials, ++currentTrial, taskID, initialText)}),
+                error: (function(jqXHR, textStatus, errorThrown) {handleResultsFailure(jqXHR, textStatus, errorThrown, initialText)}),
+            });
+        }
+
+        //////////////////////////////////////////////////////////////////////
+        // Connect buttons to AJAX requests.
+        //////////////////////////////////////////////////////////////////////
+        $(document).ready(function() {
+            // Send request to agent.
+            $( "#send" ).on('click', function(){
+                if (!validateInput()){
+                    return false;
+                }
+                coverScreen(true);
+                $.ajax({
+                    url: `${document.URL}Home/CreateTask`,
+                    type: 'POST',
+                    data: {
+                        AgentId: $("#txtAgent").val(),
+                        Message: $("#txtQuestion").val()
+                    },
+                    dataType: "json",
+                    async: true,
+                    error: handleRequestError,
+                    success: handleRequestSuccess
+                });
+            })
+            // Check the service listening for push notifications.
+            $( "#btnSendToken" ).on('click', function(){
+                $.ajax({
+                    url: `${document.URL}Home/PushCallBack`,
+                    data: {"validationToken": "c92189a7-a1eb-11ef-990f-8c1645fec84b"},
+                    dataType: 'text',
+                    type: 'GET',
+                    success: handlePushSuccess,
+                    error: handlePushError,
+                });
+            })
+        })
+    </script>
+}
+<div class="text-center">
+    <h1 class="display-4">A2A notification demo</h1>
+</div>
+
+<!-- The fields, related to agent. -->
+<div class="label">Agent ID:</div>
+<input type="text" id="txtAgent" title="Agent ID" value="" />
+<br />
+<div class="errorbox-hidden" id="dvAgentErrBox">
+    <div class="label">&nbsp;</div><div id="dvAgentError" class="error">Error</div>
+</div>
+<div class="outtext">
+    <div class="label">&nbsp;</div><textarea disabled id="txtHistory" title="chat" rows=10></textarea>
+</div>
+<div class="label">Ask question:</div>
+<input type="text" id="txtQuestion" title="question" value="Hello, tell me a joke."/>
+<input type="button" name="btnSend" title="Send" value="Send" id="send" />
+<br />
+<div class="errorbox-hidden" id="dvMessageErrBox">
+    <div class="label">&nbsp;</div><div id="dvMessageError" class="error">Error</div>
+</div>
+<div id="page-inactivate"><img id="spinner" src="~/loadig.gif" /></div>
+<!-- Check that the service is currently listening for push notifications. -->
+<div class="text-center">
+    <h2 class="display-4">Debugging</h2>
+</div>
+<div class="label">Check service:</div>
+<input type="button" name="btnSendToken" title="Check service" value="Check service" id="btnSendToken" />
+<span id="dvService"></span>
+<br />
