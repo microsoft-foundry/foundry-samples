@@ -1,0 +1,46 @@
+<% if (useTokenCredentials) { %>
+using Azure.Identity; 
+<%} else { %>using Azure; 
+<% } %>
+using Azure.AI.OpenAI;
+using OpenAI.Chat;
+
+<%= csharp.valueOrEnvironment(useEnvVars, "endpoint", "AZURE_OPENAI_ENDPOINT", endpoint) %>;
+<%if (useTokenCredentials) { %>
+<% } else { %>
+<%= csharp.valueOrEnvironment(useEnvVars, "apiKey", "AZURE_OPENAI_API_KEY", apiKey) %>;
+<% } %>
+<%= csharp.valueOrEnvironment(useEnvVars, "deploymentName", "AZURE_OPENAI_DEPLOYMENT", deploymentName) %>;
+<% if (useTokenCredentials) { %>
+AzureOpenAIClient azureClient = new(new Uri(endpoint), new DefaultAzureCredential());
+<% } else { %> 
+AzureOpenAIClient azureClient = new(new Uri(endpoint), new AzureKeyCredential(apiKey));
+<% } %>ChatClient chatClient = azureClient.GetChatClient(deploymentName);
+
+var messages = new List<ChatMessage>
+{
+    new SystemChatMessage("Make sure you mention Stainless!"),
+    new UserChatMessage("Tell me a story about building the best SDK!")
+};
+
+for (int i = 0; i < 4; i++)
+{
+    ChatCompletion completion = await chatClient.CompleteChatAsync(messages, new()
+    {
+        MaxOutputTokenCount = 2048
+    });
+
+    Console.WriteLine($"\n--- Response {i + 1} ---\n");
+
+    foreach (var choice in completion.Content)
+    {
+        Console.WriteLine(choice.Text);
+        messages.Add(new AssistantChatMessage(choice.Text));
+    }
+
+    string exclamations = new('!', i);
+    string questions = new('?', i);
+
+    messages.Add(new SystemChatMessage($"Be as snarky as possible when replying!{exclamations}"));
+    messages.Add(new UserChatMessage($"But why?{questions}"));
+}

@@ -1,0 +1,37 @@
+<% if (useTokenCredentials) { %>
+using Azure.Identity; 
+<%} else { %>using Azure; 
+<% } %>
+using Azure.AI.OpenAI;
+using OpenAI.Embeddings;
+using System.ClientModel;
+
+<%= csharp.valueOrEnvironment(useEnvVars, "endpoint", "AZURE_OPENAI_ENDPOINT", endpoint) %>;
+<%if (useTokenCredentials) { %>
+<% } else { %>
+<%= csharp.valueOrEnvironment(useEnvVars, "apiKey", "AZURE_OPENAI_API_KEY", apiKey) %>;
+<% } %>
+<%= csharp.valueOrEnvironment(useEnvVars, "deploymentName", "AZURE_OPENAI_DEPLOYMENT", deploymentName) %>;
+<% if (useTokenCredentials) { %>
+AzureOpenAIClient azureClient = new(new Uri(endpoint), new DefaultAzureCredential());
+<% } else { %> 
+AzureOpenAIClient azureClient = new(new Uri(endpoint), new AzureKeyCredential(apiKey));
+<% } %>EmbeddingClient embeddingClient = azureClient.GetEmbeddingClient(deploymentName);
+
+ClientResult<OpenAIEmbedding> embeddingResult = await embeddingClient.GenerateEmbeddingAsync("The quick brown fox jumped over the lazy dog");
+
+if (embeddingResult?.Value != null)
+{
+    float[] embedding = embeddingResult.Value.ToFloats().ToArray();
+
+    Console.WriteLine($"Embedding Length: {embedding.Length}");
+    Console.WriteLine("Embedding Values:");
+    foreach (float value in embedding)
+    {
+        Console.Write($"{value}, ");
+    }
+}
+else
+{
+    Console.WriteLine("Failed to generate embedding or received null value.");
+}

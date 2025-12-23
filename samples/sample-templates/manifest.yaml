@@ -1,0 +1,12 @@
+samples:
+  - name: Chat Completion without streaming
+    languages:
+      - python
+      - javascript
+      - go
+      - csharp
+      - java
+    supported_models:
+      - gpt-3.5-turbo
+      - gpt-4
+    path: "samples/chat-completion-no-streaming"

@@ -1,0 +1,23 @@
+import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.models.*;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+
+public class Sample {
+    public static void main(String[] args) {
+        String endpoint = System.getenv("AZURE_OPENAI_ENDPOINT");
+        String deploymentName = System.getenv("AZURE_OPENAI_DEPLOYMENT");
+<% if (!useTokenCredentials) { %>
+        String apiKey = System.getenv("AZURE_OPENAI_API_KEY");
+        OpenAIClient client = new OpenAIClient(endpoint, apiKey);
+<% } else { %>
+        OpenAIClient client = new OpenAIClient(endpoint, new DefaultAzureCredentialBuilder().build());
+<% } %>
+        ChatClient chatClient = client.getChatClient(deploymentName);
+        ChatCompletion completion = chatClient.completeChat(
+            java.util.Arrays.asList(new UserChatMessage("What is the capital of France?"))<% if (extraParams) { %>,
+            new ChatCompletionOptions()<% if (extraParams.temperature) { %>.setTemperature(<%= extraParams.temperature %>)<% } %>
+<% } %>
+        );
+        System.out.println(completion.getContent().get(0).getText());
+    }
+}

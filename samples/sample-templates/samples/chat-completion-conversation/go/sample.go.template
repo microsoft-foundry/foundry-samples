@@ -1,0 +1,103 @@
+package main
+
+<%= go.includes(
+	"context",
+	"fmt",
+	"log",
+	"os",
+	"strings",
+	{ module: "github.com/Azure/azure-sdk-for-go/sdk/azidentity", condition: useTokenCredentials },
+	"github.com/openai/openai-go",
+	"github.com/openai/openai-go/azure"
+) %>
+
+func main() {
+	<%= go.valueOrEnvironment(useEnvVars, "endpoint", "AZURE_OPENAI_ENDPOINT", endpoint) %>
+	<%= go.valueOrEnvironment(useEnvVars, "api_version", "AZURE_OPENAI_API_VERSION", apiVersion) %>
+	<%	if (useTokenCredentials) { %>
+	<% } else { %>
+	<%= go.valueOrEnvironment(useEnvVars, "apiKey", "AZURE_OPENAI_API_KEY", apiKey) %>
+	<% } %>	
+	<%=	go.valueOrEnvironment(useEnvVars, "deploymentName", "AZURE_OPENAI_DEPLOYMENT", deploymentName) %>
+
+	<% if (useTokenCredentials) { %>
+	token_credential, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		fmt.Println("Error creating credential:", err)
+		os.Exit(1)
+	}
+	client := openai.NewClient(
+		azure.WithEndpoint(endpoint, api_version),
+		azure.WithTokenCredential(token_credential),
+	)
+	<% } else { %>
+	client := openai.NewClient(
+		azure.WithEndpoint(endpoint, api_version),
+		azure.WithAPIKey(apiKey),
+	)
+	<% } %>
+
+	// Initial messages
+	messages := []openai.ChatCompletionMessageParamUnion{
+		{
+			OfSystem: &openai.ChatCompletionSystemMessageParam{
+				Content: openai.ChatCompletionSystemMessageParamContentUnion{
+					OfString: openai.String("Make sure you mention Stainless!"),
+				},
+			},
+		},
+		{
+			OfUser: &openai.ChatCompletionUserMessageParam{
+				Content: openai.ChatCompletionUserMessageParamContentUnion{
+					OfString: openai.String("Tell me a story about building the best SDK!"),
+				},
+			},
+		},
+	}
+
+	for i := 0; i < 4; i++ {
+		resp, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
+			Model:    openai.ChatModel(deploymentName),
+			Messages: messages,
+		})
+		if err != nil {
+			log.Fatalf("Chat completion error: %v", err)
+		}
+
+		for _, choice := range resp.Choices {
+			content := choice.Message.Content
+			if content != "" {
+				fmt.Printf("\n--- Response %d ---\n%s\n", i+1, content)
+				messages = append(messages, openai.ChatCompletionMessageParamUnion{
+					OfAssistant: &openai.ChatCompletionAssistantMessageParam{
+						Content: openai.ChatCompletionAssistantMessageParamContentUnion{
+							OfString: openai.String(content),
+						},
+					},
+				})
+			}
+		}
+
+		exclamations := strings.Repeat("!", i)
+		questions := strings.Repeat("?", i)
+
+		messages = append(messages,
+			openai.ChatCompletionMessageParamUnion{
+				OfSystem: &openai.ChatCompletionSystemMessageParam{
+					Content: openai.ChatCompletionSystemMessageParamContentUnion{
+						OfString: openai.String("Be as snarky as possible when replying!" + exclamations),
+					},
+				},
+			},
+			openai.ChatCompletionMessageParamUnion{
+				OfUser: &openai.ChatCompletionUserMessageParam{
+					Content: openai.ChatCompletionUserMessageParamContentUnion{
+						OfString: openai.String("But why?" + questions),
+					},
+				},
+			},
+		)
+	}
+
+	fmt.Println("\nConversation finished.")
+}

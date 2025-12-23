@@ -1,0 +1,54 @@
+import com.openai.client.OpenAIClient;
+import com.openai.client.okhttp.OpenAIOkHttpClient;
+import com.openai.core.http.StreamResponse;
+import com.openai.models.ChatModel;
+import com.openai.models.chat.completions.ChatCompletionChunk;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
+
+<% if (useTokenCredentials) { %>
+import com.azure.identity.AuthenticationUtil;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.openai.credential.BearerTokenCredential; <% 
+} else { %>import com.openai.azure.credential.AzureApiKeyCredential; 
+<% } %>
+
+
+public class Main {
+    public static void main(String[] args) {
+
+        String endpoint = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_ENDPOINT", endpoint)%>;
+        <%if (useTokenCredentials) { %>
+        <%} else {%>
+        String azureOpenaiKey = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_API_KEY", apiKey)%>;
+        <%}%>
+        String deploymentName = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_DEPLOYMENT", deploymentName)%>;        
+
+        OpenAIOkHttpClient.Builder clientBuilder = OpenAIOkHttpClient.builder();
+        <% if (useTokenCredentials) { %>
+        clientBuilder
+                .baseUrl(endpoint)
+                .credential(BearerTokenCredential.create(AuthenticationUtil.getBearerTokenSupplier(
+                        new DefaultAzureCredentialBuilder().build(), "https://cognitiveservices.azure.com/.default")));
+        <% 
+        } else { %>
+        clientBuilder
+                .baseUrl(endpoint)
+                .credential(AzureApiKeyCredential.create(azureOpenaiKey));
+        <%} %>
+        OpenAIClient client = clientBuilder.build();
+
+        ChatCompletionCreateParams createParams = ChatCompletionCreateParams.builder()
+                .model(ChatModel.of(deploymentName))
+                .addSystemMessage("You are a helpful assistant. You will talk like a pirate.")
+                .addUserMessage("Can you help me?")
+                .addUserMessage("What's the best way to train a parrot?")
+                .build();
+
+        try (StreamResponse<ChatCompletionChunk> streamResponse =
+                     client.chat().completions().createStreaming(createParams)) {
+            streamResponse.stream()
+                    .flatMap(completion -> completion.choices().stream())
+                    .forEach(choice -> choice.delta().content().ifPresent(System.out::print));
+        }
+    }
+}

@@ -1,0 +1,64 @@
+import com.openai.client.OpenAIClientAsync;
+import com.openai.client.okhttp.OpenAIOkHttpClientAsync;
+import com.openai.models.ChatModel;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
+
+<% if (useTokenCredentials) { %>import com.azure.identity.AuthenticationUtil;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.openai.credential.BearerTokenCredential; <% 
+} else { %>import com.openai.azure.credential.AzureApiKeyCredential; 
+<% } %>
+
+import com.openai.models.ResponseFormatJsonSchema;
+import com.openai.models.ResponseFormatJsonSchema.JsonSchema;
+import com.openai.core.JsonValue;
+import java.util.Collections;
+
+public class Main {
+    public static void main(String[] args) {
+
+        String endpoint = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_ENDPOINT", endpoint)%>;
+        <%if (!useTokenCredentials) { %>
+        String azureOpenaiKey = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_API_KEY", apiKey)%>;
+        <%}%>
+        String deploymentName = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_DEPLOYMENT", deploymentName)%>;
+        
+        OpenAIOkHttpClientAsync.Builder clientBuilder = OpenAIOkHttpClientAsync.builder();
+        <% if (!useTokenCredentials) { %>
+        clientBuilder
+                .baseUrl(endpoint)
+                .credential(AzureApiKeyCredential.create(azureOpenaiKey));        
+        <% 
+        } else { %>
+        clientBuilder
+                .baseUrl(endpoint)
+                .credential(BearerTokenCredential.create(AuthenticationUtil.getBearerTokenSupplier(
+                        new DefaultAzureCredentialBuilder().build(), "https://cognitiveservices.azure.com/.default")));
+        <%} %>
+        OpenAIClientAsync client = clientBuilder.build();
+
+        JsonSchema.Schema schema = JsonSchema.Schema.builder()
+                .putAdditionalProperty("type", JsonValue.from("object"))
+                .putAdditionalProperty(
+                        "properties", JsonValue.from(Collections.singletonMap("employees", Collections.singletonMap("items", Collections.singletonMap("type", "string")))))
+                .build();
+        ChatCompletionCreateParams createParams = ChatCompletionCreateParams.builder()
+                .model(ChatModel.of(deploymentName))
+                .maxCompletionTokens(2048)
+                .responseFormat(ResponseFormatJsonSchema.builder()
+                        .jsonSchema(JsonSchema.builder()
+                                .name("employee-list")
+                                .schema(schema)
+                                .build())
+                        .build())
+                .addUserMessage("Who works at OpenAI?")
+                .build();
+
+        client.chat()
+                .completions()
+                .create(createParams)
+                .thenAccept(completion -> completion.choices().forEach(
+                    choice -> choice.message().content().ifPresent(System.out::println)))
+                .join();
+    }
+}

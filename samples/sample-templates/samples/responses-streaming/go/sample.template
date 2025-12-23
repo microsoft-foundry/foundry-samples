@@ -1,0 +1,66 @@
+package main
+
+<%= go.includes(
+	"context",
+	"fmt",
+	"os",
+	{ module: "github.com/Azure/azure-sdk-for-go/sdk/azidentity", condition: useTokenCredentials },
+	"github.com/openai/openai-go",
+	"github.com/openai/openai-go/azure",
+	"github.com/openai/openai-go/responses",
+) %>
+
+func main() {
+	<%= go.valueOrEnvironment(useEnvVars, "endpoint", "AZURE_OPENAI_ENDPOINT", endpoint) %>
+	<%= go.valueOrEnvironment(useEnvVars, "api_version", "AZURE_OPENAI_API_VERSION", apiVersion) %>
+	<% if (!useTokenCredentials) { %>
+	<%= go.valueOrEnvironment(useEnvVars, "apiKey", "AZURE_OPENAI_API_KEY", apiKey) %>
+	<% } %>
+	
+	<%=	go.valueOrEnvironment(useEnvVars, "deploymentName", "AZURE_OPENAI_DEPLOYMENT", deploymentName) %>
+
+	<% if (useTokenCredentials) { %>
+	token_credential, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		fmt.Println("Error creating credential:", err)
+		os.Exit(1)
+	}
+	client := openai.NewClient(
+		azure.WithEndpoint(endpoint, api_version),
+		azure.WithTokenCredential(token_credential),
+	)
+	<% } else { %>
+	client := openai.NewClient(
+		azure.WithEndpoint(endpoint, api_version),
+		azure.WithAPIKey(apiKey),
+		)
+	<% } %>
+
+	// Start streaming response from the 'responses' endpoint
+	stream := client.Responses.NewStreaming(
+		context.TODO(),
+		responses.ResponseNewParams{
+			Model: deploymentName,
+			Input: responses.ResponseNewParamsInputUnion{
+				OfString: openai.String("Tell me a 20-word story about building the best SDK!!"),
+			},
+		},
+	)
+
+	fmt.Fprintf(os.Stderr, "Streaming response:\n")
+	
+	// Handle the stream synchronously (blocking)
+	for stream.Next() {
+		event := stream.Current()
+		if event.Type == "response.output_text.delta" && event.Delta.OfString != "" {
+			fmt.Fprintf(os.Stderr, "%s", event.Delta.OfString)
+		}
+	}
+
+	if err := stream.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "\nStreaming error: %s\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Fprintln(os.Stderr, "\nDone.")
+}

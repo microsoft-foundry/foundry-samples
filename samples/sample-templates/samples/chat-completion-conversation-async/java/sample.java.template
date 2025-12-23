@@ -1,0 +1,71 @@
+import com.openai.client.OpenAIClientAsync;
+import com.openai.client.okhttp.OpenAIOkHttpClientAsync;
+import com.openai.models.ChatModel;
+import com.openai.models.chat.completions.ChatCompletion;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.ChatCompletionMessage;
+
+<% if (useTokenCredentials) { %>import com.azure.identity.AuthenticationUtil;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.openai.credential.BearerTokenCredential; <% 
+} else { %>import com.openai.azure.credential.AzureApiKeyCredential; 
+<% } %>
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+import static java.util.stream.Collectors.toList;
+
+public class Main {
+    public static void main(String[] args) {
+
+        String endpoint = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_ENDPOINT", endpoint)%>;
+        <%if (!useTokenCredentials) { %>
+        String azureOpenaiKey = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_API_KEY", apiKey)%>;
+        <%}%>
+        String deploymentName = <%= java.valueOrEnvironment(useEnvVars, "AZURE_OPENAI_DEPLOYMENT", deploymentName)%>;
+        
+        OpenAIOkHttpClientAsync.Builder clientBuilder = OpenAIOkHttpClientAsync.builder();
+        <% if (!useTokenCredentials) { %>
+        clientBuilder
+                .baseUrl(endpoint)
+                .credential(AzureApiKeyCredential.create(azureOpenaiKey));        
+        <% 
+        } else { %>
+        clientBuilder
+                .baseUrl(endpoint)
+                .credential(BearerTokenCredential.create(AuthenticationUtil.getBearerTokenSupplier(
+                        new DefaultAzureCredentialBuilder().build(), "https://cognitiveservices.azure.com/.default")));
+        <%} %>
+        OpenAIClientAsync client = clientBuilder.build();
+
+        ChatCompletionCreateParams.Builder createParamsBuilder = ChatCompletionCreateParams.builder()
+                .model(ChatModel.of(deploymentName))
+                .maxCompletionTokens(2048)
+                .addDeveloperMessage("Make sure you mention Stainless!")
+                .addUserMessage("Tell me a story about building the best SDK!");
+
+        CompletableFuture<Void> future = CompletableFuture.completedFuture(null);
+        for (int i = 0; i < 4; i++) {
+            final int index = i;
+            future = future.thenComposeAsync(
+                            unused -> client.chat().completions().create(createParamsBuilder.build()))
+                    .thenAccept(completion -> {
+                        List<ChatCompletionMessage> messages = completion.choices().stream()
+                                .map(ChatCompletion.Choice::message)
+                                .collect(toList());
+
+                        messages.forEach(message -> message.content().ifPresent(System.out::println));
+
+                        System.out.println("\n-----------------------------------\n");
+
+                        messages.forEach(createParamsBuilder::addMessage);
+                        createParamsBuilder
+                                .addDeveloperMessage("Be as snarky as possible when replying!" + new String(new char[index]).replace("\0", "!"))
+                                .addUserMessage("But why?" + new String(new char[index]).replace("\0", "?"));
+                    });
+        }
+
+        future.join();
+    }
+}
