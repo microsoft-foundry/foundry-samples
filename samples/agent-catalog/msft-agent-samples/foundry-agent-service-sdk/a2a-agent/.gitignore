@@ -1,0 +1,4 @@
+# Exclude bin and obj folders
+bin/
+obj/
+.DS_Store

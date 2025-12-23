@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "a2a": {
+      "commandName": "Project",
+      "commandLineArgs": "--endpoint \"UPDATE-ME-WITh-PROJECTS-ENDPONT\" --audience \"https://ai.azure.com/\" --apiVersion \"2025-05-15-preview\""
+    }
+  }
+}
