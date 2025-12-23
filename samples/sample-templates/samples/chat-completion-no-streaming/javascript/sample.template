@@ -1,0 +1,19 @@
+const { OpenAIClient } = require("@azure/openai");
+const { DefaultAzureCredential } = require("@azure/identity");
+
+const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT;
+<% if (!useTokenCredentials) { %>
+const apiKey = process.env.AZURE_OPENAI_API_KEY;
+const client = new OpenAIClient(endpoint, apiKey);
+<% } else { %>
+const client = new OpenAIClient(endpoint, new DefaultAzureCredential());
+<% } %>
+const chatClient = client.getChatClient(deploymentName);
+const completion = await chatClient.completeChat([
+  { role: "user", content: "What is the capital of France?" },
+<% if (extraParams) { %>
+  // Add extra params here
+<% } %>
+]);
+console.log(completion.content[0].text);

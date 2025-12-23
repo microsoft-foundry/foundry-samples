@@ -1,0 +1,16 @@
+plugins {
+    id 'java'
+}
+
+group 'sample'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+<% _.forEach(dependencies, function(dependency) { %>
+    implementation '<%= dependency.name %>:<%= dependency.version %>'
+<% }); %>
+}

@@ -1,0 +1,37 @@
+<%= csharp.usings(
+    { namespace: "System.ClientModel", condition: !useTokenCredentials },
+    "Azure.AI.OpenAI",
+    { namespace: "Azure.Identity", condition: useTokenCredentials },
+    "OpenAI.Chat",
+) %>
+
+<%= csharp.valueOrEnvironment(useEnvVars, "endpoint", "AZURE_OPENAI_ENDPOINT", endpoint) %>;
+<% if (!useTokenCredentials) { %>
+<%= csharp.valueOrEnvironment(useEnvVars, "apiKey", "AZURE_OPENAI_API_KEY", apiKey) %>;
+<% } %>
+<%= csharp.valueOrEnvironment(useEnvVars, "deploymentName", "AZURE_OPENAI_DEPLOYMENT", deploymentName) %>;
+
+<% if (useTokenCredentials) { %>
+AzureOpenAIClient client = new(new(endpoint), new DefaultAzureCredential());
+<% } else { %>
+AzureOpenAIClient client = new(new Uri(endpoint), new ApiKeyCredential(apiKey));
+<% } %>
+
+ChatClient chatClient = client.GetChatClient(deploymentName);
+
+ChatCompletion completion = await chatClient.CompleteChatAsync(
+    [
+        new UserChatMessage("What is the capital of France?"),
+    <% if (extraParams) { %>
+    ],
+    new ChatCompletionOptions
+    {
+      <% if (extraParams.temperature) { %>
+      Temperature = <%= extraParams.temperature %>f,
+      <% } %>
+    });
+    <% } else { %>
+    ]);
+    <% } %>
+
+Console.WriteLine(completion.Content[0].Text);

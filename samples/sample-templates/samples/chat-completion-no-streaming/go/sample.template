@@ -1,0 +1,53 @@
+package main
+
+<%= go.includes(
+	"context",
+	"fmt",
+	"os",
+	{ module: "github.com/Azure/azure-sdk-for-go/sdk/azidentity", condition: useTokenCredentials },
+	"github.com/openai/openai-go",
+	"github.com/openai/openai-go/azure",
+) %>
+
+func main() {
+	<%= go.valueOrEnvironment(useEnvVars, "endpoint", "AZURE_OPENAI_ENDPOINT", endpoint) %>
+	<%= go.valueOrEnvironment(useEnvVars, "api_version", "AZURE_OPENAI_API_VERSION", apiVersion) %>
+	<% if (!useTokenCredentials) { %>
+	<%= go.valueOrEnvironment(useEnvVars, "api_key", "AZURE_OPENAI_API_KEY", apiKey) %>
+	<% } %>
+
+	<% if (useTokenCredentials) { %>
+	token_credential, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		fmt.Println("Error creating credential:", err)
+		os.Exit(1)
+	}
+
+	<% } %>
+	client := openai.NewClient(
+		azure.WithEndpoint(endpoint, api_version),
+		<% if (useTokenCredentials) { %>
+		azure.WithTokenCredential(token_credential),
+		<% } else { %>
+		azure.WithAPIKey(api_key),
+		<% } %>
+	)
+
+	response, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.UserMessage("Hello, how are you?"),
+		},
+		<% if (extraParams) { %>
+		<% if (extraParams.temperature) {%>
+		Temperature: openai.Float(0.7),
+		<% } %>
+		<% } %>
+	})
+
+	if err != nil {
+		fmt.Println("Error creating chat completion:", err)
+		os.Exit(1)
+	}
+
+	println("Response:", response.Choices[0].Message.Content)
+}

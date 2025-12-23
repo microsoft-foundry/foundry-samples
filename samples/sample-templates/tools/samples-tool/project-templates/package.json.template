@@ -1,0 +1,10 @@
+{
+  "name": "sample",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+<% _.forEach(dependencies, function(dependency, i) { %>
+    "<%= dependency.name %>": "<%= dependency.version %>"<% if (i < dependencies.length - 1) { %>,<% } %>
+<% }); %>
+  }
+}
