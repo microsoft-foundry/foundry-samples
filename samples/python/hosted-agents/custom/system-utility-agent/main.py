@@ -68,7 +68,7 @@ class AgentConfig:
     max_turns: int = int(os.getenv("AGENT_MAX_TURNS", "10"))
     chat_history_length: int = int(os.getenv("AGENT_CHAT_HISTORY_LENGTH", "20"))
     openai_api_version: str = os.getenv("OPENAI_API_VERSION", "2025-03-01-preview")
-    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    openai_api_key: str = os.getenv("AZURE_OPENAI_API_KEY", "")
     azure_endpoint: str = os.getenv("AZURE_ENDPOINT", "")
 
 
@@ -269,14 +269,14 @@ class SystemUtilityAgent(FoundryCBAgent):
                     return self._stream_final_text(final_text, context)
                 else:
                     return self._final_text_to_response(final_text, context)
-        if called_any:
-            span.set_attribute("gen_ai.usage.input_tokens", total_input_tokens)
-            span.set_attribute("gen_ai.usage.output_tokens", total_output_tokens)
-            logger.warning(self.hit_limit_warning)
-            if is_stream:
-                return self._stream_final_text(self.hit_limit_warning, context)
-            else:
-                return self._final_text_to_response(self.hit_limit_warning, context)
+                
+        span.set_attribute("gen_ai.usage.input_tokens", total_input_tokens)
+        span.set_attribute("gen_ai.usage.output_tokens", total_output_tokens)
+        logger.warning(self.hit_limit_warning)
+        if is_stream:
+            return self._stream_final_text(self.hit_limit_warning, context)
+        else:
+            return self._final_text_to_response(self.hit_limit_warning, context)
 
 def extract_text(item: Any) -> str:
     # Best-effort extraction across server variants
@@ -345,6 +345,8 @@ def extract_tool_call(item: Any):
 
 
 if __name__ == "__main__":
+    # used for local development and testing, for hosted agent deployed to Foundry, please put env vars into agent.yaml
     load_dotenv()
+
     system_agent = SystemUtilityAgent()
     system_agent.run()
