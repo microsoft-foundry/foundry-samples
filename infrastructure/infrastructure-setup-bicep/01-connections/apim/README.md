@@ -2,13 +2,18 @@
 
 This folder contains Azure Bicep templates for creating APIM (API Management) connections to Azure AI Foundry projects.
 
-> **⚠️ IMPORTANT**: Before running any deployment, follow the [Setup Guide](./apim-setup-guide-for-agents.md) guide to properly configure your APIM service and obtain all applicable parameters. Make sure to collect these parameters to avoid 404/deploymentNotFound errors during Agent API execution:
-> 1. **inferenceApiVersion** - The API version for chat completions calls if api-version is required
-> 2. **deploymentApiVersion** - The API version for deployment operations if using dynamic discovery and api-version is required. 
+> **⚠️ IMPORTANT**: Before running any deployment, follow the [Setup Guide](./apim-setup-guide-for-agents.md) guide to properly configure your APIM service and obtain all applicable parameters. If you encounter issues, see the [Troubleshooting Guide](./troubleshooting-guide.md). Make sure to collect these parameters to avoid 404/400/ResourceNotFound/DeploymentNotFound errors during Agent API execution:
+> 1. **inferenceApiVersion** - The API version for chat completions calls if api-version is required.
+> 2. **deploymentApiVersion** - The API version for deployment operations (list and get deployment operations) if using dynamic discovery and api-version is required. 
 > 3. **apiName** - The name of your API in APIM (e.g., "foundry", "openai")
 > 4. **deploymentInPath** - Whether deployment ID is in the URL path or in body as model field in chat completions API call.
 >
 > These parameters must match your actual APIM configuration to ensure successful deployments.
+
+## 📚 Documentation
+
+- **[Setup Guide](./apim-setup-guide-for-agents.md)** - Complete configuration guide for APIM connections
+- **[Troubleshooting Guide](./troubleshooting-guide.md)** - Common issues and solutions with validation script usage
 
 ## Prerequisites
 

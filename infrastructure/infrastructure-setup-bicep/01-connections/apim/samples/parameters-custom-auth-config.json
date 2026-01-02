@@ -21,10 +21,12 @@
       "value": false
     },
     "deploymentInPath": {
-      "value": "true"
+      "_comment": "true or false - Set based on setup guide to avoid 404 errors in agents",
+      "value": "false"
     },
     "inferenceAPIVersion": {
-      "value": "2025-03-01-preview"
+      "_comment": "Set a proper value or leave empty if your APIM backend does not need it. Set based on setup guide to avoid 404 errors in agents",
+      "value": ""
     },
     "deploymentAPIVersion": {
       "value": ""
@@ -44,6 +46,16 @@
             "model": {
               "name": "YOUR-MODEL-NAME",
               "version": "YOUR-MODEL-VERSION",
+              "format": "OpenAI"
+            }
+          }
+        },
+        {
+          "name": "YOUR-MODEL-DEPLOYMENT-NAME-2",
+          "properties": {
+            "model": {
+              "name": "YOUR-MODEL-NAME-2",
+              "version": "YOUR-MODEL-VERSION-2",
               "format": "OpenAI"
             }
           }

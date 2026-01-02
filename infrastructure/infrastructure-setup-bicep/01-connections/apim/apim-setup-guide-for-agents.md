@@ -2,6 +2,8 @@
 
 > **⚠️ IMPORTANT: Test Your Configuration First**  
 > **Before executing your APIM connection bicep in Azure AI Foundry, [jump to the validation section](#-connection-validation) to test your configuration and ensure it works with the Agents SDK.**
+> 
+> **🆘 Need Help?** If you encounter issues, check the [Troubleshooting Guide](./troubleshooting-guide.md) for solutions and use the validation script mentioned below.
 
 > **🎯 Step-by-Step Configuration**  
 > This guide shows you how to configure Azure API Management (APIM) to make it ready for use by Foundry Agents as a connection.
@@ -96,6 +98,7 @@ Once chat completions are working, you need to configure how Foundry Agents will
 - How to set model.format field
 1. Use `OpenAI` if you are using an OpenAI model (hosted anywhere OpenAI, AzureOpenAI, Foundry or any other host provider), 
 2. Use `OpenAI` for Gemini models if you are using openai chat completions supported gemini endpoint.
+3. Use `OpenAI` if your Gateway's chat completion endpoint is fully compatible with OpenAI API contract (supports tools, tool_choice, reasoning_effort, response_format etc.).
 3. Use `Anthropic` if you are using an Anthropic model's /message API, use `OpenAI` if you are using Anthropic's /chat/completions API.
 4. Use `NonOpenAI` for everything else. 
 
@@ -114,6 +117,8 @@ If you choose dynamic discovery, you need to manually add **2 operations** to yo
 
 1. **📋 List Deployments Operation** - Returns all available models/deployments
 2. **🎯 Get Deployment Operation** - Returns details for a specific model/deployment
+
+> **📝 Note**: The setup below is specific to using Azure OpenAI or Azure Foundry AI Service resource as APIM backend. For any other backend services, ensure you properly setup and test it out, otherwise use static discovery for simplicity.
 
 ##### 🛠️ Adding Get Deployment Operation
 
@@ -253,20 +258,20 @@ Once your APIM operations are configured, you need to collect the following deta
 
 #### 🔧 2. Inference API Version
 
-1. **📋 Check API Version Parameter**: In the chat completions test, look for an **api-version** parameter
+1. **📋 Check API Version Parameter**: In the chat completions test, look for an **api-version** parameter. If not required, this will need to be kept an empty string.
 2. **📝 Note the Value**: If an API version is required when hitting chat completions, record that value
-3. **📄 Common Values**: Typically values like `2024-02-01`, `2023-12-01-preview`, etc.
+3. **📄 Common Values**: Typically values like `2024-02-01`, `2023-12-01-preview` etc.
 
 #### 🛤️ 3. Deployment in Path
 
 Determine if your chat completions URL includes the deployment name in the path:
 
 - **✅ Set to "true"**: If your URL is like `/deployments/{deploymentName}/chat/completions`
-- **❌ Set to "false"**: If your URL is like `/chat/completions` (deployment passed as parameter)
+- **❌ Set to "false"**: If your URL is like `/chat/completions` (deployment passed in chat completions request body as `model` field)
 
 **Examples:**
 - `"true"`: `/deployments/gpt-4/chat/completions`
-- `"false"`: `/chat/completions?deployment=gpt-4`
+- `"false"`: `/chat/completions`
 
 > **📝 Note**: These values will be used when creating your APIM connection in Foundry using the Bicep templates.
 

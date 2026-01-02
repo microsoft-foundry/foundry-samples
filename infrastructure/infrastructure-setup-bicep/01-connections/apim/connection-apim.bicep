@@ -52,7 +52,7 @@ param isSharedToAll bool = false
 
 // 1. REQUIRED - Basic APIM Configuration
 @allowed(['true', 'false'])
-@description('Whether deployment name is in URL path vs query parameter')
+@description('Whether deployment name is in URL path vs body')
 param deploymentInPath string = 'true'
 
 @description('API version for inference calls (chat completions, embeddings)')

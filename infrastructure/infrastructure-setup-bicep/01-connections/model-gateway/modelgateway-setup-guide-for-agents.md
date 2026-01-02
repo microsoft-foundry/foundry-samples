@@ -2,6 +2,8 @@
 
 > **⚠️ IMPORTANT: Test Your Configuration First**  
 > **Before creating your ModelGateway connection in Azure AI Foundry, [jump to the validation section](#-connection-validation) to test your configuration, it ensures that it works with the Agents SDK.**
+> 
+> **🆘 Need Help?** If you encounter issues, check the [Troubleshooting Guide](./troubleshooting-guide.md) for solutions and use the validation script mentioned below.
 
 > **🎯 Step-by-Step Configuration**  
 > This guide shows you how to configure your self-hosted or third-party gateway to make it ready for use by Foundry Agents as a ModelGateway connection.
@@ -143,6 +145,7 @@ You need to choose how Foundry Agents will discover available models through you
 - How to set model.format field
 1. Use `OpenAI` if you are using an OpenAI model (hosted anywhere OpenAI, AzureOpenAI, Foundry or any other host provider), 
 2. Use `OpenAI` for Gemini models if you are using openai chat completions supported gemini endpoint.
+3. Use `OpenAI` if your Gateway's chat completion endpoint is fully compatible with OpenAI contract (supports tools, tool_choice, reasoning_effort, response_format etc.).
 3. Use `Anthropic` if you are using an Anthropic model's /message API, use `OpenAI` if you are using Anthropic's /chat/completions API.
 4. Use `NonOpenAI` for everything else. 
 

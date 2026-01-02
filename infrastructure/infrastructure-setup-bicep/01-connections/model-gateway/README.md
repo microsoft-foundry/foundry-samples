@@ -2,11 +2,16 @@
 
 This folder contains Azure Bicep templates for creating ModelGateway connections to Azure AI Foundry projects.
 
-> **⚠️ IMPORTANT**: Before running any deployment, follow the [Setup Guide](./modelgateway-setup-guide-for-agents.md) guide to properly configure your ModelGateway service and obtain all required parameters. Make sure to collect these critical parameters to avoid 404/deploymentNotFound errors during Agent API execution:
+> **⚠️ IMPORTANT**: Before running any deployment, follow the [Setup Guide](./modelgateway-setup-guide-for-agents.md) guide to properly configure your ModelGateway service and obtain all required parameters. If you encounter issues, see the [Troubleshooting Guide](./troubleshooting-guide.md). Make sure to collect these critical parameters to avoid 404/deploymentNotFound errors during Agent API execution:
 > 1. **inferenceApiVersion** - The API version for chat completions calls if api-version query param is required
 > 2. **deploymentApiVersion** - The API version for deployment operations if using dynamic discovery and api-version is reqiuired
 > 3. **deploymentInPath** - Whether deployment ID is in the URL path or body in chat completions call
 > These parameters must match your actual ModelGateway configuration to ensure successful deployments.
+
+## 📚 Documentation
+
+- **[Setup Guide](./modelgateway-setup-guide-for-agents.md)** - Complete configuration guide for ModelGateway connections
+- **[Troubleshooting Guide](./troubleshooting-guide.md)** - Common issues and solutions.
 
 ## Prerequisites
 
@@ -25,6 +30,18 @@ az deployment group create \
   --resource-group <your-resource-group> \
   --template-file connection-modelgateway.bicep \
   --parameters @samples/parameters-openai.json \
+  --parameters apiKey=<your-api-key>
+```
+
+
+### Foundry AzureAI ModelGateway Connection
+```bash
+# 1. Edit samples/parameters-foundryazureai.json with your resource IDs
+# 2. Deploy with your API key
+az deployment group create \
+  --resource-group <your-resource-group> \
+  --template-file connection-modelgateway.bicep \
+  --parameters @samples/parameters-foundryazureai.json \
   --parameters apiKey=<your-api-key>
 ```
 

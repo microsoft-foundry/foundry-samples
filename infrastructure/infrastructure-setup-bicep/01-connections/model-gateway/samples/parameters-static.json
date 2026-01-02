@@ -21,9 +21,11 @@
       "value": false
     },
     "deploymentInPath": {
-      "value": "true"
+      "_comment": "true or false - Set based on setup guide to avoid 404 errors in agents",
+      "value": "false"
     },
     "inferenceAPIVersion": {
+      "_comment": "Set a proper value or leave empty if your gateway does not need it. Set based on setup guide to avoid 404 errors in agents",
       "value": ""
     },
     "staticModels": {
