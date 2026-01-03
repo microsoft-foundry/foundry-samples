@@ -1,6 +1,7 @@
 using Azure.AI.AgentServer.Contracts.Generated.OpenAI;
 using Azure.AI.AgentServer.Contracts.Generated.Responses;
 using Azure.AI.AgentServer.Core.Common.Http.Json;
+using Azure.AI.AgentServer.Core.Common.Id;
 using Azure.AI.AgentServer.Responses.Invocation;
 using Azure.Identity;
 using System.Diagnostics;
@@ -74,7 +75,7 @@ public sealed class SystemUtilityAgentInvocation : IAgentInvocation
         yield return new ResponseCreatedEvent(++seq,
             ToResponse(request, context, status: ResponseStatus.InProgress));
 
-        var itemId = Guid.NewGuid().ToString();
+        var itemId = context.IdGenerator.GenerateMessageId();
         yield return new ResponseOutputItemAddedEvent(++seq, 0,
             item: new ResponsesAssistantMessageItemResource(
                 id: itemId,
