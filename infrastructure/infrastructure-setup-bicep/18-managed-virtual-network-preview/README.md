@@ -29,7 +29,7 @@ Standard setup supports private network isolation through utilizing **Managed Vi
 ## Prerequisites
 
 1. **Register your subscription with the Preview Features in Azure Portal for Managed VNET**
-  - The feature is titled "AI.ManagedVnetPreview" in the Azure Portal under "Preview Features". Register your subscription for the preview. It will take a few hours to approve your subscription. 
+  - Register your subscription for the preview feature "AI.ManagedVnetPreview" in the Azure Portal under "Preview Features". .
 
 1. **Active Azure subscription with appropriate permissions**
    - **Azure AI Account Owner**: Needed to create a Foundry account and project 

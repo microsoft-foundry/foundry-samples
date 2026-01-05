@@ -30,7 +30,7 @@
       "value": "AzureOpenAI"
     },
     "deploymentAPIVersion": {
-      "value": "2024-02-01"
+      "value": ""
     },
     "deploymentInPath": {
       "value": "false"
