@@ -35,6 +35,16 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-09-01' = {
   }
 }
 
+resource accountCapHost 'Microsoft.CognitiveServices/accounts/capabilityHosts@2025-10-01-preview' = {
+  name: 'accountcaphost'
+  parent: account
+  properties: {
+    capabilityHostKind: 'Agents'
+    enablePublicHostingEnvironment: true
+  }
+}
+
+
 // Cognitive Services Project (child resource)
 resource project 'Microsoft.CognitiveServices/accounts/projects@2025-09-01' = {
   parent: account
