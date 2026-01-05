@@ -24,6 +24,36 @@ output "private_endpoints_subnet_id" {
   value       = var.enable_networking ? azurerm_subnet.private_endpoints[0].id : null
 }
 
+output "vm_subnet_id" {
+  description = "The ID of the VM subnet"
+  value       = var.enable_vm ? azurerm_subnet.vms[0].id : null
+}
+
+output "bastion_id" {
+  description = "The ID of the Azure Bastion"
+  value       = var.enable_vm ? azurerm_bastion_host.main[0].id : null
+}
+
+output "bastion_dns_name" {
+  description = "The DNS name of the Azure Bastion"
+  value       = var.enable_vm ? azurerm_bastion_host.main[0].dns_name : null
+}
+
+output "windows_vm_id" {
+  description = "The ID of the Windows VM"
+  value       = var.enable_vm ? azurerm_windows_virtual_machine.main[0].id : null
+}
+
+output "windows_vm_private_ip" {
+  description = "The private IP address of the Windows VM"
+  value       = var.enable_vm ? azurerm_network_interface.vm[0].private_ip_address : null
+}
+
+output "windows_vm_computer_name" {
+  description = "The computer name of the Windows VM"
+  value       = var.enable_vm ? azurerm_windows_virtual_machine.main[0].computer_name : null
+}
+
 output "storage_account_id" {
   description = "The ID of the storage account"
   value       = var.enable_storage ? azurerm_storage_account.main[0].id : null
@@ -79,12 +109,6 @@ output "ai_foundry_endpoint" {
   value       = try(jsondecode(azapi_resource.cognitive_account.output).properties.endpoint, "")
 }
 
-output "ai_foundry_principal_id" {
-  description = "The principal ID of the AI Foundry managed identity"
-  value       = azapi_resource.cognitive_account.identity[0].principal_id
-  sensitive   = true
-}
-
 output "private_dns_zone_ids" {
   description = "Map of private DNS zone IDs"
   value = var.enable_dns ? {
@@ -101,6 +125,5 @@ output "private_dns_zone_ids" {
     aifoundry_services    = azurerm_private_dns_zone.aifoundry_services[0].id
     cosmos                = azurerm_private_dns_zone.cosmos[0].id
     aisearch              = azurerm_private_dns_zone.aisearch[0].id
-    aifoundry_services    = azurerm_private_dns_zone.aifoundry_services[0].id
   } : {}
 }

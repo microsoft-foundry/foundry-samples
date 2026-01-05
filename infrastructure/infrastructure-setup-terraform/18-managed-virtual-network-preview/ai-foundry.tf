@@ -18,6 +18,7 @@ resource "azapi_resource" "cognitive_account" {
     kind = "AIServices"
     properties = merge(
       {
+        allowProjectManagement = true
         apiProperties        = {}
         customSubDomainName  = local.foundry_name
         disableLocalAuth     = true
@@ -26,9 +27,6 @@ resource "azapi_resource" "cognitive_account" {
           virtualNetworkRules   = []
           ipRules               = []
         }
-        allowProjectManagement = true
-        defaultProject         = "firstProject"
-        associatedProjects     = ["firstProject"]
         networkInjections = [
           {
             scenario                   = "agent"
@@ -79,11 +77,11 @@ resource "azapi_resource" "cognitive_account" {
   ]
 }
 
-# Role Assignment: Azure AI Network Connection Approver for AI Foundry Account Identity
-# This role is required for the AI Foundry account to approve managed network connections
+# Role Assignment: Network Connection Approver for AI Foundry Account Identity
+# This role is required for the AI Foundry account to approve managed network private endpoint connections
 resource "azurerm_role_assignment" "foundry_network_connection_approver" {
   scope                = azurerm_resource_group.main.id
-  role_definition_name = "Contributor"
+  role_definition_name = "Azure AI Enterprise Network Connection Approver"
   principal_id         = azapi_resource.cognitive_account.identity[0].principal_id
 }
 
@@ -151,6 +149,17 @@ resource "azapi_resource" "managed_network" {
   }
 }
 
+# Wait for Storage Account to be fully created before creating outbound rule
+resource "time_sleep" "wait_storage" {
+  count           = var.enable_storage ? 1 : 0
+  create_duration = "10m"
+
+  depends_on = [
+    azurerm_storage_account.main,
+    azurerm_private_endpoint.storage_blob
+  ]
+}
+
 # Managed Network Outbound Rule for Storage Account
 resource "azapi_resource" "storage_outbound_rule" {
   count     = var.enable_storage ? 1 : 0
@@ -172,6 +181,8 @@ resource "azapi_resource" "storage_outbound_rule" {
   }
 
   depends_on = [
+    time_sleep.wait_storage,
+    azurerm_role_assignment.foundry_network_connection_approver,
     azurerm_role_assignment.foundry_storage_blob,
     azurerm_role_assignment.foundry_storage_contributor
   ]
@@ -235,9 +246,8 @@ resource "azurerm_role_assignment" "project_search_contributor" {
   principal_id         = azapi_resource.ai_foundry_project.identity[0].principal_id
 }
 
-# Role Assignment: Project Identity - Cosmos DB Account Reader Role
-# This role allows the project to read metadata about the Cosmos DB account
-resource "azurerm_role_assignment" "project_cosmos_account_reader" {
+# Role Assignment: Project Identity - Cosmos DB Account Reader
+resource "azurerm_role_assignment" "project_cosmos_reader" {
   count                = var.enable_cosmos ? 1 : 0
   scope                = azurerm_cosmosdb_account.main[0].id
   role_definition_name = "Cosmos DB Account Reader Role"
@@ -250,6 +260,33 @@ resource "azurerm_role_assignment" "project_cosmos_operator" {
   scope                = azurerm_cosmosdb_account.main[0].id
   role_definition_name = "Cosmos DB Operator"
   principal_id         = azapi_resource.ai_foundry_project.identity[0].principal_id
+}
+
+# Wait for project-level RBAC propagation before creating capability host
+# This prevents capability host creation failures due to permissions not being ready
+resource "time_sleep" "wait_project_rbac" {
+  create_duration = "90s"
+
+  depends_on = [
+    azurerm_role_assignment.project_storage_blob,
+    azurerm_role_assignment.project_search_index,
+    azurerm_role_assignment.project_search_contributor,
+    azurerm_role_assignment.project_cosmos_reader,
+    azurerm_role_assignment.project_cosmos_operator
+  ]
+}
+
+# Wait for managed network outbound rules to fully provision
+# Outbound rules need additional time beyond creation to be in Succeeded state
+# Azure managed network provisioning can take several minutes
+resource "time_sleep" "wait_outbound_rules" {
+  create_duration = "600s"
+
+  depends_on = [
+    azapi_resource.storage_outbound_rule,
+    azapi_resource.cosmos_outbound_rule,
+    azapi_resource.aisearch_outbound_rule
+  ]
 }
 
 # AI Foundry Project Capability Host (matches Bicep implementation)
@@ -273,15 +310,25 @@ resource "azapi_resource" "project_capability_host" {
   }
 
   depends_on = [
+    # Core resources must exist
     azapi_resource.ai_foundry_project,
     azapi_resource.conn_aisearch,
     azapi_resource.conn_cosmosdb,
     azapi_resource.conn_storage,
-    azurerm_role_assignment.project_cosmos_account_reader,
+    # Project role assignments must be complete (matching Bicep dependencies)
+    azurerm_role_assignment.project_cosmos_reader,
     azurerm_role_assignment.project_cosmos_operator,
     azurerm_role_assignment.project_storage_blob,
     azurerm_role_assignment.project_search_index,
-    azurerm_role_assignment.project_search_contributor
+    azurerm_role_assignment.project_search_contributor,
+    # Wait for RBAC propagation
+    time_sleep.wait_project_rbac,
+    # CRITICAL: All outbound rules must be created AND provisioned before capability host
+    # The capability host validates that outbound rules exist and are in Succeeded state
+    azapi_resource.storage_outbound_rule,
+    azapi_resource.cosmos_outbound_rule,
+    azapi_resource.aisearch_outbound_rule,
+    time_sleep.wait_outbound_rules
   ]
 }
 

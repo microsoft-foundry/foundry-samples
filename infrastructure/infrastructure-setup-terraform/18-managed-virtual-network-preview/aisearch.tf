@@ -44,6 +44,45 @@ resource "azurerm_private_endpoint" "aisearch" {
   }
 }
 
+# Wait for AI Search to be fully created before creating outbound rule
+resource "time_sleep" "wait_aisearch" {
+  count           = var.enable_aisearch ? 1 : 0
+  create_duration = "10m"
+
+  depends_on = [
+    azurerm_search_service.main,
+    azurerm_private_endpoint.aisearch
+  ]
+}
+
+# Managed Network Outbound Rule for AI Search Service
+resource "azapi_resource" "aisearch_outbound_rule" {
+  count     = var.enable_aisearch ? 1 : 0
+  type      = "Microsoft.CognitiveServices/accounts/managedNetworks/outboundRules@2025-10-01-preview"
+  name      = "aisearch-rule"
+  parent_id = azapi_resource.managed_network.id
+
+  schema_validation_enabled = false
+
+  body = {
+    properties = {
+      type = "PrivateEndpoint"
+      destination = {
+        serviceResourceId = azurerm_search_service.main[0].id
+        subresourceTarget = "searchService"
+      }
+      category = "UserDefined"
+    }
+  }
+
+  depends_on = [
+    time_sleep.wait_aisearch,
+    azurerm_role_assignment.foundry_network_connection_approver,
+    azurerm_role_assignment.project_search_index,
+    azurerm_role_assignment.project_search_contributor
+  ]
+}
+
 # Role Assignment: Current user needs Search Service Contributor
 resource "azurerm_role_assignment" "current_user_search_contributor" {
   count                = var.enable_aisearch ? 1 : 0
@@ -59,3 +98,4 @@ resource "azurerm_role_assignment" "current_user_search_index" {
   role_definition_name = "Search Index Data Contributor"
   principal_id         = data.azurerm_client_config.current.object_id
 }
+
