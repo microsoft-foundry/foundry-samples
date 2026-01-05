@@ -66,7 +66,8 @@ resource "azapi_resource" "cognitive_account" {
 
   lifecycle {
     ignore_changes = [
-      body["properties"]["restore"]
+      body["properties"]["restore"],
+      output
     ]
   }
 

@@ -106,7 +106,12 @@ output "ai_foundry_name" {
 
 output "ai_foundry_endpoint" {
   description = "The endpoint of the AI Foundry / Cognitive Services account"
-  value       = try(jsondecode(azapi_resource.cognitive_account.output).properties.endpoint, "")
+  value       = "https://${azapi_resource.cognitive_account.name}.cognitiveservices.azure.com/"
+}
+
+output "ai_foundry_custom_subdomain" {
+  description = "The custom subdomain name of the AI Foundry account"
+  value       = try(jsondecode(azapi_resource.cognitive_account.output).properties.customSubDomainName, azapi_resource.cognitive_account.name)
 }
 
 output "private_dns_zone_ids" {
