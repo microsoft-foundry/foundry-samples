@@ -14,9 +14,12 @@ resource "azurerm_search_service" "main" {
     type = "SystemAssigned"
   }
 
-  tags = {
-    environment = "lab"
-  }
+  tags = merge(
+    var.tags,
+    {
+      environment = "lab"
+    }
+  )
 }
 
 # Private Endpoint for AI Search
@@ -39,10 +42,15 @@ resource "azurerm_private_endpoint" "aisearch" {
     private_dns_zone_ids = [azurerm_private_dns_zone.aisearch[0].id]
   }
 
-  tags = {
-    environment = "lab"
-  }
+  tags = merge(
+    var.tags,
+    {
+      environment = "lab"
+    }
+  )
 }
+
+# Wait for AI Search to be fully created before creating outbound rule
 
 # Wait for AI Search to be fully created before creating outbound rule
 resource "time_sleep" "wait_aisearch" {

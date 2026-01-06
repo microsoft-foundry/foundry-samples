@@ -66,9 +66,12 @@ resource "azurerm_bastion_host" "main" {
   copy_paste_enabled     = true
   file_copy_enabled      = true
 
-  tags = {
-    environment = "lab"
-  }
+  tags = merge(
+    var.tags,
+    {
+      environment = "lab"
+    }
+  )
 }
 
 # Network Interface for VM
@@ -93,7 +96,7 @@ resource "azurerm_windows_virtual_machine" "main" {
   resource_group_name = azurerm_resource_group.main.name
   size                = "Standard_B2s"
   admin_username      = var.vm_admin_username
-  admin_password      = var.vm_admin_password
+  admin_password      = random_password.vm_admin[0].result
 
   network_interface_ids = [
     azurerm_network_interface.vm[0].id
@@ -124,9 +127,12 @@ resource "azurerm_windows_virtual_machine" "main" {
   patch_mode                = "AutomaticByPlatform"
   patch_assessment_mode     = "AutomaticByPlatform"
 
-  tags = {
-    environment = "lab"
-  }
+  tags = merge(
+    var.tags,
+    {
+      environment = "lab"
+    }
+  )
 }
 
 # AAD Login Extension for Windows

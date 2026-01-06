@@ -60,9 +60,12 @@ resource "azapi_resource" "cognitive_account" {
     )
   }
 
-  tags = {
-    environment = "lab"
-  }
+  tags = merge(
+    var.tags,
+    {
+      environment = "lab"
+    }
+  )
 
   lifecycle {
     ignore_changes = [

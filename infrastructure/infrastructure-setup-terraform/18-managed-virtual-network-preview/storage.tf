@@ -22,9 +22,12 @@ resource "azurerm_storage_account" "main" {
     ]
   }
 
-  tags = {
-    environment = "lab"
-  }
+  tags = merge(
+    var.tags,
+    {
+      environment = "lab"
+    }
+  )
 }
 
 # Private Endpoint for Blob

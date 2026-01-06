@@ -54,6 +54,27 @@ output "windows_vm_computer_name" {
   value       = var.enable_vm ? azurerm_windows_virtual_machine.main[0].computer_name : null
 }
 
+output "key_vault_id" {
+  description = "The ID of the Key Vault"
+  value       = var.enable_vm ? azurerm_key_vault.main[0].id : null
+}
+
+output "key_vault_name" {
+  description = "The name of the Key Vault"
+  value       = var.enable_vm ? azurerm_key_vault.main[0].name : null
+}
+
+output "key_vault_uri" {
+  description = "The URI of the Key Vault"
+  value       = var.enable_vm ? azurerm_key_vault.main[0].vault_uri : null
+}
+
+output "vm_admin_password_secret_id" {
+  description = "The Key Vault secret ID containing the VM admin password"
+  value       = var.enable_vm ? azurerm_key_vault_secret.vm_admin_password[0].id : null
+  sensitive   = true
+}
+
 output "storage_account_id" {
   description = "The ID of the storage account"
   value       = var.enable_storage ? azurerm_storage_account.main[0].id : null

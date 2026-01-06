@@ -22,9 +22,12 @@ resource "azurerm_cosmosdb_account" "main" {
   network_acl_bypass_for_azure_services = false
   local_authentication_disabled = true
 
-  tags = {
-    environment = "lab"
-  }
+  tags = merge(
+    var.tags,
+    {
+      environment = "lab"
+    }
+  )
 }
 
 # Private Endpoint for Cosmos DB
@@ -47,9 +50,12 @@ resource "azurerm_private_endpoint" "cosmos" {
     private_dns_zone_ids = [azurerm_private_dns_zone.cosmos[0].id]
   }
 
-  tags = {
-    environment = "lab"
-  }
+  tags = merge(
+    var.tags,
+    {
+      environment = "lab"
+    }
+  )
 }
 
 # Role Assignment: AI Foundry Account Identity - Contributor on Cosmos DB

@@ -1,0 +1,42 @@
+# Example Terraform Variables File
+# Copy this file to terraform.tfvars and update with your values
+subscription_id     = "%subscription_id%"
+resource_group_name = "foundry-mvnet-rg"
+location            = "eastus2"
+foundry_identifier = "foundry-v1"  # Avoid issues with soft delete, helps make the resource unique
+
+# Tags to apply to all resources
+tags = {
+  Environment = "lab"
+  Project     = "AI Foundry"
+  ManagedBy   = "Terraform"
+}
+
+# Feature Flags - Enable/disable resources
+enable_networking = true
+enable_storage    = true
+enable_aisearch   = true
+enable_cosmos     = true
+enable_vm         = false
+enable_dns        = true
+
+# Network Configuration (only used if enable_networking = true)
+vnet_name                       = "foundry-vnet"
+vnet_address_prefix             = "10.0.0.0/16"
+private_endpoints_subnet_name   = "private-endpoints-subnet"
+private_endpoints_subnet_prefix = "10.0.1.0/24"
+vm_subnet_name                  = "vm-subnet"
+vm_subnet_prefix                = "10.0.2.0/24"
+bastion_subnet_prefix           = "10.0.3.0/26"
+
+# Bastion Configuration (only used if enable_vm = true)
+bastion_name = "foundry-bastion"
+
+# Virtual Machine Configuration (only used if enable_vm = true)
+vm_name           = "foundry-vm"
+vm_admin_username = "azureadmin"
+
+# Key Vault Network Configuration
+allowed_public_ips = ["0.0.0.0/32"]  # Replace with your public IP in CIDR format (e.g., "1.2.3.4/32")
+
+# Note: VM admin password is automatically generated and stored in Azure Key Vault
