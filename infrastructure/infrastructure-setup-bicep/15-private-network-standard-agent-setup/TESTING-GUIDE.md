@@ -64,6 +64,8 @@ az account set --subscription "<your-subscription-id>"
 az group create --name "rg-private-network-test" --location "norwayeast"
 ```
 
+We typically test with the subscription `47f1c914-e299-4953-a99d-3e34644cfe1c`. 
+
 **Supported Regions:**
 - Class A subnet support (GA): Australia East, Brazil South, Canada East, East US, East US 2, France Central, Germany West Central, Italy North, Japan East, South Africa North, South Central US, South India, Spain Central, Sweden Central, UAE North, UK South, West Europe, West US, West US 3
 - Class B and C subnet support (GA): All regions supported by Azure AI Foundry Agent Service
@@ -444,6 +446,6 @@ az network private-dns record-set list \
 ## Contact
 
 For questions about:
-- **Fabric integration**: Contact Piotr Karpala
-- **MCP Remote Servers**: Check MCP documentation
+- **Fabric integration**: Contact Matt Luker or Anand Raman
+- **MCP Remote Servers**: Check MCP documentation (for networking - contact Piotr Karpala)
 - **Azure AI Foundry**: See [Azure AI Foundry documentation](https://learn.microsoft.com/azure/ai-foundry/)
