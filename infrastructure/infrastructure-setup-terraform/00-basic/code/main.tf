@@ -1,8 +1,8 @@
 ## Create a random string
 ## 
 resource "random_string" "unique" {
-  length      = 5
-  min_numeric = 5
+  length      = 8
+  min_numeric = 8
   numeric     = true
   special     = false
   lower       = true
