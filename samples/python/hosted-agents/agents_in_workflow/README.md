@@ -101,10 +101,10 @@ If you choose to **build locally**, and your machine is **not `linux/amd64`** (f
 
 **Fix for local builds**
 
-Add this line at the top of your `Dockerfile`:
+Use this command to build the image locally:
 
-```dockerfile
-FROM --platform=linux/amd64 python:3.12-slim
+```shell
+docker build --platform=linux/amd64 -t image .
 ```
 
 This forces the image to be built for the required `amd64` architecture.
