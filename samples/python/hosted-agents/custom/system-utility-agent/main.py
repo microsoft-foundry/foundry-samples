@@ -63,7 +63,7 @@ Important:
 
 @dataclass
 class AgentConfig:
-    model: str = field(default_factory=lambda: os.getenv("AZURE_AI_MODEL_DEPLOYMENT_NAME", "gpt-4o-mini"))
+    model: str = field(default_factory=lambda: os.getenv("AZURE_AI_MODEL_DEPLOYMENT_NAME", "gpt-5"))
     project_endpoint: str = field(default_factory=lambda: os.getenv("AZURE_AI_PROJECT_ENDPOINT", ""))
     max_turns: int = field(default_factory=lambda: int(os.getenv("AGENT_MAX_TURNS", "10")))
     chat_history_length: int = field(default_factory=lambda: int(os.getenv("AGENT_CHAT_HISTORY_LENGTH", "20")))

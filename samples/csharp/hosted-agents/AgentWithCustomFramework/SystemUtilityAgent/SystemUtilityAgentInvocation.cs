@@ -258,7 +258,7 @@ public sealed class SystemUtilityAgentInvocation : IAgentInvocation
     {
         var activity = Activity.Current;
 
-        var deploymentName = Environment.GetEnvironmentVariable("AZURE_AI_MODEL_DEPLOYMENT_NAME")?? "gpt-4o-mini";
+        var deploymentName = Environment.GetEnvironmentVariable("AZURE_AI_MODEL_DEPLOYMENT_NAME")?? "gpt-5";
         var chatHistoryLength = GetIntEnv("AGENT_CHAT_HISTORY_LENGTH", 20);
 
         activity?.SetTag("gen_ai.request.model", deploymentName);
