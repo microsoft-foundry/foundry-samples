@@ -186,7 +186,8 @@ Use one of the available authentication methods supported by Azure AI Foundry co
 **4️⃣ Networking**  
 - **🌐 Public Networking**: If gateway endpoints are accessible on public internet, no separate setup required
 - **🔐 Fully Secured Network Setup**: Use Agents BYO VNet feature
-  - **For APIM**: Use this [Bicep template for secure APIM setup](https://github.com/azure-ai-foundry/foundry-samples/tree/main/infrastructure/infrastructure-setup-bicep/16-private-network-standard-agent-apim-setup-preview)
+  - **For APIM**: Use this [Bicep template for secure APIM setup](https://github.com/azure-ai-foundry/foundry-samples/tree/main/infrastructure/infrastructure-setup-bicep/16-private-network-standard-agent-apim-setup-preview), If you are using your own setup, you just need to ensure that APIM is accessible from the agents subnet in BYO vnet.
+  - **For ModelGateway** - Ensure that your gateway endpoint is accessible from the agents subnet in the BYO vnet.
 
 ---
 
