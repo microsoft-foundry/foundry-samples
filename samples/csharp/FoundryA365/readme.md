@@ -74,7 +74,7 @@ azd env get-values
    ![Find your agent in A365](image.png)
 
 3. Click the **Approve request and activate** button:
-   ![Approve agent request](image-1.png)
+   ![Screenshot of the agent approval dialog with the 'Approve request and activate' button highlighted](image-1.png)
 
 ### Step 4: Configure Teams Integration
 
