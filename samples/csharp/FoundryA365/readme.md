@@ -95,7 +95,7 @@ azd env get-values
 
 1. In Microsoft Teams, navigate to **Apps** → **Agents for your team**
 2. Find your agent and create an instance:
-   ![Create agent instance](image-4.png)
+   ![Screenshot of Microsoft Teams showing the 'Agents for your team' section with an agent listed](image-4.png)
 
 ---
 
