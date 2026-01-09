@@ -1,7 +1,7 @@
 /*
   Complete AI Foundry solution with UAI, CMK, and Project
-  
-  Description: 
+
+  Description:
   - Create an Azure AI Foundry account with User-Assigned Identity
   - Enable Customer-Managed Keys (CMK) encryption
   - Create a project
@@ -14,9 +14,9 @@ param aiFoundryName string = 'ai-foundry-complete-cmk'
 param aiProjectName string = '${aiFoundryName}-proj'
 
 @description('Location for all resources.')
-param location string = 'eastus2'
+param location string
 
-@description('Name of the Azure Key Vault target')
+@description('Name of the Azure Key Vault')
 param keyVaultName string
 
 @description('Name of the Azure Key Vault key')
@@ -75,3 +75,4 @@ output accountId string = aiFoundryAccount.outputs.accountId
 output accountName string = aiFoundryAccount.outputs.accountName
 output projectId string = aiProject.outputs.projectId
 output projectName string = aiProject.outputs.projectName
+output keyVaultUri string = cmkEncryption.outputs.keyVaultUri

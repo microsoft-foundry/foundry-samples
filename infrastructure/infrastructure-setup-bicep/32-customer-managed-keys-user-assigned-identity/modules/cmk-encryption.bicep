@@ -1,6 +1,5 @@
 /*
   Module: Customer-Managed Key (CMK) Encryption
-  
   Configures customer-managed key encryption for AI Foundry account:
   - Adds Key Vault access policy for user-assigned identity
   - Updates account with CMK encryption configuration
@@ -28,7 +27,7 @@ param userAssignedIdentityId string
 param userAssignedIdentityClientId string
 
 // Use the actual Key Vault URI directly since environment() might not resolve correctly in this context
-var keyVaultUri = 'https://${keyVaultName}.${environment().suffixes.keyvaultDns}/'
+var keyVaultUri = 'https://${keyVaultName}${environment().suffixes.keyvaultDns}/'
 
 // Note: Key Vault Crypto User role should already be assigned to the UAI
 // If not assigned, run: az role assignment create --assignee <UAI-Principal-ID> --role "Key Vault Crypto User" --scope <KeyVault-Resource-ID>
@@ -63,10 +62,10 @@ resource accountUpdate 'Microsoft.CognitiveServices/accounts@2025-04-01-preview'
         identityClientId: userAssignedIdentityClientId
       }
     }
-    
+
     // Required for AI Foundry projects
     allowProjectManagement: true
-    
+
     // Preserve existing properties
     publicNetworkAccess: 'Enabled'
     customSubDomainName: aiFoundryName
@@ -76,3 +75,4 @@ resource accountUpdate 'Microsoft.CognitiveServices/accounts@2025-04-01-preview'
 
 // Outputs
 output encryptionStatus string = 'CMK encryption enabled'
+output keyVaultUri string = keyVaultUri
