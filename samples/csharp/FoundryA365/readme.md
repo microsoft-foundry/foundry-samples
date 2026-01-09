@@ -89,7 +89,7 @@ azd env get-values
    ```
 
 3. Navigate to **Configuration** and add your **Bot ID** (same as Blueprint ID):
-   ![Add Bot ID](image-3.png)
+   ![Screenshot showing the Bot ID configuration field in the Teams Developer Portal](image-3.png)
 
 ### Step 5: Create Agent Instances
 
