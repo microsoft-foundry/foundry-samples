@@ -79,8 +79,8 @@ azd env get-values
 ### Step 4: Configure Teams Integration
 
 1. Open the [Teams Developer Portal](https://dev.teams.microsoft.com/tools/agent-blueprint) and locate your agent blueprint
-   
-   **Note:** Only 100 Agent Blueprints are displayed. If yours isn't visible, click any blueprint and manually update the URL with your Blueprint ID:
+    
+   **Note:** Only 100 Agent Blueprints are displayed. If yours isn't visible, click any blueprint to open its details page, then in the browser's address bar replace the blueprint ID portion of the URL with your own Blueprint ID from the previous step (for example: `https://dev.teams.microsoft.com/tools/agent-blueprint/<your-blueprint-id>`).
    ![Find agent blueprint](image-2.png)
 
 2. Get your Blueprint ID:
