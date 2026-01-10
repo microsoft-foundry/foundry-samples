@@ -46,8 +46,8 @@ Before deploying this solution, ensure you have:
 1. **Azure CLI** installed and configured
 2. **Azure subscription** with appropriate permissions
 3. **Resource Group** created
-4. **Key Vault** with a key for CMK encryption
-5. **User-Assigned Managed Identity** with Key Vault permissions
+4. **Azure Key Vault** with a CMK RSA-2048 key already created
+5. **User-Assigned Managed Identity** created with Key Vault Crypto User role assigned
 
 ### Setting Up Prerequisites
 
@@ -82,7 +82,7 @@ az role assignment create --assignee $UAI_PRINCIPAL_ID --role "Key Vault Crypto 
 
 ## Parameters
 
-The solution requires the following parameters:
+The template constructs the Key Vault URI automatically from `keyVaultName` using the cloud-appropriate suffix. Ensure your Key Vault and CMK key already exist before deployment.
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
@@ -122,6 +122,7 @@ The solution requires the following parameters:
 Get the Key Vault key version:
 ```powershell
 az keyvault key show --vault-name your-key-vault-name --name your-key-name --query key.kid -o tsv
+# Extract the last segment after the final '/' as the keyVersion
 ```
 
 Get UAI details:
@@ -175,7 +176,7 @@ Creates the AI Foundry account with:
 ### 2. CMK Encryption Module (`cmk-encryption.bicep`)
 
 Configures Customer-Managed Key encryption:
-- Adds Key Vault access policy for UAI
+- Constructs Key Vault URI automatically from keyVaultName using `environment().suffixes.keyvaultDns`
 - Updates account with CMK encryption settings
 - Uses UAI client ID for Key Vault authentication
 
