@@ -31,6 +31,8 @@ param aiSearchName string
 param storageName string
 @description('Name of the Cosmos DB account')
 param cosmosDBName string
+@description('The Microsoft Fabric Workspace full ARM Resource ID. Optional - leave empty to skip Fabric private endpoint.')
+param fabricWorkspaceResourceId string = ''
 @description('Name of the Vnet')
 param vnetName string
 @description('Name of the Customer subnet')
@@ -70,6 +72,7 @@ param existingDnsZones object = {
   'privatelink.search.windows.net': ''
   'privatelink.blob.${environment().suffixes.storage}': ''
   'privatelink.documents.azure.com': ''
+  'privatelink.fabric.microsoft.com': ''
 }
 
 // ---- Resource references ----
@@ -92,6 +95,11 @@ resource cosmosDBAccount 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' exis
   name: cosmosDBName
   scope: resourceGroup(cosmosDBSubscriptionId, cosmosDBResourceGroupName)
 }
+
+// ---- Fabric resource reference (conditional) ----
+var fabricPassedIn = fabricWorkspaceResourceId != ''
+var fabricParts = split(fabricWorkspaceResourceId, '/')
+var fabricWorkspaceName = fabricPassedIn ? last(fabricParts) : ''
 
 // Reference existing network resources
 resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' existing = {
@@ -118,7 +126,7 @@ resource aiAccountPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01
         name: '${aiAccountName}-private-link-service-connection'
         properties: {
           privateLinkServiceId: aiAccount.id
-          groupIds: [ 'account' ] // Target AI Services account
+          groupIds: ['account'] // Target AI Services account
         }
       }
     ]
@@ -140,7 +148,7 @@ resource aiSearchPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01'
         name: '${aiSearchName}-private-link-service-connection'
         properties: {
           privateLinkServiceId: aiSearch.id
-          groupIds: [ 'searchService' ] // Target search service
+          groupIds: ['searchService'] // Target search service
         }
       }
     ]
@@ -162,7 +170,7 @@ resource storagePrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' 
         name: '${storageName}-private-link-service-connection'
         properties: {
           privateLinkServiceId: storageAccount.id // Target blob storage
-          groupIds: [ 'blob' ]
+          groupIds: ['blob']
         }
       }
     ]
@@ -181,7 +189,30 @@ resource cosmosDBPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01'
         name: '${cosmosDBName}-private-link-service-connection'
         properties: {
           privateLinkServiceId: cosmosDBAccount.id // Target Cosmos DB account
-          groupIds: [ 'Sql' ]
+          groupIds: ['Sql']
+        }
+      }
+    ]
+  }
+}
+
+/*--------------------------------------------- Microsoft Fabric Private Endpoint -------------------------------------*/
+
+// Private endpoint for Microsoft Fabric Workspace
+// - Creates network interface in customer private endpoint subnet
+// - Establishes private connection to Fabric workspace
+// - Only created if fabricWorkspaceResourceId is provided
+resource fabricPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = if (fabricPassedIn) {
+  name: '${fabricWorkspaceName}-fabric-private-endpoint'
+  location: resourceGroup().location
+  properties: {
+    subnet: { id: peSubnet.id } // Deploy in customer private endpoint subnet
+    privateLinkServiceConnections: [
+      {
+        name: '${fabricWorkspaceName}-private-link-service-connection'
+        properties: {
+          privateLinkServiceId: fabricWorkspaceResourceId // Target Fabric workspace
+          groupIds: ['Fabric'] // Fabric private link group
         }
       }
     ]
@@ -203,6 +234,7 @@ var cognitiveServicesDnsZoneName = 'privatelink.cognitiveservices.azure.com'
 var aiSearchDnsZoneName = 'privatelink.search.windows.net'
 var storageDnsZoneName = 'privatelink.blob.${environment().suffixes.storage}'
 var cosmosDBDnsZoneName = 'privatelink.documents.azure.com'
+var fabricDnsZoneName = 'privatelink.fabric.microsoft.com'
 
 // ---- DNS Zone Resource Group lookups ----
 var aiServicesDnsZoneRG = existingDnsZones[aiServicesDnsZoneName]
@@ -211,6 +243,7 @@ var cognitiveServicesDnsZoneRG = existingDnsZones[cognitiveServicesDnsZoneName]
 var aiSearchDnsZoneRG = existingDnsZones[aiSearchDnsZoneName]
 var storageDnsZoneRG = existingDnsZones[storageDnsZoneName]
 var cosmosDBDnsZoneRG = existingDnsZones[cosmosDBDnsZoneName]
+var fabricDnsZoneRG = existingDnsZones.?fabricDnsZoneName ?? ''
 
 // ---- DNS Zone Resources and References ----
 resource aiServicesPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (empty(aiServicesDnsZoneRG)) {
@@ -250,7 +283,9 @@ resource existingCognitiveServicesPrivateDnsZone 'Microsoft.Network/privateDnsZo
   scope: resourceGroup(cognitiveServicesDnsZoneRG)
 }
 //creating condition if user pass existing dns zones or not
-var cognitiveServicesDnsZoneId = empty(cognitiveServicesDnsZoneRG) ? cognitiveServicesPrivateDnsZone.id : existingCognitiveServicesPrivateDnsZone.id
+var cognitiveServicesDnsZoneId = empty(cognitiveServicesDnsZoneRG)
+  ? cognitiveServicesPrivateDnsZone.id
+  : existingCognitiveServicesPrivateDnsZone.id
 
 resource aiSearchPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (empty(aiSearchDnsZoneRG)) {
   name: aiSearchDnsZoneName
@@ -290,6 +325,22 @@ resource existingCosmosDBPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-
 }
 //creating condition if user pass existing dns zones or not
 var cosmosDBDnsZoneId = empty(cosmosDBDnsZoneRG) ? cosmosDBPrivateDnsZone.id : existingCosmosDBPrivateDnsZone.id
+
+// Microsoft Fabric Private DNS Zone - only created if Fabric workspace is provided
+resource fabricPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (fabricPassedIn && empty(fabricDnsZoneRG)) {
+  name: fabricDnsZoneName
+  location: 'global'
+}
+
+// Reference existing Fabric private DNS zone if provided
+resource existingFabricPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = if (fabricPassedIn && !empty(fabricDnsZoneRG)) {
+  name: fabricDnsZoneName
+  scope: resourceGroup(fabricDnsZoneRG)
+}
+// Fabric DNS Zone ID - conditional based on whether Fabric is configured
+var fabricDnsZoneId = fabricPassedIn
+  ? (empty(fabricDnsZoneRG) ? fabricPrivateDnsZone.id : existingFabricPrivateDnsZone.id)
+  : ''
 
 // ---- DNS VNet Links ----
 resource aiServicesLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = if (empty(aiServicesDnsZoneRG)) {
@@ -347,6 +398,17 @@ resource cosmosDBLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@202
   }
 }
 
+// Fabric VNet Link - only created if Fabric workspace is provided
+resource fabricLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = if (fabricPassedIn && empty(fabricDnsZoneRG)) {
+  parent: fabricPrivateDnsZone
+  location: 'global'
+  name: 'fabric-${suffix}-link'
+  properties: {
+    virtualNetwork: { id: vnet.id }
+    registrationEnabled: false
+  }
+}
+
 // ---- DNS Zone Groups ----
 resource aiServicesDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = {
   parent: aiAccountPrivateEndpoint
@@ -398,5 +460,19 @@ resource cosmosDBDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGrou
   }
   dependsOn: [
     empty(cosmosDBDnsZoneRG) ? cosmosDBLink : null
+  ]
+}
+
+// Fabric DNS Zone Group - only created if Fabric workspace is provided
+resource fabricDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (fabricPassedIn) {
+  parent: fabricPrivateEndpoint
+  name: '${fabricWorkspaceName}-dns-group'
+  properties: {
+    privateDnsZoneConfigs: [
+      { name: '${fabricWorkspaceName}-dns-config', properties: { privateDnsZoneId: fabricDnsZoneId } }
+    ]
+  }
+  dependsOn: [
+    (fabricPassedIn && empty(fabricDnsZoneRG)) ? fabricLink : null
   ]
 }

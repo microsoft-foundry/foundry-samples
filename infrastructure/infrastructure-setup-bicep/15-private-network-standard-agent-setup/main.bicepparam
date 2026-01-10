@@ -1,12 +1,12 @@
 using './main.bicep'
 
-param location = 'eastus2'
-param aiServices = 'aiservices'
+param location = 'norwayeast'
+param aiServices = 'djetchev'
 param modelName = 'gpt-4o'
 param modelFormat = 'OpenAI'
 param modelVersion = '2024-11-20'
-param modelSkuName = 'GlobalStandard'
-param modelCapacity = 30
+param modelSkuName = 'Standard'
+param modelCapacity = 1
 param firstProjectName = 'project'
 param projectDescription = 'A project for the AI Foundry account with network secured deployed Agent'
 param displayName = 'project'
@@ -25,10 +25,10 @@ param azureCosmosDBAccountResourceId = ''
 param existingDnsZones = {
   'privatelink.services.ai.azure.com': ''
   'privatelink.openai.azure.com': ''
-  'privatelink.cognitiveservices.azure.com': ''               
-  'privatelink.search.windows.net': ''           
-  'privatelink.blob.core.windows.net': ''                            
-  'privatelink.documents.azure.com': ''                       
+  'privatelink.cognitiveservices.azure.com': ''
+  'privatelink.search.windows.net': ''
+  'privatelink.blob.core.windows.net': ''
+  'privatelink.documents.azure.com': ''
 }
 
 //DNSZones names for validating if they exist
@@ -40,7 +40,6 @@ param dnsZoneNames = [
   'privatelink.blob.core.windows.net'
   'privatelink.documents.azure.com'
 ]
-
 
 // Network configuration (behavior depends on `existingVnetResourceId`)
 //
@@ -65,4 +64,3 @@ param dnsZoneNames = [
 param vnetAddressPrefix = ''
 param agentSubnetPrefix = ''
 param peSubnetPrefix = ''
-
