@@ -1,0 +1,23 @@
+{
+  "name": "quickstart",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "start": "tsx --no-deprecation src/quickstart.ts",
+    "build": "npx tsc",
+    "dev": "tsx watch --no-deprecation src/quickstart.ts",
+    "type-check": "npx tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@azure/ai-projects": "^2.0.0-beta.2",
+    "@azure/identity": "^4.13.0",
+    "dotenv": "^17.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  }
+}
