@@ -1,0 +1,152 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.35.1.17967",
+      "templateHash": "2857555304822280634"
+    }
+  },
+  "parameters": {
+    "azureDeployName": {
+      "type": "string",
+      "defaultValue": "[utcNow()]",
+      "metadata": {
+        "description": ""
+      }
+    },
+    "account_name": {
+      "type": "string",
+      "defaultValue": "[format('aiServices{0}', substring(uniqueString(parameters('azureDeployName')), 0, 4))]"
+    },
+    "project_name": {
+      "type": "string",
+      "defaultValue": "project"
+    },
+    "projectDescription": {
+      "type": "string",
+      "defaultValue": "some description"
+    },
+    "projectDisplayName": {
+      "type": "string",
+      "defaultValue": "project_display_name"
+    },
+    "location": {
+      "type": "string"
+    },
+    "existingAoaiResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "The resource ID of the existing Azure OpenAI resource."
+      }
+    }
+  },
+  "variables": {
+    "byoAoaiConnectionName": "aoaiConnection",
+    "existingAoaiResourceIdParts": "[split(parameters('existingAoaiResourceId'), '/')]",
+    "existingAoaiResourceIdSubId": "[variables('existingAoaiResourceIdParts')[2]]",
+    "existingAoaiResourceIdRgName": "[variables('existingAoaiResourceIdParts')[4]]",
+    "existingAoaiResourceIdName": "[variables('existingAoaiResourceIdParts')[8]]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}/{2}', parameters('account_name'), parameters('project_name'), variables('byoAoaiConnectionName'))]",
+      "properties": {
+        "category": "AzureOpenAI",
+        "target": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', variables('existingAoaiResourceIdSubId'), variables('existingAoaiResourceIdRgName')), 'Microsoft.CognitiveServices/accounts', variables('existingAoaiResourceIdName')), '2023-05-01').endpoint]",
+        "authType": "AAD",
+        "metadata": {
+          "ApiType": "Azure",
+          "ResourceId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', variables('existingAoaiResourceIdSubId'), variables('existingAoaiResourceIdRgName')), 'Microsoft.CognitiveServices/accounts', variables('existingAoaiResourceIdName'))]",
+          "location": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', variables('existingAoaiResourceIdSubId'), variables('existingAoaiResourceIdRgName')), 'Microsoft.CognitiveServices/accounts', variables('existingAoaiResourceIdName')), '2023-05-01', 'full').location]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('account_name'), parameters('project_name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[parameters('account_name')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "S0"
+      },
+      "kind": "AIServices",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "allowProjectManagement": true,
+        "customSubDomainName": "[parameters('account_name')]",
+        "networkAcls": {
+          "defaultAction": "Allow",
+          "virtualNetworkRules": [],
+          "ipRules": []
+        },
+        "publicNetworkAccess": "Enabled",
+        "disableLocalAuth": false
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}', parameters('account_name'), parameters('project_name'))]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "description": "[parameters('projectDescription')]",
+        "displayName": "[parameters('projectDisplayName')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('account_name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/capabilityHosts",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}', parameters('account_name'), format('{0}-capHost', parameters('account_name')))]",
+      "properties": {
+        "capabilityHostKind": "Agents"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('account_name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/capabilityHosts",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}/{2}', parameters('account_name'), parameters('project_name'), format('{0}-capHost', parameters('project_name')))]",
+      "properties": {
+        "capabilityHostKind": "Agents",
+        "aiServicesConnections": [
+          "[variables('byoAoaiConnectionName')]"
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('account_name'), parameters('project_name'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/capabilityHosts', parameters('account_name'), format('{0}-capHost', parameters('account_name')))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "ENDPOINT": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('account_name')), '2025-04-01-preview').endpoint]"
+    },
+    "project_name": {
+      "type": "string",
+      "value": "[parameters('project_name')]"
+    },
+    "account_name": {
+      "type": "string",
+      "value": "[parameters('account_name')]"
+    }
+  }
+}
