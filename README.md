@@ -8,5 +8,5 @@ Use the samples in this repository to try out Azure AI Foundry scenarios on your
 
 ## Contributing
 
-We welcome contributions and suggestions! Please see the [contributing guidelines] for details.
+We welcome contributions and suggestions! Please see the [contributing guidelines](https://github.com/azure-ai-foundry/foundry-samples/blob/main/CONTRIBUTING.md) for details.
 
