@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "17632891943305566295"
+      "templateHash": "17893100590503866979"
     }
   },
   "parameters": {
@@ -105,7 +105,7 @@
     },
     "modelCapacity": {
       "type": "int",
-      "defaultValue": 40,
+      "defaultValue": 30,
       "metadata": {
         "description": "The capacity of the model deployment in TPM."
       }
