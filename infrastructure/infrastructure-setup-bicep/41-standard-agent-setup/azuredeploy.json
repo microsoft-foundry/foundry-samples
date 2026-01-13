@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "3215924381065900811"
+      "templateHash": "7000366004712356804"
     }
   },
   "parameters": {
@@ -73,7 +73,7 @@
     },
     "modelName": {
       "type": "string",
-      "defaultValue": "gpt-5.2",
+      "defaultValue": "gpt-5",
       "metadata": {
         "description": "The name of the model you want to deploy"
       }
@@ -87,7 +87,7 @@
     },
     "modelVersion": {
       "type": "string",
-      "defaultValue": "2025-12-11",
+      "defaultValue": "2025-08-07",
       "metadata": {
         "description": "The version of your model"
       }
