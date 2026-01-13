@@ -1,0 +1,135 @@
+name: Run Setup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - infrastructure/infrastructure-setup-bicep/**
+  pull_request:
+    branches: [main]
+    paths:
+      - infrastructure/infrastructure-setup-bicep/**
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-setup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source branch
+        uses: actions/checkout@v3
+        with:
+          # PR: checks out the PR branch, Push: checks out main, Dispatch: checks out default branch
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+
+      - name: Install Bicep
+        run: |
+          INSTALL_PATH="$RUNNER_TEMP/bicep"
+          BICEP_PATH="$RUNNER_TEMP/bicep/bicep"
+          mkdir -p "$INSTALL_PATH"
+          curl -sLo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x ./bicep
+          sudo mv ./bicep "$INSTALL_PATH"
+          echo "BICEP_PATH=$BICEP_PATH" >> $GITHUB_ENV
+          $BICEP_PATH --version
+
+      - name: Determine changed main.bicep files
+        id: changes
+        run: |
+          set -e
+          cd "$GITHUB_WORKSPACE"
+
+          EVENT="${{ github.event_name }}"
+          echo "Event: $EVENT"
+
+          if [ "$EVENT" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          elif [ "$EVENT" = "push" ]; then
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+          else
+            # workflow_dispatch: use last commit as best-effort
+            BASE="$(git rev-parse HEAD~1 || echo '')"
+            HEAD="$(git rev-parse HEAD)"
+          fi
+
+          echo "Diff range: ${BASE}..${HEAD}"
+
+          # Only rebuild when main.bicep changes
+          if [ -n "$BASE" ]; then
+            MODIFIED=$(git diff --name-only "$BASE" "$HEAD" \
+              | grep -E "^infrastructure/infrastructure-setup-bicep/.*/main\.bicep$" || true)
+          else
+            MODIFIED=$(git show --name-only --pretty="" -1 \
+              | grep -E "^infrastructure/infrastructure-setup-bicep/.*/main\.bicep$" || true)
+          fi
+
+          if [ -z "$MODIFIED" ]; then
+            echo "No relevant Bicep changes detected."
+            echo "files=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Changed main.bicep files:"
+          echo "$MODIFIED"
+
+          # Output as newline-delimited list
+          {
+            echo "files<<EOF"
+            echo "$MODIFIED"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Build changed Bicep files -> azuredeploy.json
+        if: steps.changes.outputs.files != ''
+        run: |
+          set -e
+          cd "$GITHUB_WORKSPACE"
+
+          while IFS= read -r BICEP_FILE; do
+            OUTFILE="$(dirname "$BICEP_FILE")/azuredeploy.json"
+            echo "Building: $BICEP_FILE -> $OUTFILE"
+            $BICEP_PATH build "$BICEP_FILE" --outfile "$OUTFILE"
+          done <<< "${{ steps.changes.outputs.files }}"
+
+      - name: Commit + push changes back to branch (PR) or main (push)
+        if: always()
+        run: |
+          set -e
+          cd "$GITHUB_WORKSPACE"
+
+          git config --global user.email "foundry-samples@noreply.github.com"
+          git config --global user.name "foundry-samples automation"
+
+          git add -A
+
+          if git diff-index --quiet HEAD --; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Automatic fixes"
+
+          EVENT="${{ github.event_name }}"
+
+          # If PR is from a fork, pushing will be rejected. Detect and skip.
+          if [ "$EVENT" = "pull_request" ]; then
+            if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+              echo "PR is from a fork; cannot push changes back to fork branch. Skipping push."
+              exit 0
+            fi
+            BRANCH="${{ github.head_ref }}"
+            echo "Pushing fixes to PR branch: $BRANCH"
+            git push origin "HEAD:refs/heads/$BRANCH"
+            exit 0
+          fi
+
+          # push / workflow_dispatch
+          BRANCH="${{ github.ref_name }}"
+          echo "Pushing fixes to branch: $BRANCH"
+          git push origin "HEAD:refs/heads/$BRANCH"
