@@ -5,13 +5,13 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "9028717141391138763"
+      "templateHash": "6166861745321957187"
     }
   },
   "parameters": {
     "location": {
       "type": "string",
-      "defaultValue": "eastus2",
+      "defaultValue": "eastus",
       "metadata": {
         "description": "The region to deploy your AI Services resource and project"
       }

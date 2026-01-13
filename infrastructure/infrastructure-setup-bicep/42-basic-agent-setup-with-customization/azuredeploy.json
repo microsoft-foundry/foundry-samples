@@ -5,8 +5,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.37.4.10188",
-      "templateHash": "12701869582839072315"
+      "version": "0.39.26.7824",
+      "templateHash": "14667354563602935622"
     }
   },
   "parameters": {
@@ -45,7 +45,7 @@
     },
     "location": {
       "type": "string",
-      "defaultValue": "westus",
+      "defaultValue": "eastus",
       "allowedValues": [
         "australiaeast",
         "canadaeast",

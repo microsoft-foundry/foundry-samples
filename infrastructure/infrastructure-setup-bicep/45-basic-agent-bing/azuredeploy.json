@@ -1,0 +1,358 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "7778551102092775636"
+    }
+  },
+  "parameters": {
+    "ai_services": {
+      "type": "string",
+      "defaultValue": "aiServices"
+    },
+    "project_name": {
+      "type": "string",
+      "defaultValue": "project"
+    },
+    "description": {
+      "type": "string",
+      "defaultValue": "some description"
+    },
+    "display_name": {
+      "type": "string",
+      "defaultValue": "project_display_name"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus"
+    },
+    "modelName": {
+      "type": "string",
+      "defaultValue": "gpt-4.1"
+    },
+    "modelFormat": {
+      "type": "string",
+      "defaultValue": "OpenAI"
+    },
+    "modelVersion": {
+      "type": "string",
+      "defaultValue": "2025-04-14"
+    },
+    "modelSkuName": {
+      "type": "string",
+      "defaultValue": "GlobalStandard"
+    },
+    "modelCapacity": {
+      "type": "int",
+      "defaultValue": 30
+    },
+    "deploymentTimestamp": {
+      "type": "string",
+      "defaultValue": "[utcNow('yyyyMMddHHmmss')]"
+    }
+  },
+  "variables": {
+    "uniqueSuffix": "[substring(uniqueString(format('{0}-{1}', resourceGroup().id, parameters('deploymentTimestamp'))), 0, 4)]",
+    "account_name": "[toLower(format('{0}{1}', parameters('ai_services'), variables('uniqueSuffix')))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('ai-{0}-{1}-deployment', variables('account_name'), variables('uniqueSuffix'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "account_name": {
+            "value": "[variables('account_name')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "modelName": {
+            "value": "[parameters('modelName')]"
+          },
+          "modelFormat": {
+            "value": "[parameters('modelFormat')]"
+          },
+          "modelVersion": {
+            "value": "[parameters('modelVersion')]"
+          },
+          "modelSkuName": {
+            "value": "[parameters('modelSkuName')]"
+          },
+          "modelCapacity": {
+            "value": "[parameters('modelCapacity')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "18028369509636259517"
+            }
+          },
+          "parameters": {
+            "account_name": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "modelName": {
+              "type": "string"
+            },
+            "modelFormat": {
+              "type": "string"
+            },
+            "modelVersion": {
+              "type": "string"
+            },
+            "modelSkuName": {
+              "type": "string"
+            },
+            "modelCapacity": {
+              "type": "int"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[parameters('account_name')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "S0"
+              },
+              "kind": "AIServices",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "allowProjectManagement": true,
+                "customSubDomainName": "[parameters('account_name')]",
+                "networkAcls": {
+                  "defaultAction": "Allow",
+                  "virtualNetworkRules": [],
+                  "ipRules": []
+                },
+                "publicNetworkAccess": "Enabled",
+                "disableLocalAuth": false
+              }
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[format('{0}/{1}', parameters('account_name'), parameters('modelName'))]",
+              "sku": {
+                "capacity": "[parameters('modelCapacity')]",
+                "name": "[parameters('modelSkuName')]"
+              },
+              "properties": {
+                "model": {
+                  "name": "[parameters('modelName')]",
+                  "format": "[parameters('modelFormat')]",
+                  "version": "[parameters('modelVersion')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('account_name'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "account_name": {
+              "type": "string",
+              "value": "[parameters('account_name')]"
+            },
+            "account_name_id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('account_name'))]"
+            },
+            "aiServicesTarget": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('account_name')), '2025-04-01-preview').endpoint]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('ai-{0}-{1}-deployment', parameters('project_name'), variables('uniqueSuffix'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "project_name": {
+            "value": "[parameters('project_name')]"
+          },
+          "description": {
+            "value": "[parameters('description')]"
+          },
+          "display_name": {
+            "value": "[parameters('display_name')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "account_name": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('ai-{0}-{1}-deployment', variables('account_name'), variables('uniqueSuffix'))), '2025-04-01').outputs.account_name.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "9956949102179771191"
+            }
+          },
+          "parameters": {
+            "account_name": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "project_name": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "display_name": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts/projects",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}', parameters('account_name'), parameters('project_name'))]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "description": "[parameters('description')]",
+                "displayName": "[parameters('display_name')]"
+              }
+            }
+          ],
+          "outputs": {
+            "project_name": {
+              "type": "string",
+              "value": "[parameters('project_name')]"
+            },
+            "project_id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('account_name'), parameters('project_name'))]"
+            },
+            "projectPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('account_name'), parameters('project_name')), '2025-04-01-preview', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', format('ai-{0}-{1}-deployment', variables('account_name'), variables('uniqueSuffix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('ai-{0}-{1}-bing-connection', parameters('project_name'), variables('uniqueSuffix'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "account_name": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('ai-{0}-{1}-deployment', variables('account_name'), variables('uniqueSuffix'))), '2025-04-01').outputs.account_name.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "1420647491421234827"
+            }
+          },
+          "parameters": {
+            "account_name": {
+              "type": "string",
+              "defaultValue": "aiservicesy4si"
+            },
+            "bingSearchName": {
+              "type": "string",
+              "defaultValue": "[format('bingsearch-{0}', parameters('account_name'))]"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Bing/accounts",
+              "apiVersion": "2020-06-10",
+              "name": "[parameters('bingSearchName')]",
+              "location": "global",
+              "sku": {
+                "name": "G1"
+              },
+              "kind": "Bing.Grounding"
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/connections",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}', parameters('account_name'), format('{0}-bingsearchconnection', parameters('account_name')))]",
+              "properties": {
+                "category": "ApiKey",
+                "target": "https://api.bing.microsoft.com/",
+                "authType": "ApiKey",
+                "credentials": {
+                  "key": "[format('{0}', listKeys(resourceId('Microsoft.Bing/accounts', parameters('bingSearchName')), '2020-06-10').key1)]"
+                },
+                "isSharedToAll": true,
+                "metadata": {
+                  "ApiType": "Azure",
+                  "Location": "[reference(resourceId('Microsoft.Bing/accounts', parameters('bingSearchName')), '2020-06-10', 'full').location]",
+                  "ResourceId": "[resourceId('Microsoft.Bing/accounts', parameters('bingSearchName'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Bing/accounts', parameters('bingSearchName'))]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', format('ai-{0}-{1}-deployment', variables('account_name'), variables('uniqueSuffix')))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "ENDPOINT": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('ai-{0}-{1}-deployment', variables('account_name'), variables('uniqueSuffix'))), '2025-04-01').outputs.aiServicesTarget.value]"
+    }
+  }
+}

@@ -5,13 +5,13 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "12031247753870237603"
+      "templateHash": "13929636312670904506"
     }
   },
   "parameters": {
     "location": {
       "type": "string",
-      "defaultValue": "eastus2",
+      "defaultValue": "eastus",
       "allowedValues": [
         "westus",
         "eastus",
@@ -50,7 +50,7 @@
     },
     "modelName": {
       "type": "string",
-      "defaultValue": "gpt-4o",
+      "defaultValue": "gpt-4.1",
       "metadata": {
         "description": "The name of the model you want to deploy"
       }
@@ -64,7 +64,7 @@
     },
     "modelVersion": {
       "type": "string",
-      "defaultValue": "2024-11-20",
+      "defaultValue": "2025-04-14",
       "metadata": {
         "description": "The version of your model"
       }

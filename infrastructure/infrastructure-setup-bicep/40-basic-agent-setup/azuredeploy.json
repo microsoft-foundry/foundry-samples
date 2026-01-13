@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "15695923539491954879"
+      "templateHash": "17632891943305566295"
     }
   },
   "parameters": {
@@ -44,7 +44,7 @@
     },
     "location": {
       "type": "string",
-      "defaultValue": "westus",
+      "defaultValue": "eastus",
       "allowedValues": [
         "australiaeast",
         "canadaeast",
@@ -77,7 +77,7 @@
     },
     "modelName": {
       "type": "string",
-      "defaultValue": "gpt-5",
+      "defaultValue": "gpt-4.1",
       "metadata": {
         "description": "The name of the OpenAI model you want to deploy"
       }
@@ -91,7 +91,7 @@
     },
     "modelVersion": {
       "type": "string",
-      "defaultValue": "2025-08-07",
+      "defaultValue": "2025-04-14",
       "metadata": {
         "description": "The version of the model you want to deploy. Example: 2024-11-20"
       }

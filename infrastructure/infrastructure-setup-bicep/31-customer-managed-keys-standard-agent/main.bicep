@@ -1,7 +1,7 @@
 // Standard agent setup 
 
 @description('The region to deploy your AI Services resource and project')
-param location string = 'eastus2'
+param location string = 'eastus'
 
 @description('Name for your AI Services resource.')
 param aiFoundryName string = 'aifstdcmk4'

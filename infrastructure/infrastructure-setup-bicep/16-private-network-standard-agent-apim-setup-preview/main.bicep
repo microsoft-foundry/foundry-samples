@@ -30,18 +30,18 @@ Standard Setup Network Secured Steps for main.bicep
   'switzerlandnorth'
   'norwayeast'
 ])
-param location string = 'eastus2'
+param location string = 'eastus'
 
 @description('Name for your AI Services resource.')
 param aiServices string = 'aiservices'
 
 // Model deployment parameters
 @description('The name of the model you want to deploy')
-param modelName string = 'gpt-4o'
+param modelName string = 'gpt-4.1'
 @description('The provider of your model')
 param modelFormat string = 'OpenAI'
 @description('The version of your model')
-param modelVersion string = '2024-11-20'
+param modelVersion string = '2025-04-14'
 @description('The sku of your model deployment')
 param modelSkuName string = 'GlobalStandard'
 @description('The tokens per minute (TPM) of your model deployment')

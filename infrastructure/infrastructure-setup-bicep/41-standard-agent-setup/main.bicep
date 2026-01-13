@@ -44,19 +44,19 @@ param displayName string = 'project'
 
 // Model deployment parameters
 @description('The name of the model you want to deploy')
-param modelName string = 'gpt-5'
+param modelName string = 'gpt-4.1'
 
 @description('The provider of your model')
 param modelFormat string = 'OpenAI'
 
 @description('The version of your model')
-param modelVersion string = '2025-08-07'
+param modelVersion string = '2025-04-14'
 
 @description('The sku of your model deployment')
 param modelSkuName string = 'GlobalStandard'
 
 @description('The tokens per minute (TPM) of your model deployment')
-param modelCapacity int = 1
+param modelCapacity int = 30
 
 // Optionally bring existing resources
 @description('The AI Search Service full ARM Resource ID. This is an optional field, and if not provided, the resource will be created.')

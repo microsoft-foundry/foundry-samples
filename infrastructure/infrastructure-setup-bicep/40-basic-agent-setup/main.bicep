@@ -44,16 +44,16 @@ var accountName = toLower('${aiServicesName}${uniqueSuffix}')
   'southcentralus'
 ])
 @description('The Azure region where your AI Foundry resource and project will be created.')
-param location string = 'westus'
+param location string = 'eastus'
 
 @description('The name of the OpenAI model you want to deploy')
-param modelName string = 'gpt-5'
+param modelName string = 'gpt-4.1'
 
 @description('The model format of the model you want to deploy. Example: OpenAI')
 param modelFormat string = 'OpenAI'
 
 @description('The version of the model you want to deploy. Example: 2024-11-20')
-param modelVersion string = '2025-08-07'
+param modelVersion string = '2025-04-14'
 
 @description('The SKU name for the model deployment. Example: GlobalStandard')
 param modelSkuName string = 'GlobalStandard'
@@ -61,7 +61,6 @@ param modelSkuName string = 'GlobalStandard'
 @description('The capacity of the model deployment in TPM.')
 param modelCapacity int = 40
 
-#disable-next-line BCP081
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: accountName
   location: location
@@ -97,7 +96,6 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   Step 3: Create a Cognitive Services Project
     
 */
-#disable-next-line BCP081
 resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
   parent: account
   name: projectName
@@ -111,7 +109,6 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
   }
 }
 
-#disable-next-line BCP081
 resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01'= {
   parent: account
   name: modelName

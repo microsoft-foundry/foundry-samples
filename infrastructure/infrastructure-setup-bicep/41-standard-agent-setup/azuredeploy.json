@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "7000366004712356804"
+      "templateHash": "4258565578737893898"
     }
   },
   "parameters": {
@@ -73,7 +73,7 @@
     },
     "modelName": {
       "type": "string",
-      "defaultValue": "gpt-5",
+      "defaultValue": "gpt-4.1",
       "metadata": {
         "description": "The name of the model you want to deploy"
       }
@@ -87,7 +87,7 @@
     },
     "modelVersion": {
       "type": "string",
-      "defaultValue": "2025-08-07",
+      "defaultValue": "2025-04-14",
       "metadata": {
         "description": "The version of your model"
       }
@@ -101,7 +101,7 @@
     },
     "modelCapacity": {
       "type": "int",
-      "defaultValue": 1,
+      "defaultValue": 30,
       "metadata": {
         "description": "The tokens per minute (TPM) of your model deployment"
       }
@@ -1337,7 +1337,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "16291470712974205281"
+              "templateHash": "17187611271934567223"
             }
           },
           "parameters": {
@@ -1359,7 +1359,7 @@
           },
           "variables": {
             "roleDefinitionId": "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions', parameters('cosmosAccountName'), '00000000-0000-0000-0000-000000000002')]",
-            "accountScope": "[format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.DocumentDB/databaseAccounts/{2}', subscription().subscriptionId, resourceGroup().name, parameters('cosmosAccountName'))]"
+            "accountScope": "[format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.DocumentDB/databaseAccounts/{2}/dbs/enterprise_memory', subscription().subscriptionId, resourceGroup().name, parameters('cosmosAccountName'))]"
           },
           "resources": [
             {

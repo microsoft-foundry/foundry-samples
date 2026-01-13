@@ -42,7 +42,7 @@ param projectDisplayName string = 'project_display_name'
   'southcentralus'
 ])
 @description('The Azure region where your AI Foundry resource and project will be created.')
-param location string = 'westus'
+param location string = 'eastus'
 
 // TO DO: Update the resource ID to point to an existing Azure OpenAI resource in your subscription
 @description('The resource ID of the existing Azure OpenAI resource.')
