@@ -70,10 +70,25 @@ jobs:
 
           MODIFIED_FILES=$(git log --pretty="" --name-only -n 100 origin/main... | fgrep -v ".github")
 
+          # Determine diff range based on event type
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+          fi  
+          echo "Diff range: $BASE..$HEAD"
+
+          MODIFIED_FILES=$(git diff --name-only "$BASE" "$HEAD" \
+            | fgrep -v ".github" || true)
+
+          # If nothing changed in the relevant paths, exit successfully (not as a failure)
           if [ -z "$MODIFIED_FILES" ]; then
             echo "No modified files found."
-            exit 1
+            exit 0
           fi
+
 
           echo "Modified files:"
           echo "$MODIFIED_FILES"

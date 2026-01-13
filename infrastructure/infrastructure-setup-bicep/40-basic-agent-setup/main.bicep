@@ -59,7 +59,7 @@ param modelVersion string = '2025-08-07'
 param modelSkuName string = 'GlobalStandard'
 
 @description('The capacity of the model deployment in TPM.')
-param modelCapacity int = 30
+param modelCapacity int = 50
 
 #disable-next-line BCP081
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
