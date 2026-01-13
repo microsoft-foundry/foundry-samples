@@ -58,6 +58,7 @@ jobs:
           sudo dpkg -i packages-microsoft-prod.deb
           sudo apt-get update
           sudo apt-get install -y powershell
+          rm -f packages-microsoft-prod.deb  # <--- clean up after install!
 
       # Your build steps here
       - name: Find and scan Bicep files
