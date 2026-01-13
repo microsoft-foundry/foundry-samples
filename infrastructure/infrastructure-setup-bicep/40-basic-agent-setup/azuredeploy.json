@@ -105,7 +105,7 @@
     },
     "modelCapacity": {
       "type": "int",
-      "defaultValue": 30,
+      "defaultValue": 40,
       "metadata": {
         "description": "The capacity of the model deployment in TPM."
       }
