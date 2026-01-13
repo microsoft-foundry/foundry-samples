@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.37.4.10188",
-      "templateHash": "3205552327656911185"
+      "version": "0.39.26.7824",
+      "templateHash": "2321778474547119034"
     }
   },
   "parameters": {
@@ -77,7 +77,7 @@
     },
     "modelName": {
       "type": "string",
-      "defaultValue": "gpt-4o",
+      "defaultValue": "gpt-5",
       "metadata": {
         "description": "The name of the OpenAI model you want to deploy"
       }
@@ -91,7 +91,7 @@
     },
     "modelVersion": {
       "type": "string",
-      "defaultValue": "2024-11-20",
+      "defaultValue": "2025-08-07",
       "metadata": {
         "description": "The version of the model you want to deploy. Example: 2024-11-20"
       }
