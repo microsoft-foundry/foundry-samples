@@ -217,12 +217,12 @@ jobs:
       - name: Commit changes
         if: always()
         run: |
-          git config --global user.email "azureai-samples@noreply.github.com"
-          git config --global user.name "azureai-sample Automation"
+          git config --global user.email "foundry-samples@noreply.github.com"
+          git config --global user.name "foundry-samples Automation"
 
           git add .
 
           if ! git diff-index --quiet HEAD --; then
             git commit -m "Automatic fixes"
-            git push
+            git push origin HEAD:${GITHUB_REF##*/}
           fi
