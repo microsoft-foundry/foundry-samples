@@ -4,11 +4,11 @@ param description string = 'some description'
 param display_name string = 'project_display_name'
 param location string = 'eastus'
 
-param modelName string = 'gpt-4o'
+param modelName string = 'gpt-5'
 param modelFormat string = 'OpenAI'
-param modelVersion string = '2024-05-13'
+param modelVersion string = '2025-08-07'
 param modelSkuName string = 'GlobalStandard'
-param modelCapacity int = 1
+param modelCapacity int = 30
 
 // Create a short, unique suffix, that will be unique to each resource group
 // var uniqueSuffix = substring(uniqueString(resourceGroup().id), 0, 4)
