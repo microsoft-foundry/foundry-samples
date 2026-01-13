@@ -47,13 +47,13 @@ var accountName = toLower('${aiServicesName}${uniqueSuffix}')
 param location string = 'westus'
 
 @description('The name of the OpenAI model you want to deploy')
-param modelName string = 'gpt-5.2'
+param modelName string = 'gpt-5'
 
 @description('The model format of the model you want to deploy. Example: OpenAI')
 param modelFormat string = 'OpenAI'
 
 @description('The version of the model you want to deploy. Example: 2024-11-20')
-param modelVersion string = '2025-12-11'
+param modelVersion string = '2025-08-07'
 
 @description('The SKU name for the model deployment. Example: GlobalStandard')
 param modelSkuName string = 'GlobalStandard'
