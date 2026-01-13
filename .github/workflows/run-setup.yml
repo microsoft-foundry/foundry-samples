@@ -141,7 +141,7 @@ jobs:
         run: |
           git config --global user.email "foundry-samples@noreply.github.com"
           git config --global user.name "foundry-samples automation"
-          git add azuredeploy.json || true
+          git add * || true
           if ! git diff-index --quiet HEAD --; then
             git commit -m "Automatic fixes"
             BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-${GITHUB_REF##*/}}}"
