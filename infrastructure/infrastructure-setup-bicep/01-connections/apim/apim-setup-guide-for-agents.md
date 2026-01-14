@@ -55,6 +55,60 @@ Foundry Agents are specifically interested in **chat completions APIs** for AI m
 
 > **💡 Important**: Agents will primarily use the chat completions endpoint, so it's crucial to verify this specific operation is working through APIM before creating the Foundry connection.
 
+### Step 2.5: 🔐 Configure Managed Identity Authentication (Optional)
+
+If you want to use **Azure Managed Identity authentication** instead of APIM subscription keys, you need to configure APIM to validate and forward Entra ID tokens.
+
+#### 🔍 How Authentication Flow Works
+
+The policy checks if a subscription key is present (`context.Subscription`). If a **valid APIM subscription key exists**, it's used for authentication. If **no subscription key is provided**, the policy validates the Authorization header token, ensuring it's a valid Entra ID token with the correct audience (`https://cognitiveservices.azure.com`).
+
+> **⚠️ Important**: To enable this dual authentication mode, you must **disable the "Subscription required" setting** on your APIM API to allow requests without subscription keys.
+
+#### 🛠️ Setup Instructions
+
+Add these policies to your APIM API's **inbound** section:
+
+1. **📍 Navigate to Your API**: Go to your imported API in APIM (e.g., `agent-aoai`)
+2. **📝 Edit API-Level Policy**: Click on **"All operations"** and then **"Policies"**
+3. **📋 Add Authentication Policies**: Add the following XML to the `<inbound>` section:
+
+```xml
+<inbound>
+    <!-- Validate Entra ID token when no subscription key is provided -->
+    <choose>
+        <when condition="@((context.Subscription == null))">
+            <validate-azure-ad-token 
+                tenant-id="YOUR-TENANT-ID" 
+                header-name="Authorization" 
+                failed-validation-httpcode="401" 
+                failed-validation-error-message="Unauthorized. Valid Entra token for ai.azure.com is required." 
+                output-token-variable-name="jwt">
+                <audiences>
+                    <audience>https://cognitiveservices.azure.com</audience>
+                </audiences>
+            </validate-azure-ad-token>
+        </when>
+    </choose>
+
+    <!-- Forward the validated token to the backend -->
+    <set-header name="Authorization" exists-action="override">
+        <value>@(context.Request.Headers.GetValueOrDefault("Authorization"))</value>
+    </set-header>
+    
+    <base />
+</inbound>
+```
+
+> **🔧 Important**: Replace `YOUR-TENANT-ID` with your Azure Entra ID tenant ID.
+
+4. **💾 Save Policy**: Save the policy configuration
+
+#### 🔍 How It Works
+
+- **`validate-azure-ad-token`**: Validates the Entra ID token sent by the Foundry Agent, ensuring it's authentic and has the correct audience (`https://cognitiveservices.azure.com`)
+- **`set-header`**: Forwards the validated Authorization token to your backend AI service, enabling end-to-end managed identity authentication
+
 ### Step 3: 🔍 Configure Model Discovery
 
 Once chat completions are working, you need to configure how Foundry Agents will discover available models. You have two options:
