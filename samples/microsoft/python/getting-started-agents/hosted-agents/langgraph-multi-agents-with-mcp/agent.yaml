@@ -1,0 +1,25 @@
+name: LangGraphMultiAgent-MCP
+description: This LangGraph agents interacts with MCP to collection information and perform tasks.
+metadata:
+  example:
+    - role: user
+      content: |-
+        Give me a short answer for how to create a resource group using azure cli? And return the word count of your answer.
+  tags:
+    - example
+    - learning
+template:
+  name: LangGraphMultiAgentMCP
+  kind: hosted
+  environment_variables:
+    - name: AZURE_OPENAI_ENDPOINT
+      value: ${AZURE_OPENAI_ENDPOINT}
+    - name: OPENAI_API_VERSION
+      value: 2025-03-01-preview
+    - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+      value: ${APPLICATIONINSIGHTS_CONNECTION_STRING}
+    - name: AZURE_AI_PROJECT_TOOL_CONNECTION_ID
+      value: learnmcp
+resources:
+  - kind: model
+    id: gpt-4o-mini

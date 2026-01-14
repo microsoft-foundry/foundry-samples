@@ -1,0 +1,12 @@
+langgraph==1.0.2
+
+azure-ai-agentserver-langgraph==1.0.0b4
+
+pytest==8.4.2
+azure-identity==1.25.0
+python-dotenv==1.1.1
+azure-monitor-opentelemetry==1.8.1
+
+# MCP client for fetching tools from MCP servers
+mcp>=1.0.0
+httpx>=0.27.0
