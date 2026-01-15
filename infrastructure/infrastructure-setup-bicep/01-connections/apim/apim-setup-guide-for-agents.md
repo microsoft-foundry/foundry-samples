@@ -75,39 +75,44 @@ Add these policies to your APIM API's **inbound** section:
 
 ```xml
 <inbound>
-    <!-- Validate Entra ID token when no subscription key is provided -->
     <choose>
-        <when condition="@((context.Subscription == null))">
+        <when condition="@(context.Subscription == null)">
+            <!-- Token authentication - validate and use base-url -->
             <validate-azure-ad-token 
                 tenant-id="YOUR-TENANT-ID" 
                 header-name="Authorization" 
                 failed-validation-httpcode="401" 
-                failed-validation-error-message="Unauthorized. Valid Entra token for ai.azure.com is required." 
+                failed-validation-error-message="Unauthorized. Valid Entra token for cognitiveservices.azure.com is required." 
                 output-token-variable-name="jwt">
                 <audiences>
                     <audience>https://cognitiveservices.azure.com</audience>
                 </audiences>
             </validate-azure-ad-token>
+            <set-backend-service base-url="YOUR-COGNITIVE-SERVICES-URL" />
         </when>
+        <otherwise>
+            <!-- API Key authentication - use backend-id -->
+            <set-backend-service id="apim-generated-policy" backend-id="YOUR-BACKEND-ID" />
+        </otherwise>
     </choose>
-
-    <!-- Forward the validated token to the backend -->
-    <set-header name="Authorization" exists-action="override">
-        <value>@(context.Request.Headers.GetValueOrDefault("Authorization"))</value>
-    </set-header>
-    
     <base />
 </inbound>
 ```
 
-> **🔧 Important**: Replace `YOUR-TENANT-ID` with your Azure Entra ID tenant ID.
+> **🔧 Important**: 
+> - Replace `YOUR-BACKEND-ID` with your APIM backend ID (e.g., the backend configured for your Cognitive Services)
+> - Replace `YOUR-TENANT-ID` with your Azure Entra ID tenant ID
+> - Replace `YOUR-COGNITIVE-SERVICES-URL` with your Cognitive Services endpoint URL (e.g., `https://your-account.openai.azure.com`)
 
 4. **💾 Save Policy**: Save the policy configuration
 
 #### 🔍 How It Works
 
-- **`validate-azure-ad-token`**: Validates the Entra ID token sent by the Foundry Agent, ensuring it's authentic and has the correct audience (`https://cognitiveservices.azure.com`)
-- **`set-header`**: Forwards the validated Authorization token to your backend AI service, enabling end-to-end managed identity authentication
+- **Token Flow**: When an Authorization header is present:
+  - **`validate-azure-ad-token`**: Validates the Entra ID token sent by the Foundry Agent, ensuring it's authentic and has the correct audience (`https://cognitiveservices.azure.com`)
+  - **`set-backend-service`**: Routes to the Cognitive Services backend using the base URL. This configures APIM to pass the auth token header through to the backend
+- **API Key Flow**: When no Authorization header is provided, requests are routed using the configured backend-id with APIM subscription key authentication. APIM will use its own Identity to authenticate with the backend.
+
 
 ### Step 3: 🔍 Configure Model Discovery
 
@@ -189,7 +194,7 @@ If you choose dynamic discovery, you need to manually add **2 operations** to yo
 
 ##### 🔧 Configure Get Deployment Policy
 
-After creating the operation, you need to configure a policy to route the request to the Azure Management endpoint:
+After creating the operation, you need to configure a policy to route the request to the Azure Management endpoint. **Note**: APIM will validate the incoming token at the API level, then use its own managed identity to call the Azure Management API:
 
 1. **🎯 Select the Operation**: Click on the **"Get Deployment"** operation you just created
 2. **📝 Edit Policy**: Click on **"Policies"** to edit the policy for this specific operation
@@ -252,7 +257,7 @@ Now create the second operation for listing all deployments:
 
 ##### 🔧 Configure List Deployments Policy
 
-Configure the policy for the list deployments operation:
+Configure the policy for the list deployments operation. **Note**: APIM will validate the incoming token at the API level, then use its own managed identity to call the Azure Management API:
 
 1. **🎯 Select the Operation**: Click on the **"List Deployments"** operation you just created
 2. **📝 Edit Policy**: Click on **"Policies"** to edit the policy for this specific operation
