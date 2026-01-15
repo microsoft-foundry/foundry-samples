@@ -109,8 +109,8 @@ Add these policies to your APIM API's **inbound** section:
 #### 🔍 How It Works
 
 - **Token Flow**: When an Authorization header is present:
-  - **`validate-azure-ad-token`**: Validates the Entra ID token sent by the Foundry Agent, ensuring it's authentic and has the correct audience (`https://cognitiveservices.azure.com`)
-  - **`set-backend-service`**: Routes to the Cognitive Services backend using the base URL. This configures APIM to pass the auth token header through to the backend
+  - **`validate-azure-ad-token`**: Validates the Entra ID token sent by the Foundry Agent, ensuring it's authentic and has the correct audience. (`https://cognitiveservices.azure.com`)
+  - **`set-backend-service`**: Routes to the Cognitive Services backend using the base URL. This configures APIM to pass the auth token header through to the backend.
 - **API Key Flow**: When no Authorization header is provided, requests are routed using the configured backend-id with APIM subscription key authentication. APIM will use its own Identity to authenticate with the backend.
 
 
@@ -194,7 +194,7 @@ If you choose dynamic discovery, you need to manually add **2 operations** to yo
 
 ##### 🔧 Configure Get Deployment Policy
 
-After creating the operation, you need to configure a policy to route the request to the Azure Management endpoint. **Note**: APIM will validate the incoming token at the API level, then use its own managed identity to call the Azure Management API:
+After creating the operation, you need to configure a policy to route the request to the Azure Management endpoint:
 
 1. **🎯 Select the Operation**: Click on the **"Get Deployment"** operation you just created
 2. **📝 Edit Policy**: Click on **"Policies"** to edit the policy for this specific operation
@@ -257,7 +257,7 @@ Now create the second operation for listing all deployments:
 
 ##### 🔧 Configure List Deployments Policy
 
-Configure the policy for the list deployments operation. **Note**: APIM will validate the incoming token at the API level, then use its own managed identity to call the Azure Management API:
+Configure the policy for the list deployments operation:
 
 1. **🎯 Select the Operation**: Click on the **"List Deployments"** operation you just created
 2. **📝 Edit Policy**: Click on **"Policies"** to edit the policy for this specific operation
