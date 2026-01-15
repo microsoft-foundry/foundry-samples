@@ -1,0 +1,428 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "9619608194674690722"
+    }
+  },
+  "parameters": {
+    "aiFoundryName": {
+      "type": "string",
+      "defaultValue": "ai-foundry-complete-cmk",
+      "metadata": {
+        "description": "That name is the name of our application. It has to be unique."
+      }
+    },
+    "aiProjectName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-proj', parameters('aiFoundryName'))]",
+      "metadata": {
+        "description": "Name of the AI Foundry project"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus2",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Azure Key Vault target"
+      }
+    },
+    "keyName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Azure Key Vault key"
+      }
+    },
+    "keyVersion": {
+      "type": "string",
+      "metadata": {
+        "description": "Version of the Azure Key Vault key"
+      }
+    },
+    "userAssignedIdentityId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the user-assigned managed identity to use for CMK encryption"
+      }
+    },
+    "userAssignedIdentityClientId": {
+      "type": "string",
+      "metadata": {
+        "description": "Client ID of the user-assigned managed identity"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "foundryAccount",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "aiFoundryName": {
+            "value": "[parameters('aiFoundryName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "userAssignedIdentityId": {
+            "value": "[parameters('userAssignedIdentityId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "2042207162176060264"
+            }
+          },
+          "parameters": {
+            "aiFoundryName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the AI Foundry account"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the resource"
+              }
+            },
+            "userAssignedIdentityId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the user-assigned managed identity"
+              }
+            }
+          },
+          "variables": {
+            "identityConfig": {
+              "type": "UserAssigned",
+              "userAssignedIdentities": {
+                "[format('{0}', parameters('userAssignedIdentityId'))]": {}
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[parameters('aiFoundryName')]",
+              "location": "[parameters('location')]",
+              "identity": "[variables('identityConfig')]",
+              "kind": "AIServices",
+              "sku": {
+                "name": "S0"
+              },
+              "properties": {
+                "allowProjectManagement": true,
+                "publicNetworkAccess": "Enabled",
+                "customSubDomainName": "[parameters('aiFoundryName')]",
+                "disableLocalAuth": true
+              }
+            }
+          ],
+          "outputs": {
+            "accountId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]"
+            },
+            "accountName": {
+              "type": "string",
+              "value": "[parameters('aiFoundryName')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "cmkEncryption",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "aiFoundryName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'foundryAccount'), '2025-04-01').outputs.accountName.value]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "keyVaultName": {
+            "value": "[parameters('keyVaultName')]"
+          },
+          "keyName": {
+            "value": "[parameters('keyName')]"
+          },
+          "keyVersion": {
+            "value": "[parameters('keyVersion')]"
+          },
+          "userAssignedIdentityId": {
+            "value": "[parameters('userAssignedIdentityId')]"
+          },
+          "userAssignedIdentityClientId": {
+            "value": "[parameters('userAssignedIdentityClientId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "1200570362967678125"
+            }
+          },
+          "parameters": {
+            "aiFoundryName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the AI Foundry account"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the resource"
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Azure Key Vault"
+              }
+            },
+            "keyName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Azure Key Vault key"
+              }
+            },
+            "keyVersion": {
+              "type": "string",
+              "metadata": {
+                "description": "Version of the Azure Key Vault key"
+              }
+            },
+            "userAssignedIdentityId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the user-assigned managed identity"
+              }
+            },
+            "userAssignedIdentityClientId": {
+              "type": "string",
+              "metadata": {
+                "description": "Client ID of the user-assigned managed identity"
+              }
+            }
+          },
+          "variables": {
+            "keyVaultUri": "[format('https://{0}{1}/', parameters('keyVaultName'), environment().suffixes.keyvaultDns)]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[parameters('aiFoundryName')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', parameters('userAssignedIdentityId'))]": {}
+                }
+              },
+              "kind": "AIServices",
+              "sku": {
+                "name": "S0"
+              },
+              "properties": {
+                "encryption": {
+                  "keySource": "Microsoft.KeyVault",
+                  "keyVaultProperties": {
+                    "keyVaultUri": "[variables('keyVaultUri')]",
+                    "keyName": "[parameters('keyName')]",
+                    "keyVersion": "[parameters('keyVersion')]",
+                    "identityClientId": "[parameters('userAssignedIdentityClientId')]"
+                  }
+                },
+                "allowProjectManagement": true,
+                "publicNetworkAccess": "Enabled",
+                "customSubDomainName": "[parameters('aiFoundryName')]",
+                "disableLocalAuth": true
+              }
+            }
+          ],
+          "outputs": {
+            "encryptionStatus": {
+              "type": "string",
+              "value": "CMK encryption enabled"
+            },
+            "keyVaultUri": {
+              "type": "string",
+              "value": "[variables('keyVaultUri')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'foundryAccount')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "foundryProject",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "aiFoundryName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'foundryAccount'), '2025-04-01').outputs.accountName.value]"
+          },
+          "projectName": {
+            "value": "[parameters('aiProjectName')]"
+          },
+          "projectDisplayName": {
+            "value": "[parameters('aiProjectName')]"
+          },
+          "projectDescription": {
+            "value": "AI Foundry project with customer-managed keys"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "userAssignedIdentityId": {
+            "value": "[parameters('userAssignedIdentityId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "14690874522422526659"
+            }
+          },
+          "parameters": {
+            "aiFoundryName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the AI Foundry account (parent)"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the resource"
+              }
+            },
+            "projectName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the project"
+              }
+            },
+            "projectDisplayName": {
+              "type": "string",
+              "metadata": {
+                "description": "Display name for the project"
+              }
+            },
+            "projectDescription": {
+              "type": "string",
+              "metadata": {
+                "description": "Description for the project"
+              }
+            },
+            "userAssignedIdentityId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the user-assigned managed identity"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts/projects",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}', parameters('aiFoundryName'), parameters('projectName'))]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', parameters('userAssignedIdentityId'))]": {}
+                }
+              },
+              "properties": {
+                "displayName": "[parameters('projectDisplayName')]",
+                "description": "[parameters('projectDescription')]"
+              }
+            }
+          ],
+          "outputs": {
+            "projectId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('aiFoundryName'), parameters('projectName'))]"
+            },
+            "projectName": {
+              "type": "string",
+              "value": "[parameters('projectName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'foundryAccount')]",
+        "[resourceId('Microsoft.Resources/deployments', 'cmkEncryption')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "accountId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'foundryAccount'), '2025-04-01').outputs.accountId.value]"
+    },
+    "accountName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'foundryAccount'), '2025-04-01').outputs.accountName.value]"
+    },
+    "projectId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'foundryProject'), '2025-04-01').outputs.projectId.value]"
+    },
+    "projectName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'foundryProject'), '2025-04-01').outputs.projectName.value]"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'cmkEncryption'), '2025-04-01').outputs.keyVaultUri.value]"
+    }
+  }
+}
