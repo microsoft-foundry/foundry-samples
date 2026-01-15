@@ -77,21 +77,25 @@ Add these policies to your APIM API's **inbound** section:
 <inbound>
     <choose>
         <when condition="@(context.Subscription == null)">
-            <!-- Token authentication - validate and use base-url -->
+            <!-- Token authentication - validate token -->
             <validate-azure-ad-token 
                 tenant-id="YOUR-TENANT-ID" 
                 header-name="Authorization" 
                 failed-validation-httpcode="401" 
-                failed-validation-error-message="Unauthorized. Valid Entra token for cognitiveservices.azure.com is required." 
+                failed-validation-error-message="Unauthorized. Valid Entra token is required." 
                 output-token-variable-name="jwt">
                 <audiences>
                     <audience>https://cognitiveservices.azure.com</audience>
                 </audiences>
+                <required-claims>
+                    <claim name="xms_mirid" match="any">
+                        <value>/subscriptions/YOUR-SUBSCRIPTION-ID/resourcegroups/YOUR-RESOURCE-GROUP/providers/Microsoft.CognitiveServices/accounts/YOUR-FOUNDRY-ACCOUNT/projects/YOUR-FOUNDRY-PROJECT</value>
+                    </claim>
+                </required-claims>
             </validate-azure-ad-token>
-            <set-backend-service base-url="YOUR-COGNITIVE-SERVICES-URL" />
         </when>
         <otherwise>
-            <!-- API Key authentication - use backend-id -->
+            <!-- API Key authentication - set backend-id -->
             <set-backend-service id="apim-generated-policy" backend-id="YOUR-BACKEND-ID" />
         </otherwise>
     </choose>
@@ -99,19 +103,46 @@ Add these policies to your APIM API's **inbound** section:
 </inbound>
 ```
 
-> **🔧 Important**: 
-> - Replace `YOUR-BACKEND-ID` with your APIM backend ID (e.g., the backend configured for your Cognitive Services)
-> - Replace `YOUR-TENANT-ID` with your Azure Entra ID tenant ID
-> - Replace `YOUR-COGNITIVE-SERVICES-URL` with your Cognitive Services endpoint URL (e.g., `https://your-account.openai.azure.com`)
+> **🔧 Required Configuration**:
+> - **`YOUR-TENANT-ID`**: Your Azure Entra ID tenant ID
+> - **`YOUR-BACKEND-ID`**: Your APIM backend ID for Cognitive Services
+> - **`YOUR-SUBSCRIPTION-ID`**: Your Azure subscription ID
+> - **`YOUR-RESOURCE-GROUP`**: Resource group name (case-sensitive)
+> - **`YOUR-FOUNDRY-ACCOUNT`**: Your Foundry account name
+> - **`YOUR-FOUNDRY-PROJECT`**: Your Foundry project name
+
+#### 🔒 Understanding Required Claims
+
+The `<required-claims>` section validates that tokens come from your specific Foundry project, preventing unauthorized access from other projects or accounts.
+
 
 4. **💾 Save Policy**: Save the policy configuration
 
 #### 🔍 How It Works
 
-- **Token Flow**: When an Authorization header is present:
-  - **`validate-azure-ad-token`**: Validates the Entra ID token sent by the Foundry Agent, ensuring it's authentic and has the correct audience. (`https://cognitiveservices.azure.com`)
-  - **`set-backend-service`**: Routes to the Cognitive Services backend using the base URL. This configures APIM to pass the auth token header through to the backend.
-- **API Key Flow**: When no Authorization header is provided, requests are routed using the configured backend-id with APIM subscription key authentication. APIM will use its own Identity to authenticate with the backend.
+- **Token Flow**: When no subscription key is provided, validates the Entra ID token at the API level. Backend routing is configured at the operation level (see completions and management operations below)
+- **API Key Flow**: When an APIM subscription key is provided, requests are routed using the configured backend-id
+
+#### 🎯 Configure Chat Completions Operation
+
+For the **chat completions operation**, you need to validate the token and configure backend routing:
+
+1. **📍 Navigate to Completions Operation**: Go to your chat completions operation in APIM
+2. **📝 Edit Operation-Level Policy**: Click on **"Policies"** for this specific operation
+3. **📋 Add Token Validation and Backend Configuration**: Add the following XML to the `<inbound>` section:
+
+```xml
+<inbound>
+    <base />
+    <set-backend-service base-url="YOUR-COGNITIVE-SERVICES-URL" />
+</inbound>
+```
+
+> **🔧 Important**: Replace `YOUR-COGNITIVE-SERVICES-URL` with your Cognitive Services endpoint URL (e.g., `https://your-account.openai.azure.com`)
+
+4. **💾 Save Policy**: Save the policy configuration
+
+**🔍 How This Works**: For token-based requests (already validated at API level), this sets the backend URL and forwards the token to the Cognitive Services backend for end-to-end managed identity authentication. For Api key based requests, the API level policy sets the backend id, which configures APIM to use its own identity on this call.
 
 
 ### Step 3: 🔍 Configure Model Discovery
