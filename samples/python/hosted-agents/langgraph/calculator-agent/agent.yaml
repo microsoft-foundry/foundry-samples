@@ -1,4 +1,5 @@
 name: CalculatorAgent
+kind: hosted
 description: This LangGraph agent can perform arithmetic calculations such as addition, subtraction, multiplication, and division.
 metadata:
   example:
@@ -12,7 +13,6 @@ metadata:
     - migu
 template:
   name: CalculatorAgentLG
-  kind: hosted
   protocols:
     - protocol: responses
       version: v1
