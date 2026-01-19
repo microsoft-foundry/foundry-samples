@@ -10,5 +10,5 @@ method:
       learning_rate_multiplier: 0.1
       beta: 3
 seed: 9
-suffix: "-dpo-trained"
+suffix: "dpo-trained"
 training_file: local:direct_preference_optimization/data/open_orca_dpo_sample.jsonl
