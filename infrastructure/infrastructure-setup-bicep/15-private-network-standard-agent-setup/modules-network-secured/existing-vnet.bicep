@@ -38,7 +38,7 @@ param peSubnetPrefix string = ''
 // Reference the existing virtual network
 resource existingVNet 'Microsoft.Network/virtualNetworks@2024-05-01' existing = {
   name: vnetName
-  scope: resourceGroup(vnetResourceGroupName)
+  scope: resourceGroup(vnetSubscriptionId, vnetResourceGroupName)
 }
 
 // Get the address space (array of CIDR strings)
@@ -47,9 +47,15 @@ var vnetAddressSpace = existingVNet.properties.addressSpace.addressPrefixes[0]
 var agentSubnetSpaces = empty(agentSubnetPrefix) ? cidrSubnet(vnetAddressSpace, 24, 0) : agentSubnetPrefix
 var peSubnetSpaces = empty(peSubnetPrefix) ? cidrSubnet(vnetAddressSpace, 24, 1) : peSubnetPrefix
 
-// Check if subnets exist by filtering the existing VNet's subnets
-var agentSubnetExists = contains(map(existingVNet.properties.subnets, subnet => subnet.name), agentSubnetName)
-var peSubnetExists = contains(map(existingVNet.properties.subnets, subnet => subnet.name), peSubnetName)
+// Simplified existence check - use length comparison for safety
+var allSubnetNames = map(existingVNet.properties.subnets, subnet => subnet.name)
+var agentSubnetExists = contains(allSubnetNames, agentSubnetName)
+var peSubnetExists = contains(allSubnetNames, peSubnetName)
+
+// Debug: Output subnet checking results (remove this after testing)
+output debugAgentSubnetExists bool = agentSubnetExists
+output debugPeSubnetExists bool = peSubnetExists
+output debugExistingSubnets array = map(existingVNet.properties.subnets, subnet => subnet.name)
 
 // Reference existing agent subnet if it exists
 resource existingAgentSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existing = if (agentSubnetExists) {
@@ -66,7 +72,7 @@ resource existingPeSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01'
 // Create the agent subnet only if it doesn't exist
 module agentSubnet 'subnet.bicep' = if (!agentSubnetExists) {
   name: 'agent-subnet-${uniqueString(deployment().name, agentSubnetName)}'
-  scope: resourceGroup(vnetResourceGroupName)
+  scope: resourceGroup(vnetSubscriptionId, vnetResourceGroupName)
   params: {
     vnetName: vnetName
     subnetName: agentSubnetName
@@ -85,7 +91,7 @@ module agentSubnet 'subnet.bicep' = if (!agentSubnetExists) {
 // Create the private endpoint subnet only if it doesn't exist
 module peSubnet 'subnet.bicep' = if (!peSubnetExists) {
   name: 'pe-subnet-${uniqueString(deployment().name, peSubnetName)}'
-  scope: resourceGroup(vnetResourceGroupName)
+  scope: resourceGroup(vnetSubscriptionId, vnetResourceGroupName)
   params: {
     vnetName: vnetName
     subnetName: peSubnetName
