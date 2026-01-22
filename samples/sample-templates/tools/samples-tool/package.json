@@ -1,0 +1,34 @@
+{
+  "name": "samples-tool",
+  "version": "1.0.0",
+  "description": "A tool to assist in the creation and compilation of sample templates.",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "build:clean": "rimraf dist && tsc",
+    "build:clean:watch": "rimraf dist && tsc --watch",
+    "format": "prettier --write .",
+    "prepare": "npm run build"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/lodash": "^4.17.17",
+    "@types/node": "^22.15.21",
+    "prettier": "^3.5.3",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "commander": "^14.0.0",
+    "lodash": "^4.17.21",
+    "yaml": "^2.8.0"
+  },
+  "files": [
+    "./project-templates/Sample.csproj.template"
+  ],
+  "bin": {
+    "samples-tool": "./dist/index.js"
+  }
+}

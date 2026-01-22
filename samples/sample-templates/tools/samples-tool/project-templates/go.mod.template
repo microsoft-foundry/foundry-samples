@@ -1,0 +1,9 @@
+module sample
+
+go 1.24.3
+
+require (
+<% _.forEach(dependencies, function(dependency) { %>
+    <%= dependency.name %> <%= dependency.version %>
+<% }) %>
+)
