@@ -17,8 +17,8 @@ def create_agent() -> ChatAgent:
     )
     
     chat_client = AzureAIAgentClient(
-        endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-        async_credential=DefaultAzureCredential(),
+        project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+        credential=DefaultAzureCredential(),
     )
 
     bing_search_tool = HostedWebSearchTool(
