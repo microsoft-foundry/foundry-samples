@@ -11,5 +11,5 @@ method:
       prompt_loss_weight: 0.01
 seed: 42
 suffix: "sft-trained"
-training_file: local:supervised/data/sft_training_set.jsonl
-validation_file: local:supervised/data/sft_validation_set.jsonl
+training_file: local:data/sft_training_set.jsonl
+validation_file: local:data/sft_validation_set.jsonl

@@ -18,5 +18,5 @@ method:
       operation: eq
 suffix: "rft-trained"
 seed: 42
-training_file: local:reinforcement/data/rft_training_set.jsonl
-validation_file: local:reinforcement/data/rft_validation_set.jsonl
+training_file: local:data/rft_training_set.jsonl
+validation_file: local:data/rft_validation_set.jsonl

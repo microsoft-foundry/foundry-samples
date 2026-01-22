@@ -13,5 +13,5 @@ seed: 42
 suffix: "sft-oss-trained"
 extra_body:
   trainingType: GlobalStandard
-training_file: local:supervised/data/sft_training_set.jsonl
-validation_file: local:supervised/data/sft_validation_set.jsonl
+training_file: local:data/sft_training_set.jsonl
+validation_file: local:data/sft_validation_set.jsonl
