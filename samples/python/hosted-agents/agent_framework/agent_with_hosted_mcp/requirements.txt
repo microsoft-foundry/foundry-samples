@@ -1,2 +1,2 @@
-azure-ai-agentserver-agentframework==1.0.0b7
+azure-ai-agentserver-agentframework==1.0.0b8
 agent-framework

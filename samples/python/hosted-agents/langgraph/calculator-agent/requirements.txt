@@ -1,4 +1,4 @@
-azure-ai-agentserver-langgraph==1.0.0b7
+azure-ai-agentserver-langgraph==1.0.0b8
 
 pytest==8.4.2
 python-dotenv==1.1.1
