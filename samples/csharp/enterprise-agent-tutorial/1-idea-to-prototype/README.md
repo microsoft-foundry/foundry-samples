@@ -1,11 +1,10 @@
 # Enterprise Agent Tutorial - Stage 1: Idea to Prototype (C#)
 
-> **SDK v2.0 Update:** This sample has been updated to use Azure AI Agents SDK version 2.0.0-alpha.20251016.2. Key changes:
-> - Package: `Azure.AI.Agents.Persistent` → `Azure.AI.Agents` + `OpenAI`
-> - Client: `PersistentAgentsClient` → `AgentsClient`
-> - Agent creation: `CreateAgentAsync()` → `CreateAgentVersionAsync()` with `PromptAgentDefinition`
-> - Conversation: Thread/Run pattern → OpenAI Client with `ResponseCreationOptions`
-> - Agent references: Use `agent.Name` instead of `agent.Id`
+> **Full Feature Parity with Python Sample:** This C# implementation now uses Azure.AI.Agents.Persistent SDK with complete support for SharePoint and MCP (Model Context Protocol) tools, matching the Python sample functionality.
+> - Packages: `Azure.AI.Projects` (1.0.0-beta.9) + `Azure.AI.Agents.Persistent` (1.2.0-beta.8)
+> - Client: `PersistentAgentsClient` from `AIProjectClient.GetPersistentAgentsClient()`
+> - Tools: `SharepointToolDefinition` + `MCPToolDefinition`
+> - MCP Approvals: `SubmitToolApprovalAction` + `ToolApproval` pattern
 
 This C# implementation demonstrates building and evaluating an enterprise agent with SharePoint and MCP integration using the Azure AI Foundry SDK.
 
@@ -15,17 +14,12 @@ This C# implementation demonstrates building and evaluating an enterprise agent 
 1-idea-to-prototype/
 ├── ModernWorkplaceAssistant/    # Main agent demonstration
 │   ├── Program.cs               # Agent implementation with SharePoint + MCP
-│   └── ModernWorkplaceAssistant.csproj
+│   ├── ModernWorkplaceAssistant.csproj
+│   └── .env                     # Your environment configuration (create this)
 ├── Evaluate/                    # Evaluation project
 │   ├── Program.cs               # Batch evaluation with keyword matching
 │   └── Evaluate.csproj
-├── shared/                      # Shared configuration files
-│   ├── .env                     # Environment variables (user-specific)
-│   ├── .env.template            # Environment variables template
-│   ├── questions.jsonl          # Evaluation questions
-│   ├── README.md                # Detailed setup instructions
-│   ├── MCP_SERVERS.md           # MCP server configuration guide
-│   └── SAMPLE_SHAREPOINT_CONTENT.md  # Sample SharePoint documents
+├── questions.jsonl              # Evaluation questions
 └── README.md                    # This file
 ```
 
@@ -33,12 +27,19 @@ This C# implementation demonstrates building and evaluating an enterprise agent 
 
 ### 1. Configure Environment
 
-Copy the template and configure your Azure AI Foundry settings:
+Create a `.env` file in the `ModernWorkplaceAssistant` directory with your Azure AI Foundry settings:
 
-```bash
-cd shared
-cp .env.template .env
-# Edit .env with your Azure AI Foundry project details
+```dotenv
+# Azure AI Foundry Configuration
+PROJECT_ENDPOINT=https://your-project.services.ai.azure.com/api/projects/your-project
+MODEL_DEPLOYMENT_NAME=gpt-4o-mini
+
+# SharePoint Integration (Optional - requires full ARM resource ID)
+# Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.MachineLearningServices/workspaces/{workspace}/connections/{name}
+SHAREPOINT_CONNECTION_ID=/subscriptions/xxx/resourceGroups/xxx/providers/Microsoft.MachineLearningServices/workspaces/xxx/connections/ContosoCorpPolicies
+
+# Microsoft Learn MCP Server (Optional)
+MCP_SERVER_URL=https://learn.microsoft.com/api/mcp
 ```
 
 ### 2. Run the Main Agent
@@ -74,15 +75,19 @@ This runs batch evaluation against 4 test questions and generates `evaluation_re
 
 ## Environment Variables
 
-The `.env` file in `shared/` requires:
+Create a `.env` file with:
 
 - `PROJECT_ENDPOINT`: Your Azure AI Foundry project endpoint
 - `MODEL_DEPLOYMENT_NAME`: Your deployed model name (e.g., `gpt-4o-mini`)
-- `AI_FOUNDRY_TENANT_ID`: Your Azure AI Foundry tenant ID
-- `MCP_SERVER_URL`: Microsoft Learn MCP server URL
-- `SHAREPOINT_CONNECTION_ID`: Full ARM resource path to SharePoint connection
+- `SHAREPOINT_CONNECTION_ID`: *(Optional)* **Full ARM resource ID** for SharePoint connection
+  - Format: `/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.MachineLearningServices/workspaces/{workspace}/connections/{name}`
+  - Note: The C# SDK requires the full ARM ID (not just the connection name)
+- `MCP_SERVER_URL`: *(Optional)* Microsoft Learn MCP server URL (e.g., `https://learn.microsoft.com/api/mcp`)
 
-See `shared/.env.template` for details.
+## Documentation
+
+- Python version: `samples/python/enterprise-agent-tutorial/` for reference
+- For SharePoint setup, see the Azure AI Foundry documentation on connections
 
 ## Documentation
 
@@ -94,11 +99,9 @@ For detailed setup instructions, SharePoint configuration, and MCP server setup,
 
 ## Troubleshooting
 
-Both projects load environment variables from `../shared/.env`. If you encounter issues:
-
-1. Ensure `.env` exists in the `shared/` directory
+1. Ensure `.env` exists in the `ModernWorkplaceAssistant/` directory
 2. Verify all required environment variables are set
-3. Check that SharePoint connection ID is the full ARM resource path
+3. For SharePoint, ensure you have the **full ARM resource path** (not just the name)
 4. Ensure you're authenticated with `az login` for the correct tenant
 
 ## Next Steps
