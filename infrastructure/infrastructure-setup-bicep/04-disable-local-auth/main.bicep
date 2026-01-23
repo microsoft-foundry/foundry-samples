@@ -1,4 +1,4 @@
-param aiFoundryName string = 'foundry-name'
+param aiFoundryName string = 'foundry-disable-localauth'
 param aiProjectName string = '${aiFoundryName}-proj'
 param location string = 'eastus2'
 
@@ -22,7 +22,7 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
     // Defines developer API endpoint subdomain
     customSubDomainName: aiFoundryName
 
-    disableLocalAuth: false
+    disableLocalAuth: true
   }
 }
 
@@ -77,4 +77,7 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-
 //       version: '1'
 //     }
 //   }
+//   dependsOn: [
+//     modelDeployment
+//   ]
 // }

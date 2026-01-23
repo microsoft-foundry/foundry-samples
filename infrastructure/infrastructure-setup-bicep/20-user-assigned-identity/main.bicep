@@ -10,16 +10,13 @@
 
 */
 @description('That name is the name of our application. It has to be unique. Type a name followed by your resource group name. (<name>-<resourceGroupName>)')
-param aiFoundryName string = 'foundryuai16'
+param aiFoundryName string = 'foundry-uai'
 
 @description('Location for all resources.')
-param location string = 'eastus'
+param location string = 'eastus2'
 
 @description('Name of the first project')
 param defaultProjectName string = '${aiFoundryName}-proj'
-param defaultProjectDisplayName string = 'Project'
-param defaultProjectDescription string = 'Describe what your project is about.'
-
 /*
   Step 1: Get your existing/previously created Managed Identity
 
@@ -28,14 +25,14 @@ param defaultProjectDescription string = 'Describe what your project is about.'
 param userIdentityResourceGroupName string = resourceGroup().name
 
 @description('User Assigned Identity Name')
-param userAssignedIdentityName string = 'aifoundry-test-uai'
+param userAssignedIdentityName string = 'foundry-tests-uai'
 
 var userAssignedIdentityId = extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, '${userIdentityResourceGroupName}'), 'Microsoft.ManagedIdentity/userAssignedIdentities', '${userAssignedIdentityName}')
 
 /*
   Step 2: Create a Cognitive Services Account 
 */ 
-resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
+resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: aiFoundryName
   location: location
   identity: {
@@ -85,7 +82,7 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-
 /*
   Step 4: Create a Project
 */
-resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
+resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
   name: defaultProjectName
   parent: account
   location: location

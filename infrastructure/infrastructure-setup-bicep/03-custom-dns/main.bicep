@@ -1,4 +1,5 @@
 param aiFoundryName string = 'foundry-name'
+param customDNSName string = 'foundry-alt-custom-dns'
 param aiProjectName string = '${aiFoundryName}-proj'
 param location string = 'eastus2'
 
@@ -20,7 +21,7 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
     allowProjectManagement: true
 
     // Defines developer API endpoint subdomain
-    customSubDomainName: aiFoundryName
+    customSubDomainName: customDNSName
 
     disableLocalAuth: false
   }
