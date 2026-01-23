@@ -1,0 +1,33 @@
+# Unique identifier/name for this agent
+name: af-agent-with-foundry-tools
+# Brief description of what this agent does
+description: >
+  An AI agent that uses Azure OpenAI with a Hosted Model Context Protocol (MCP) server.
+  The agent answers questions by searching Microsoft Learn documentation using MCP tools.
+metadata:
+  # Categorization tags for organizing and discovering agents
+  authors:
+    - Microsoft
+  tags:
+    - Azure AI AgentServer
+    - Microsoft Agent Framework
+    - Model Context Protocol
+    - MCP
+template:
+  name: af-agent-with-foundry-tools
+  kind: hosted
+  protocols:
+    - protocol: responses
+  environment_variables:
+    - name: AZURE_OPENAI_ENDPOINT
+      value: ${AZURE_OPENAI_ENDPOINT}
+    - name: AZURE_OPENAI_CHAT_DEPLOYMENT_NAME
+      value: "{{chat}}"
+    - name: AZURE_AI_PROJECT_ENDPOINT
+      value: ${AZURE_AI_PROJECT_ENDPOINT}
+    - name: AZURE_AI_PROJECT_TOOL_CONNECTION_ID
+      value: placeholder_tool_connection_id
+resources:
+  - kind: model
+    id: gpt-4o-mini
+    name: chat
