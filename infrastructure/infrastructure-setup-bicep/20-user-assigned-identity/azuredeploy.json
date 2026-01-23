@@ -1,0 +1,124 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "3240349148352159726"
+    }
+  },
+  "parameters": {
+    "aiFoundryName": {
+      "type": "string",
+      "defaultValue": "foundry-uai",
+      "metadata": {
+        "description": "That name is the name of our application. It has to be unique. Type a name followed by your resource group name. (<name>-<resourceGroupName>)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus2",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    },
+    "defaultProjectName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-proj', parameters('aiFoundryName'))]",
+      "metadata": {
+        "description": "Name of the first project"
+      }
+    },
+    "userIdentityResourceGroupName": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().name]",
+      "metadata": {
+        "description": "User Assigned Identity Resource Group Name"
+      }
+    },
+    "userAssignedIdentityName": {
+      "type": "string",
+      "defaultValue": "foundry-tests-uai",
+      "metadata": {
+        "description": "User Assigned Identity Name"
+      }
+    }
+  },
+  "variables": {
+    "userAssignedIdentityId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('{0}', parameters('userIdentityResourceGroupName'))), 'Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}', parameters('userAssignedIdentityName')))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2025-06-01",
+      "name": "[parameters('aiFoundryName')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', variables('userAssignedIdentityId'))]": {}
+        }
+      },
+      "kind": "AIServices",
+      "sku": {
+        "name": "S0"
+      },
+      "properties": {
+        "publicNetworkAccess": "Enabled",
+        "allowProjectManagement": true,
+        "customSubDomainName": "[parameters('aiFoundryName')]",
+        "disableLocalAuth": false
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}/{1}', parameters('aiFoundryName'), 'gpt-4o')]",
+      "sku": {
+        "capacity": 1,
+        "name": "GlobalStandard"
+      },
+      "properties": {
+        "model": {
+          "name": "gpt-4o",
+          "format": "OpenAI",
+          "version": "2024-08-06"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects",
+      "apiVersion": "2025-06-01",
+      "name": "[format('{0}/{1}', parameters('aiFoundryName'), parameters('defaultProjectName'))]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', variables('userAssignedIdentityId'))]": {}
+        }
+      },
+      "properties": {},
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "accountId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]"
+    },
+    "accountName": {
+      "type": "string",
+      "value": "[parameters('aiFoundryName')]"
+    },
+    "project": {
+      "type": "string",
+      "value": "[parameters('defaultProjectName')]"
+    }
+  }
+}

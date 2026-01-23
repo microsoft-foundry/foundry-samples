@@ -1,0 +1,12 @@
+{
+    "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
+    "type": "QuickStart",
+    "itemDisplayName": "Azure AI Foundry project basic setup",
+    "description": "This set of templates demonstrates how to set up Azure AI Foundry project with the basic setup, meaning with public internet access enabled, Microsoft-managed keys for encryption and Microsoft-managed identity configuration.",
+    "summary": "This set of templates demonstrates how to set up Azure AI Foundry with the basic setup. This is the recommended way to get started with Azure AI Foundry.",
+    "githubUsername": "andyaviles121",
+    "dateUpdated": "2025-04-09",
+    "environments": [
+      "AzureCloud"
+    ]
+  }

@@ -43,10 +43,25 @@ The extension builds a container image for the agent, deploys it to Azure Contai
 
 Before running this sample, ensure you have:
 
-1. An Azure OpenAI endpoint configured
-2. A deployment of a chat model (e.g., `gpt-4o-mini`)
-3. Azure CLI installed and authenticated (`az login`)
-4. Python 3.10+ installed
+1. **Azure OpenAI Service**
+   - Endpoint configured
+   - Chat model deployed (e.g., `gpt-4o-mini` or `gpt-4`)
+   - Note your endpoint URL and deployment name
+
+2. **Azure AI Foundry Project**
+   - Project created in [Azure AI Foundry](https://ai.azure.com)
+   - Note your project endpoint URL
+
+3. **Azure CLI**
+   - Installed and authenticated
+   - Run `az login` and verify with `az account show`
+
+4. **Python 3.10 or higher**
+   - Verify your version: `python --version`
+   - If you have Python 3.9 or older, install a newer version:
+     - Windows: `winget install Python.Python.3.12`
+     - macOS: `brew install python@3.12`
+     - Linux: Use your package manager
 
 ### Environment Variables
 
@@ -54,13 +69,19 @@ Set the following environment variables:
 
 - `AZURE_OPENAI_ENDPOINT` - Your Azure OpenAI endpoint URL (required)
 - `AZURE_OPENAI_CHAT_DEPLOYMENT_NAME` - The deployment name for your chat model (required)
+- `AZURE_AI_PROJECT_ENDPOINT` - Your Azure AI Foundry project endpoint (required)
+
+**Finding your Azure AI Project Endpoint:**
+1. Go to [Azure AI Foundry portal](https://ai.azure.com)
+2. Navigate to your project
+3. Find the endpoint under **Project Settings** > **Properties**
+4. Format: `https://{project-name}.{region}.api.azureml.ms` or `https://{resource}.services.ai.azure.com/api/projects/{project-name}`
 
 ```powershell
-# Replace with your Azure OpenAI endpoint
+# Replace with your actual values
 $env:AZURE_OPENAI_ENDPOINT="https://your-openai-resource.openai.azure.com/"
-
-# Optional, defaults to gpt-4o-mini
 $env:AZURE_OPENAI_CHAT_DEPLOYMENT_NAME="gpt-4o-mini"
+$env:AZURE_AI_PROJECT_ENDPOINT="https://your-project.region.api.azureml.ms"
 ```
 
 ### Installing Dependencies
@@ -81,11 +102,36 @@ python main.py
 
 This will start the hosted agent workflow locally on `http://localhost:8088/`.
 
+**Expected Output:**
+```
+2026-01-22 11:27:02,086 - azure.ai.agentserver - INFO - Starting FoundryCBAgent server on port 8088
+INFO:     Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+```
+
 ### Interacting with the Agent
 
+**PowerShell (Windows):**
 ```powershell
-curl -sS -H "Content-Type: application/json" -X POST http://localhost:8088/responses -d '{"input": "We are launching a new budget-friendly electric bike for urban commuters.","stream":false}'
+$body = @{
+    input = "We are launching a new budget-friendly electric bike for urban commuters."
+    stream = $false
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri http://localhost:8088/responses -Method Post -Body $body -ContentType "application/json"
 ```
+
+**Bash/curl (Linux/macOS):**
+```bash
+curl -sS -H "Content-Type: application/json" -X POST http://localhost:8088/responses \
+  -d '{"input": "We are launching a new budget-friendly electric bike for urban commuters.","stream":false}'
+```
+
+**Expected Response:**
+
+You'll receive a comprehensive response from all three agents running concurrently:
+- **Research Agent**: Market insights, opportunities, and risks
+- **Marketing Agent**: Value propositions and targeted messaging
+- **Legal Agent**: Compliance and policy considerations
 
 ### Deploying the Agent to Microsoft Foundry
 

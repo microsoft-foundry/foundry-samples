@@ -1,0 +1,81 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "17555450976668837106"
+    }
+  },
+  "parameters": {
+    "aiFoundryName": {
+      "type": "string",
+      "defaultValue": "foundry-name"
+    },
+    "customDNSName": {
+      "type": "string",
+      "defaultValue": "foundry-alt-custom-dns"
+    },
+    "aiProjectName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-proj', parameters('aiFoundryName'))]"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus2"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2025-06-01",
+      "name": "[parameters('aiFoundryName')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "sku": {
+        "name": "S0"
+      },
+      "kind": "AIServices",
+      "properties": {
+        "allowProjectManagement": true,
+        "customSubDomainName": "[parameters('customDNSName')]",
+        "disableLocalAuth": false
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects",
+      "apiVersion": "2025-06-01",
+      "name": "[format('{0}/{1}', parameters('aiFoundryName'), parameters('aiProjectName'))]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {},
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2025-06-01",
+      "name": "[format('{0}/{1}', parameters('aiFoundryName'), 'gpt-4.1-mini')]",
+      "sku": {
+        "capacity": 1,
+        "name": "GlobalStandard"
+      },
+      "properties": {
+        "model": {
+          "name": "gpt-4.1-mini",
+          "format": "OpenAI",
+          "version": "2025-04-14"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]"
+      ]
+    }
+  ]
+}

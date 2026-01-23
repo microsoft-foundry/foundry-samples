@@ -1,0 +1,275 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "258335635459710717"
+    }
+  },
+  "parameters": {
+    "aiFoundryName": {
+      "type": "string",
+      "defaultValue": "foundrypnadisabled",
+      "metadata": {
+        "description": "That name is the name of our application. It has to be unique. Type a name followed by your resource group name. (<name>-<resourceGroupName>)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    },
+    "defaultProjectName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-proj', parameters('aiFoundryName'))]",
+      "metadata": {
+        "description": "Name of the first project"
+      }
+    },
+    "vnetName": {
+      "type": "string",
+      "defaultValue": "private-vnet",
+      "metadata": {
+        "description": "Name of the virtual network"
+      }
+    },
+    "peSubnetName": {
+      "type": "string",
+      "defaultValue": "pe-subnet",
+      "metadata": {
+        "description": "Name of the private endpoint subnet"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2025-06-01",
+      "name": "[parameters('aiFoundryName')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "kind": "AIServices",
+      "sku": {
+        "name": "S0"
+      },
+      "properties": {
+        "publicNetworkAccess": "Disabled",
+        "allowProjectManagement": true,
+        "customSubDomainName": "[parameters('aiFoundryName')]",
+        "disableLocalAuth": false
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2024-05-01",
+      "name": "[parameters('vnetName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "192.168.0.0/16"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[parameters('peSubnetName')]",
+            "properties": {
+              "addressPrefix": "192.168.0.0/24"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}/{1}', parameters('vnetName'), parameters('peSubnetName'))]",
+      "properties": {
+        "addressPrefix": "192.168.0.0/24"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-private-endpoint', parameters('aiFoundryName'))]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "subnet": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"
+        },
+        "privateLinkServiceConnections": [
+          {
+            "name": "[format('{0}-private-link-service-connection', parameters('aiFoundryName'))]",
+            "properties": {
+              "privateLinkServiceId": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]",
+              "groupIds": [
+                "account"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones",
+      "apiVersion": "2020-06-01",
+      "name": "privatelink.services.ai.azure.com",
+      "location": "global"
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones",
+      "apiVersion": "2020-06-01",
+      "name": "privatelink.openai.azure.com",
+      "location": "global"
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones",
+      "apiVersion": "2020-06-01",
+      "name": "privatelink.cognitiveservices.azure.com",
+      "location": "global"
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2024-06-01",
+      "name": "[format('{0}/{1}', 'privatelink.services.ai.azure.com', 'aiServices-link')]",
+      "location": "global",
+      "properties": {
+        "virtualNetwork": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+        },
+        "registrationEnabled": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.services.ai.azure.com')]",
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2024-06-01",
+      "name": "[format('{0}/{1}', 'privatelink.openai.azure.com', 'aiServicesOpenAI-link')]",
+      "location": "global",
+      "properties": {
+        "virtualNetwork": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+        },
+        "registrationEnabled": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.openai.azure.com')]",
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2024-06-01",
+      "name": "[format('{0}/{1}', 'privatelink.cognitiveservices.azure.com', 'aiServicesCognitiveServices-link')]",
+      "location": "global",
+      "properties": {
+        "virtualNetwork": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+        },
+        "registrationEnabled": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.cognitiveservices.azure.com')]",
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}/{1}', format('{0}-private-endpoint', parameters('aiFoundryName')), format('{0}-dns-group', parameters('aiFoundryName')))]",
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "[format('{0}-dns-aiserv-config', parameters('aiFoundryName'))]",
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.services.ai.azure.com')]"
+            }
+          },
+          {
+            "name": "[format('{0}-dns-openai-config', parameters('aiFoundryName'))]",
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.openai.azure.com')]"
+            }
+          },
+          {
+            "name": "[format('{0}-dns-cogserv-config', parameters('aiFoundryName'))]",
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.cognitiveservices.azure.com')]"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-private-endpoint', parameters('aiFoundryName')))]",
+        "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', 'privatelink.openai.azure.com', 'aiServicesOpenAI-link')]",
+        "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', 'privatelink.services.ai.azure.com', 'aiServices-link')]",
+        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.services.ai.azure.com')]",
+        "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', 'privatelink.cognitiveservices.azure.com', 'aiServicesCognitiveServices-link')]",
+        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.cognitiveservices.azure.com')]",
+        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.openai.azure.com')]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}/{1}', parameters('aiFoundryName'), 'gpt-4o-mini')]",
+      "sku": {
+        "capacity": 1,
+        "name": "GlobalStandard"
+      },
+      "properties": {
+        "model": {
+          "name": "gpt-4o-mini",
+          "format": "OpenAI",
+          "version": "2024-07-18"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects",
+      "apiVersion": "2025-06-01",
+      "name": "[format('{0}/{1}', parameters('aiFoundryName'), parameters('defaultProjectName'))]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {},
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "accountId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]"
+    },
+    "accountName": {
+      "type": "string",
+      "value": "[parameters('aiFoundryName')]"
+    },
+    "project": {
+      "type": "string",
+      "value": "[parameters('defaultProjectName')]"
+    }
+  }
+}
