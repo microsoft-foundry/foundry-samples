@@ -8,11 +8,11 @@ param aiSearchName string
 param aiSearchServiceResourceGroupName string
 param aiSearchServiceSubscriptionId string
 
-param cosmosDBName string
+param cosmosDBAccountName string
 param cosmosDBSubscriptionId string
 param cosmosDBResourceGroupName string
 
-param azureStorageName string
+param storageAccountName string
 param azureStorageSubscriptionId string
 param azureStorageResourceGroupName string
 
@@ -26,11 +26,11 @@ resource searchService 'Microsoft.Search/searchServices@2024-06-01-preview' exis
   scope: resourceGroup(aiSearchServiceSubscriptionId, aiSearchServiceResourceGroupName)
 }
 resource cosmosDBAccount 'Microsoft.DocumentDB/databaseAccounts@2024-12-01-preview' existing = {
-  name: cosmosDBName
+  name: cosmosDBAccountName
   scope: resourceGroup(cosmosDBSubscriptionId, cosmosDBResourceGroupName)
 }
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
-  name: azureStorageName
+  name: storageAccountName
   scope: resourceGroup(azureStorageSubscriptionId, azureStorageResourceGroupName)
 }
 
@@ -59,7 +59,7 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
   }
 
   resource project_connection_cosmosdb_account 'connections@2025-04-01-preview' = {
-    name: cosmosDBName
+    name: cosmosDBAccountName
     properties: {
       category: 'CosmosDB'
       target: cosmosDBAccount.properties.documentEndpoint
@@ -73,7 +73,7 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
   }
 
   resource project_connection_azure_storage 'connections@2025-04-01-preview' = {
-    name: azureStorageName
+    name: storageAccountName
     properties: {
       category: 'AzureStorageAccount'
       target: storageAccount.properties.primaryEndpoints.blob
@@ -125,7 +125,7 @@ output projectPrincipalId string = project.identity.principalId
 output projectWorkspaceId string = project.properties.internalId
 
 // BYO connection names
-output cosmosDBConnection string = cosmosDBName
-output azureStorageConnection string = azureStorageName
+output cosmosDBConnection string = cosmosDBAccountName
+output azureStorageConnection string = storageAccountName
 output aiSearchConnection string = aiSearchName
 output existingAoaiConnection string = existingAoaiName

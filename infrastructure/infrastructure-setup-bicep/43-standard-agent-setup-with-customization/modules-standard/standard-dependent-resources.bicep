@@ -7,10 +7,10 @@ param location string
 param aiSearchName string
 
 @description('Name of the storage account')
-param azureStorageName string
+param storageAccountName string
 
 @description('Name of the new Cosmos DB account')
-param cosmosDBName string
+param cosmosDBAccountName string
 
 @description('The AI Search Service full ARM Resource ID. This is an optional field, and if not provided, the resource will be created.')
 param aiSearchResourceId string
@@ -37,7 +37,7 @@ resource existingCosmosDB 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' exi
 var canaryRegions = ['eastus2euap', 'centraluseuap']
 var cosmosDbRegion = contains(canaryRegions, location) ? 'westus' : location
 resource cosmosDB 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = if(!cosmosDBExists) {
-  name: cosmosDBName
+  name: cosmosDBAccountName
   location: cosmosDbRegion
   kind: 'GlobalDocumentDB'
   properties: {
@@ -100,7 +100,7 @@ param noZRSRegions array = ['southindia', 'westus']
 param sku object = contains(noZRSRegions, location) ? { name: 'Standard_GRS' } : { name: 'Standard_ZRS' }
 
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = if(!azureStorageExists) {
-  name: azureStorageName
+  name: storageAccountName
   location: location
   kind: 'StorageV2'
   sku: sku
@@ -122,12 +122,12 @@ output aiSearchID string = aiSearchExists ? existingSearchService.id : aiSearch.
 output aiSearchServiceResourceGroupName string = aiSearchExists ? acsParts[4] : resourceGroup().name
 output aiSearchServiceSubscriptionId string = aiSearchExists ? acsParts[2] : subscription().subscriptionId
 
-output azureStorageName string = azureStorageExists ? existingAzureStorageAccount.name :  storage.name
+output storageAccountName string = azureStorageExists ? existingAzureStorageAccount.name :  storage.name
 output azureStorageId string =  azureStorageExists ? existingAzureStorageAccount.id :  storage.id
 output azureStorageResourceGroupName string = azureStorageExists ? azureStorageParts[4] : resourceGroup().name
 output azureStorageSubscriptionId string = azureStorageExists ? azureStorageParts[2] : subscription().subscriptionId
 
-output cosmosDBName string = cosmosDBExists ? existingCosmosDB.name : cosmosDB.name
+output cosmosDBAccountName string = cosmosDBExists ? existingCosmosDB.name : cosmosDB.name
 output cosmosDBId string = cosmosDBExists ? existingCosmosDB.id : cosmosDB.id
 output cosmosDBResourceGroupName string = cosmosDBExists ? cosmosParts[4] : resourceGroup().name
 output cosmosDBSubscriptionId string = cosmosDBExists ? cosmosParts[2] : subscription().subscriptionId
