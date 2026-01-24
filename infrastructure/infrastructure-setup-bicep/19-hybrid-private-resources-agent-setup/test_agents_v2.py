@@ -20,6 +20,7 @@ import os
 import sys
 import time
 from azure.ai.projects import AIProjectClient
+from azure.ai.agents.models import AzureAISearchTool
 from azure.identity import DefaultAzureCredential
 
 # ============================================================================
@@ -169,19 +170,20 @@ def test_ai_search_tool():
         
         print(f"✓ Connected to AI Project at {PROJECT_ENDPOINT}")
         
+        # Create AI Search tool using the SDK class
+        search_tool = AzureAISearchTool(
+            index_connection_id=AI_SEARCH_CONNECTION_NAME,
+            index_name=AI_SEARCH_INDEX_NAME
+        )
+        
         # Create an agent with AI Search tool
         agent = client.agents.create_agent(
             model=MODEL_NAME,
             name="search-test-agent",
             instructions="""You are a helpful assistant that searches for information.
             When asked a question, use the search tool to find relevant information.""",
-            tools=[{
-                "type": "azure_ai_search",
-                "azure_ai_search": {
-                    "index_connection_id": AI_SEARCH_CONNECTION_NAME,
-                    "index_name": AI_SEARCH_INDEX_NAME
-                }
-            }]
+            tools=search_tool.definitions,
+            tool_resources=search_tool.resources
         )
         print(f"✓ Created agent with AI Search tool: {agent.id}")
         

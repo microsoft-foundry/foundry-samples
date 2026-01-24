@@ -138,34 +138,66 @@ az search service update -g $RESOURCE_GROUP -n $AI_SEARCH_NAME \
 
 ## Step 4: Deploy MCP Server (Optional)
 
-Deploy an MCP server to the private VNet:
+Deploy an HTTP-based MCP server to the private VNet. 
+
+> **Important**: Azure AI Agents require MCP servers that implement the **Streamable HTTP transport** (JSON-RPC over HTTP). Standard stdio-based MCP servers (like `mcp/hello-world`) will NOT work.
+
+### 4.1 Create Container Apps Environment
 
 ```bash
 # Get MCP subnet resource ID
 MCP_SUBNET_ID=$(az network vnet subnet show -g $RESOURCE_GROUP --vnet-name $VNET_NAME -n "mcp-subnet" --query "id" -o tsv)
 
-# Create Container Apps environment
+# Create Container Apps environment (internal only)
 az containerapp env create \
   --resource-group $RESOURCE_GROUP \
   --name "mcp-env" \
   --location $LOCATION \
   --infrastructure-subnet-resource-id $MCP_SUBNET_ID \
   --internal-only true
+```
 
-# Deploy test MCP server
+### 4.2 Deploy HTTP-based MCP Server
+
+An HTTP-based MCP server is provided in `mcp-http-server/`. Deploy it:
+
+```bash
+# Build and deploy (requires ACR with managed identity access)
+cd mcp-http-server
+
+# Create ACR and build
+ACR_NAME="mcpacr$(date +%s | tail -c 5)"
+az acr create --name $ACR_NAME --resource-group $RESOURCE_GROUP --sku Basic --location $LOCATION
+az acr build --registry $ACR_NAME --image mcp-hello-http:v1 --file Dockerfile .
+
+# Create user-assigned identity with AcrPull role
+az identity create --name mcp-identity --resource-group $RESOURCE_GROUP --location $LOCATION
+IDENTITY_ID=$(az identity show --name mcp-identity -g $RESOURCE_GROUP --query "id" -o tsv)
+IDENTITY_PRINCIPAL=$(az identity show --name mcp-identity -g $RESOURCE_GROUP --query "principalId" -o tsv)
+ACR_ID=$(az acr show --name $ACR_NAME --query "id" -o tsv)
+az role assignment create --assignee $IDENTITY_PRINCIPAL --role AcrPull --scope $ACR_ID
+
+# Deploy container app
 az containerapp create \
   --resource-group $RESOURCE_GROUP \
-  --name "mcp-test-server" \
+  --name "mcp-http-server" \
   --environment "mcp-env" \
-  --image "mcr.microsoft.com/k8se/quickstart:latest" \
+  --image "${ACR_NAME}.azurecr.io/mcp-hello-http:v1" \
   --target-port 80 \
-  --ingress external \
-  --min-replicas 1
+  --ingress internal \
+  --min-replicas 1 \
+  --user-assigned $IDENTITY_ID \
+  --registry-server "${ACR_NAME}.azurecr.io" \
+  --registry-identity $IDENTITY_ID
+```
 
-# Get the FQDN and static IP
-MCP_FQDN=$(az containerapp show -g $RESOURCE_GROUP -n "mcp-test-server" --query "properties.configuration.ingress.fqdn" -o tsv)
+### 4.3 Configure Private DNS
+
+```bash
+# Get environment info
 MCP_STATIC_IP=$(az containerapp env show -g $RESOURCE_GROUP -n "mcp-env" --query "properties.staticIp" -o tsv)
 DEFAULT_DOMAIN=$(az containerapp env show -g $RESOURCE_GROUP -n "mcp-env" --query "properties.defaultDomain" -o tsv)
+MCP_FQDN=$(az containerapp show -g $RESOURCE_GROUP -n "mcp-http-server" --query "properties.configuration.ingress.fqdn" -o tsv)
 
 echo "MCP FQDN: $MCP_FQDN"
 echo "Static IP: $MCP_STATIC_IP"
@@ -183,32 +215,57 @@ az network private-dns link vnet create \
   --registration-enabled false
 
 # Add A records
-az network private-dns record-set a add-record \
-  -g $RESOURCE_GROUP \
-  -z $DEFAULT_DOMAIN \
-  -n "mcp-test-server" \
-  -a $MCP_STATIC_IP
+az network private-dns record-set a add-record -g $RESOURCE_GROUP -z $DEFAULT_DOMAIN -n "mcp-http-server" -a $MCP_STATIC_IP
+az network private-dns record-set a add-record -g $RESOURCE_GROUP -z $DEFAULT_DOMAIN -n "*" -a $MCP_STATIC_IP
+```
 
-az network private-dns record-set a add-record \
-  -g $RESOURCE_GROUP \
-  -z $DEFAULT_DOMAIN \
-  -n "*" \
-  -a $MCP_STATIC_IP
+### 4.4 Test MCP with REST API
+
+```python
+import requests
+from azure.identity import DefaultAzureCredential
+import time
+
+credential = DefaultAzureCredential()
+token = credential.get_token("https://ai.azure.com/.default")
+
+endpoint = "https://<ai-services>.services.ai.azure.com/api/projects/<project>"
+api_version = "2025-05-15-preview"
+mcp_url = "https://mcp-http-server.<default-domain>"
+
+headers = {"Authorization": f"Bearer {token.token}", "Content-Type": "application/json"}
+
+# Create agent with MCP tool
+agent_payload = {
+    "model": "gpt-4o-mini",
+    "name": "mcp-test-agent",
+    "instructions": "Use the hello tool to greet users.",
+    "tools": [{"type": "mcp", "server_label": "helloworld", "server_url": mcp_url}]
+}
+resp = requests.post(f"{endpoint}/assistants?api-version={api_version}", headers=headers, json=agent_payload)
+agent = resp.json()
+print(f"Agent: {agent['id']}")
 ```
 
 ---
 
 ## Step 5: Test via Portal
 
-Since the AI Services account has public access enabled, you can test directly in the portal.
+> **Note**: Portal testing may be blocked even with public access enabled if your deployment uses network injection (`networkInjections` property). In this case, use SDK testing (Step 6) instead.
 
-### 5.1 Access the Portal
+### 5.1 Check if Portal Works
 
 1. Navigate to [Azure AI Foundry portal](https://ai.azure.com)
 2. Sign in with your Azure credentials
-3. Select your project (created by the deployment)
+3. Toggle **"New Foundry"** ON (top right)
+4. Select your project
 
-### 5.2 Create an Agent with AI Search Tool
+If you see this error:
+> "Your current setup uses a project, resource, region, custom domain, or disabled public network access that isn't supported in the new Foundry experience yet."
+
+This is expected if network injection is configured. Use SDK testing instead.
+
+### 5.2 Create an Agent with AI Search Tool (if portal works)
 
 1. Go to **Agents** in the left menu
 2. Click **+ New agent**
@@ -250,29 +307,42 @@ For automated testing or CI/CD pipelines, use the SDK:
 ### 6.1 Install Dependencies
 
 ```bash
-pip install azure-ai-projects azure-identity
+pip install azure-ai-projects azure-ai-agents azure-identity
 ```
 
 ### 6.2 Run Test Script
+
+Use the included `test_agents_v2.py` script or the following code:
 
 ```python
 #!/usr/bin/env python3
 """Test agent with AI Search tool on private endpoint."""
 
 import os
+import time
 from azure.ai.projects import AIProjectClient
+from azure.ai.agents.models import AzureAISearchTool
 from azure.identity import DefaultAzureCredential
 
-# Configuration
+# Configuration - use project-scoped endpoint
 PROJECT_ENDPOINT = os.environ.get(
     "PROJECT_ENDPOINT",
     "https://<ai-services-name>.services.ai.azure.com/api/projects/<project-name>"
 )
+AI_SEARCH_CONNECTION = os.environ.get("AI_SEARCH_CONNECTION", "<connection-name>")
+AI_SEARCH_INDEX = os.environ.get("AI_SEARCH_INDEX", "test-index")
 
 def main():
     client = AIProjectClient(
         credential=DefaultAzureCredential(),
         endpoint=PROJECT_ENDPOINT,
+    )
+    print(f"Connected to: {PROJECT_ENDPOINT}")
+    
+    # Create AI Search tool using the SDK class (NOT dict format)
+    search_tool = AzureAISearchTool(
+        index_connection_id=AI_SEARCH_CONNECTION,
+        index_name=AI_SEARCH_INDEX
     )
     
     # Create agent with AI Search tool
@@ -280,13 +350,8 @@ def main():
         model="gpt-4o-mini",
         name="sdk-search-agent",
         instructions="Search for information when asked.",
-        tools=[{
-            "type": "azure_ai_search",
-            "azure_ai_search": {
-                "index_connection_id": "<connection-name>",
-                "index_name": "test-index"
-            }
-        }]
+        tools=search_tool.definitions,
+        tool_resources=search_tool.resources
     )
     print(f"Created agent: {agent.id}")
     
@@ -299,14 +364,41 @@ def main():
     )
     
     run = client.agents.runs.create(thread_id=thread.id, agent_id=agent.id)
-    print(f"Run status: {run.status}")
+    print(f"Started run: {run.id}")
+    
+    # Wait for completion
+    while run.status in ["queued", "in_progress"]:
+        time.sleep(2)
+        run = client.agents.runs.get(thread_id=thread.id, run_id=run.id)
+        print(f"Status: {run.status}")
+    
+    if run.status == "completed":
+        messages = client.agents.messages.list(thread_id=thread.id)
+        for msg in messages:
+            if msg.role == "assistant":
+                for content in msg.content:
+                    if hasattr(content, 'text'):
+                        print(f"Response: {content.text.value}")
+                break
+        print("✓ Test passed!")
+    else:
+        print(f"✗ Run failed: {run.status}")
     
     # Cleanup
     client.agents.delete_agent(agent.id)
-    print("Test complete!")
+    print("Agent cleaned up")
 
 if __name__ == "__main__":
     main()
+```
+
+### 6.3 Find Your Connection Name
+
+```bash
+# List connections in your project
+az rest --method GET \
+  --url "https://management.azure.com/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<ai-services>/projects/<project>/connections?api-version=2025-06-01" \
+  --query "value[?properties.category=='CognitiveSearch'].name" -o tsv
 ```
 
 ---
@@ -315,9 +407,15 @@ if __name__ == "__main__":
 
 ### Portal Shows "New Foundry Not Supported"
 
-This error occurs with **template 15** (fully private), not this template. If you see this error:
-- Verify you deployed template 19 (hybrid), not template 15
-- Check `publicNetworkAccess` is `Enabled` on the AI Services account
+This error can occur even with public access enabled if **network injection** is configured:
+
+```bash
+# Check for network injection
+az cognitiveservices account show -g $RESOURCE_GROUP -n $AI_SERVICES_NAME \
+  --query "properties.networkInjections"
+```
+
+If you see `networkInjections` with a subnet configured, the portal's "New Foundry" experience won't work. **Use SDK testing instead** - it works perfectly with network injection.
 
 ### Agent Can't Access AI Search
 
