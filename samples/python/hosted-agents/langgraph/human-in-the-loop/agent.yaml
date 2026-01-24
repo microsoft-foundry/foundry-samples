@@ -1,0 +1,29 @@
+name: HumanInTheLoopAgent
+description: This LangGraph agent demonstrates human-in-the-loop capabilities.
+metadata:
+  example:
+    - role: user
+      content: |-
+        Ask the user where they are, then look up the weather there.
+  tags:
+    - example
+    - learning
+  authors:
+    - junanchen
+template:
+  name: HumanInTheLoopAgentLG
+  kind: hosted
+  protocols:
+    - protocol: responses
+      version: v1
+  environment_variables:
+    - name: AZURE_OPENAI_ENDPOINT
+      value: ${AZURE_OPENAI_ENDPOINT}
+    - name: OPENAI_API_VERSION
+      value: 2025-03-01-preview
+    - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
+      value: "{{chat}}"
+resources:
+  - kind: model
+    id: gpt-4o-mini
+    name: chat
