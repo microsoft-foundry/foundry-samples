@@ -32,6 +32,64 @@ which provisions a REST API endpoint compatible with the OpenAI Responses protoc
 The hosted agent can be seamlessly deployed to Microsoft Foundry using the Azure Developer CLI [ai agent](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/concepts/hosted-agents?view=foundry&tabs=cli#create-a-hosted-agent) extension.
 The extension builds a container image into Azure Container Registry (ACR), and creates a hosted agent version and deployment on Microsoft Foundry.
 
+## Validate the deployed Agent
+```python
+# Before running the sample:
+#    pip install --pre azure-ai-projects>=2.0.0b1
+#    pip install azure-identity
+
+from azure.identity import DefaultAzureCredential
+from azure.ai.projects import AIProjectClient
+import json
+
+foundry_account = "<Your Foundry Account Name>"
+foundry_project = "<Your Foundry Project Name>"
+agent_name = "<Your Deployed Agent Name>"
+
+project_endpoint = f"https://{foundry_account}.services.ai.azure.com/api/projects/{foundry_project}"
+
+project_client = AIProjectClient(
+    endpoint=project_endpoint,
+    credential=DefaultAzureCredential(),
+)
+
+# Get an existing agent
+agent = project_client.agents.get(agent_name=agent_name)
+print(f"Retrieved agent: {agent.name}")
+
+openai_client = project_client.get_openai_client()
+conversation = openai_client.conversations.create()
+
+response = openai_client.responses.create(
+    input=[{"role": "user", "content": "Ask the user where they are, then look up the weather there."}],
+    conversation=conversation.id,
+    extra_body={"agent": {"name": agent.name, "type": "agent_reference"}},
+)
+
+call_id = ""
+for item in response.output:
+    if item.type == "function_call" and item.name == "__hosted_agent_adapter_hitl__":
+        print(f"Agent ask: {item.arguments}")
+        call_id = item.call_id
+
+if not call_id:
+    print(f"No human input is required, output: {response.output_text}")
+else:
+    human_response = {"resume": "San Francisco"}
+    response = openai_client.responses.create(
+        input=[
+            {
+                "type": "function_call_output",
+                "call_id": call_id,
+                "output": json.dumps(human_response)
+            }],
+        conversation=conversation.id,
+        extra_body={"agent": {"name": agent.name, "type": "agent_reference"}},
+    )
+    print(f"Human response: {human_response['resume']}")
+    print(f"Agent response: {response.output_text}")
+```
+
 ## Running the Agent Locally
 
 ### Prerequisites
@@ -87,7 +145,7 @@ python main.py
 
 This will start the hosted agent locally on `http://localhost:8088/`.
 
-### Interacting with the Agent
+### Interacting with the Agent locally
 
 #### Initial Request (Triggering Human Input)
 
