@@ -23,10 +23,8 @@ template:
       value: ${AZURE_OPENAI_ENDPOINT}
     - name: AZURE_OPENAI_CHAT_DEPLOYMENT_NAME
       value: "{{chat}}"
-    - name: AZURE_AI_PROJECT_ENDPOINT
-      value: ${AZURE_AI_PROJECT_ENDPOINT}
     - name: AZURE_AI_PROJECT_TOOL_CONNECTION_ID
-      value: placeholder_tool_connection_id
+      value: ""
 resources:
   - kind: model
     id: gpt-4o-mini

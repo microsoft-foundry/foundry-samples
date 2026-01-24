@@ -67,7 +67,7 @@ Set the following environment variables:
 - `AZURE_OPENAI_ENDPOINT` - Your Azure OpenAI endpoint URL (required)
 - `AZURE_OPENAI_CHAT_DEPLOYMENT_NAME` - The deployment name for your chat model (required)
 - `AZURE_AI_PROJECT_ENDPOINT` - Your Azure AI Foundry project endpoint (required)
-- `AZURE_AI_PROJECT_TOOL_CONNECTION_ID` - Foundry project connection id used to configure the `mcp` tool (required)
+- `AZURE_AI_PROJECT_TOOL_CONNECTION_ID` - Foundry project connection id used to configure the `mcp` tool (optional)
 
 This sample loads environment variables from a local `.env` file if present.
 

@@ -13,23 +13,22 @@ def main():
         "AZURE_OPENAI_ENDPOINT",
         "AZURE_OPENAI_CHAT_DEPLOYMENT_NAME",
         "AZURE_AI_PROJECT_ENDPOINT",
-        "AZURE_AI_PROJECT_TOOL_CONNECTION_ID",
     ]
     for env_var in required_env_vars:
         assert env_var in os.environ and os.environ[env_var], (
             f"{env_var} environment variable must be set."
         )
 
-    tool_connection_id = os.environ["AZURE_AI_PROJECT_TOOL_CONNECTION_ID"]
+    tools=[{"type": "web_search_preview"}]
+    if project_tool_connection_id := os.environ.get("AZURE_AI_PROJECT_TOOL_CONNECTION_ID"):
+        tools.append({"type": "mcp", "project_connection_id": project_tool_connection_id})
 
-    agent = AzureOpenAIChatClient(
-        credential=DefaultAzureCredential(),
-        middleware=FoundryToolsChatMiddleware(
-            tools=[{"type": "web_search_preview"}, {"type": "mcp", "project_connection_id": tool_connection_id}]
-            )).create_agent(
-                name="FoundryToolAgent",
-                instructions="You are a helpful assistant with access to various tools.",
-        )
+    chat_client = AzureOpenAIChatClient(credential=DefaultAzureCredential(),
+                                        middleware=FoundryToolsChatMiddleware(tools))
+    agent = chat_client.create_agent(
+        name="FoundryToolAgent",
+        instructions="You are a helpful assistant with access to various tools."
+    )
 
     from_agent_framework(agent).run()
 

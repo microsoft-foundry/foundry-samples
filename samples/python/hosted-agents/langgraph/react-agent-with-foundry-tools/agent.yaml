@@ -1,17 +1,18 @@
-name: CalculatorAgent
-description: This LangGraph agent can perform arithmetic calculations such as addition, subtraction, multiplication, and division.
+name: CodeInterpreterReactAgent
+description:
 metadata:
   example:
     - role: user
       content: |-
-        What is the size of France in square miles, divided by 27?
+        use the python tool to calculate what is 4 * 3.82. 
+        and then find its square root and then find the square root of that result
   tags:
     - example
     - learning
   authors:
-    - migu
+    - junanchen
 template:
-  name: CalculatorAgentLG
+  name: CodeInterpreterReactAgentLG
   kind: hosted
   protocols:
     - protocol: responses
@@ -23,6 +24,8 @@ template:
       value: 2025-03-01-preview
     - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
       value: "{{chat}}"
+    - name: AZURE_AI_PROJECT_TOOL_CONNECTION_ID
+      value: ""
 resources:
   - kind: model
     id: gpt-4o-mini
