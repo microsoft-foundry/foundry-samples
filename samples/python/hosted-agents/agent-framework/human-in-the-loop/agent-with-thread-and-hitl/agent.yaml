@@ -6,8 +6,9 @@ metadata:
       content: |-
         Add a dentist appointment on March 15th
   tags:
-    - example
-    - learning
+    - Azure AI AgentServer
+    - Microsoft Agent Framework
+    - Human in the Loop
   authors:
     - junanchen
 template:
@@ -25,5 +26,5 @@ template:
       value: "{{chat}}"
 resources:
   - kind: model
-    id: gpt-4o-mini
+    id: gpt-4o
     name: chat

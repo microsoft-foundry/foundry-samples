@@ -10,6 +10,7 @@ from agent_framework.azure import AzureOpenAIChatClient
 
 from azure.ai.agentserver.agentframework import from_agent_framework
 from azure.ai.agentserver.agentframework.persistence.agent_thread_repository import JsonLocalFileAgentThreadRepository
+from azure.identity import DefaultAzureCredential
 
 """
 Tool Approvals with Threads
@@ -65,7 +66,7 @@ def add_to_calendar(
 
 def build_agent():
     return ChatAgent(
-        chat_client=AzureOpenAIChatClient(),
+        chat_client=AzureOpenAIChatClient(credential=DefaultAzureCredential()),
         name="CalendarAgent",
         instructions="You are a helpful calendar assistant.",
         tools=[add_to_calendar],

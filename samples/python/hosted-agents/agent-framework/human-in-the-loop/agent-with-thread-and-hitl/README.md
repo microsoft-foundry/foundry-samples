@@ -68,7 +68,7 @@ openai_client = project_client.get_openai_client()
 conversation = openai_client.conversations.create()
 
 response = openai_client.responses.create(
-    input=[{"role": "user", "content": "Add a dentist appointment on March 15th"}],
+    input="Add a dentist appointment on March 15th",
     conversation=conversation.id,
     extra_body={"agent": {"name": agent.name, "type": "agent_reference"}},
 )
