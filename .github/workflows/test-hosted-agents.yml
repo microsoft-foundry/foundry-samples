@@ -1,0 +1,181 @@
+name: Test Hosted Agent Samples
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'samples/python/hosted-agents/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  discover:
+    name: Discover Samples
+    runs-on: ubuntu-latest
+    outputs:
+      samples: ${{ steps.discover.outputs.samples }}
+      sample_count: ${{ steps.discover.outputs.sample_count }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Discover hosted agent samples
+        id: discover
+        run: |
+          samples=$(python .github/scripts/discover_hosted_samples.py)
+          echo "samples=$samples" >> $GITHUB_OUTPUT
+          sample_count=$(echo "$samples" | python -c "import sys, json; print(len(json.load(sys.stdin)))")
+          echo "sample_count=$sample_count" >> $GITHUB_OUTPUT
+          echo "Found $sample_count samples:"
+          echo "$samples" | python -c "import sys, json; [print(f\"  - {s['name']} ({s['framework']})\" ) for s in json.load(sys.stdin)]"
+
+  test:
+    name: Test ${{ matrix.sample.name }}
+    needs: discover
+    if: needs.discover.outputs.sample_count > 0
+    runs-on: ubuntu-latest
+    environment: hosted-agents-test
+    env:
+      # Environment variables from GitHub Environment
+      AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+      AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${{ vars.AZURE_AI_MODEL_DEPLOYMENT_NAME }}
+      AZURE_OPENAI_CHAT_DEPLOYMENT_NAME: ${{ vars.AZURE_OPENAI_CHAT_DEPLOYMENT_NAME }}
+      BING_GROUNDING_CONNECTION_ID: ${{ vars.BING_GROUNDING_CONNECTION_ID }}
+      AZURE_AI_PROJECT_TOOL_CONNECTION_ID: ${{ vars.AZURE_AI_PROJECT_TOOL_CONNECTION_ID }}
+    strategy:
+      fail-fast: false
+      matrix:
+        sample: ${{ fromJson(needs.discover.outputs.samples) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install test dependencies
+        run: |
+          pip install requests pyyaml
+
+      - name: Run sample test
+        id: test
+        run: |
+          python .github/scripts/test_hosted_sample.py "${{ matrix.sample.path }}" -o result.json
+        continue-on-error: true
+
+      - name: Upload test result
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.sample.name }}
+          path: result.json
+          if-no-files-found: ignore
+
+      - name: Report test status
+        run: |
+          if [ -f result.json ]; then
+            echo "### Test Result for ${{ matrix.sample.name }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            success=$(python -c "import json; r=json.load(open('result.json')); print('true' if r.get('success') else 'false')")
+            if [ "$success" == "true" ]; then
+              echo "✅ **Status: PASSED**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Status: FAILED**" >> $GITHUB_STEP_SUMMARY
+              error=$(python -c "import json; r=json.load(open('result.json')); print(r.get('error', 'Unknown error'))")
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**Error:** $error" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Full Result</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat result.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Test Result for ${{ matrix.sample.name }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Status: FAILED** - No result file generated" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Fail if test failed
+        if: steps.test.outcome == 'failure'
+        run: exit 1
+
+  summary:
+    name: Test Summary
+    needs: [discover, test]
+    if: always() && needs.discover.outputs.sample_count > 0
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all results
+        uses: actions/download-artifact@v4
+        with:
+          path: results
+          pattern: result-*
+
+      - name: Generate summary
+        run: |
+          echo "# Hosted Agent Samples Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Sample | Framework | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          
+          passed=0
+          failed=0
+          
+          for dir in results/result-*; do
+            if [ -d "$dir" ] && [ -f "$dir/result.json" ]; then
+              name=$(python -c "import json; print(json.load(open('$dir/result.json')).get('name', 'unknown'))")
+              success=$(python -c "import json; r=json.load(open('$dir/result.json')); print('true' if r.get('success') else 'false')")
+              
+              # Try to determine framework from path
+              sample_path=$(python -c "import json; print(json.load(open('$dir/result.json')).get('sample', ''))")
+              if [[ "$sample_path" == *"agent-framework"* ]]; then
+                framework="agent-framework"
+              elif [[ "$sample_path" == *"langgraph"* ]]; then
+                framework="langgraph"
+              elif [[ "$sample_path" == *"custom"* ]]; then
+                framework="custom"
+              else
+                framework="unknown"
+              fi
+              
+              if [ "$success" == "true" ]; then
+                echo "| $name | $framework | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+                ((passed++))
+              else
+                error=$(python -c "import json; r=json.load(open('$dir/result.json')); print(r.get('error', 'Unknown')[:50])")
+                echo "| $name | $framework | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+                ((failed++))
+              fi
+            fi
+          done
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Total:** $passed passed, $failed failed" >> $GITHUB_STEP_SUMMARY
+          
+          if [ $failed -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Some tests failed. Check individual job logs for details." >> $GITHUB_STEP_SUMMARY
+          fi
