@@ -9,21 +9,24 @@
   Important: Agent APIs do not support customer-managed key encryption in basic setup. 
   To use customer-managed key encryption with Agents, you must bring your own storage
   resources using 'standard' agent setup. Also, see example 31.
+
+  Note: due to role assignment delay, initial template run by may fail if the managed identity has no access to your key vault yet. Retry running the template.
 */
-@description('That name is the name of our application. It has to be unique. Type a name followed by your resource group name. (<name>-<resourceGroupName>)')
-param aiFoundryName string = '<yourfoundry>'
+param aiFoundryName string = 'foundry-cmk'
+
+param aiProjectName string = '${aiFoundryName}-proj'
 
 @description('Location for all resources.')
 param location string = resourceGroup().location
 
 @description('Name of the Azure Key Vault target')
-param keyVaultName string = '<your-key-vault>'
+param keyVaultName string = 'foundry-int-cmk-akv'
 
 @description('Name of the Azure Key Vault key')
-param keyName string = '<your-key>'
+param keyName string = 'key'
 
 @description('Version of the Azure Key Vault key')
-param keyVersion string = '<your-key-version>'
+param keyVersion string = '01389af5911f49878d68c29136648b8d'
 
 var keyVaultUri = 'https://${keyVaultName}.vault.azure.net/'
 
@@ -55,7 +58,7 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
 
 // Projects are folders to organize your work in AI Foundry such as Agents, Evaluations, Files
 resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
-  name: 'first-project'
+  name: aiProjectName
   identity: {
     type: 'SystemAssigned'
   }
@@ -78,6 +81,25 @@ module encryptionUpdate 'updateEncryption.bicep' = {
     keyVaultUri: keyVaultUri
     keyName: keyName
     keyVersion: keyVersion
+  }
+}
+
+/*
+  Optionally deploy a model to use in playground, agents and other tools.
+*/
+resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01'= {
+  parent: account
+  name: 'gpt-4.1-mini'
+  sku : {
+    capacity: 1
+    name: 'GlobalStandard'
+  }
+  properties: {
+    model:{
+      name: 'gpt-4.1-mini'
+      format: 'OpenAI'
+      version: '2025-04-14'
+    }
   }
 }
 

@@ -39,3 +39,4 @@
 /samples/typescript/quickstart/src/quickstart-chat-with-agent.ts @microsoft-foundry/AI-Platform-Docs
 /samples/typescript/quickstart/src/quickstart-create-agent.ts @microsoft-foundry/AI-Platform-Docs
 /samples/typescript/quickstart/src/quickstart-responses.ts @microsoft-foundry/AI-Platform-Docs
+/samples/cli/finetuning/ @saanikaguptamicrosoft @achauhan-scc @kingernupur @ZubaeyrMSFT @rabollin @william-liang-MSFT

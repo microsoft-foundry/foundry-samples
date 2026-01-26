@@ -23,7 +23,7 @@ param peSubnetName string = 'pe-subnet'
 /*
   Step 1: Create an Account 
 */ 
-resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
+resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: aiFoundryName
   location: location
   identity: {
@@ -219,7 +219,7 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-
 /*
   Step 4: Create a Project
 */
-resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
+resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
   name: defaultProjectName
   parent: account
   location: location

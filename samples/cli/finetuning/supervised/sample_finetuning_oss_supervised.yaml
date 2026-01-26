@@ -1,0 +1,17 @@
+name: oss-supervised-ft-cli-demo
+description: Template to demonstrate supervised fine-tuning via CLI for OSS model
+model: Ministral-3B
+method:
+  type: supervised
+  supervised:
+    hyperparameters:
+      epochs: 4
+      batch_size: 8
+      learning_rate_multiplier: 0.1
+      prompt_loss_weight: 0.01
+seed: 42
+suffix: "sft-oss-trained"
+extra_body:
+  trainingType: GlobalStandard
+training_file: local:data/sft_training_set.jsonl
+validation_file: local:data/sft_validation_set.jsonl

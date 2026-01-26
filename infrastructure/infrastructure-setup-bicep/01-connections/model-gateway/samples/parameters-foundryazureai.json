@@ -6,7 +6,7 @@
       "value": "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-RG/providers/Microsoft.CognitiveServices/accounts/YOUR-AI-FOUNDRY-ACCOUNT/projects/YOUR-PROJECT"
     },
     "targetUrl": {
-      "value": "https://<your-foundry-resource>.openai.azure.com/openai"
+      "value": "https://<your-foundry-resource>.services.ai.azure.com/models"
     },
     "gatewayName": {
       "value": "YOUR-GATEWAY-NAME"

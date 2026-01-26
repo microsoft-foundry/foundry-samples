@@ -43,7 +43,7 @@ param connectionName string = ''
 @description('APIM subscription name for API key auth')
 param apimSubscriptionName string = 'master'
 
-@allowed(['ApiKey'])
+@allowed(['ApiKey', 'ProjectManagedIdentity'])
 @description('Authentication type')
 param authType string = 'ApiKey'
 
@@ -110,6 +110,7 @@ var validationMessage = bothConfiguredError ? 'ERROR: Cannot configure both stat
 var neitherConfiguredError = !hasModelDiscovery && !hasStaticModels
 var neitherConfiguredMessage = 'ERROR: Must configure either static models (staticModels array) OR dynamic discovery (listModelsEndpoint, getModelEndpoint, deploymentProvider). Cannot have neither.'
 
+
 // Force deployment failure if both are configured
 resource deploymentValidation 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (bothConfiguredError) {
   name: 'validation-error-${uniqueString(resourceGroup().id)}'
@@ -133,6 +134,7 @@ resource configValidation 'Microsoft.Resources/deploymentScripts@2023-08-01' = i
     retentionInterval: 'PT1H'
   }
 }
+
 
 // Build metadata using conditional union - includes only non-empty parameters
 var metadata = union(

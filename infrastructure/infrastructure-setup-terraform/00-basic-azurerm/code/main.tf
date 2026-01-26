@@ -40,6 +40,17 @@ resource "azurerm_cognitive_account" "ai_foundry" {
   }
 }
 
+# Create a Foundry project (folder for organizing stateful work)
+resource "azurerm_cognitive_account_project" "example" {
+  name                 = "myproject"
+  cognitive_account_id = azurerm_cognitive_account.ai_foundry.id
+  location             = azurerm_resource_group.rg.location 
+
+  identity {
+    type = "SystemAssigned"
+  }
+}
+
 ## Create a deployment for OpenAI's GPT-4o in the AI Foundry resource
 ##
 resource "azurerm_cognitive_deployment" "aifoundry_deployment_gpt_4o" {

@@ -1,7 +1,6 @@
 import os
 import logging
 
-from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import SystemMessage, ToolMessage
 from langchain_core.tools import tool
@@ -15,14 +14,8 @@ from typing_extensions import Literal
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
 from azure.ai.agentserver.langgraph import from_langgraph
-from azure.monitor.opentelemetry import configure_azure_monitor
 
 logger = logging.getLogger(__name__)
-
-load_dotenv()
-
-if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"):
-    configure_azure_monitor(enable_live_metrics=True, logger_name="__main__")
 
 
 # Define tools

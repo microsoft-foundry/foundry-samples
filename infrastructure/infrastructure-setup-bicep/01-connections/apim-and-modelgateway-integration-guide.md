@@ -207,7 +207,7 @@ Specialized connections designed for Azure API Management integration scenarios.
 
 **🔐 Authentication Support:**
 - **🔑 API Key**: Subscription key authentication
-- **🆔 Microsoft Entra ID**: Azure Active Directory integration (coming soon)
+- **🆔 Microsoft Entra ID**: Project Managed Identity
 
 📋 **Detailed Configuration**: [APIM Connection Objects](./apim/APIM-Connection-Objects.md)
 

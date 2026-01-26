@@ -1,0 +1,14 @@
+name: dpo-ft-cli-demo
+description: Template to demonstrate dpo fine-tuning via CLI
+model: gpt-4.1-2025-04-14
+method:
+  type: dpo
+  dpo:
+    hyperparameters:
+      epochs: 4
+      batch_size: 8
+      learning_rate_multiplier: 0.1
+      beta: 3
+seed: 9
+suffix: "dpo-trained"
+training_file: local:data/open_orca_dpo_sample.jsonl

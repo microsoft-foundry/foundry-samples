@@ -21,8 +21,6 @@ template:
       value: ${AZURE_OPENAI_ENDPOINT}
     - name: OPENAI_API_VERSION
       value: 2025-03-01-preview
-    - name: APPLICATIONINSIGHTS_CONNECTION_STRING
-      value: ${APPLICATIONINSIGHTS_CONNECTION_STRING}
     - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
       value: "{{chat}}"
 resources:

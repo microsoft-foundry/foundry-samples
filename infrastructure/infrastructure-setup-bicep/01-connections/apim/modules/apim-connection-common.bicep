@@ -74,23 +74,23 @@ resource connectionApiKey 'Microsoft.CognitiveServices/accounts/projects/connect
   }
 }
 
-// TODO: Future AAD connection (when role assignments are implemented)
-// resource connectionAAD 'Microsoft.CognitiveServices/accounts/projects/connections@2025-04-01-preview' = if (authType == 'AAD') {
-//   name: connectionName
-//   parent: aiProject
-//   properties: {
-//     category: 'ApiManagement'
-//     target: '${existingApim.properties.gatewayUrl}/${apimApi.properties.path}'
-//     authType: 'AAD'
-//     isSharedToAll: isSharedToAll
-//     credentials: {}
-//     metadata: metadata
-//   }
-// }
+resource connectionAAD 'Microsoft.CognitiveServices/accounts/projects/connections@2025-04-01-preview' = if (authType == 'ProjectManagedIdentity') {
+  name: connectionName
+  parent: aiProject
+  properties: {
+    category: 'ApiManagement'
+    target: '${existingApim.properties.gatewayUrl}/${apimApi.properties.path}'
+    authType: 'ProjectManagedIdentity'
+    audience: 'https://cognitiveservices.azure.com'
+    isSharedToAll: isSharedToAll
+    credentials: {}
+    metadata: metadata
+  }
+}
 
 // Outputs (only from the created connection)
-output connectionName string = authType == 'ApiKey' ? connectionApiKey.name : ''
-output connectionId string = authType == 'ApiKey' ? connectionApiKey.id : ''
+output connectionName string = authType == 'ApiKey' ? connectionApiKey.name : connectionAAD.name
+output connectionId string = authType == 'ApiKey' ? connectionApiKey.id : connectionApiKey.name
 output targetUrl string = '${existingApim.properties.gatewayUrl}/${apimApi.properties.path}'
 output authType string = authType
 output metadata object = metadata

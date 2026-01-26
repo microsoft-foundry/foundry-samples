@@ -15,6 +15,7 @@
       "value": "YOUR-CONNECTION-NAME"
     },
     "authType": {
+      "_comment": "Set to ApiKey or ProjectManagedIdentity",
       "value": "ApiKey"
     },
     "isSharedToAll": {
