@@ -9,8 +9,8 @@ data "azurerm_client_config" "current" {}
 ## Create a random string
 ##
 resource "random_string" "unique" {
-  length      = 4
-  min_numeric = 4
+  length      = 8
+  min_numeric = 8
   numeric     = true
   special     = false
   lower       = true
@@ -148,7 +148,7 @@ resource "azapi_resource" "ai_search" {
       # Search-specific properties
       replicaCount   = 1
       partitionCount = 1
-      hostingMode    = "default"
+      hostingMode    = "Default"
       semanticSearch = "disabled"
 
       # Identity-related controls
