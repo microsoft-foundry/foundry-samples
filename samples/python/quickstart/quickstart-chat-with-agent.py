@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
-
+# just adding a comment - should not show a problem
 load_dotenv()
 
 project_client = AIProjectClient(
