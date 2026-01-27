@@ -1,18 +1,17 @@
-name: FoundryToolsReactAgent
-description: This LangGraph agent uses Foundry tools to perform tasks such as interpreting python code.
+name: HumanInTheLoopAgent
+description: This LangGraph agent demonstrates human-in-the-loop capabilities.
 metadata:
   example:
     - role: user
       content: |-
-        use the python tool to calculate what is 4 * 3.82. 
-        and then find its square root and then find the square root of that result
+        Ask the user where they are, then look up the weather there.
   tags:
     - example
     - learning
   authors:
     - junanchen
 template:
-  name: FoundryToolsReactAgentLG
+  name: HumanInTheLoopAgentLG
   kind: hosted
   protocols:
     - protocol: responses
@@ -24,8 +23,6 @@ template:
       value: 2025-03-01-preview
     - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
       value: "{{chat}}"
-    - name: AZURE_AI_PROJECT_TOOL_CONNECTION_ID
-      value: ""
 resources:
   - kind: model
     id: gpt-4o

@@ -12,8 +12,6 @@ Tools included (per your request):
 - list_environment_variables
 """
 
-from __future__ import annotations
-
 import datetime
 import os
 import json

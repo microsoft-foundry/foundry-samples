@@ -14,8 +14,6 @@ Notes:
 - This is designed to work with any model/server that supports an OpenAI-style tool calling contract.
 """
 
-from __future__ import annotations
-
 import os
 import platform
 import re

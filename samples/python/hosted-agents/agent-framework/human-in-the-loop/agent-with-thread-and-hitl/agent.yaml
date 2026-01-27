@@ -1,0 +1,30 @@
+name: calendar-agent-with-human-in-the-loop
+description: This AgentFramework agent demonstrates how to integrate human-in-the-loop functionality using AI Functions.
+metadata:
+  example:
+    - role: user
+      content: |-
+        Add a dentist appointment on March 15th
+  tags:
+    - Azure AI AgentServer
+    - Microsoft Agent Framework
+    - Human in the Loop
+  authors:
+    - junanchen
+template:
+  name: calendar-agent-with-human-in-the-loop
+  kind: hosted
+  protocols:
+    - protocol: responses
+      version: v1
+  environment_variables:
+    - name: AZURE_OPENAI_ENDPOINT
+      value: ${AZURE_OPENAI_ENDPOINT}
+    - name: OPENAI_API_VERSION
+      value: 2025-03-01-preview
+    - name: AZURE_OPENAI_CHAT_DEPLOYMENT_NAME
+      value: "{{chat}}"
+resources:
+  - kind: model
+    id: gpt-4o
+    name: chat

@@ -1,0 +1,29 @@
+# Unique identifier/name for this agent
+name: af-worfklow-agent-with-checkpoint-and-hitl
+# Brief description of what this agent does
+description: >
+  A workflow agent built using the Microsoft Agent Framework that includes checkpointing and human-in-the-loop (HITL) capabilities.
+metadata:
+  # Categorization tags for organizing and discovering agents
+  authors:
+    - Microsoft
+  tags:
+    - Azure AI AgentServer
+    - Microsoft Agent Framework
+    - Human in the Loop
+template:
+  name: af-worfklow-agent-with-checkpoint-and-hitl
+  kind: hosted
+  protocols:
+    - protocol: responses
+  environment_variables:
+    - name: AZURE_OPENAI_ENDPOINT
+      value: ${AZURE_OPENAI_ENDPOINT}
+    - name: OPENAI_API_VERSION
+      value: 2025-03-01-preview
+    - name: AZURE_OPENAI_CHAT_DEPLOYMENT_NAME
+      value: "{{chat}}"
+resources:
+  - kind: model
+    id: gpt-4o
+    name: chat
