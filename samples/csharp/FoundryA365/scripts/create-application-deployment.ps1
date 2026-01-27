@@ -3,6 +3,7 @@ param(
     [string]$AgentVersion
 )
 
+
 $ErrorActionPreference = "Stop"
 
 $applicationDeploymentBody = @{
@@ -49,21 +50,6 @@ Write-Host ""
 Write-Host "Response:"
 $responseDeployment | ConvertTo-Json -Depth 100 | Write-Host
 
-
-# Write-Host "Starting application deployment..."
-# $startDeploymentUrl = "https://management.azure.com/subscriptions/$($env:AZURE_SUBSCRIPTION_ID)/resourceGroups/$($env:AZURE_RESOURCE_GROUP)/providers/Microsoft.CognitiveServices/accounts/$($env:ACCOUNT_NAME)/projects/$($env:PROJECT_NAME)/applications/$($env:APPLICATION_NAME)/agentDeployments/foundry-agent-deployment/start?api-version=2025-10-01-preview"
-
-# $responseDeployment = Invoke-RestMethod -Uri $startDeploymentUrl `
-#     -Method Post `
-#     -Headers @{
-#         "Content-Type" = "application/json"
-#         "Accept"       = "application/json"
-#         "Authorization" = "Bearer $($managementToken)"
-#     } `
-
-# Write-Host ""
-# Write-Host "Response:"
-# $responseDeployment | ConvertTo-Json -Depth 100 | Write-Host
 
 while ($true) {
     Start-Sleep -Seconds 10

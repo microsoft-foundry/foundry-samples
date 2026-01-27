@@ -13,7 +13,6 @@ Ensure you have the following installed:
 | Requirement | Description |
 |------------|-------------|
 | [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) | Infrastructure deployment tool |
-| [Docker](https://docker.com) | Container runtime |
 | [.NET 9.0 SDK](https://dotnet.microsoft.com/download) | Development framework |
 
 
@@ -31,6 +30,8 @@ Ensure you have the following installed:
 
 Login to your Azure tenant and authenticate with Azure Developer CLI:
 
+Based on tenant security settings, sometimes just az login might be sufficient, sometimes one will need to login to each scope that is used in these scripts.
+
 ```powershell
 # Login to Azure CLI
 az login
@@ -39,6 +40,7 @@ az login --scope https://ai.azure.com/.default
 
 az login --scope https://graph.microsoft.com//.default
 
+az login --scope https://management.azure.com/.default
 # Login to Azure Developer CLI
 azd auth login
 ```
@@ -58,7 +60,7 @@ Before deploying, you can customize:
 Ensure Docker is running, then execute:
 
 ```powershell
-azd provision --verbose
+azd provision
 ```
 
 After deployment completes, retrieve your resource values:

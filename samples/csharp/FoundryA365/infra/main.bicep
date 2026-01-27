@@ -172,3 +172,5 @@ output AGENT_NAME string = agentName
 output TENANT_ID string = tenant().tenantId
 
 output PROJECT_PRINCIPAL_ID string = project.outputs.foundryProjectPrincipalId
+
+output AGENT_VERSION string = deploymentScriptAgent.outputs.agentVersion
