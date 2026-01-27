@@ -67,18 +67,25 @@ After deployment completes, retrieve your resource values:
 azd env get-values
 ```
 
-### Step 3: Approve Your Agent
+> **📌 What to expect after deployment:**  
+> After `azd provision` completes successfully, you will see the **AgentIdentityBlueprint** in the Agents registry. You will **not** see any agents in the requests tab yet. This is expected behavior - you must first approve the agent blueprint, configure it in Teams Developer Portal, and then create agent instances based on that blueprint.
+
+### Step 3: Approve the Agent Blueprint
+
+**Important:** The first step is to approve the **agent blueprint** itself. Agent instances will be created later in Step 5.
 
 1. Navigate to the [Microsoft 365 admin center](https://admin.cloud.microsoft/?#/agents/all/requested)
-2. Under **Requests**, locate your agent:
-   ![Find your agent in A365](image.png)
+2. Under **Requests**, locate your **agent blueprint**:
+   ![Find your agent blueprint in A365](image.png)
 
-3. Click the **Approve request and activate** button:
-   ![Screenshot of the agent approval dialog with the 'Approve request and activate' button highlighted](image-1.png)
+3. Click the **Approve request and activate** button to approve the blueprint:
+   ![Screenshot of the agent blueprint approval dialog with the 'Approve request and activate' button highlighted](image-1.png)
 
 ### Step 4: Configure Teams Integration
 
-1. Open the [Teams Developer Portal](https://dev.teams.microsoft.com/tools/agent-blueprint) and locate your agent blueprint
+After approving the agent blueprint, configure it in the Teams Developer Portal:
+
+1. Open the [Teams Developer Portal](https://dev.teams.microsoft.com/tools/agent-blueprint) and locate your approved agent blueprint
     
    **Note:** Only 100 Agent Blueprints are displayed. If yours isn't visible, click any blueprint to open its details page, then in the browser's address bar replace the blueprint ID portion of the URL with your own Blueprint ID from the previous step (for example: `https://dev.teams.microsoft.com/tools/agent-blueprint/<your-blueprint-id>`).
    ![Find agent blueprint](image-2.png)
@@ -93,8 +100,10 @@ azd env get-values
 
 ### Step 5: Create Agent Instances
 
+After configuring the agent blueprint in Teams Developer Portal, you can now create agent instances based on your blueprint:
+
 1. In Microsoft Teams, navigate to **Apps** → **Agents for your team**
-2. Find your agent and create an instance:
+2. Find your agent blueprint and create an instance:
    ![Screenshot of Microsoft Teams showing the 'Agents for your team' section with an agent listed](image-4.png)
 
 ---
