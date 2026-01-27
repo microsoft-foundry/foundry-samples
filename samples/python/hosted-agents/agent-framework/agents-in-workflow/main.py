@@ -37,7 +37,7 @@ def create_workflow_builder():
 
 def main():
     # Run the agent as a hosted agent
-    from_agent_framework(create_workflow_builder()).run()
+    from_agent_framework(create_workflow_builder).run()
 
 
 if __name__ == "__main__":
