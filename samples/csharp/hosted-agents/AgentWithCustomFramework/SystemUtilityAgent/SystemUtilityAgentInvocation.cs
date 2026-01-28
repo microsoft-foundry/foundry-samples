@@ -75,14 +75,15 @@ public sealed class SystemUtilityAgentInvocation : IAgentInvocation
         WriteIndented = false
     };
 
-    public Task<Response> InvokeAsync(AgentRunContext context, CancellationToken cancellationToken = default)
+    public Task<Response> InvokeAsync(CreateResponseRequest request, AgentInvocationContext context,
+        CancellationToken cancellationToken = default)
     {
-        return InvokeAsyncInternal(context, cancellationToken);
+        return InvokeAsyncInternal(request, context, cancellationToken);
     }
 
-    private async Task<Response> InvokeAsyncInternal(AgentRunContext context, CancellationToken cancellationToken)
+    private async Task<Response> InvokeAsyncInternal(CreateResponseRequest request, AgentInvocationContext context,
+        CancellationToken cancellationToken)
     {
-        var request = context.Request;
         var activity = Activity.Current;
 
         var inputText = GetInputText(request);
@@ -105,10 +106,10 @@ public sealed class SystemUtilityAgentInvocation : IAgentInvocation
         return ToResponse(request, context, output: outputs);
     }
 
-    public async IAsyncEnumerable<ResponseStreamEvent> InvokeStreamAsync(AgentRunContext context,
+    public async IAsyncEnumerable<ResponseStreamEvent> InvokeStreamAsync(CreateResponseRequest request,
+        AgentInvocationContext context,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var request = context.Request;
         var activity = Activity.Current;
         activity?.SetTag("gen_ai.conversation.id", context.ConversationId);
 
@@ -175,7 +176,7 @@ public sealed class SystemUtilityAgentInvocation : IAgentInvocation
                 var conversation = await conversationClient.GetConversationAsync(conversationId);
                 conversationExists = conversation is not null;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 conversationExists = false;
             }
@@ -205,9 +206,10 @@ public sealed class SystemUtilityAgentInvocation : IAgentInvocation
             foreach (var outputItem in response.OutputItems)
             {
                 inputs.Add(outputItem);
-                if (outputItem is OpenAI.Responses.FunctionCallResponseItem functionResponse)
+                if (outputItem is OpenAI.Responses.FunctionCallResponseItem)
                 {
                     using var functionCalActivity = ActivitySource.StartActivity("SystemUtilityAgent.tool_call_execution", ActivityKind.Internal);
+                    var functionResponse = outputItem as OpenAI.Responses.FunctionCallResponseItem;
                     var functionName = functionResponse.FunctionName;
                     var arguments = ParseArguments(functionResponse.FunctionArguments);
                     var functionResult = InvokeTool(functionName, arguments, cancellationToken);
@@ -220,13 +222,9 @@ public sealed class SystemUtilityAgentInvocation : IAgentInvocation
                     functionCalActivity?.SetTag("gen_ai.tool.call.arguments", Truncate(functionResponse.FunctionArguments?.ToString() ?? "", 1024));
                     functionCalActivity?.SetTag("gen_ai.tool.call.result", JsonSerializer.Serialize(functionResult, JsonOptions));
                 }
-                else if (outputItem is OpenAI.Responses.MessageResponseItem messageResponse)
+                else if (outputItem is OpenAI.Responses.MessageResponseItem)
                 {
-                    if (messageResponse.Content is null)
-                    {
-                        continue;
-                    }
-
+                    var messageResponse = outputItem as OpenAI.Responses.MessageResponseItem;
                     foreach (var c in messageResponse.Content)
                     {
                         assistantTextChunks.Add(c.Text);
@@ -260,7 +258,7 @@ public sealed class SystemUtilityAgentInvocation : IAgentInvocation
     {
         var activity = Activity.Current;
 
-        var deploymentName = Environment.GetEnvironmentVariable("AZURE_AI_MODEL_DEPLOYMENT_NAME")?? "gpt-5";
+        var deploymentName = Environment.GetEnvironmentVariable("AZURE_AI_MODEL_DEPLOYMENT_NAME") ?? "gpt-5";
         var chatHistoryLength = GetIntEnv("AGENT_CHAT_HISTORY_LENGTH", 20);
 
         activity?.SetTag("gen_ai.request.model", deploymentName);
@@ -289,7 +287,7 @@ public sealed class SystemUtilityAgentInvocation : IAgentInvocation
         }
 
         var responseClient = apiClient.GetResponsesClient(deploymentName);
-        activity?.SetTag("gen_ai.input.messages", JsonSerializer.Serialize(createResponseOptions.InputItems));
+        activity.SetTag("gen_ai.input.messages", JsonSerializer.Serialize(createResponseOptions.InputItems));
         var response = await responseClient
             .CreateResponseAsync(createResponseOptions)
             .ConfigureAwait(false);
@@ -646,7 +644,7 @@ public sealed class SystemUtilityAgentInvocation : IAgentInvocation
         return request.Input.ToString();
     }
 
-    private static Response ToResponse(CreateResponseRequest request, AgentRunContext context,
+    private static Response ToResponse(CreateResponseRequest request, AgentInvocationContext context,
         ResponseStatus status = ResponseStatus.Completed,
         IEnumerable<ItemResource>? output = null)
     {
