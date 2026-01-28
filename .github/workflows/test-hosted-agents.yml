@@ -137,7 +137,14 @@ jobs:
 
       - name: Fail if test failed
         if: steps.test.outcome == 'failure'
-        run: exit 1
+        run: |
+          echo "::error::Test failed for ${{ matrix.sample.name }}"
+          if [ -f result.json ]; then
+            error=$(python -c "import json; r=json.load(open('result.json')); print(r.get('error', 'Unknown error'))")
+            echo "Error details:"
+            echo "$error"
+          fi
+          exit 1
 
   summary:
     name: Test Summary

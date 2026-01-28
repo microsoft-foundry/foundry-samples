@@ -85,7 +85,9 @@ def build_csharp_sample(sample_path: Path, csproj_path: Path) -> tuple[bool, str
             timeout=DOTNET_BUILD_TIMEOUT
         )
         if result.returncode != 0:
-            return False, f"Build failed: {result.stderr[:1000]}"
+            # dotnet outputs compilation errors to stdout, not stderr
+            error_output = result.stdout + result.stderr
+            return False, f"Build failed:\n{error_output}"
         return True, ""
     except subprocess.TimeoutExpired:
         return False, f"Build timed out after {DOTNET_BUILD_TIMEOUT} seconds"
