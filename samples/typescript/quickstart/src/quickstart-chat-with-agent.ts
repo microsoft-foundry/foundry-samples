@@ -8,16 +8,45 @@ const deploymentName = process.env["MODEL_DEPLOYMENT_NAME"] || "<model deploymen
 async function main(): Promise<void> {
     const project = new AIProjectClient(projectEndpoint, new DefaultAzureCredential());
     const openAIClient = await project.getOpenAIClient();
-    const response = await openAIClient.responses.create({
+    
+    // Create agent
+    console.log("Creating agent...");
+    const agent = await project.agents.createVersion("my-agent-basic", {
+        kind: "prompt",
         model: deploymentName,
-        input: "What is the size of France in square miles?",
+        instructions: "You are a helpful assistant that answers general questions",
     });
-    const response2 = await openAIClient.responses.create({
-        model: deploymentName,
-        input: "And what is the capital city?",
-        previous_response_id: response.id,
+    console.log(`Agent created (id: ${agent.id}, name: ${agent.name}, version: ${agent.version})`);
+    
+    // Create conversation with initial user message
+    // You can save the conversation ID to database to retrieve later
+    console.log("\nCreating conversation with initial user message...");
+    const conversation = await openAIClient.conversations.create({
+        items: [
+            { type: "message", role: "user", content: "What is the size of France in square miles?" },
+        ],
     });
-    console.log(`Response output: ${response2.output_text}`);
-};
+    console.log(`Created conversation with initial user message (id: ${conversation.id})`);
+
+    // Generate response using the agent
+    console.log("\nGenerating response...");
+    const response = await openAIClient.responses.create(
+        {
+            conversation: conversation.id,
+        },
+        {
+            body: { agent: { name: agent.name, type: "agent_reference" } },
+        },
+    );
+    console.log(`Response output: ${response.output_text}`);
+
+     // Clean up
+    console.log("\nCleaning up resources...");
+    await openAIClient.conversations.delete(conversation.id);
+    console.log("Conversation deleted");
+
+    await project.agents.deleteVersion(agent.name, agent.version);
+    console.log("Agent deleted");
+}
 
 main().catch(console.error);

@@ -117,6 +117,7 @@ To use an existing VNet and subnets, set the existingVnetResourceId parameter to
 - param agentSubnetPrefix string = '192.168.0.0/24' //optional, default is '192.168.0.0/24'
 - param peSubnetName string = 'pe-subnet' //optional, default is 'pe-subnet'
 - param peSubnetPrefix string = '192.168.1.0/24' //optional, default is '192.168.1.0/24'
+- param dnsZonesSubscriptionId string = '' //optional, leave empty to use current subscription, or set to a subscription ID if DNS zones are in a different subscription
 - param existingDnsZones = {
        
          'privatelink.services.ai.azure.com': 'privzoneRG' //add resource group name where your private DNS zone is located
@@ -124,6 +125,10 @@ To use an existing VNet and subnets, set the existingVnetResourceId parameter to
          'privatelink.openai.azure.com': '' //Leave empty to create new private dns zone... }
 
 💡 If subnets information is provided then make sure it exist within the specified VNet to avoid deployment errors. If subnet information is not provided, the template will create subnets with the default address space.
+
+💡 **Cross-Subscription DNS Zones**: All DNS zones specified in `existingDnsZones` will be referenced from the subscription specified in `dnsZonesSubscriptionId`. Leave this parameter empty (default) to use the current deployment subscription, or set it to a subscription ID if your DNS zones are located in a different subscription.
+
+⚠️ **Important**: When `dnsZonesSubscriptionId` is set to a different subscription, ALL DNS zones in `existingDnsZones` must have resource groups specified (non-empty values). The template does not support creating new DNS zones in a different subscription. Empty resource groups are only allowed when creating zones in the current deployment subscription.
 
 
 2. **Use an existing Azure Cosmos DB for NoSQL**

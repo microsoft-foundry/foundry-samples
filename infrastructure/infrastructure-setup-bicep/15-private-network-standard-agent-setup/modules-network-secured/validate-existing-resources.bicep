@@ -64,6 +64,9 @@ output azureStorageResourceGroupName string = azureStorageResourceGroupName
 @description('Object mapping DNS zone names to their resource group, or empty string to indicate creation')
 param existingDnsZones object
 
+@description('Subscription ID where existing private DNS zones are located. Should be resolved to current subscription if empty.')
+param dnsZonesSubscriptionId string
+
 @description('List of private DNS zone names to validate')
 param dnsZoneNames array
 

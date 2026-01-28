@@ -1,10 +1,10 @@
 using './main.bicep'
 
-param location = 'eastus2'
-param aiServices = 'aiservices'
-param modelName = 'gpt-4o'
+param location = 'westus'
+param aiServices = 'foundry'
+param modelName = 'gpt-4.1'
 param modelFormat = 'OpenAI'
-param modelVersion = '2024-11-20'
+param modelVersion = '2025-04-14'
 param modelSkuName = 'GlobalStandard'
 param modelCapacity = 30
 param firstProjectName = 'project'
@@ -20,8 +20,13 @@ param agentSubnetName = 'agent-subnet'
 param aiSearchResourceId = ''
 param azureStorageAccountResourceId = ''
 param azureCosmosDBAccountResourceId = ''
-// Pass the DNS zone map here
-// Leave empty to create new DNS zone, add the resource group of existing DNS zone to use it
+
+// Subscription ID where DNS zones are located (leave empty to use deployment subscription)
+// ⚠️ If set to a different subscription, ALL zones below MUST have resource groups specified
+param dnsZonesSubscriptionId = ''
+
+// DNS zone map: provide resource group name to use existing zone, or leave empty to create new
+// Note: Empty values only allowed when dnsZonesSubscriptionId is empty or matches current subscription
 param existingDnsZones = {
   'privatelink.services.ai.azure.com': ''
   'privatelink.openai.azure.com': ''
