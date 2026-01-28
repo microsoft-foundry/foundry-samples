@@ -95,6 +95,9 @@ param azureCosmosDBAccountResourceId string = ''
 //@description('Optional: Resource group containing existing private DNS zones. If specified, DNS zones will not be created.')
 //param existingDnsZonesResourceGroup string = ''
 
+@description('Subscription ID where existing private DNS zones are located. Leave empty to use current subscription.')
+param dnsZonesSubscriptionId string = ''
+
 @description('Object mapping DNS zone names to their resource group, or empty string to indicate creation')
 param existingDnsZones object = {
   'privatelink.services.ai.azure.com': ''
@@ -146,6 +149,9 @@ var vnetResourceGroupName = existingVnetPassedIn ? vnetParts[4] : resourceGroup(
 var existingVnetName = existingVnetPassedIn ? last(vnetParts) : vnetName
 var trimVnetName = trim(existingVnetName)
 
+// Resolve DNS zones subscription ID - use current subscription if not specified
+var resolvedDnsZonesSubscriptionId = empty(dnsZonesSubscriptionId) ? subscription().subscriptionId : dnsZonesSubscriptionId
+
 @description('The name of the project capability host to be created')
 param projectCapHost string = 'caphostproj'
 
@@ -196,6 +202,7 @@ module validateExistingResources 'modules-network-secured/validate-existing-reso
     azureCosmosDBAccountResourceId: azureCosmosDBAccountResourceId
     existingDnsZones: existingDnsZones
     dnsZoneNames: dnsZoneNames
+    dnsZonesSubscriptionId: resolvedDnsZonesSubscriptionId
   }
 }
 
@@ -264,6 +271,7 @@ module privateEndpointAndDNS 'modules-network-secured/private-endpoint-and-dns.b
       storageAccountResourceGroupName: azureStorageResourceGroupName // Resource Group for Storage Account
       storageAccountSubscriptionId: azureStorageSubscriptionId // Subscription ID for Storage Account
       existingDnsZones: existingDnsZones
+      dnsZonesSubscriptionId: resolvedDnsZonesSubscriptionId
     }
     dependsOn: [
     aiSearch      // Ensure AI Search exists
