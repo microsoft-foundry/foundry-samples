@@ -1,0 +1,34 @@
+{
+    "name": "Hybrid Private Resources Agent Setup",
+    "description": "Azure AI Foundry with public API access and private backend resources (AI Search, Cosmos DB, Storage). Enables portal-based agent testing with MCP servers and AI Search tools on private endpoints.",
+    "version": "1.0.0",
+    "keywords": [
+        "hybrid",
+        "private-endpoints",
+        "data-proxy",
+        "mcp",
+        "ai-search",
+        "portal-access"
+    ],
+    "architecture": {
+        "ai_services_access": "public",
+        "backend_resources": "private",
+        "data_proxy": "enabled",
+        "portal_compatible": true
+    },
+    "prerequisites": [
+        "Azure subscription with Owner or Contributor role",
+        "Azure AI Account Owner role for creating AI Services",
+        "Sufficient quota for gpt-4o-mini model deployment"
+    ],
+    "resources_created": [
+        "Microsoft.CognitiveServices/accounts (AI Services with public access)",
+        "Microsoft.CognitiveServices/accounts/projects",
+        "Microsoft.Search/searchServices (private endpoint)",
+        "Microsoft.DocumentDB/databaseAccounts (private endpoint)",
+        "Microsoft.Storage/storageAccounts (private endpoint)",
+        "Microsoft.Network/virtualNetworks",
+        "Microsoft.Network/privateEndpoints",
+        "Microsoft.Network/privateDnsZones"
+    ]
+}
