@@ -1,205 +1,170 @@
-#!/usr/bin/env python3
+# ------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# ------------------------------------
 """
-Evaluation Script for Modern Workplace Assistant
-Tests the agent with predefined business scenarios to assess quality.
+DESCRIPTION:
+    This sample demonstrates how to evaluate the Modern Workplace Assistant
+    using the cloud evaluation API with built-in evaluators.
 
-Updated for Azure AI Agents SDK v2.
+USAGE:
+    python evaluate.py
+
+    Before running:
+    pip install "azure-ai-projects>=2.0.0b1" python-dotenv
+
+    Set these environment variables:
+    1) AZURE_AI_PROJECT_ENDPOINT - Your Foundry project endpoint
+    2) AZURE_AI_MODEL_DEPLOYMENT_NAME - Model deployment name (e.g., gpt-4o-mini)
+    3) AZURE_AI_AGENT_NAME - (Optional) Agent name to use
 """
 
-# <imports_and_includes>
-import json
-from main import create_workplace_assistant, chat_with_assistant
-# </imports_and_includes>
+import os
+import time
+from typing import Union
+from pprint import pprint
+from dotenv import load_dotenv
+from azure.identity import DefaultAzureCredential
+from azure.ai.projects import AIProjectClient
+from azure.ai.projects.models import PromptAgentDefinition
+from openai.types.eval_create_params import DataSourceConfigCustom
+from openai.types.evals.run_create_response import RunCreateResponse
+from openai.types.evals.run_retrieve_response import RunRetrieveResponse
 
-# <load_test_data>
-# NOTE: This code is a non-runnable snippet of the larger sample code from which it is taken.
-def load_test_questions(filepath="questions.jsonl"):
-    """Load test questions from JSONL file"""
-    questions = []
-    with open(filepath, 'r') as f:
-        for line in f:
-            questions.append(json.loads(line.strip()))
-    return questions
-# </load_test_data>
+# <configure_evaluation>
+load_dotenv()
+endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
+model_deployment_name = os.environ.get("AZURE_AI_MODEL_DEPLOYMENT_NAME", "gpt-4o-mini")
 
-# <validation_functions>
-def validate_response(response, validation_type, expected_source):
-    """
-    Validate that the response used the expected tools.
-    
-    Args:
-        response: The agent's response text
-        validation_type: Type of validation to perform
-        expected_source: Expected data source (sharepoint, mcp, or both)
-        
-    Returns:
-        tuple: (passed, details)
-    """
-    response_lower = response.lower()
-    
-    # Check for Contoso-specific content (indicates SharePoint usage)
-    contoso_indicators = [
-        "contoso",
-        "90-day probationary period",  # Specific to remote work policy
-        "2-hour incident reporting",    # Specific to security policy
-        "company policies",
-        "our policy",
-        "our remote work policy",
-        "our security guidelines",
-        "our collaboration standards",
-        "our data governance"
+with (
+    DefaultAzureCredential() as credential,
+    AIProjectClient(endpoint=endpoint, credential=credential) as project_client,
+    project_client.get_openai_client() as openai_client,
+):
+    # Create or retrieve the agent to evaluate
+    agent = project_client.agents.create_version(
+        agent_name=os.environ.get("AZURE_AI_AGENT_NAME", "Modern Workplace Assistant"),
+        definition=PromptAgentDefinition(
+            model=model_deployment_name,
+            instructions="You are a helpful Modern Workplace Assistant that answers questions about company policies and technical guidance.",
+        ),
+    )
+    print(f"Agent created (id: {agent.id}, name: {agent.name}, version: {agent.version})")
+
+    # Define the data schema for evaluation
+    data_source_config = DataSourceConfigCustom(
+        type="custom",
+        item_schema={
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": ["query"]
+        },
+        include_sample_schema=True,
+    )
+
+    # Define testing criteria with built-in evaluators
+    # data_mapping: sample.output_text = agent string response, sample.output_items = structured JSON with tool calls
+    testing_criteria = [
+        {
+            "type": "azure_ai_evaluator",
+            "name": "violence_detection",
+            "evaluator_name": "builtin.violence",
+            "data_mapping": {"query": "{{item.query}}", "response": "{{sample.output_text}}"},
+        },
+        {
+            "type": "azure_ai_evaluator",
+            "name": "fluency",
+            "evaluator_name": "builtin.fluency",
+            "initialization_parameters": {"deployment_name": f"{model_deployment_name}"},
+            "data_mapping": {"query": "{{item.query}}", "response": "{{sample.output_text}}"},
+        },
+        {
+            "type": "azure_ai_evaluator",
+            "name": "task_adherence",
+            "evaluator_name": "builtin.task_adherence",
+            "initialization_parameters": {"deployment_name": f"{model_deployment_name}"},
+            "data_mapping": {"query": "{{item.query}}", "response": "{{sample.output_items}}"},
+        },
     ]
-    has_contoso_content = any(indicator in response_lower for indicator in contoso_indicators)
-    
-    # Check for Microsoft Learn links (indicates MCP usage)
-    learn_indicators = [
-        "learn.microsoft.com",
-        "docs.microsoft.com",
-        "microsoft learn",
-        "official documentation",
-        "reference link",
-        "documentation link"
-    ]
-    has_learn_links = any(indicator in response_lower for indicator in learn_indicators)
-    
-    # Validate based on expected source
-    if expected_source == "sharepoint":
-        passed = has_contoso_content
-        details = f"Contoso-specific content: {has_contoso_content}"
-    elif expected_source == "mcp":
-        passed = has_learn_links
-        details = f"Microsoft Learn links: {has_learn_links}"
-    elif expected_source == "both":
-        passed = has_contoso_content and has_learn_links
-        details = f"Contoso content: {has_contoso_content}, Learn links: {has_learn_links}"
-    else:
-        passed = False
-        details = "Unknown validation type"
-    
-    return passed, details
-# </validation_functions>
 
-# <run_batch_evaluation>
-def run_evaluation(agent_id):
-    """
-    Run evaluation with test questions using Agent SDK v2.
-    
-    Args:
-        agent_id: The ID of the agent to evaluate
-        
-    Returns:
-        list: Evaluation results for each question
-    """
-    questions = load_test_questions()
-    results = []
-    
-    print(f"🧪 Running evaluation with {len(questions)} test questions...")
-    print("="*70)
-    
-    # Track results by test type
-    stats = {
-        "sharepoint_only": {"passed": 0, "total": 0},
-        "mcp_only": {"passed": 0, "total": 0},
-        "hybrid": {"passed": 0, "total": 0}
+    # Create the evaluation object
+    eval_object = openai_client.evals.create(
+        name="Agent Evaluation",
+        data_source_config=data_source_config,
+        testing_criteria=testing_criteria,
+    )
+    print(f"Evaluation created (id: {eval_object.id}, name: {eval_object.name})")
+# </configure_evaluation>
+
+# <run_cloud_evaluation>
+    # Define the data source for the evaluation run
+    # This targets the agent with test queries
+    data_source = {
+        "type": "azure_ai_target_completions",
+        "source": {
+            "type": "file_content",
+            "content": [
+                {"item": {"query": "What is Contoso's remote work policy?"}},
+                {"item": {"query": "What are the security requirements for remote employees?"}},
+                {"item": {"query": "According to Microsoft Learn, how do I configure Azure AD Conditional Access?"}},
+                {"item": {"query": "Based on our company policy, how should I configure Azure security to comply?"}},
+            ],
+        },
+        "input_messages": {
+            "type": "template",
+            "template": [
+                {"type": "message", "role": "user", "content": {"type": "input_text", "text": "{{item.query}}"}}
+            ],
+        },
+        "target": {
+            "type": "azure_ai_agent",
+            "name": agent.name,
+            "version": agent.version,
+        },
     }
-    
-    for i, q in enumerate(questions, 1):
-        test_type = q.get("test_type", "unknown")
-        expected_source = q.get("expected_source", "unknown")
-        validation_type = q.get("validation", "default")
-        
-        print(f"\n📝 Question {i}/{len(questions)} [{test_type.upper()}]")
-        print(f"   {q['question'][:80]}...")
-        
-        response, status = chat_with_assistant(agent_id, q["question"])
-        
-        # Validate response using source-specific checks
-        passed, validation_details = validate_response(response, validation_type, expected_source)
-        
-        result = {
-            "question": q["question"],
-            "response": response,
-            "status": status,
-            "passed": passed,
-            "validation_details": validation_details,
-            "test_type": test_type,
-            "expected_source": expected_source,
-            "explanation": q.get("explanation", "")
-        }
-        results.append(result)
-        
-        # Update stats
-        if test_type in stats:
-            stats[test_type]["total"] += 1
-            if passed:
-                stats[test_type]["passed"] += 1
-        
-        status_icon = "✅" if passed else "⚠️"
-        print(f"{status_icon} Status: {status} | Tool check: {validation_details}")
-    
-    print("\n" + "="*70)
-    print("📊 EVALUATION SUMMARY BY TEST TYPE:")
-    print("="*70)
-    for test_type, data in stats.items():
-        if data["total"] > 0:
-            pass_rate = (data["passed"] / data["total"]) * 100
-            icon = "✅" if pass_rate >= 75 else "⚠️" if pass_rate >= 50 else "❌"
-            print(f"{icon} {test_type.upper()}: {data['passed']}/{data['total']} passed ({pass_rate:.1f}%)")
-    
-    return results
-# </run_batch_evaluation>
 
-# <evaluation_results>
-def calculate_and_save_results(results):
-    """Calculate pass rate and save results"""
-    # Calculate pass rate
-    passed = sum(1 for r in results if r.get("passed", False))
-    total = len(results)
-    pass_rate = (passed / total * 100) if total > 0 else 0
-    
-    print(f"\n📊 Overall Evaluation Results: {passed}/{total} questions passed ({pass_rate:.1f}%)")
-    
-    # Save results
-    with open("evaluation_results.json", "w") as f:
-        json.dump(results, f, indent=2)
-    
-    print(f"💾 Results saved to evaluation_results.json")
-    
-    # Print summary of failures
-    failures = [r for r in results if not r.get("passed", False)]
-    if failures:
-        print(f"\n⚠️  Failed Questions ({len(failures)}):")
-        for r in failures:
-            print(f"   - [{r['test_type']}] {r['question'][:60]}...")
-            print(f"     Reason: {r['validation_details']}")
-# </evaluation_results>
+    # Create and submit the evaluation run
+    agent_eval_run: Union[RunCreateResponse, RunRetrieveResponse] = openai_client.evals.runs.create(
+        eval_id=eval_object.id,
+        name=f"Evaluation Run for Agent {agent.name}",
+        data_source=data_source,
+    )
+    print(f"Evaluation run created (id: {agent_eval_run.id})")
+# </run_cloud_evaluation>
 
-def main():
-    """
-    Run evaluation on the workplace assistant using Agent SDK v2.
-    """
-    print("🧪 Modern Workplace Assistant - Evaluation (Agent SDK v2)")
-    print("="*70)
-    
-    try:
-        # Create agent using SDK v2
-        agent = create_workplace_assistant()
-        
-        print(f"\n✅ Agent created: {agent.id}")
-        print(f"   Model: {agent.model}")
-        print(f"   Name: {agent.name}")
-        print("="*70)
-        
-        # Run evaluation
-        results = run_evaluation(agent.id)
-        
-        # Calculate and save results
-        calculate_and_save_results(results)
-        
-    except Exception as e:
-        import traceback
-        print(f"\n❌ Evaluation failed: {e}")
-        print(f"Traceback: {traceback.format_exc()}")
+# <retrieve_evaluation_results>
+    # Poll until the evaluation run completes
+    while agent_eval_run.status not in ["completed", "failed"]:
+        agent_eval_run = openai_client.evals.runs.retrieve(
+            run_id=agent_eval_run.id,
+            eval_id=eval_object.id
+        )
+        print(f"Waiting for eval run to complete... current status: {agent_eval_run.status}")
+        time.sleep(5)
 
-if __name__ == "__main__":
-    main()
+    if agent_eval_run.status == "completed":
+        print("\n✓ Evaluation run completed successfully!")
+        print(f"Result Counts: {agent_eval_run.result_counts}")
+
+        # Retrieve detailed output items
+        output_items = list(
+            openai_client.evals.runs.output_items.list(
+                run_id=agent_eval_run.id,
+                eval_id=eval_object.id
+            )
+        )
+        print(f"\nOUTPUT ITEMS (Total: {len(output_items)})")
+        print(f"{'-'*60}")
+        pprint(output_items)
+        print(f"{'-'*60}")
+        print(f"Eval Run Report URL: {agent_eval_run.report_url}")
+    else:
+        print("\n✗ Evaluation run failed.")
+
+    # Cleanup
+    openai_client.evals.delete(eval_id=eval_object.id)
+    print("Evaluation deleted")
+
+    project_client.agents.delete(agent_name=agent.name)
+    print("Agent deleted")
+# </retrieve_evaluation_results>
