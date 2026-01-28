@@ -10,10 +10,10 @@ This guide covers testing Azure AI Foundry agents with tools that access private
 2. [Step 1: Deploy the Template](#step-1-deploy-the-template)
 3. [Step 2: Verify Private Endpoints](#step-2-verify-private-endpoints)
 4. [Step 3: Create Test Data in AI Search](#step-3-create-test-data-in-ai-search)
-5. [Step 4: Deploy MCP Server (Optional)](#step-4-deploy-mcp-server-optional)
-6. [Step 5: Test via Portal](#step-5-test-via-portal)
-7. [Step 6: Test via SDK](#step-6-test-via-sdk)
-8. [Troubleshooting](#troubleshooting)
+5. [Step 4: Deploy MCP Server](#step-4-deploy-mcp-server)
+6. [Step 5: Test via SDK](#step-5-test-via-sdk)
+7. [Troubleshooting](#troubleshooting)
+8. [Test Results Summary](#test-results-summary)
 
 ---
 
@@ -74,28 +74,7 @@ curl -I $AI_ENDPOINT
 
 Since AI Search has a private endpoint, you need to access it from within the VNet or temporarily allow public access.
 
-### Option A: Deploy a Jump Box (Recommended)
-
-```bash
-# Get VNet and subnet info
-VNET_NAME=$(az network vnet list -g $RESOURCE_GROUP --query "[0].name" -o tsv)
-
-# Create jump box
-az vm create \
-  --resource-group $RESOURCE_GROUP \
-  --name "jumpbox-vm" \
-  --image Ubuntu2204 \
-  --vnet-name $VNET_NAME \
-  --subnet "pe-subnet" \
-  --admin-username azureuser \
-  --generate-ssh-keys \
-  --assign-identity
-
-# SSH into jump box and create index
-# (See template 15 TESTING-GUIDE.md Step 4 for detailed index creation)
-```
-
-### Option B: Temporarily Enable Public Access on AI Search
+### Option A: Temporarily Enable Public Access on AI Search
 
 ```bash
 AI_SEARCH_NAME=$(az search service list -g $RESOURCE_GROUP --query "[0].name" -o tsv)
@@ -136,39 +115,24 @@ az search service update -g $RESOURCE_GROUP -n $AI_SEARCH_NAME \
 
 ---
 
-## Step 4: Deploy MCP Server (Optional)
+## Step 4: Deploy MCP Server
 
-Deploy an HTTP-based MCP server to the private VNet. 
+Deploy an HTTP-based MCP server using the pre-built multi-auth MCP image.
 
-> **Important**: Azure AI Agents require MCP servers that implement the **Streamable HTTP transport** (JSON-RPC over HTTP). Standard stdio-based MCP servers (like `mcp/hello-world`) will NOT work.
+> **Important**: Azure AI Agents require MCP servers that implement the **Streamable HTTP transport** (JSON-RPC over HTTP with session management). The multi-auth MCP server provides this with a `/noauth/mcp` endpoint for testing.
 
-### 4.1 Create Container Apps Environment
-
-```bash
-# Get MCP subnet resource ID
-MCP_SUBNET_ID=$(az network vnet subnet show -g $RESOURCE_GROUP --vnet-name $VNET_NAME -n "mcp-subnet" --query "id" -o tsv)
-
-# Create Container Apps environment (internal only)
-az containerapp env create \
-  --resource-group $RESOURCE_GROUP \
-  --name "mcp-env" \
-  --location $LOCATION \
-  --infrastructure-subnet-resource-id $MCP_SUBNET_ID \
-  --internal-only true
-```
-
-### 4.2 Deploy HTTP-based MCP Server
-
-An HTTP-based MCP server is provided in `mcp-http-server/`. Deploy it:
+### 4.1 Import the Multi-Auth MCP Image
 
 ```bash
-# Build and deploy (requires ACR with managed identity access)
-cd mcp-http-server
-
-# Create ACR and build
+# Create ACR if needed
 ACR_NAME="mcpacr$(date +%s | tail -c 5)"
 az acr create --name $ACR_NAME --resource-group $RESOURCE_GROUP --sku Basic --location $LOCATION
-az acr build --registry $ACR_NAME --image mcp-hello-http:v1 --file Dockerfile .
+
+# Import the pre-built multi-auth MCP image
+az acr import \
+  --name $ACR_NAME \
+  --source retrievaltestacr.azurecr.io/multi-auth-mcp/api-multi-auth-mcp-env:latest \
+  --image multi-auth-mcp:latest
 
 # Create user-assigned identity with AcrPull role
 az identity create --name mcp-identity --resource-group $RESOURCE_GROUP --location $LOCATION
@@ -177,32 +141,54 @@ IDENTITY_PRINCIPAL=$(az identity show --name mcp-identity -g $RESOURCE_GROUP --q
 ACR_ID=$(az acr show --name $ACR_NAME --query "id" -o tsv)
 az role assignment create --assignee $IDENTITY_PRINCIPAL --role AcrPull --scope $ACR_ID
 
-# Deploy container app
+# Wait for role assignment to propagate
+sleep 30
+```
+
+### 4.2 Create Container Apps Environment
+
+```bash
+VNET_NAME=$(az network vnet list -g $RESOURCE_GROUP --query "[0].name" -o tsv)
+MCP_SUBNET_ID=$(az network vnet subnet show -g $RESOURCE_GROUP --vnet-name $VNET_NAME -n "mcp-subnet" --query "id" -o tsv)
+
+# Create internal Container Apps environment
+az containerapp env create \
+  --resource-group $RESOURCE_GROUP \
+  --name "mcp-env" \
+  --location $LOCATION \
+  --infrastructure-subnet-resource-id $MCP_SUBNET_ID \
+  --internal-only true
+```
+
+### 4.3 Deploy the MCP Server
+
+```bash
+# Deploy container app with multi-auth MCP image
+# Note: The image runs on port 8080
 az containerapp create \
   --resource-group $RESOURCE_GROUP \
   --name "mcp-http-server" \
   --environment "mcp-env" \
-  --image "${ACR_NAME}.azurecr.io/mcp-hello-http:v1" \
-  --target-port 80 \
-  --ingress internal \
+  --image "${ACR_NAME}.azurecr.io/multi-auth-mcp:latest" \
+  --target-port 8080 \
+  --ingress external \
   --min-replicas 1 \
   --user-assigned $IDENTITY_ID \
   --registry-server "${ACR_NAME}.azurecr.io" \
   --registry-identity $IDENTITY_ID
+
+# Get the MCP server URL
+MCP_FQDN=$(az containerapp show -g $RESOURCE_GROUP -n "mcp-http-server" --query "properties.configuration.ingress.fqdn" -o tsv)
+echo "MCP Server URL: https://${MCP_FQDN}/noauth/mcp"
 ```
 
-### 4.3 Configure Private DNS
+### 4.4 Configure Private DNS
 
 ```bash
-# Get environment info
 MCP_STATIC_IP=$(az containerapp env show -g $RESOURCE_GROUP -n "mcp-env" --query "properties.staticIp" -o tsv)
 DEFAULT_DOMAIN=$(az containerapp env show -g $RESOURCE_GROUP -n "mcp-env" --query "properties.defaultDomain" -o tsv)
-MCP_FQDN=$(az containerapp show -g $RESOURCE_GROUP -n "mcp-http-server" --query "properties.configuration.ingress.fqdn" -o tsv)
 
-echo "MCP FQDN: $MCP_FQDN"
-echo "Static IP: $MCP_STATIC_IP"
-
-# Create private DNS zone for Container Apps
+# Create private DNS zone
 az network private-dns zone create -g $RESOURCE_GROUP -n $DEFAULT_DOMAIN
 
 # Link to VNet
@@ -214,208 +200,112 @@ az network private-dns link vnet create \
   -v $VNET_ID \
   --registration-enabled false
 
-# Add A records
-az network private-dns record-set a add-record -g $RESOURCE_GROUP -z $DEFAULT_DOMAIN -n "mcp-http-server" -a $MCP_STATIC_IP
+# Add wildcard A record
 az network private-dns record-set a add-record -g $RESOURCE_GROUP -z $DEFAULT_DOMAIN -n "*" -a $MCP_STATIC_IP
 ```
 
-### 4.4 Test MCP with REST API
+### 4.5 (Optional) Deploy Public MCP Server for Testing
 
-```python
-import requests
-from azure.identity import DefaultAzureCredential
-import time
+For easier testing without VNet constraints, you can also deploy a public MCP server:
 
-credential = DefaultAzureCredential()
-token = credential.get_token("https://ai.azure.com/.default")
+```bash
+# Create public Container Apps environment
+az containerapp env create \
+  --resource-group $RESOURCE_GROUP \
+  --name "mcp-env-public" \
+  --location $LOCATION
 
-endpoint = "https://<ai-services>.services.ai.azure.com/api/projects/<project>"
-api_version = "2025-05-15-preview"
-mcp_url = "https://mcp-http-server.<default-domain>"
+# Deploy public MCP server
+az containerapp create \
+  --resource-group $RESOURCE_GROUP \
+  --name "mcp-http-server-public" \
+  --environment "mcp-env-public" \
+  --image "${ACR_NAME}.azurecr.io/multi-auth-mcp:latest" \
+  --target-port 8080 \
+  --ingress external \
+  --min-replicas 1 \
+  --user-assigned $IDENTITY_ID \
+  --registry-server "${ACR_NAME}.azurecr.io" \
+  --registry-identity $IDENTITY_ID
 
-headers = {"Authorization": f"Bearer {token.token}", "Content-Type": "application/json"}
-
-# Create agent with MCP tool
-agent_payload = {
-    "model": "gpt-4o-mini",
-    "name": "mcp-test-agent",
-    "instructions": "Use the hello tool to greet users.",
-    "tools": [{"type": "mcp", "server_label": "helloworld", "server_url": mcp_url}]
-}
-resp = requests.post(f"{endpoint}/assistants?api-version={api_version}", headers=headers, json=agent_payload)
-agent = resp.json()
-print(f"Agent: {agent['id']}")
+# Get public MCP URL
+PUBLIC_MCP_FQDN=$(az containerapp show -g $RESOURCE_GROUP -n "mcp-http-server-public" --query "properties.configuration.ingress.fqdn" -o tsv)
+echo "Public MCP Server URL: https://${PUBLIC_MCP_FQDN}/noauth/mcp"
 ```
 
 ---
 
-## Step 5: Test via Portal
+## Step 5: Test via SDK
 
-> **Note**: Portal testing may be blocked even with public access enabled if your deployment uses network injection (`networkInjections` property). In this case, use SDK testing (Step 6) instead.
+Two test scripts are provided:
 
-### 5.1 Check if Portal Works
+| Script | Description |
+|--------|-------------|
+| `test_agents_v2.py` | Full test suite: basic agent, AI Search, MCP tools |
+| `test_mcp_tools_agents_v2.py` | Focused MCP testing: connectivity + public/private agent tests |
 
-1. Navigate to [Azure AI Foundry portal](https://ai.azure.com)
-2. Sign in with your Azure credentials
-3. Toggle **"New Foundry"** ON (top right)
-4. Select your project
-
-If you see this error:
-> "Your current setup uses a project, resource, region, custom domain, or disabled public network access that isn't supported in the new Foundry experience yet."
-
-This is expected if network injection is configured. Use SDK testing instead.
-
-### 5.2 Create an Agent with AI Search Tool (if portal works)
-
-1. Go to **Agents** in the left menu
-2. Click **+ New agent**
-3. Configure the agent:
-   - **Name**: `search-test-agent`
-   - **Model**: `gpt-4o-mini`
-   - **Instructions**: `You are a helpful assistant. Use the search tool to find information when asked.`
-4. Add a tool:
-   - Click **+ Add tool**
-   - Select **Azure AI Search**
-   - Choose the AI Search connection created by the deployment
-   - Select `test-index`
-5. **Save** the agent
-
-### 5.3 Test the Agent
-
-1. Open the agent in the playground
-2. Send a message: `Search for information about AI Foundry agents`
-3. Verify the agent uses the AI Search tool and returns results from the private index
-
-**What this proves:**
-- The agent (running in the cloud) can reach the private AI Search via the Data Proxy
-- The Data Proxy correctly routes through the VNet to the private endpoint
-
-### 5.4 Create an Agent with MCP Tool (If MCP Deployed)
-
-1. Create a new agent
-2. Add an MCP tool:
-   - **Server URL**: `https://<mcp-server-fqdn>`
-   - **Server Label**: `test-mcp`
-3. Test that the agent can discover and use tools from the MCP server
-
----
-
-## Step 6: Test via SDK
-
-For automated testing or CI/CD pipelines, use the SDK:
-
-### 6.1 Install Dependencies
+### 5.1 Install Dependencies
 
 ```bash
-pip install azure-ai-projects azure-ai-agents azure-identity
+pip install azure-ai-projects azure-identity openai
 ```
 
-### 6.2 Run Test Script
-
-Use the included `test_agents_v2.py` script or the following code:
-
-```python
-#!/usr/bin/env python3
-"""Test agent with AI Search tool on private endpoint."""
-
-import os
-import time
-from azure.ai.projects import AIProjectClient
-from azure.ai.agents.models import AzureAISearchTool
-from azure.identity import DefaultAzureCredential
-
-# Configuration - use project-scoped endpoint
-PROJECT_ENDPOINT = os.environ.get(
-    "PROJECT_ENDPOINT",
-    "https://<ai-services-name>.services.ai.azure.com/api/projects/<project-name>"
-)
-AI_SEARCH_CONNECTION = os.environ.get("AI_SEARCH_CONNECTION", "<connection-name>")
-AI_SEARCH_INDEX = os.environ.get("AI_SEARCH_INDEX", "test-index")
-
-def main():
-    client = AIProjectClient(
-        credential=DefaultAzureCredential(),
-        endpoint=PROJECT_ENDPOINT,
-    )
-    print(f"Connected to: {PROJECT_ENDPOINT}")
-    
-    # Create AI Search tool using the SDK class (NOT dict format)
-    search_tool = AzureAISearchTool(
-        index_connection_id=AI_SEARCH_CONNECTION,
-        index_name=AI_SEARCH_INDEX
-    )
-    
-    # Create agent with AI Search tool
-    agent = client.agents.create_agent(
-        model="gpt-4o-mini",
-        name="sdk-search-agent",
-        instructions="Search for information when asked.",
-        tools=search_tool.definitions,
-        tool_resources=search_tool.resources
-    )
-    print(f"Created agent: {agent.id}")
-    
-    # Create thread and test
-    thread = client.agents.threads.create()
-    client.agents.messages.create(
-        thread_id=thread.id,
-        role="user",
-        content="Search for documents about AI Foundry"
-    )
-    
-    run = client.agents.runs.create(thread_id=thread.id, agent_id=agent.id)
-    print(f"Started run: {run.id}")
-    
-    # Wait for completion
-    while run.status in ["queued", "in_progress"]:
-        time.sleep(2)
-        run = client.agents.runs.get(thread_id=thread.id, run_id=run.id)
-        print(f"Status: {run.status}")
-    
-    if run.status == "completed":
-        messages = client.agents.messages.list(thread_id=thread.id)
-        for msg in messages:
-            if msg.role == "assistant":
-                for content in msg.content:
-                    if hasattr(content, 'text'):
-                        print(f"Response: {content.text.value}")
-                break
-        print("✓ Test passed!")
-    else:
-        print(f"✗ Run failed: {run.status}")
-    
-    # Cleanup
-    client.agents.delete_agent(agent.id)
-    print("Agent cleaned up")
-
-if __name__ == "__main__":
-    main()
-```
-
-### 6.3 Find Your Connection Name
+### 5.2 Configure Environment
 
 ```bash
-# List connections in your project
-az rest --method GET \
-  --url "https://management.azure.com/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<ai-services>/projects/<project>/connections?api-version=2025-06-01" \
-  --query "value[?properties.category=='CognitiveSearch'].name" -o tsv
+# Set the project endpoint (get from Azure Portal -> AI Services -> Projects -> Properties)
+export PROJECT_ENDPOINT="https://<ai-services>.services.ai.azure.com/api/projects/<project>"
+
+# Optional: Override MCP server URLs
+export MCP_SERVER_PUBLIC="https://<public-mcp-fqdn>/noauth/mcp"
+export MCP_SERVER_PRIVATE="https://<private-mcp-fqdn>/noauth/mcp"
 ```
+
+### 5.3 Run Full Test Suite
+
+```bash
+# Run all tests (basic agent, AI Search, MCP)
+python test_agents_v2.py
+
+# Run specific test
+python test_agents_v2.py --test basic_agent
+python test_agents_v2.py --test ai_search
+python test_agents_v2.py --test mcp_tool
+```
+
+### 5.4 Run MCP-Focused Tests
+
+```bash
+# Run all MCP tests (connectivity + public + private)
+python test_mcp_tools_agents_v2.py
+
+# Test only public MCP server
+python test_mcp_tools_agents_v2.py --test public
+
+# Test only private MCP server
+python test_mcp_tools_agents_v2.py --test private
+
+# With retries (useful for transient Hyena cluster routing issues)
+python test_mcp_tools_agents_v2.py --test public --retry 3
+```
+
+### 5.5 Understanding Test Results
+
+**MCP Connectivity Test**: Direct HTTP test to verify the MCP server responds correctly:
+- Sends `initialize` request and captures `mcp-session-id` header
+- Sends `tools/list` to enumerate available tools
+- Sends `tools/call` to execute the `add` tool
+
+**MCP Tool via Agent Test**: Tests the full agent workflow:
+- Creates an agent with MCP tool configuration
+- Sends a request that triggers the MCP tool
+- Validates the agent can call MCP tools through the Data Proxy
+
+> **Known Issue**: Agent tests may fail ~50% of the time with `TaskCanceledException` due to Hyena cluster routing. The Data Proxy is only deployed on one of two scale units, and the load balancer routes in round-robin fashion. Use `--retry` to mitigate.
 
 ---
 
 ## Troubleshooting
-
-### Portal Shows "New Foundry Not Supported"
-
-This error can occur even with public access enabled if **network injection** is configured:
-
-```bash
-# Check for network injection
-az cognitiveservices account show -g $RESOURCE_GROUP -n $AI_SERVICES_NAME \
-  --query "properties.networkInjections"
-```
-
-If you see `networkInjections` with a subnet configured, the portal's "New Foundry" experience won't work. **Use SDK testing instead** - it works perfectly with network injection.
 
 ### Agent Can't Access AI Search
 
@@ -434,17 +324,83 @@ If you see `networkInjections` with a subnet configured, the portal's "New Found
    - Go to the portal → Project → Settings → Connections
    - Confirm AI Search connection exists
 
-### MCP Server Not Accessible
+### MCP Tool Fails with TaskCanceledException
 
-1. **Check private DNS zone**:
+This is a **known issue** with the Hyena cluster infrastructure:
+- The Data Proxy is deployed on only **one of two scale units**
+- The load balancer routes requests in **round-robin** fashion
+- ~50% of requests hit the wrong scale unit and get `TaskCanceledException`
+
+**Workaround**: Use `--retry` flag when running tests:
+```bash
+python test_mcp_tools_agents_v2.py --test public --retry 3
+```
+
+### MCP Tool Fails with 400 Bad Request
+
+Check the error message for details:
+- **404 Not Found**: Verify the MCP server URL includes the correct path (`/noauth/mcp`)
+- **DNS resolution**: Ensure private DNS zone is configured correctly for Container Apps
+
+### MCP Server Not Responding
+
+1. **Check container app health**:
    ```bash
-   az network private-dns record-set list -g $RESOURCE_GROUP -z $DEFAULT_DOMAIN
+   az containerapp show -g $RESOURCE_GROUP -n "mcp-http-server" --query "properties.runningStatus"
    ```
 
-2. **Verify Container App is running**:
+2. **Check container logs**:
    ```bash
-   az containerapp show -g $RESOURCE_GROUP -n "mcp-test-server" --query "properties.runningStatus"
+   az containerapp logs show -g $RESOURCE_GROUP -n "mcp-http-server" --tail 50
    ```
+
+3. **Verify ingress port is 8080** (not 80):
+   ```bash
+   az containerapp ingress show -g $RESOURCE_GROUP -n "mcp-http-server" --query "targetPort"
+   ```
+
+### Portal Shows "New Foundry Not Supported"
+
+This is expected when network injection is configured. Use SDK testing instead - it works perfectly with network injection.
+
+---
+
+## Test Results Summary
+
+### Test Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `test_agents_v2.py` | Full test suite: OpenAI API, basic agent, AI Search, MCP |
+| `test_mcp_tools_agents_v2.py` | Focused MCP testing with retry support |
+
+### Validated ✅
+
+| Test | Status | Notes |
+|------|--------|-------|
+| OpenAI Responses API (direct) | ✅ Pass | Works from anywhere |
+| Basic Agent (no tools) | ✅ Pass | Works from anywhere |
+| AI Search Tool | ✅ Pass | Data Proxy routes to private endpoint |
+| MCP Connectivity (direct HTTP) | ✅ Pass | Server responds correctly |
+| MCP Tool via Agent (public server) | ✅ Pass* | *~50% fail rate due to Hyena routing |
+
+### Known Limitations ⚠️
+
+| Issue | Cause | Workaround |
+|-------|-------|------------|
+| ~50% TaskCanceledException | Hyena cluster has 2 scale units, Data Proxy only on 1 | Use `--retry` flag |
+| Portal "New Foundry" blocked | Network injection not supported in portal | Use SDK testing |
+| Private MCP via Data Proxy | DNS resolution issues for Container Apps | Use public MCP server |
+
+### Architecture Notes
+
+1. **AI Search Tool works** because it uses Azure Private Endpoints with built-in DNS integration (`privatelink.search.windows.net`).
+
+2. **MCP uses Streamable HTTP transport** - The multi-auth MCP server implements proper session management with `mcp-session-id` headers required by Azure's MCP client.
+
+3. **Container Apps require port 8080** - The multi-auth MCP image runs on port 8080, not 80.
+
+4. **Use `/noauth/mcp` endpoint** for testing without authentication. Production deployments should use `/mcp` with proper auth configuration.
 
 ---
 
