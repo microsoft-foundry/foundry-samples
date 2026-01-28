@@ -28,7 +28,9 @@ import yaml
 DEFAULT_TEST_INPUT = "Hello, please introduce yourself briefly."
 SERVER_PORT = 8088
 SERVER_URL = f"http://localhost:{SERVER_PORT}"
-STARTUP_TIMEOUT = 30  # seconds
+STARTUP_TIMEOUT = 30  # seconds for Python
+DOTNET_STARTUP_TIMEOUT = 60  # seconds for C# (longer due to JIT)
+DOTNET_BUILD_TIMEOUT = 300  # 5 minutes for NuGet restore + compile
 REQUEST_TIMEOUT = 120  # seconds
 
 
@@ -37,7 +39,7 @@ def extract_test_input(agent_yaml_path: Path) -> str:
     try:
         with open(agent_yaml_path) as f:
             config = yaml.safe_load(f)
-        
+
         examples = config.get("metadata", {}).get("example", [])
         if examples and isinstance(examples, list):
             for example in examples:
@@ -45,8 +47,61 @@ def extract_test_input(agent_yaml_path: Path) -> str:
                     return example["content"]
     except Exception as e:
         print(f"Warning: Could not parse agent.yaml for test input: {e}")
-    
+
     return DEFAULT_TEST_INPUT
+
+
+def detect_language(sample_path: Path) -> str:
+    """Detect the language/framework of a sample based on marker files."""
+    if (sample_path / "main.py").exists() and (sample_path / "requirements.txt").exists():
+        return "python"
+
+    csproj_files = list(sample_path.glob("*.csproj"))
+    if csproj_files and (sample_path / "Program.cs").exists():
+        return "csharp"
+
+    return "unknown"
+
+
+def find_csproj(sample_path: Path) -> Path | None:
+    """Find the .csproj file in the sample directory."""
+    csproj_files = list(sample_path.glob("*.csproj"))
+    return csproj_files[0] if csproj_files else None
+
+
+def build_csharp_sample(sample_path: Path, csproj_path: Path) -> tuple[bool, str]:
+    """Build a C# sample using dotnet build.
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    print(f"Building C# project {csproj_path.name}...")
+    try:
+        result = subprocess.run(
+            ["dotnet", "build", str(csproj_path), "-c", "Release"],
+            cwd=str(sample_path),
+            capture_output=True,
+            text=True,
+            timeout=DOTNET_BUILD_TIMEOUT
+        )
+        if result.returncode != 0:
+            return False, f"Build failed: {result.stderr[:1000]}"
+        return True, ""
+    except subprocess.TimeoutExpired:
+        return False, f"Build timed out after {DOTNET_BUILD_TIMEOUT} seconds"
+    except FileNotFoundError:
+        return False, "dotnet CLI not found. Ensure .NET SDK is installed."
+
+
+def start_csharp_server(sample_path: Path, csproj_path: Path) -> subprocess.Popen:
+    """Start a C# sample server using dotnet run."""
+    return subprocess.Popen(
+        ["dotnet", "run", "--project", str(csproj_path), "-c", "Release", "--no-build"],
+        cwd=str(sample_path),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
 
 
 def wait_for_server(timeout: int = STARTUP_TIMEOUT) -> bool:
@@ -97,57 +152,88 @@ def run_test(sample_path: Path) -> dict:
         "error": None,
         "details": {}
     }
-    
+
     agent_yaml_path = sample_path / "agent.yaml"
-    main_py_path = sample_path / "main.py"
-    requirements_path = sample_path / "requirements.txt"
-    
-    # Validate required files
+
+    # Validate agent.yaml exists
     if not agent_yaml_path.exists():
         result["error"] = "agent.yaml not found"
         return result
-    
-    if not main_py_path.exists():
-        result["error"] = "main.py not found"
+
+    # Detect language
+    language = detect_language(sample_path)
+    result["details"]["language"] = language
+
+    if language == "unknown":
+        result["error"] = "Could not detect sample language (no main.py or *.csproj found)"
         return result
-    
+
     # Extract test input
     test_input = extract_test_input(agent_yaml_path)
     result["details"]["test_input"] = test_input[:100] + "..." if len(test_input) > 100 else test_input
-    
-    # Install dependencies
-    print(f"Installing dependencies from {requirements_path}...")
-    try:
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "-r", str(requirements_path), "-q"],
-            check=True,
-            capture_output=True,
+
+    # Language-specific setup and server start
+    if language == "python":
+        main_py_path = sample_path / "main.py"
+        requirements_path = sample_path / "requirements.txt"
+
+        if not main_py_path.exists():
+            result["error"] = "main.py not found"
+            return result
+
+        # Install dependencies
+        print(f"Installing dependencies from {requirements_path}...")
+        try:
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-r", str(requirements_path), "-q"],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+        except subprocess.CalledProcessError as e:
+            result["error"] = f"Failed to install dependencies: {e.stderr}"
+            return result
+
+        # Start server
+        print(f"Starting Python server for {sample_path.name}...")
+        server_process = subprocess.Popen(
+            [sys.executable, str(main_py_path)],
+            cwd=str(sample_path),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True
         )
-    except subprocess.CalledProcessError as e:
-        result["error"] = f"Failed to install dependencies: {e.stderr}"
-        return result
-    
-    # Start the server
-    print(f"Starting server for {sample_path.name}...")
-    server_process = subprocess.Popen(
-        [sys.executable, str(main_py_path)],
-        cwd=str(sample_path),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-    
+        startup_timeout = STARTUP_TIMEOUT
+
+    elif language == "csharp":
+        csproj_path = find_csproj(sample_path)
+        if not csproj_path:
+            result["error"] = "No .csproj file found"
+            return result
+
+        # Build the project
+        build_success, build_error = build_csharp_sample(sample_path, csproj_path)
+        if not build_success:
+            result["error"] = build_error
+            return result
+
+        result["details"]["build"] = "success"
+
+        # Start server
+        print(f"Starting C# server for {sample_path.name}...")
+        server_process = start_csharp_server(sample_path, csproj_path)
+        startup_timeout = DOTNET_STARTUP_TIMEOUT
+
     try:
         # Wait for server to be ready
-        print(f"Waiting for server to start (timeout: {STARTUP_TIMEOUT}s)...")
-        if not wait_for_server(STARTUP_TIMEOUT):
+        print(f"Waiting for server to start (timeout: {startup_timeout}s)...")
+        if not wait_for_server(startup_timeout):
             # Check if process died
             if server_process.poll() is not None:
                 stdout, stderr = server_process.communicate()
                 result["error"] = f"Server process exited unexpectedly. stderr: {stderr[:500]}"
             else:
-                result["error"] = f"Server did not start within {STARTUP_TIMEOUT} seconds"
+                result["error"] = f"Server did not start within {startup_timeout} seconds"
             return result
         
         result["details"]["server_started"] = True

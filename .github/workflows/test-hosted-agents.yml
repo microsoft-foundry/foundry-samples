@@ -6,11 +6,13 @@ on:
       - main
     paths:
       - 'samples/python/hosted-agents/**'
+      - 'samples/csharp/hosted-agents/**'
   pull_request:
     branches:
       - main
     paths:
       - 'samples/python/hosted-agents/**'
+      - 'samples/csharp/hosted-agents/**'
   workflow_dispatch:
 
 permissions:
@@ -58,6 +60,9 @@ jobs:
       BING_GROUNDING_CONNECTION_ID: ${{ vars.BING_GROUNDING_CONNECTION_ID }}
       AZURE_AI_PROJECT_TOOL_CONNECTION_ID: ${{ vars.AZURE_AI_PROJECT_TOOL_CONNECTION_ID }}
       OPENAI_API_VERSION: ${{ vars.OPENAI_API_VERSION }}
+      # C# specific environment variables (mapped from existing vars)
+      AZURE_OPENAI_DEPLOYMENT_NAME: ${{ vars.AZURE_OPENAI_CHAT_DEPLOYMENT_NAME }}
+      TOOL_CONNECTION_ID: ${{ vars.AZURE_AI_PROJECT_TOOL_CONNECTION_ID }}
     strategy:
       fail-fast: false
       matrix:
@@ -70,6 +75,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Set up .NET
+        if: matrix.sample.language == 'csharp'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
 
       - name: Azure Login (OIDC)
         uses: azure/login@v2
@@ -157,7 +168,9 @@ jobs:
               
               # Try to determine framework from path
               sample_path=$(python -c "import json; print(json.load(open('$dir/result.json')).get('sample', ''))")
-              if [[ "$sample_path" == *"agent-framework"* ]]; then
+              if [[ "$sample_path" == *"/csharp/"* ]]; then
+                framework="csharp"
+              elif [[ "$sample_path" == *"agent-framework"* ]]; then
                 framework="agent-framework"
               elif [[ "$sample_path" == *"langgraph"* ]]; then
                 framework="langgraph"
