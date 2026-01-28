@@ -1,1 +1,1 @@
-azure-ai-agentserver-langgraph==1.0.0b9
+azure-ai-agentserver-langgraph==1.0.0b10
