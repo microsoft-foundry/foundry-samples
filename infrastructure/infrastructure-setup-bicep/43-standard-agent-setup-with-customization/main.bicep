@@ -29,12 +29,29 @@
 @description('The Azure region where your AI Foundry resource and project will be created.')
 param location string = 'eastus'
 
-@maxLength(9)
-@description('The name of the Azure AI Foundry resource.')
-param aiFoundryName string = 'foundy'
+@maxLength(4)
+@description('The location alias to put in the name of the resources')
+param locationAlias string = 'eaus'
 
-@description('Name for your foundry project resource.')
-param foundryProjectName string = 'project'
+@maxLength(10)
+@description('The name of the workload you may want to specify on the name of the resources')
+param workloadName string = 'standard'
+
+//@maxLength(9)
+//@description('The name of the Azure AI Foundry resource.')
+//param aiFoundryName string = 'foundry'
+
+//@description('Name for your foundry project resource.')
+//param foundryProjectName string = 'project'
+
+@allowed([
+  'dev'
+  'test'
+  'prod'
+])
+@maxLength(5)
+@description('The environment you may want to specify (dev/test/prod)')
+param workloadEnvironment string = 'dev'
 
 @description('This project will be a sub-resource of your account')
 param projectDescription string = 'some description'
@@ -59,15 +76,20 @@ param projectCapHost string = 'caphostproj'
 param accountCapHost string = 'caphostacc'
 
 // Create a short, unique suffix, that will be unique to each resource group
-param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
-var uniqueSuffix = substring(uniqueString('${resourceGroup().id}-${deploymentTimestamp}'), 0, 4)
-var accountName = toLower('${aiFoundryName}${uniqueSuffix}')
-var projectName = toLower('${foundryProjectName}${uniqueSuffix}')
 
+//param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
+//var uniqueSuffix = substring(uniqueString('${resourceGroup().id}-${deploymentTimestamp}'), 0, 4)
+var accountName = 'aif-${workloadName}-${workloadEnvironment}-${locationAlias}'
+var projectName = 'proj-${workloadName}-${workloadEnvironment}-${locationAlias}'
 
-var cosmosDBName = toLower('${uniqueSuffix}cosmosdb')
-var aiSearchName = toLower('${uniqueSuffix}search')
-var azureStorageName = toLower('${uniqueSuffix}storage')
+//var cosmosDBAccountName = toLower('${uniqueSuffix}cosmosdb')
+var cosmosDBAccountName = 'cosno-${workloadName}-${workloadEnvironment}-${locationAlias}'
+
+//var aiSearchName = toLower('${uniqueSuffix}search')
+var aiSearchName = 'srch-${workloadName}-${workloadEnvironment}-${locationAlias}'
+
+//var storageAccountName = toLower('${uniqueSuffix}storage')
+var storageAccountName = 'sa${workloadName}${workloadEnvironment}${locationAlias}'
 
 // Check if existing resources have been passed in
 var storagePassedIn = azureStorageAccountResourceId != ''
@@ -99,7 +121,7 @@ var aoaiName = aoaiPassedIn ? existingAoaiResourceIdParts[8] : 'noAoaiPassedIn'
   If they do, it will set the corresponding output to true. If they do not exist, it will set the output to false.
 */
 module validateExistingResources 'modules-standard/validate-existing-resources.bicep' = {
-  name: 'validate-existing-resources-${uniqueSuffix}-deployment'
+  name: 'validate-existing-resources-deployment'
   params: {
     aiSearchResourceId: aiSearchResourceId
     azureStorageAccountResourceId: azureStorageAccountResourceId
@@ -111,12 +133,12 @@ module validateExistingResources 'modules-standard/validate-existing-resources.b
 // This module will create new agent dependent resources
 // A Cosmos DB account, an AI Search Service, and a Storage Account are created if they do not already exist
 module aiDependencies 'modules-standard/standard-dependent-resources.bicep' = {
-  name: 'dependencies-${accountName}-${uniqueSuffix}-deployment'
+  name: 'dependencies-${accountName}-deployment'
   params: {
     location: location
-    azureStorageName: azureStorageName
+    storageAccountName: storageAccountName
     aiSearchName: aiSearchName
-    cosmosDBName: cosmosDBName
+    cosmosDBAccountName: cosmosDBAccountName
 
     // AI Search Service parameters
     aiSearchResourceId: aiSearchResourceId
@@ -136,7 +158,7 @@ module aiDependencies 'modules-standard/standard-dependent-resources.bicep' = {
   Create the AI Services account and gpt-4o model deployment
 */
 module aiAccount 'modules-standard/ai-account-identity.bicep' = {
-  name: 'ai-${accountName}-${uniqueSuffix}-deployment'
+  name: 'ai-${accountName}-deployment'
   params: {
     accountName: accountName
     location: location
@@ -150,7 +172,7 @@ module aiAccount 'modules-standard/ai-account-identity.bicep' = {
   Creates a new project (sub-resource of the AI Services account)
 */
 module aiProject 'modules-standard/ai-project-identity.bicep' = {
-  name: 'ai-${projectName}-${uniqueSuffix}-deployment'
+  name: 'ai-${projectName}-deployment'
   params: {
     projectName: projectName
     projectDescription: projectDescription
@@ -161,11 +183,11 @@ module aiProject 'modules-standard/ai-project-identity.bicep' = {
     aiSearchServiceResourceGroupName: aiDependencies.outputs.aiSearchServiceResourceGroupName
     aiSearchServiceSubscriptionId: aiDependencies.outputs.aiSearchServiceSubscriptionId
 
-    cosmosDBName: aiDependencies.outputs.cosmosDBName
+    cosmosDBAccountName: aiDependencies.outputs.cosmosDBAccountName
     cosmosDBSubscriptionId: aiDependencies.outputs.cosmosDBSubscriptionId
     cosmosDBResourceGroupName: aiDependencies.outputs.cosmosDBResourceGroupName
 
-    azureStorageName: aiDependencies.outputs.azureStorageName
+    storageAccountName: aiDependencies.outputs.storageAccountName
     azureStorageSubscriptionId: aiDependencies.outputs.azureStorageSubscriptionId
     azureStorageResourceGroupName: aiDependencies.outputs.azureStorageResourceGroupName
 
@@ -179,7 +201,7 @@ module aiProject 'modules-standard/ai-project-identity.bicep' = {
 }
 
 module formatProjectWorkspaceId 'modules-standard/format-project-workspace-id.bicep' = {
-  name: 'format-project-workspace-id-${uniqueSuffix}-deployment'
+  name: 'format-project-workspace-id-deployment'
   params: {
     projectWorkspaceId: aiProject.outputs.projectWorkspaceId
   }
@@ -189,20 +211,20 @@ module formatProjectWorkspaceId 'modules-standard/format-project-workspace-id.bi
   Assigns the project SMI the storage blob data contributor role on the storage account
 */
 module storageAccountRoleAssignment 'modules-standard/azure-storage-account-role-assignment.bicep' = {
-  name: 'storage-${azureStorageName}-${uniqueSuffix}-deployment'
+  name: 'storage-${storageAccountName}-deployment'
   scope: resourceGroup(azureStorageSubscriptionId, azureStorageResourceGroupName)
   params: {
-    azureStorageName: aiDependencies.outputs.azureStorageName
+    storageAccountName: aiDependencies.outputs.storageAccountName
     projectPrincipalId: aiProject.outputs.projectPrincipalId
   }
 }
 
 // The Comos DB Operator role must be assigned before the caphost is created
 module cosmosAccountRoleAssignments 'modules-standard/cosmosdb-account-role-assignment.bicep' = {
-  name: 'cosmos-account-ra-${uniqueSuffix}-deployment'
+  name: 'cosmos-account-ra-deployment'
   scope: resourceGroup(cosmosDBSubscriptionId, cosmosDBResourceGroupName)
   params: {
-    cosmosDBName: aiDependencies.outputs.cosmosDBName
+    cosmosDBAccountName: aiDependencies.outputs.cosmosDBAccountName
     projectPrincipalId: aiProject.outputs.projectPrincipalId
   }
   dependsOn: [
@@ -212,7 +234,7 @@ module cosmosAccountRoleAssignments 'modules-standard/cosmosdb-account-role-assi
 
 // This role can be assigned before or after the caphost is created
 module aiSearchRoleAssignments 'modules-standard/ai-search-role-assignments.bicep' = {
-  name: 'ai-search-ra-${uniqueSuffix}-deployment'
+  name: 'ai-search-ra-deployment'
   scope: resourceGroup(aiSearchServiceSubscriptionId, aiSearchServiceResourceGroupName)
   params: {
     aiSearchName: aiDependencies.outputs.aiSearchName
@@ -224,7 +246,7 @@ module aiSearchRoleAssignments 'modules-standard/ai-search-role-assignments.bice
 }
 
 module addProjectCapabilityHost 'modules-standard/add-project-capability-host.bicep' = {
-  name: 'capabilityHost-configuration-${uniqueSuffix}-deployment'
+  name: 'capabilityHost-configuration-deployment'
   params: {
     accountName: aiAccount.outputs.accountName
     projectName: aiProject.outputs.projectName
@@ -245,11 +267,11 @@ module addProjectCapabilityHost 'modules-standard/add-project-capability-host.bi
 
 // The Storage Blob Data Owner role must be assigned before the caphost is created
 module storageContainersRoleAssignment 'modules-standard/blob-storage-container-role-assignments.bicep' = {
-  name: 'storage-containers-${uniqueSuffix}-deployment'
+  name: 'storage-containers-deployment'
   scope: resourceGroup(azureStorageSubscriptionId, azureStorageResourceGroupName)
   params: {
     aiProjectPrincipalId: aiProject.outputs.projectPrincipalId
-    storageName: aiDependencies.outputs.azureStorageName
+    storageName: aiDependencies.outputs.storageAccountName
     workspaceId: formatProjectWorkspaceId.outputs.projectWorkspaceIdGuid
   }
   dependsOn: [
@@ -258,10 +280,10 @@ module storageContainersRoleAssignment 'modules-standard/blob-storage-container-
 }
 
 module cosmosContainerRoleAssignments 'modules-standard/cosmos-container-role-assignments.bicep' = {
-  name: 'cosmos-ra-${uniqueSuffix}-deployment'
+  name: 'cosmos-ra-deployment'
   scope: resourceGroup(cosmosDBSubscriptionId, cosmosDBResourceGroupName)
   params: {
-    cosmosAccountName: aiDependencies.outputs.cosmosDBName
+    cosmosAccountName: aiDependencies.outputs.cosmosDBAccountName
     projectWorkspaceId: formatProjectWorkspaceId.outputs.projectWorkspaceIdGuid
     projectPrincipalId: aiProject.outputs.projectPrincipalId
 

@@ -1,8 +1,8 @@
-param azureStorageName string
+param storageAccountName string
 param projectPrincipalId string
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
-  name: azureStorageName
+  name: storageAccountName
   scope: resourceGroup()
 }
 

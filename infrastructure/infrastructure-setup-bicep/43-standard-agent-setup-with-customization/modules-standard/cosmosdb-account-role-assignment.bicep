@@ -1,13 +1,13 @@
 // Assigns Role Cosmos DB Operator to the Project Principal ID
 @description('Name of the AI Search resource')
-param cosmosDBName string
+param cosmosDBAccountName string
 
 @description('Principal ID of the AI project')
 param projectPrincipalId string
 
 
 resource cosmosDBAccount 'Microsoft.DocumentDB/databaseAccounts@2024-12-01-preview' existing = {
-  name: cosmosDBName
+  name: cosmosDBAccountName
   scope: resourceGroup()
 }
 
