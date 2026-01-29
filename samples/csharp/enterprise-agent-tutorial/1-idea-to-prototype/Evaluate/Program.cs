@@ -1,25 +1,31 @@
 ﻿// <imports_and_includes>
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
-using System.Threading.Tasks;
 using Azure;
-using Azure.AI.Agents;
+using Azure.AI.Projects;
+using Azure.AI.Projects.OpenAI;
 using Azure.Core;
 using Azure.Identity;
 using DotNetEnv;
-using OpenAI;
 using OpenAI.Responses;
+using System;
+using System.Collections.Generic;
+using System.IO.Enumeration;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Threading.Tasks;
 // </imports_and_includes>
-
+#pragma warning disable OPENAI001
 class EvaluateProgram
 {
+    private static string GetFile(string name, [CallerFilePath] string pth = "")
+    {
+        var dirName = Path.GetDirectoryName(pth) ?? "";
+        return Path.Combine(dirName, "..", "shared", name);
+    }
+
     static async Task Main(string[] args)
     {
         // Load environment variables from shared directory
-        Env.Load("../shared/.env");
+        Env.Load(GetFile(".env"));
 
         var projectEndpoint = Environment.GetEnvironmentVariable("PROJECT_ENDPOINT");
         var modelDeploymentName = Environment.GetEnvironmentVariable("MODEL_DEPLOYMENT_NAME");
@@ -38,19 +44,28 @@ class EvaluateProgram
             credential = new DefaultAzureCredential();
         }
 
-        AgentsClient client = new(new Uri(projectEndpoint), credential);
+        AIProjectClient client = new(new Uri(projectEndpoint), credential);
 
         Console.WriteLine("🧪 Modern Workplace Assistant Evaluation\n");
 
-        List<ToolDefinition> tools = new();
+        var instructions = @"You are a Modern Workplace Assistant for Contoso Corporation.
+Answer questions using available tools and provide specific, detailed responses.";
+        PromptAgentDefinition agentDefinition = new PromptAgentDefinition(modelDeploymentName)
+        {
+            Instructions = instructions
+        };
 
         // Add SharePoint tool if configured
         if (!string.IsNullOrEmpty(sharepointConnectionId))
         {
             try
             {
-                SharepointToolDefinition sharepointTool = new(new SharepointGroundingToolParameters(sharepointConnectionId));
-                tools.Add(sharepointTool);
+                SharePointGroundingToolOptions sharepointToolOption = new()
+                {
+                    ProjectConnections = { new ToolProjectConnection(projectConnectionId: sharepointConnectionId) }
+                };
+                SharepointPreviewTool sharepointTool = new(sharepointToolOption);
+                agentDefinition.Tools.Add(sharepointTool);
                 Console.WriteLine("✅ SharePoint configured for evaluation");
             }
             catch (Exception ex)
@@ -64,8 +79,12 @@ class EvaluateProgram
         {
             try
             {
-                MCPToolDefinition mcpTool = new("microsoft_learn", mcpServerUrl);
-                tools.Add(mcpTool);
+                McpTool mcpTool = ResponseTool.CreateMcpTool(
+                    serverLabel: "microsoft_learn",
+                    serverUri: new Uri(mcpServerUrl),
+                    toolCallApprovalPolicy: new McpToolCallApprovalPolicy(GlobalMcpToolCallApprovalPolicy.NeverRequireApproval)
+                );
+                agentDefinition.Tools.Add(mcpTool);
                 Console.WriteLine("✅ MCP configured for evaluation");
             }
             catch (Exception ex)
@@ -76,22 +95,13 @@ class EvaluateProgram
 
         Console.WriteLine();
 
-        var instructions = @"You are a Modern Workplace Assistant for Contoso Corporation.
-Answer questions using available tools and provide specific, detailed responses.";
-
-        AgentDefinition agentDefinition = new PromptAgentDefinition(modelDeploymentName)
-        {
-            Instructions = instructions,
-            Tools = tools
-        };
-
-        AgentVersion agent = await client.CreateAgentVersionAsync(
-            "Evaluation Agent",
-            agentDefinition
+        AgentVersion agent = await client.Agents.CreateAgentVersionAsync(
+            agentName: "EvaluationAgent",
+            options: new(agentDefinition)
         );
 
         // <load_test_data>
-        var questions = File.ReadAllLines("../shared/questions.jsonl")
+        var questions = File.ReadAllLines(GetFile("questions.jsonl"))
             .Select(line => JsonSerializer.Deserialize<JsonElement>(line))
             .ToList();
         // </load_test_data>
@@ -114,20 +124,14 @@ Answer questions using available tools and provide specific, detailed responses.
                     .Select(e => e.GetString()!)
                     .ToArray();
             }
-            
+
             Console.WriteLine($"Question {i + 1}/{questions.Count}: {question}");
 
-            // Get OpenAI client from the agents client
-            OpenAIClient openAIClient = client.GetOpenAIClient();
-            OpenAIResponseClient responseClient = openAIClient.GetOpenAIResponseClient(modelDeploymentName);
-
             // Create a conversation to maintain state
-            AgentConversation conversation = await client.GetConversationsClient().CreateConversationAsync();
+            ProjectConversation conversation = await client.OpenAI.Conversations.CreateProjectConversationAsync();
 
-            // Set up response creation options with agent and conversation references
-            ResponseCreationOptions responseCreationOptions = new();
-            responseCreationOptions.SetAgentReference(agent.Name);
-            responseCreationOptions.SetConversationReference(conversation);
+            // Get OpenAI client from the agents client
+            ProjectResponsesClient responseClient = client.OpenAI.GetProjectResponsesClientForAgent(agent, conversation.Id);
 
             // Create the user message item
             List<ResponseItem> items = [ResponseItem.CreateUserMessageItem(question)];
@@ -136,7 +140,7 @@ Answer questions using available tools and provide specific, detailed responses.
             try
             {
                 // Create response from the agent
-                OpenAIResponse openAIResponse = await responseClient.CreateResponseAsync(items, responseCreationOptions);
+                ResponseResult openAIResponse = await responseClient.CreateResponseAsync(items);
                 response = openAIResponse.GetOutputText();
             }
             catch (Exception ex)
