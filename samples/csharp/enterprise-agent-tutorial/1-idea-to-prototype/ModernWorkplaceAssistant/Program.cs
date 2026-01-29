@@ -4,29 +4,28 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Azure;
-using Azure.AI.Agents;
+using Azure.AI.Projects;
+using Azure.AI.Projects.OpenAI;
 using Azure.Core;
 using Azure.Identity;
 using DotNetEnv;
-using OpenAI;
 using OpenAI.Responses;
 // </imports_and_includes>
 
 /*
  * Azure AI Foundry Agent Sample - Tutorial 1: Modern Workplace Assistant
- * 
+ *
  * This sample demonstrates a complete business scenario using Azure AI Agents SDK v2:
  * - Agent creation with the new SDK
  * - Conversation and response management
  * - Robust error handling and graceful degradation
- * 
+ *
  * Educational Focus:
  * - Enterprise AI patterns with Agent SDK v2
  * - Real-world business scenarios that enterprises face daily
  * - Production-ready error handling and diagnostics
  * - Foundation for governance, evaluation, and monitoring (Tutorials 2-3)
- * 
+ *
  * Business Scenario:
  * An employee needs to implement Azure AD multi-factor authentication. They need:
  * 1. Company security policy requirements
@@ -36,9 +35,9 @@ using OpenAI.Responses;
 
 class Program
 {
-    private static AgentsClient? agentsClient;
-    private static OpenAIResponseClient? responseClient;
-    private static AgentConversation? conversation;
+    private static AIProjectClient? projectClient;
+    private static ProjectResponsesClient? responseClient;
+    private static ProjectConversation? conversation;
 
     static async Task Main(string[] args)
     {
@@ -57,7 +56,7 @@ class Program
             // Offer interactive testing
             Console.Write("\n🎯 Try interactive mode? (y/n): ");
             var response = Console.ReadLine();
-            if (response?.ToLower().StartsWith("y") == true)
+            if (response?.StartsWith("y", StringComparison.CurrentCultureIgnoreCase) == true)
             {
                 await InteractiveModeAsync(agentName);
             }
@@ -79,17 +78,17 @@ class Program
 
     /// <summary>
     /// Create a Modern Workplace Assistant using Agent SDK v2.
-    /// 
+    ///
     /// This demonstrates enterprise AI patterns:
     /// 1. Agent creation with the new SDK
     /// 2. Robust error handling with graceful degradation
     /// 3. Clear diagnostic information for troubleshooting
-    /// 
+    ///
     /// Educational Value:
     /// - Shows real-world complexity of enterprise AI systems
     /// - Demonstrates how to handle partial system failures
     /// - Provides patterns for agent creation with Agent SDK v2
-    /// 
+    ///
     /// Note: Tool integration (SharePoint, MCP) is being explored for SDK v2 beta.
     /// This version demonstrates the core agent functionality.
     /// </summary>
@@ -124,7 +123,7 @@ class Program
             credential = new DefaultAzureCredential();
         }
 
-        agentsClient = new AgentsClient(new Uri(projectEndpoint), credential);
+        projectClient = new AIProjectClient(new Uri(projectEndpoint), credential);
         Console.WriteLine($"✅ Connected to Azure AI Foundry: {projectEndpoint}");
         // </agent_authentication>
 
@@ -133,22 +132,22 @@ class Program
         // ========================================================================
         string instructions = @"You are a Technical Assistant specializing in Azure and Microsoft 365 guidance.
 
-CAPABILITIES:
-- Provide detailed Azure and Microsoft 365 technical guidance
-- Explain implementation steps and best practices
-- Help with Azure AD, Conditional Access, MFA, and security configurations
+        CAPABILITIES:
+        - Provide detailed Azure and Microsoft 365 technical guidance
+        - Explain implementation steps and best practices
+        - Help with Azure AD, Conditional Access, MFA, and security configurations
 
-RESPONSE STRATEGY:
-- Provide comprehensive technical guidance
-- Include step-by-step implementation instructions
-- Reference best practices and security considerations
-- For policy questions, explain common enterprise policies and how to implement them
-- For technical questions, provide detailed Azure/M365 implementation steps
+        RESPONSE STRATEGY:
+        - Provide comprehensive technical guidance
+        - Include step-by-step implementation instructions
+        - Reference best practices and security considerations
+        - For policy questions, explain common enterprise policies and how to implement them
+        - For technical questions, provide detailed Azure/M365 implementation steps
 
-EXAMPLE SCENARIOS:
-- ""What is a typical enterprise MFA policy?"" → Explain common MFA policies and their implementation
-- ""How do I configure Azure AD Conditional Access?"" → Provide detailed technical steps
-- ""What are the best practices for remote work security?"" → Combine policy recommendations with implementation guidance";
+        EXAMPLE SCENARIOS:
+        - ""What is a typical enterprise MFA policy?"" → Explain common MFA policies and their implementation
+        - ""How do I configure Azure AD Conditional Access?"" → Provide detailed technical steps
+        - ""What are the best practices for remote work security?"" → Combine policy recommendations with implementation guidance";
 
         // <create_agent>
         Console.WriteLine($"🛠️  Creating agent with model: {modelDeploymentName}");
@@ -158,9 +157,9 @@ EXAMPLE SCENARIOS:
             Instructions = instructions
         };
 
-        AgentVersion agent = await agentsClient.CreateAgentVersionAsync(
-            "Modern_Workplace_Assistant",
-            agentDefinition
+        AgentVersion agent = await projectClient.Agents.CreateAgentVersionAsync(
+            agentName: "ModernWorkplaceAssistant",
+            options: new(agentDefinition)
         );
 
         Console.WriteLine("✅ Agent created successfully");
@@ -172,22 +171,21 @@ EXAMPLE SCENARIOS:
         Console.WriteLine("   - Tool integration patterns being finalized");
         // </create_agent>
 
-        // Initialize OpenAI client for conversations
-        OpenAIClient openAIClient = agentsClient.GetOpenAIClient();
-        responseClient = openAIClient.GetOpenAIResponseClient(modelDeploymentName);
-
         // Create a conversation to maintain state
-        conversation = await agentsClient.GetConversationsClient().CreateConversationAsync();
+        conversation = await projectClient.OpenAI.Conversations.CreateProjectConversationAsync();
+
+        // Initialize ProjectResponsesClient for conversations
+        responseClient = projectClient.OpenAI.GetProjectResponsesClientForAgent(agent, conversation.Id);
 
         return agent.Name;
     }
 
     /// <summary>
     /// Demonstrate realistic business scenarios with Agent SDK v2.
-    /// 
+    ///
     /// This function showcases the practical value of the Modern Workplace Assistant
     /// by walking through scenarios that enterprise employees face regularly.
-    /// 
+    ///
     /// Educational Value:
     /// - Shows real business problems that AI agents can solve
     /// - Demonstrates proper conversation and response management
@@ -274,9 +272,9 @@ EXAMPLE SCENARIOS:
 
     /// <summary>
     /// Execute a conversation with the workplace assistant using Agent SDK v2.
-    /// 
+    ///
     /// This function demonstrates the conversation pattern for Azure AI Agents SDK v2.
-    /// 
+    ///
     /// Educational Value:
     /// - Shows proper conversation management with Agent SDK v2
     /// - Demonstrates conversation creation and message handling
@@ -287,16 +285,11 @@ EXAMPLE SCENARIOS:
         try
         {
             // <create_response>
-            // Set up response creation options with agent and conversation references
-            ResponseCreationOptions responseCreationOptions = new();
-            responseCreationOptions.SetAgentReference(agentName);
-            responseCreationOptions.SetConversationReference(conversation!);
-
             // Create the user message item
             List<ResponseItem> items = [ResponseItem.CreateUserMessageItem(message)];
 
             // Create response from the agent
-            OpenAIResponse response = await responseClient!.CreateResponseAsync(items, responseCreationOptions);
+            ResponseResult response = await responseClient!.CreateResponseAsync(items);
 
             // Extract the response text
             string responseText = response.GetOutputText();
@@ -317,7 +310,7 @@ EXAMPLE SCENARIOS:
 
     /// <summary>
     /// Interactive mode for testing the workplace assistant.
-    /// 
+    ///
     /// This provides a simple interface for users to test the agent with their own questions
     /// and see how it provides comprehensive technical guidance.
     /// </summary>
