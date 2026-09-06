@@ -2,9 +2,9 @@ import { DefaultAzureCredential } from "@azure/identity";
 import { AIProjectClient } from "@azure/ai-projects";
 import "dotenv/config";
 
-const projectEndpoint: string = process.env["PROJECT_ENDPOINT"] || "<project endpoint>";
-const modelDeploymentName: string = process.env["MODEL_DEPLOYMENT_NAME"] || "<model deployment name>";
-const agentName: string = process.env["AGENT_NAME"] || "<agent name>";
+const projectEndpoint: string = process.env.AZURE_AI_PROJECT_ENDPOINT || "<project endpoint>";
+const modelDeploymentName: string = process.env.MODEL_DEPLOYMENT || "<model deployment name>";
+const agentName: string = process.env.AZURE_AI_FOUNDRY_AGENT_NAME || "<agent name>";
 
 async function main(): Promise<void> {
   // Create AI Project client

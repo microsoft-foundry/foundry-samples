@@ -1,10 +1,13 @@
+import os
+
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import PromptAgentDefinition
 
 # Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
-PROJECT_ENDPOINT = "your_project_endpoint"
-AGENT_NAME = "your_agent_name"
+PROJECT_ENDPOINT = os.getenv("AZURE_AI_PROJECT_ENDPOINT", "your_project_endpoint")
+AGENT_NAME = os.getenv("AZURE_AI_FOUNDRY_AGENT_NAME", "your_agent_name")
+MODEL_DEPLOYMENT = os.getenv("MODEL_DEPLOYMENT", "gpt-5-mini")
 
 # Create project client to call Foundry API
 project = AIProjectClient(
@@ -16,7 +19,7 @@ project = AIProjectClient(
 agent = project.agents.create_version(
     agent_name=AGENT_NAME,
     definition=PromptAgentDefinition(
-        model="gpt-5-mini",  # supports all Foundry direct models
+        model=MODEL_DEPLOYMENT,  # supports all Foundry direct models
         instructions="You are a helpful assistant that answers general questions",
     ),
 )

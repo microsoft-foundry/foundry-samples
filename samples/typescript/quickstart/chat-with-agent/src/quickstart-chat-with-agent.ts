@@ -2,8 +2,8 @@ import { DefaultAzureCredential } from "@azure/identity";
 import { AIProjectClient } from "@azure/ai-projects";
 
 // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
-const PROJECT_ENDPOINT = "your_project_endpoint";
-const AGENT_NAME = "your_agent_name";
+const PROJECT_ENDPOINT = process.env.AZURE_AI_PROJECT_ENDPOINT || "your_project_endpoint";
+const AGENT_NAME = process.env.AZURE_AI_FOUNDRY_AGENT_NAME || "your_agent_name";
 
 async function main(): Promise<void> {
     // Create project and openai clients to call Foundry API

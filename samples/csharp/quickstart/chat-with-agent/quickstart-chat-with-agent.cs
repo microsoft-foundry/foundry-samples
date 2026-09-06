@@ -6,8 +6,8 @@ using OpenAI.Responses;
 #pragma warning disable OPENAI001
 
 // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
-var ProjectEndpoint = "your_project_endpoint";
-var AgentName = "your_agent_name";
+var ProjectEndpoint = Environment.GetEnvironmentVariable("AZURE_AI_PROJECT_ENDPOINT") ?? "your_project_endpoint";
+var AgentName = Environment.GetEnvironmentVariable("AZURE_AI_FOUNDRY_AGENT_NAME") ?? "your_agent_name";
 
 // Create project client to call Foundry API
 AIProjectClient projectClient = new(

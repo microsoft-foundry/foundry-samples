@@ -9,12 +9,12 @@ using OpenAI.Responses;
 
 #pragma warning disable OPENAI001
 
-string RAW_PROJECT_ENDPOINT = Environment.GetEnvironmentVariable("PROJECT_ENDPOINT")
-?? throw new InvalidOperationException("Missing environment variable 'PROJECT_ENDPOINT'");
-string MODEL_DEPLOYMENT = Environment.GetEnvironmentVariable("MODEL_DEPLOYMENT_NAME")
-?? throw new InvalidOperationException("Missing environment variable 'MODEL_DEPLOYMENT_NAME'");
-string AGENT_NAME = Environment.GetEnvironmentVariable("AGENT_NAME")
-?? throw new InvalidOperationException("Missing environment variable 'AGENT_NAME'");
+string RAW_PROJECT_ENDPOINT = Environment.GetEnvironmentVariable("AZURE_AI_PROJECT_ENDPOINT")
+?? throw new InvalidOperationException("Missing environment variable 'AZURE_AI_PROJECT_ENDPOINT'");
+string MODEL_DEPLOYMENT = Environment.GetEnvironmentVariable("MODEL_DEPLOYMENT")
+?? throw new InvalidOperationException("Missing environment variable 'MODEL_DEPLOYMENT'");
+string AGENT_NAME = Environment.GetEnvironmentVariable("AZURE_AI_FOUNDRY_AGENT_NAME")
+?? throw new InvalidOperationException("Missing environment variable 'AZURE_AI_FOUNDRY_AGENT_NAME'");
 
 AIProjectClient projectClient = new AIProjectClient(new Uri(RAW_PROJECT_ENDPOINT), new DefaultAzureCredential());
 

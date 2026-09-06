@@ -1,9 +1,11 @@
+import os
+
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 
 # Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
-PROJECT_ENDPOINT = "your_project_endpoint"
-AGENT_NAME = "your_agent_name"
+PROJECT_ENDPOINT = os.getenv("AZURE_AI_PROJECT_ENDPOINT", "your_project_endpoint")
+AGENT_NAME = os.getenv("AZURE_AI_FOUNDRY_AGENT_NAME", "your_agent_name")
 
 # Create project and openai clients to call Foundry API
 project = AIProjectClient(

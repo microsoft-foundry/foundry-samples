@@ -4,8 +4,9 @@ using Azure.AI.Projects.Agents;
 using Azure.AI.Extensions.OpenAI;
 
 // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
-var ProjectEndpoint = "your_project_endpoint";
-var AgentName = "your_agent_name";
+var ProjectEndpoint = Environment.GetEnvironmentVariable("AZURE_AI_PROJECT_ENDPOINT") ?? "your_project_endpoint";
+var AgentName = Environment.GetEnvironmentVariable("AZURE_AI_FOUNDRY_AGENT_NAME") ?? "your_agent_name";
+var ModelDeployment = Environment.GetEnvironmentVariable("MODEL_DEPLOYMENT") ?? "gpt-5-mini";
 
 // Create project client to call Foundry API
 AIProjectClient projectClient = new(
@@ -13,7 +14,7 @@ AIProjectClient projectClient = new(
     tokenProvider: new DefaultAzureCredential());
 
 // Create an agent with a model and instructions
-ProjectsAgentDefinition agentDefinition = new DeclarativeAgentDefinition("gpt-5-mini") // supports all Foundry direct models
+ProjectsAgentDefinition agentDefinition = new DeclarativeAgentDefinition(ModelDeployment) // supports all Foundry direct models
 {
     Instructions = "You are a helpful assistant that answers general questions",
 };

@@ -9,8 +9,8 @@ import com.openai.models.responses.ResponseCreateParams;
 public class ChatWithAgent {
     public static void main(String[] args) {
         // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
-        String ProjectEndpoint = "your_project_endpoint";
-        String AgentName = "your_agent_name";
+        String ProjectEndpoint = System.getenv().getOrDefault("AZURE_AI_PROJECT_ENDPOINT", "your_project_endpoint");
+        String AgentName = System.getenv().getOrDefault("AZURE_AI_FOUNDRY_AGENT_NAME", "your_agent_name");
         
         AgentsClientBuilder builder = new AgentsClientBuilder()
                 .credential(new DefaultAzureCredentialBuilder().build())
