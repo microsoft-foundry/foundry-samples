@@ -7,12 +7,12 @@ import com.openai.models.responses.ResponseCreateParams;
 public class CreateResponse {
     public static void main(String[] args) {
         // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
-        String ProjectEndpoint = "your_project_endpoint";
+        String foundryProjectEndpoint = "your_project_endpoint";
 
         // Create responses client to call Foundry API
         ResponsesClient responsesClient = new AgentsClientBuilder()
                 .credential(new DefaultAzureCredentialBuilder().build())
-                .endpoint(ProjectEndpoint)
+                .endpoint(foundryProjectEndpoint)
                 .buildResponsesClient();
 
         // Run a responses API call

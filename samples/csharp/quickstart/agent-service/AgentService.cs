@@ -9,11 +9,11 @@ using OpenAI.Responses;
 
 #pragma warning disable OPENAI001
 
-string projectEndpoint = "your_project_endpoint";
-string agentName = "your_agent_name";
+string foundryProjectEndpoint = "your_project_endpoint";
+string foundryAgentName = "your_agent_name";
 
 AIProjectClient projectClient = new AIProjectClient(
-    new Uri(projectEndpoint),
+    new Uri(foundryProjectEndpoint),
     new DefaultAzureCredential());
 
 //
@@ -26,7 +26,7 @@ ProjectsAgentDefinition agentDefinition = new DeclarativeAgentDefinition(
     Instructions = "You are a foo bar agent. In EVERY response you give, ALWAYS include both `foo` and `bar` strings somewhere in the response.",
 };
 ProjectsAgentVersion newAgentVersion = await projectClient.AgentAdministrationClient.CreateAgentVersionAsync(
-    agentName,
+    foundryAgentName,
     options: new(agentDefinition));
 
 //
@@ -54,7 +54,7 @@ _ = await projectClient.ProjectOpenAIClient.GetProjectConversationsClient().Crea
 //
 
 ProjectResponsesClient responseClient = projectClient.ProjectOpenAIClient.GetProjectResponsesClientForAgent(
-    defaultAgent: agentName,
+    defaultAgent: foundryAgentName,
     defaultConversationId: existingConversationId);
 List<ResponseItem> items = [ResponseItem.CreateUserMessageItem(inputTextContent: "Tell me a one-line story.")] ;
 ResponseResult response = await responseClient.CreateResponseAsync(items);

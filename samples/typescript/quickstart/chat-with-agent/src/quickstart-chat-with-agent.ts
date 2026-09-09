@@ -2,14 +2,14 @@ import { DefaultAzureCredential } from "@azure/identity";
 import { AIProjectClient } from "@azure/ai-projects";
 
 // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
-const PROJECT_ENDPOINT = "your_project_endpoint";
-const AGENT_NAME = "your_agent_name";
+const FOUNDRY_PROJECT_ENDPOINT = "your_project_endpoint";
+const FOUNDRY_AGENT_NAME = "your_agent_name";
 
 async function main(): Promise<void> {
     // Create project and openai clients to call Foundry API
-    const project = new AIProjectClient(PROJECT_ENDPOINT, new DefaultAzureCredential());
+    const project = new AIProjectClient(FOUNDRY_PROJECT_ENDPOINT, new DefaultAzureCredential());
     const openai = project.getOpenAIClient({
-        azureConfig: { allowPreview: true, agentName: AGENT_NAME },
+        azureConfig: { allowPreview: true, agentName: FOUNDRY_AGENT_NAME },
     });
 
     // Create a conversation for multi-turn chat
