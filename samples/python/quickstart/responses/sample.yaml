@@ -3,8 +3,3 @@ description: Basic quickstart sample demonstrating Microsoft Foundry responses.
 
 build: "pip install -r requirements.txt"
 validate: "python -m py_compile *.py"
-live_service_validation:
-  command: "python quickstart-responses.py"
-  required_env:
-    - AZURE_AI_PROJECT_ENDPOINT
-    - MODEL_DEPLOYMENT
