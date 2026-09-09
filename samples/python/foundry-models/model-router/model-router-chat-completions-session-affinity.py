@@ -54,13 +54,12 @@ messages = [
     {"role": "user", "content": "Plan a one-day family trip to Seattle."},
 ]
 
-# <session_affinity_invoke>
+# <session_affinity_turns>
 first_response = client.chat.completions.create(
     model=deployment,
     messages=messages,
     extra_body=session_affinity,
 )
-# </session_affinity_invoke>
 
 messages.extend(
     [
@@ -77,6 +76,7 @@ second_response = client.chat.completions.create(
     messages=messages,
     extra_body=session_affinity,
 )
+# </session_affinity_turns>
 
 def print_response(turn, response):
     print(f"\n--- {turn} ---")
