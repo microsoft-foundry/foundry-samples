@@ -499,9 +499,9 @@ def render(
 {"".join(status_lines)}
 {table}
 <footer>
-  Diagnostics are intentionally omitted from this page. Click a status badge,
-  or open the workflow run above, for full logs, subject to GitHub Actions
-  retention and authentication. Click any column header to sort.
+  Full diagnostic logs aren't inlined on this page. Click a status badge, or
+  the Diagnostics link when present, for per-sample logs, subject to GitHub
+  Actions retention and authentication. Click any column header to sort.
 </footer>
 <script>{SORT_SCRIPT}
 {FILTER_SCRIPT}</script>

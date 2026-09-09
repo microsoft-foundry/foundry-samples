@@ -91,9 +91,11 @@ scheduled deployment, and republishes (with a visible banner) even when a run
 is incomplete rather than leaving a stale prior deployment looking current.
 New samples require no dashboard changes: like the report, it renders
 whatever discovery's manifest already contains, so a sample with a
-`sample.yaml` appears the next time the cadence runs. The dashboard omits
-diagnostic text entirely — it only shows outcome, stage, duration, and
-completion time, with a link to the workflow run for investigation.
+`sample.yaml` appears the next time the cadence runs. The dashboard doesn't
+inline diagnostic text — instead it links each sample's status to its job
+run for logs, and links to that sample's diagnostics artifact for download
+when one was uploaded, alongside stage, duration, completion time, and
+codeowner.
 
 ## Current limits
 
