@@ -80,6 +80,21 @@ Open the
 [workflow runs](https://github.com/microsoft-foundry/foundry-samples/actions/workflows/validation-pilot.yml)
 to inspect the latest report and artifacts.
 
+## Dashboard
+
+The `publish-dashboard` job renders every manifest sample's latest outcome to
+a durable static page on GitHub Pages, so "what's currently passing" has one
+stable URL instead of requiring you to open the latest scheduled run. It only
+publishes from scheduled/dispatched runs on this repository's `main` branch,
+uses its own `pages` concurrency group so a manual dispatch can't race a
+scheduled deployment, and republishes (with a visible banner) even when a run
+is incomplete rather than leaving a stale prior deployment looking current.
+New samples require no dashboard changes: like the report, it renders
+whatever discovery's manifest already contains, so a sample with a
+`sample.yaml` appears the next time the cadence runs. The dashboard omits
+diagnostic text entirely — it only shows outcome, stage, duration, and
+completion time, with a link to the workflow run for investigation.
+
 ## Current limits
 
 The delivered cadence is daily/manual and warm-project only. Cold provisioning,

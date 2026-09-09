@@ -16,7 +16,9 @@ commands and language behavior.
 
 The [daily public validation cadence](.github/validation-pilot.README.md)
 discovers metadata-bearing samples and publishes a run summary plus diagnostic
-artifacts in GitHub Actions.
+artifacts in GitHub Actions, plus a durable
+[validation dashboard](https://microsoft-foundry.github.io/foundry-samples/)
+showing every sample's latest status.
 
 ## Contributing
 
