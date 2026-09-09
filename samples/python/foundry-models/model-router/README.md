@@ -10,6 +10,7 @@ Model Router is a deployable AI chat model in Azure AI Foundry that **automatica
 | ------ | --- | ---- | ----------- |
 | [`chat-completions/`](./model-router-chat-completions.py) | Chat Completions | API Key | Basic single-prompt chat completion via `AzureOpenAI` client |
 | [`model-router-chat-completions-observability.py`](./model-router-chat-completions-observability.py) | Chat Completions | API Key | Displays the selected model, routing mode, attempts, latency, and status for each routing decision |
+| [`model-router-chat-completions-session-affinity.py`](./model-router-chat-completions-session-affinity.py) | Chat Completions | API Key | Reuses a session ID across conversation turns to demonstrate session-aware model routing |
 | [`foundry-responses-sdk/`](./model-router-foundry-responses.py) | Foundry SDK | Entra ID | Uses `AIProjectClient` → `get_openai_client()` → Responses API |
 
 ## Prerequisites
@@ -45,7 +46,7 @@ Model Router is a deployable AI chat model in Azure AI Foundry that **automatica
 
    Edit `.env` with your values:
 
-   ```
+   ```text
    AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
    AZURE_OPENAI_API_KEY=your-api-key-here
    MODEL_DEPLOYMENT_NAME=model-router
@@ -107,6 +108,59 @@ The following JSON shows the `model_selection_details` fragment parsed by that c
 
 This payload is illustrative. The selected models, number of attempts, errors, latency, and preview response schema can vary by request and service version.
 
+### Chat Completions Session Affinity (Preview)
+
+```bash
+python model-router-chat-completions-session-affinity.py
+```
+
+This sample creates an opaque session ID and sends it in `routing_config.session_affinity.session_id` for two conversation turns. It parses the affinity mode, identity source, and final decision from a response fragment like this:
+
+```json
+{
+   "model_selection_details": {
+      "model_router_details": {
+         "mode": "balanced",
+         "session_affinity": {
+            "mode": "sticky",
+            "source": "session_id_payload",
+            "decision": "initialize"
+         }
+      }
+   }
+}
+```
+
+| Decision | Meaning |
+| -------- | ------- |
+| `initialize` | No previous model association was available, and the initially selected model served the response. |
+| `retain` | The associated model served the response. |
+| `switch` | Eligibility or fallback caused another model to serve the response. |
+
+The sample is designed to demonstrate `initialize` followed by `retain`, but fallback can produce `switch` on either turn. The sample reports the actual outcome instead of forcing a service failure. Use the Chat Completions observability sample to inspect the routing attempts behind a `switch` decision. Session affinity is best-effort and does not store conversation content or guarantee a provider cache hit.
+
+**Sample output:**
+```text
+--- First turn ---
+Serving model: grok-4-1-fast-reasoning
+Routing mode: balanced
+Affinity mode: sticky
+Affinity source: session_id_payload
+Affinity decision: initialize
+Response:
+### One-Day Family Trip Itinerary to Seattle
+
+--- Second turn ---
+Serving model: grok-4-1-fast-reasoning
+Routing mode: balanced
+Affinity mode: sticky
+Affinity source: session_id_payload
+Affinity decision: retain
+Response:
+### Updated One-Day Family Trip Itinerary to Seattle (with Restaurant Suggestions & Indoor Focus)
+
+```
+
 ### Foundry Responses SDK (Entra ID)
 
 ```bash
@@ -117,6 +171,7 @@ python model-router-foundry-responses.py
 ## What to Expect
 
 Each example prints:
+
 - **Which underlying model** was selected by the router (e.g. `gpt-4.1-mini-2025-04-14`)
 - **The model's response** to the prompt
 - Token usage
