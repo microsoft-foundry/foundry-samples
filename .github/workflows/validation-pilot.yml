@@ -252,11 +252,15 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - name: Download normalized run
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v4
         with:
           name: validation-pilot-run-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/pilot-artifacts
       - name: Collect per-sample job links
+        if: always() && steps.download.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -268,6 +272,7 @@ jobs:
             --jobs-file "$RUNNER_TEMP/jobs.ndjson" \
             --output "$RUNNER_TEMP/pilot-artifacts/job-links.json"
       - name: Collect per-sample artifact links
+        if: always() && steps.download.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -279,19 +284,34 @@ jobs:
             --artifacts-file "$RUNNER_TEMP/artifacts.ndjson" \
             --repository "$GITHUB_REPOSITORY" \
             --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --output "$RUNNER_TEMP/pilot-artifacts/artifact-links.json"
       - name: Render dashboard
+        # Always renders *something* deployable, even when the run artifact
+        # above couldn't be downloaded (e.g. discovery or completeness
+        # failed before uploading it). Without this fallback, this step --
+        # and therefore the deploy-pages step below -- would simply never
+        # run, leaving whatever was deployed by a previous run looking like
+        # the current status. A visible "couldn't retrieve results" page is
+        # always preferable to a silently stale one.
+        if: always()
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/site"
-          python .github/scripts/render-validation-dashboard.py \
-            --results-dir "$RUNNER_TEMP/pilot-artifacts" \
-            --expected-samples "$RUNNER_TEMP/pilot-artifacts/manifest.json" \
-            --output "$RUNNER_TEMP/site/index.html" \
-            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            --job-links "$RUNNER_TEMP/pilot-artifacts/job-links.json" \
-            --artifact-links "$RUNNER_TEMP/pilot-artifacts/artifact-links.json" \
-            --codeowners .github/CODEOWNERS
+          if [ "${{ steps.download.outcome }}" = "success" ]; then
+            python .github/scripts/render-validation-dashboard.py \
+              --results-dir "$RUNNER_TEMP/pilot-artifacts" \
+              --expected-samples "$RUNNER_TEMP/pilot-artifacts/manifest.json" \
+              --output "$RUNNER_TEMP/site/index.html" \
+              --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+              --job-links "$RUNNER_TEMP/pilot-artifacts/job-links.json" \
+              --artifact-links "$RUNNER_TEMP/pilot-artifacts/artifact-links.json" \
+              --codeowners .github/CODEOWNERS
+          else
+            python .github/scripts/render-fallback-dashboard.py \
+              --output "$RUNNER_TEMP/site/index.html" \
+              --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

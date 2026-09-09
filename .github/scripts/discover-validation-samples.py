@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import stat
 from pathlib import Path
 
@@ -19,12 +20,41 @@ SUPPORTED_LANGUAGES = {
 }
 
 
+SAMPLE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
+RESERVED_SAMPLE_IDS = {"manifest"}
+RESERVED_SAMPLE_ID_PATTERN = re.compile(r"^run-\d+-\d+$")
+
+
 class DiscoveryError(ValueError):
     """A sample metadata error that should stop discovery."""
 
 
 def sample_id(path: str) -> str:
     return path.removeprefix("samples/").replace("/", "-")
+
+
+def validate_sample_id(identifier: str, path: str) -> None:
+    """Reject IDs that would be unsafe or ambiguous downstream.
+
+    Consumers embed a sample's derived ID directly in artifact names
+    (``validation-pilot-{id}``) and in GitHub Actions matrix job display
+    names (parsed as the first comma-separated field, e.g.
+    ``build-readiness ({id}, ...)``). An ID containing a comma or
+    parenthesis would break that parsing, and an ID equal to "manifest" or
+    matching "run-<digits>-<digits>" would collide with this workflow's own
+    reserved artifact names (``validation-pilot-manifest``,
+    ``validation-pilot-run-{run_id}-{run_attempt}``).
+    """
+    if not SAMPLE_ID_PATTERN.fullmatch(identifier):
+        raise DiscoveryError(
+            f"{path}: derived sample ID '{identifier}' must contain only "
+            "letters, digits, '-', and '_'"
+        )
+    if identifier in RESERVED_SAMPLE_IDS or RESERVED_SAMPLE_ID_PATTERN.fullmatch(identifier):
+        raise DiscoveryError(
+            f"{path}: derived sample ID '{identifier}' collides with a reserved "
+            "validation-pilot artifact name"
+        )
 
 
 def metadata_path(root: Path, metadata: Path) -> str:
@@ -75,6 +105,7 @@ def discover(root: Path) -> dict:
         validate_metadata_file(root, metadata)
         path = metadata.parent.relative_to(root).as_posix()
         identifier = sample_id(path)
+        validate_sample_id(identifier, path)
         if identifier in paths_by_id:
             raise DiscoveryError(
                 f"{metadata_path(root, metadata)}: duplicate derived sample ID "

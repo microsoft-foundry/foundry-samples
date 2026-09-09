@@ -193,6 +193,114 @@ class ReportTests(unittest.TestCase):
         self.assertIn("invalid artifact: sample-result.json", body)
         self.assertIn("⚠️ Infrastructure/error", body)
 
+    def test_invalid_result_for_a_known_sample_does_not_also_report_it_missing(self) -> None:
+        # A result artifact that identifies a real expected sample but fails
+        # validation for some other reason (here, an unsupported outcome)
+        # should produce exactly one error row for that sample -- not both an
+        # "invalid artifact" row and a separate "missing" row for the same
+        # sample.
+        manifest = json.loads(self.expected.read_text(encoding="utf-8"))
+        sample_definition = next(value for value in manifest["samples"] if value["path"] == SAMPLE_A)
+        sample_dir = self.results / sample_definition["id"]
+        sample_dir.mkdir()
+        (sample_dir / "diagnostics.log").write_text("diagnostic\n", encoding="utf-8")
+        (sample_dir / "sample-result.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": manifest["schema_version"],
+                    "sample": sample_definition,
+                    "outcome": "not-a-real-outcome",
+                    "completed_stage": "build readiness validation",
+                    "duration_seconds": 12.5,
+                    "diagnostic_reference": "diagnostics.log",
+                    "artifact_reference": f"validation-pilot-{sample_definition['id']}",
+                    "completed_at": "2026-08-10T19:22:33Z",
+                    "run": {
+                        "repository": "example/repo",
+                        "workflow": "validation pilot",
+                        "run_id": "42",
+                        "run_attempt": "1",
+                        "sha": "abcdef0",
+                        "ref": "refs/heads/main",
+                        "started_at": "2026-08-10T19:22:00Z",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        self.write_result(SAMPLE_B)
+        completed = self.run_report()
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertEqual(body.count(SAMPLE_A), 1, body)
+        self.assertNotIn("expected result artifact is missing for a", body)
+
+    def test_outcome_of_wrong_json_type_is_reported_as_error_not_a_crash(self) -> None:
+        # A malformed artifact whose outcome is e.g. a list rather than a
+        # string must not crash normalization with an uncaught TypeError --
+        # it should become an infrastructure/error row like any other
+        # malformed artifact.
+        manifest = json.loads(self.expected.read_text(encoding="utf-8"))
+        sample_definition = next(value for value in manifest["samples"] if value["path"] == SAMPLE_A)
+        sample_dir = self.results / sample_definition["id"]
+        sample_dir.mkdir()
+        (sample_dir / "diagnostics.log").write_text("diagnostic\n", encoding="utf-8")
+        (sample_dir / "sample-result.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": manifest["schema_version"],
+                    "sample": sample_definition,
+                    "outcome": ["passed"],
+                    "completed_stage": "build readiness validation",
+                    "duration_seconds": 12.5,
+                    "diagnostic_reference": "diagnostics.log",
+                    "artifact_reference": f"validation-pilot-{sample_definition['id']}",
+                    "completed_at": "2026-08-10T19:22:33Z",
+                    "run": {
+                        "repository": "example/repo",
+                        "workflow": "validation pilot",
+                        "run_id": "42",
+                        "run_attempt": "1",
+                        "sha": "abcdef0",
+                        "ref": "refs/heads/main",
+                        "started_at": "2026-08-10T19:22:00Z",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        self.write_result(SAMPLE_B)
+        completed = self.run_report()
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("⚠️ Infrastructure/error", body)
+
+    def test_all_samples_missing_still_links_validated_commit_from_run_metadata(self) -> None:
+        # When every expected sample is missing, there is no per-sample `run`
+        # block to draw the validated-commit link from -- but the
+        # completeness job always persists a run-metadata.json alongside the
+        # per-sample result directories, and that should be used as a
+        # fallback so the report doesn't lose run/commit context entirely.
+        (self.results / "run-metadata.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "repository": "example/repo",
+                    "workflow": "validation pilot",
+                    "run_id": "42",
+                    "run_attempt": "1",
+                    "sha": "abcdef0",
+                    "ref": "refs/heads/main",
+                    "completed_at": "2026-08-10T19:22:33Z",
+                }
+            ),
+            encoding="utf-8",
+        )
+        completed = self.run_report()
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("abcdef0", body)
+
 
 if __name__ == "__main__":
     unittest.main()

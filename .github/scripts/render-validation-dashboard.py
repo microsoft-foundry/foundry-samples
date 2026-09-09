@@ -256,7 +256,9 @@ SORT_SCRIPT = """
   var currentIndex = null;
   var currentDir = 1;
   headers.forEach(function (th) {
-    th.addEventListener("click", function () {
+    var button = th.querySelector(".sort-button");
+    if (!button) return;
+    button.addEventListener("click", function () {
       var index = parseInt(th.getAttribute("data-sort-index"), 10);
       var type = th.getAttribute("data-sort-type") || "text";
       currentDir = index === currentIndex ? -currentDir : 1;
@@ -275,8 +277,13 @@ SORT_SCRIPT = """
         return 0;
       });
       rows.forEach(function (row) { tbody.appendChild(row); });
-      headers.forEach(function (other) { other.removeAttribute("data-sort-dir"); });
-      th.setAttribute("data-sort-dir", currentDir === 1 ? "asc" : "desc");
+      headers.forEach(function (other) {
+        other.removeAttribute("data-sort-dir");
+        other.setAttribute("aria-sort", "none");
+      });
+      var dir = currentDir === 1 ? "asc" : "desc";
+      th.setAttribute("data-sort-dir", dir);
+      th.setAttribute("aria-sort", dir === "asc" ? "ascending" : "descending");
     });
   });
 })();
@@ -437,7 +444,8 @@ def render(
         ("Codeowner", "text"),
     ]
     header_cells = "".join(
-        f'<th data-sort-index="{index}" data-sort-type="{sort_type}">{esc(label)}<span class="sort-indicator"></span></th>'
+        f'<th data-sort-index="{index}" data-sort-type="{sort_type}" aria-sort="none">'
+        f'<button type="button" class="sort-button">{esc(label)}<span class="sort-indicator"></span></button></th>'
         for index, (label, sort_type) in enumerate(columns)
     )
     table = (
@@ -476,8 +484,14 @@ def render(
   .banner-incomplete {{ background: #fff8c5; border: 1px solid #d4a72c; color: #6b5900; }}
   table {{ border-collapse: collapse; width: 100%; background: #ffffff; margin-top: 1.5rem; }}
   th, td {{ text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #d0d7de; font-size: 0.9rem; }}
-  th {{ background: #f6f8fa; color: #1b1f23; cursor: pointer; user-select: none; white-space: nowrap; }}
-  th:hover {{ background: #eaeef2; }}
+  th {{ background: #f6f8fa; color: #1b1f23; white-space: nowrap; padding: 0; }}
+  .sort-button {{
+    all: unset; display: block; box-sizing: border-box; width: 100%;
+    padding: 0.5rem 0.75rem; cursor: pointer; user-select: none;
+    font: inherit; color: inherit;
+  }}
+  .sort-button:hover {{ background: #eaeef2; }}
+  .sort-button:focus-visible {{ outline: 2px solid #0969da; outline-offset: -2px; }}
   th .sort-indicator::after {{ content: ""; margin-left: 0.35rem; color: #57606a; }}
   th[data-sort-dir="asc"] .sort-indicator::after {{ content: "▲"; }}
   th[data-sort-dir="desc"] .sort-indicator::after {{ content: "▼"; }}

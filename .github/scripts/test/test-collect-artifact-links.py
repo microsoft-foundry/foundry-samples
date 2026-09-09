@@ -19,7 +19,13 @@ class CollectArtifactLinksTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
-    def run_script(self, artifacts: list[dict[str, object]], repository: str = "example/repo", run_id: str = "42") -> dict[str, str]:
+    def run_script(
+        self,
+        artifacts: list[dict[str, object]],
+        repository: str = "example/repo",
+        run_id: str = "42",
+        run_attempt: str = "1",
+    ) -> dict[str, str]:
         artifacts_file = self.root / "artifacts.ndjson"
         artifacts_file.write_text("\n".join(json.dumps(artifact) for artifact in artifacts) + "\n", encoding="utf-8")
         output = self.root / "artifact-links.json"
@@ -33,6 +39,8 @@ class CollectArtifactLinksTests(unittest.TestCase):
                 repository,
                 "--run-id",
                 run_id,
+                "--run-attempt",
+                run_attempt,
                 "--output",
                 str(output),
             ],
@@ -88,6 +96,8 @@ class CollectArtifactLinksTests(unittest.TestCase):
                 "example/repo",
                 "--run-id",
                 "42",
+                "--run-attempt",
+                "1",
                 "--output",
                 str(output),
             ],

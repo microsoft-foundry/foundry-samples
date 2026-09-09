@@ -12,6 +12,9 @@ Matrix job display names GitHub Actions generates look like:
 GitHub truncates the display name to roughly 100 characters, but the sample
 id -- the matrix's first field -- always appears in full before the first
 comma, so it can be recovered even when the rest of the name is cut off.
+This depends on sample ids never containing a comma or parenthesis;
+discover-validation-samples.py enforces a `[A-Za-z0-9_-]+` id alphabet at
+discovery time specifically so that guarantee holds here.
 
 Input is NDJSON (one job object per line) with at least `name` and
 `html_url` fields, e.g. produced by:

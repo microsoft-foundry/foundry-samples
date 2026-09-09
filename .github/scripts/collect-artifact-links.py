@@ -19,14 +19,15 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 
-SAMPLE_ARTIFACT_PATTERN = re.compile(r"^validation-pilot-(?!manifest$|run-\d+-\d+$)(.+)$")
+ARTIFACT_NAME_PREFIX = "validation-pilot-"
 
 
-def collect_links(lines: list[str], repository: str, run_id: str) -> dict[str, str]:
+def collect_links(
+    lines: list[str], repository: str, run_id: str, reserved_names: set[str]
+) -> dict[str, str]:
     links: dict[str, str] = {}
     for line in lines:
         line = line.strip()
@@ -42,10 +43,9 @@ def collect_links(lines: list[str], repository: str, run_id: str) -> dict[str, s
         artifact_id = artifact.get("id")
         if not isinstance(name, str) or not isinstance(artifact_id, int):
             continue
-        match = SAMPLE_ARTIFACT_PATTERN.match(name)
-        if not match:
+        if name in reserved_names or not name.startswith(ARTIFACT_NAME_PREFIX):
             continue
-        sample_id = match.group(1)
+        sample_id = name[len(ARTIFACT_NAME_PREFIX):]
         links[sample_id] = f"https://github.com/{repository}/actions/runs/{run_id}/artifacts/{artifact_id}"
     return links
 
@@ -55,11 +55,16 @@ def main() -> int:
     parser.add_argument("--artifacts-file", type=Path, required=True, help="NDJSON of {name, id} artifact objects")
     parser.add_argument("--repository", required=True, help="owner/repo, used to build the artifact page URL")
     parser.add_argument("--run-id", required=True)
+    parser.add_argument("--run-attempt", required=True, help="Used to exclude this workflow's own combined-run artifact by its exact name")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    reserved_names = {
+        "validation-pilot-manifest",
+        f"validation-pilot-run-{args.run_id}-{args.run_attempt}",
+    }
     try:
         lines = args.artifacts_file.read_text(encoding="utf-8").splitlines()
-        links = collect_links(lines, args.repository, args.run_id)
+        links = collect_links(lines, args.repository, args.run_id, reserved_names)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(links, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     except OSError as exc:
