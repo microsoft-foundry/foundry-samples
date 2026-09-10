@@ -95,7 +95,10 @@ whatever discovery's manifest already contains, so a sample with a
 inline diagnostic text — instead it links each sample's status to its job
 run for logs, and links to that sample's diagnostics artifact for download
 when one was uploaded, alongside stage, duration, completion time, and
-codeowner.
+codeowner. Failed and errored rows also provide a **Fix with Copilot** action.
+The action opens a prefilled issue for review with the sample, run, job, and
+artifact context and assigns it to Copilot when submitted; Copilot then
+investigates the failure and opens a pull request.
 
 ## Current limits
 

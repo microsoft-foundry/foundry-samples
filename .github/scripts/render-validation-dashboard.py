@@ -36,6 +36,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 
 from validation_pilot_common import (
     OUTCOMES,
@@ -109,6 +110,64 @@ def commit_link(run: dict[str, Any]) -> str | None:
     ):
         return f"https://github.com/{repository}/commit/{sha}"
     return None
+
+
+def copilot_issue_link(
+    record: dict[str, Any],
+    status_href: str | None,
+    artifact_href: str | None,
+) -> str | None:
+    """Build a review-before-submit issue that assigns the failure to Copilot."""
+    if record["outcome"] not in {"sample failure", "infrastructure/error"}:
+        return None
+
+    sample = record["sample"]
+    run = record.get("run", {})
+    repository = run.get("repository")
+    if not isinstance(repository, str) or not REPOSITORY_PATTERN.fullmatch(repository):
+        return None
+
+    run_id = run.get("run_id")
+    sha = run.get("sha")
+    details = [
+        f"- Sample: `{sample['path']}`",
+        f"- Language: `{sample['language']}`",
+        f"- Outcome: `{record['outcome']}`",
+        f"- Stage: `{record.get('completed_stage', 'unknown')}`",
+    ]
+    if isinstance(run_id, str) and run_id.isdigit():
+        details.append(f"- Run ID: `{run_id}`")
+    if isinstance(sha, str) and SHA_PATTERN.fullmatch(sha):
+        details.append(f"- Validated commit: `{sha}`")
+    if status_href:
+        details.append(f"- Workflow job: {status_href}")
+    if artifact_href:
+        details.append(f"- Diagnostic artifact: {artifact_href}")
+
+    body = "\n".join(
+        [
+            "## Validation failure",
+            "",
+            *details,
+            "",
+            "## Task",
+            "",
+            "Investigate this validation failure and determine the root cause. "
+            "Download and inspect the diagnostic artifact when available, reproduce "
+            "the failure, and make the smallest appropriate fix without weakening "
+            "validation. Run the relevant tests and open a pull request with the fix.",
+            "",
+            "> Created from the foundry-samples validation dashboard.",
+        ]
+    )
+    query = urlencode(
+        {
+            "title": f"Fix validation failure: {sample['path']}",
+            "body": body,
+            "assignees": "copilot-swe-agent[bot]",
+        }
+    )
+    return f"https://github.com/{repository}/issues/new?{query}"
 
 
 def load_link_map(path: Path | None, repository: str | None, url_suffix_pattern: str) -> dict[str, str]:
@@ -228,6 +287,13 @@ def render_row(
     artifact_cell = (
         f'<a href="{esc(artifact_href)}" class="artifact-link">{DOWNLOAD_ICON}Diagnostics</a>' if artifact_href else "—"
     )
+    copilot_href = copilot_issue_link(record, status_href, artifact_href)
+    copilot_cell = (
+        f'<a href="{esc(copilot_href)}" class="copilot-link">Fix with Copilot ↗</a>'
+        if copilot_href
+        else "—"
+    )
+    copilot_sort = "1" if copilot_href else "0"
     stage = record.get("completed_stage", "—")
     owners = codeowners or []
     codeowner_display = ", ".join(codeowner_display_name(owner) for owner in owners)
@@ -244,6 +310,7 @@ def render_row(
         f'<td data-sort-value="{esc(completed_sort)}">{completed_cell}</td>'
         f'<td data-sort-value="{artifact_sort}">{artifact_cell}</td>'
         f'<td data-sort-value="{esc(codeowner_display.lower())}">{codeowner_cell}</td>'
+        f'<td data-sort-value="{copilot_sort}">{copilot_cell}</td>'
         "</tr>"
     )
 
@@ -442,6 +509,7 @@ def render(
         ("Last checked", "text"),
         ("Artifact", "number"),
         ("Codeowner", "text"),
+        ("Action", "number"),
     ]
     header_cells = "".join(
         f'<th data-sort-index="{index}" data-sort-type="{sort_type}" aria-sort="none">'
@@ -498,7 +566,7 @@ def render(
   code {{ background: #f6f8fa; padding: 0.1rem 0.3rem; border-radius: 4px; }}
   a {{ color: #0969da; text-decoration: none; }}
   a:hover {{ text-decoration: underline; }}
-  .artifact-link {{ display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }}
+  .artifact-link, .copilot-link {{ display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }}
   .icon-download {{ flex: none; }}
   .badge {{ display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.85rem; white-space: nowrap; }}
   .badge.passed {{ background: #dafbe1; color: #116329; }}
@@ -515,7 +583,9 @@ def render(
 <footer>
   Full diagnostic logs aren't inlined on this page. Click a status badge, or
   the Diagnostics link when present, for per-sample logs, subject to GitHub
-  Actions retention and authentication. Click any column header to sort.
+  Actions retention and authentication. For failed or errored samples, Fix
+  with Copilot opens a prefilled issue for review; submitting it assigns the
+  investigation to Copilot. Click any column header to sort.
 </footer>
 <script>{SORT_SCRIPT}
 {FILTER_SCRIPT}</script>

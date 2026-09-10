@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import json
+import html
+import re
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "render-validation-dashboard.py"
@@ -266,6 +269,35 @@ class DashboardTests(unittest.TestCase):
         body = self.output.read_text(encoding="utf-8")
         self.assertNotIn("some-other/repo", body)
         self.assertNotIn("Diagnostics</a>", body)
+
+    def test_failed_sample_offers_prefilled_copilot_issue(self) -> None:
+        self.write_result(SAMPLE_A, "passed")
+        self.write_result(SAMPLE_B, "sample failure", completed_stage="live-service validation")
+        completed = self.run_dashboard(
+            job_links={"b": "https://github.com/example/repo/actions/runs/42/job/999"},
+            artifact_links={"b": "https://github.com/example/repo/actions/runs/42/artifacts/555"},
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        body = self.output.read_text(encoding="utf-8")
+        match = re.search(r'<a href="([^"]+)" class="copilot-link">Fix with Copilot ↗</a>', body)
+        self.assertIsNotNone(match)
+        issue_url = html.unescape(match.group(1))
+        parsed = urlparse(issue_url)
+        query = parse_qs(parsed.query)
+        self.assertEqual(parsed.path, "/example/repo/issues/new")
+        self.assertEqual(query["assignees"], ["copilot-swe-agent[bot]"])
+        self.assertEqual(query["title"], [f"Fix validation failure: {SAMPLE_B}"])
+        self.assertIn(SAMPLE_B, query["body"][0])
+        self.assertIn("live-service validation", query["body"][0])
+        self.assertIn("https://github.com/example/repo/actions/runs/42/job/999", query["body"][0])
+        self.assertIn("https://github.com/example/repo/actions/runs/42/artifacts/555", query["body"][0])
+
+    def test_passed_sample_does_not_offer_copilot_issue(self) -> None:
+        self.write_result(SAMPLE_A, "passed")
+        completed = self.run_dashboard()
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertNotIn("Fix with Copilot", body)
 
     def test_language_filter_row_lists_each_distinct_language(self) -> None:
         self.write_result(SAMPLE_A, "passed")
