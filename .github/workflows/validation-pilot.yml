@@ -20,7 +20,7 @@ jobs:
       build_readiness_matrix: ${{ steps.discovery.outputs.build_readiness_matrix }}
       live_service_matrix: ${{ steps.discovery.outputs.live_service_matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -59,7 +59,7 @@ jobs:
       max-parallel: 32
       matrix: ${{ fromJSON(needs.discover.outputs.build_readiness_matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         if: matrix.validator_language == 'csharp'
         with:
@@ -128,7 +128,7 @@ jobs:
       max-parallel: 4
       matrix: ${{ fromJSON(needs.discover.outputs.live_service_matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         if: matrix.validator_language == 'csharp'
         with:
@@ -179,7 +179,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v4
         with:
           pattern: validation-pilot-*
@@ -251,7 +251,7 @@ jobs:
       pages: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Download normalized run
         id: download
         continue-on-error: true
