@@ -227,9 +227,11 @@ def collect(results_dir: Path, expected: list[dict[str, str]]) -> tuple[list[dic
                 key = sample_id
                 placeholder_sample = expected_by_id[sample_id]
             else:
-                key = f"invalid:{path}"
+                artifact_path = path.relative_to(results_dir).as_posix()
+                key = f"invalid:{artifact_path}"
                 placeholder_sample = {
-                    "id": path.name, "path": f"<invalid artifact: {path.name}>",
+                    "id": key,
+                    "path": f"<invalid artifact: {artifact_path}>",
                     "language": "reporting", "shape": "error",
                 }
             records[key] = {

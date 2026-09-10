@@ -190,8 +190,21 @@ class ReportTests(unittest.TestCase):
         completed = self.run_report()
         self.assertEqual(completed.returncode, 1)
         body = self.output.read_text(encoding="utf-8")
-        self.assertIn("invalid artifact: sample-result.json", body)
+        self.assertIn("invalid artifact: bad/sample-result.json", body)
         self.assertIn("⚠️ Infrastructure/error", body)
+
+    def test_multiple_orphaned_artifacts_keep_unique_identities(self) -> None:
+        for directory in ("bad-one", "bad-two"):
+            bad = self.results / directory
+            bad.mkdir()
+            (bad / "sample-result.json").write_text("{", encoding="utf-8")
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("invalid artifact: bad-one/sample-result.json", body)
+        self.assertIn("invalid artifact: bad-two/sample-result.json", body)
 
     def test_invalid_result_for_a_known_sample_does_not_also_report_it_missing(self) -> None:
         # A result artifact that identifies a real expected sample but fails

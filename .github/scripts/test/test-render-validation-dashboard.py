@@ -163,6 +163,25 @@ class DashboardTests(unittest.TestCase):
         body = self.output.read_text(encoding="utf-8")
         self.assertIn("banner banner-incomplete", body)
 
+    def test_multiple_orphaned_artifacts_render_as_distinct_rows(self) -> None:
+        self.write_result(SAMPLE_A, "passed")
+        self.write_result(SAMPLE_B, "sample failure")
+        for directory in ("bad-one", "bad-two"):
+            bad = self.results / directory
+            bad.mkdir()
+            (bad / "sample-result.json").write_text("{", encoding="utf-8")
+
+        completed = self.run_dashboard()
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("invalid artifact: bad-one/sample-result.json", body)
+        self.assertIn("invalid artifact: bad-two/sample-result.json", body)
+        self.assertIn(
+            'data-filter-language="reporting" class="filter-btn">reporting (2)</button>',
+            body,
+        )
+
     def test_diagnostic_text_never_appears_on_the_public_page(self) -> None:
         self.write_result(SAMPLE_A, "passed")
         self.write_result(
