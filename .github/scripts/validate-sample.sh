@@ -401,8 +401,11 @@ apply_live_service_substitutions() {
 
     # Preflight: every replacement is validated and applied in memory first, so a
     # later invalid replacement can never leave the checkout partially rewritten.
+    # Parallel indexed arrays (not an associative array) keep this loop working on
+    # Bash 3.2, which is still the default shell on macOS.
     local -a pending_paths=()
-    local -A pending_content=()
+    local -a pending_contents=()
+    local slot pending_index
 
     i=0
     while [ "$i" -lt "$substitutions_count" ]; do
@@ -445,11 +448,23 @@ apply_live_service_substitutions() {
         [ "$replacement_count" -gt 0 ] ||
             error "sample.yaml live_service_validation.substitutions[$i].replacements must not be empty"
 
-        if [ -z "${pending_content[$target_file]+set}" ]; then
+        slot=""
+        pending_index=0
+        while [ "$pending_index" -lt "${#pending_paths[@]}" ]; do
+            if [ "${pending_paths[$pending_index]}" = "$target_file" ]; then
+                slot="$pending_index"
+                break
+            fi
+            pending_index=$((pending_index + 1))
+        done
+        if [ -z "$slot" ]; then
             local content=""
-            IFS= read -r -d '' content <"$target_file"
-            pending_content["$target_file"]="$content"
+            # read exits non-zero at EOF without a NUL delimiter, which is the normal
+            # case for a text file; the whole file is still captured in "$content".
+            IFS= read -r -d '' content <"$target_file" || true
+            slot="${#pending_paths[@]}"
             pending_paths+=("$target_file")
+            pending_contents+=("$content")
         fi
 
         local j replacement_kind placeholder_tag placeholder env_tag env_name env_value
@@ -480,21 +495,22 @@ apply_live_service_substitutions() {
                 error "required live-service substitution environment variable is missing or empty: $env_name"
             env_value="${!env_name}"
 
-            case "${pending_content[$target_file]}" in
+            case "${pending_contents[$slot]}" in
                 *"$placeholder"*) ;;
                 *) error "live-service substitution placeholder not found in $file: $placeholder" ;;
             esac
-            pending_content["$target_file"]="${pending_content[$target_file]//"$placeholder"/$env_value}"
+            pending_contents[$slot]="${pending_contents[$slot]//"$placeholder"/$env_value}"
             j=$((j + 1))
         done
         i=$((i + 1))
     done
 
     # Commit: the whole declaration validated, so every rewrite can now be written.
-    local path
-    for path in ${pending_paths[@]+"${pending_paths[@]}"}; do
-        printf '%s' "${pending_content[$path]}" >"$path" ||
-            error "live-service substitution failed to write file: $path"
+    pending_index=0
+    while [ "$pending_index" -lt "${#pending_paths[@]}" ]; do
+        printf '%s' "${pending_contents[$pending_index]}" >"${pending_paths[$pending_index]}" ||
+            error "live-service substitution failed to write file: ${pending_paths[$pending_index]}"
+        pending_index=$((pending_index + 1))
     done
 }
 
