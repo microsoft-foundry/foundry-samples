@@ -210,6 +210,8 @@ class Tree:
     def read_text(self, path: str) -> str:
         if self.worktree:
             disk = self.repo_root / path
+            if disk.is_symlink():
+                raise CheckerError(f"{path}: worktree path is a symbolic link, not a regular file")
             if disk.is_file():
                 raw = disk.read_bytes()
             else:  # staged deletion or a staged-but-not-materialized path
@@ -554,11 +556,7 @@ def discover_expected(text: str, path: str) -> tuple[str, list[str]]:
         return (MODE_NOTEBOOK_CELL, deduped) if deduped else (MODE_WHOLE_FILE, [])
     if suffix in NO_COMMENT_EXTS:
         return MODE_WHOLE_FILE, []
-    try:
-        tags = parse_tags(text, path)
-    except CheckerError:
-        # Unknown extension: it cannot be scanned, so treat it as a whole-file reference.
-        return MODE_WHOLE_FILE, []
+    tags = parse_tags(text, path)
     deduped = list(dict.fromkeys(tag.name for tag in tags if not tag.closing))
     return (MODE_DELIMITED, deduped) if deduped else (MODE_WHOLE_FILE, [])
 
@@ -706,12 +704,16 @@ def seed(repo_root: Path, manifest_path: Path, paths: list[str], tree: Tree, pin
             print(f"skip (not tracked): {path}", file=sys.stderr)
             continue
         previous = existing.get(path)
-        note = previous.note if previous else ""
-        # Keep an entry explicit if it already was, even without --pin: pinning is a deliberate
-        # choice the docs team made for that file and a reseed must not silently undo it.
-        keep_explicit = previous is not None and previous.mode != MODE_AUTO
-        if not pin and not keep_explicit and not note:
+        if not pin and previous is None:
             files.append(path)
+            continue
+        if not pin and previous is not None:
+            item: dict[str, object] = {"path": path, "mode": previous.mode}
+            if previous.snippets:
+                item["snippets"] = previous.snippets
+            if previous.note:
+                item["note"] = previous.note
+            files.append(item if previous.mode != MODE_AUTO or previous.note else path)
             continue
         try:
             entry_mode, snippets = discover_expected(tree.read_text(path), path)
@@ -721,8 +723,8 @@ def seed(repo_root: Path, manifest_path: Path, paths: list[str], tree: Tree, pin
         item: dict[str, object] = {"path": path, "mode": entry_mode}
         if snippets:
             item["snippets"] = snippets
-        if note:
-            item["note"] = note
+        if previous and previous.note:
+            item["note"] = previous.note
         files.append(item)
 
     document = {

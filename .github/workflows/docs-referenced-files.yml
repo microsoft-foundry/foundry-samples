@@ -1,4 +1,4 @@
-name: docs-referenced files
+name: docs-referenced-files
 
 # Protects the sample files that PUBLISHED Microsoft Learn articles include by reference
 # (`:::code source="<path>" id="<snippet>":::`). Three changes break the docs build:

@@ -281,6 +281,15 @@ class CheckerContractTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("[missing] samples/app.py", result.stdout)
 
+    def test_worktree_mode_rejects_unstaged_symlink_replacement(self) -> None:
+        self.repo.write("samples/elsewhere.py", PY_SAMPLE)
+        target = self.repo.root / "samples/app.py"
+        target.unlink()
+        os.symlink("elsewhere.py", target)
+        result = self.repo.check("--worktree")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("symbolic link", result.stdout)
+
     # --- fail-loud behavior -------------------------------------------------------------
     def test_missing_manifest_is_error_not_pass(self) -> None:
         (self.repo.root / ".github" / "docs-referenced-files.json").unlink()
@@ -504,6 +513,37 @@ class CheckerContractTests(unittest.TestCase):
         self.assertEqual(by_path["samples/app.py"]["snippets"], ["create_agent", "run_agent"])
         self.assertEqual(by_path["samples/policy.json"]["mode"], "whole-file")
 
+    def test_seed_preserves_existing_pinned_entry(self) -> None:
+        result = self.repo.check("--seed", "--path", "samples/app.py")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(
+            (self.repo.root / ".github" / "docs-referenced-files.json").read_text()
+        )
+        self.assertEqual(
+            data["files"],
+            [
+                {
+                    "path": "samples/app.py",
+                    "mode": "delimited",
+                    "snippets": ["create_agent", "run_agent"],
+                }
+            ],
+        )
+
+    def test_seed_preserves_annotated_auto_entry(self) -> None:
+        self.repo.write_manifest(
+            [{"path": "samples/app.py", "mode": "auto", "note": "Docs uses this file."}]
+        )
+        result = self.repo.check("--seed", "--path", "samples/app.py")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(
+            (self.repo.root / ".github" / "docs-referenced-files.json").read_text()
+        )
+        self.assertEqual(
+            data["files"],
+            [{"path": "samples/app.py", "mode": "auto", "note": "Docs uses this file."}],
+        )
+
 
 class AutoModeTests(unittest.TestCase):
     """Bare-path manifest entries: expectations discovered from the file, removal caught vs base."""
@@ -562,6 +602,22 @@ class AutoModeTests(unittest.TestCase):
         )
         self.repo.commit("edit body")
         self.assertEqual(self.check().returncode, 0)
+
+    def test_bare_unknown_extension_requires_explicit_whole_file_mode(self) -> None:
+        self.repo.write("samples/unknown.wat", "# <referenced>\nvalue\n# </referenced>\n")
+        self.repo.write_manifest(["samples/app.py", "samples/unknown.wat"])
+        self.repo.commit("add unknown file")
+        base = subprocess.run(
+            ["git", "-C", str(self.repo.root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        self.repo.write("samples/unknown.wat", "value\n")
+        self.repo.commit("drop unknown tag")
+        result = self.repo.check("--base-ref", base)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("unknown file type", result.stdout)
 
     def test_bare_path_notebook_cell_removal_detected(self) -> None:
         notebook = json.dumps(
@@ -648,6 +704,7 @@ class RepoManifestTests(unittest.TestCase):
         directives = "\n".join(
             line for line in text.split("\n") if not line.lstrip().startswith("#")
         )
+        self.assertIn("name: docs-referenced-files", directives)
         self.assertIn("on:\n  pull_request:", directives)
         self.assertNotIn("pull_request_target", directives)
         self.assertIn("permissions:\n  contents: read", directives)
