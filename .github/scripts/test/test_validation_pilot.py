@@ -416,6 +416,49 @@ print_value(resolve(query))
                 (sample / "quickstart.py").read_text(encoding="utf-8"), original
             )
 
+    def test_live_service_substitutions_reject_binary_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sample = root / "samples" / "python" / "binary"
+            sample.mkdir(parents=True)
+            original = b'your_project_endpoint\x00binary\n'
+            (sample / "payload.bin").write_bytes(original)
+            (sample / "sample.yaml").write_text(
+                "name: binary\n"
+                "live_service_validation:\n"
+                "  command: \"true\"\n"
+                "  substitutions:\n"
+                "    - file: payload.bin\n"
+                "      replacements:\n"
+                "        - placeholder: \"your_project_endpoint\"\n"
+                "          env: AZURE_AI_PROJECT_ENDPOINT\n",
+                encoding="utf-8",
+            )
+            self.write_fake_yq(root)
+            env = {
+                **os.environ,
+                "PATH": f"{root}{os.pathsep}{Path(sys.executable).parent}{os.pathsep}{os.environ['PATH']}",
+                "SKIP_PROVISION": "true",
+                "AZURE_AI_PROJECT_ENDPOINT": "https://validation.example/api/projects/project",
+            }
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "validate-sample.sh"),
+                    "--mode",
+                    "live-service",
+                    "--sample-dir",
+                    str(sample),
+                ],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+            self.assertEqual(completed.returncode, 2, completed.stdout)
+            self.assertIn("NUL-free text file", completed.stderr)
+            self.assertEqual((sample / "payload.bin").read_bytes(), original)
+
     def test_discovery_jobs_install_pinned_dependencies(self) -> None:
         for workflow_path in (WORKFLOW, SELFTEST_WORKFLOW):
             workflow = workflow_path.read_text(encoding="utf-8")

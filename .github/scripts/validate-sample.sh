@@ -405,7 +405,7 @@ apply_live_service_substitutions() {
     # Bash 3.2, which is still the default shell on macOS.
     local -a pending_paths=()
     local -a pending_contents=()
-    local slot pending_index
+    local slot pending_index pending_count=0
 
     i=0
     while [ "$i" -lt "$substitutions_count" ]; do
@@ -450,7 +450,7 @@ apply_live_service_substitutions() {
 
         slot=""
         pending_index=0
-        while [ "$pending_index" -lt "${#pending_paths[@]}" ]; do
+        while [ "$pending_index" -lt "$pending_count" ]; do
             if [ "${pending_paths[$pending_index]}" = "$target_file" ]; then
                 slot="$pending_index"
                 break
@@ -459,12 +459,17 @@ apply_live_service_substitutions() {
         done
         if [ -z "$slot" ]; then
             local content=""
+            # Shell strings cannot carry NUL bytes, so a binary file is rejected rather
+            # than silently truncated at its first NUL when the rewrite is written back.
+            tr -d '\000' <"$target_file" | cmp -s - "$target_file" ||
+                error "sample.yaml live_service_validation.substitutions[$i].file is not a NUL-free text file: $file"
             # read exits non-zero at EOF without a NUL delimiter, which is the normal
             # case for a text file; the whole file is still captured in "$content".
             IFS= read -r -d '' content <"$target_file" || true
-            slot="${#pending_paths[@]}"
+            slot="$pending_count"
             pending_paths+=("$target_file")
             pending_contents+=("$content")
+            pending_count=$((pending_count + 1))
         fi
 
         local j replacement_kind placeholder_tag placeholder env_tag env_name env_value
@@ -507,7 +512,7 @@ apply_live_service_substitutions() {
 
     # Commit: the whole declaration validated, so every rewrite can now be written.
     pending_index=0
-    while [ "$pending_index" -lt "${#pending_paths[@]}" ]; do
+    while [ "$pending_index" -lt "$pending_count" ]; do
         printf '%s' "${pending_contents[$pending_index]}" >"${pending_paths[$pending_index]}" ||
             error "live-service substitution failed to write file: ${pending_paths[$pending_index]}"
         pending_index=$((pending_index + 1))

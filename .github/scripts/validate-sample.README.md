@@ -106,7 +106,8 @@ The contract is:
   missing, malformed, or does not contain the placeholder. Substitutions are
   validated and applied in memory first and written only after the whole
   declaration is valid, so a rejected declaration never leaves a partially
-  rewritten checkout. Rewriting uses Bash only, so a substitution never adds a
+  rewritten checkout. Target files must be regular, non-symlinked text files
+  without NUL bytes. Rewriting uses Bash only, so a substitution never adds a
   toolchain requirement beyond the sample's own language.
 - `SKIP_PROVISION` is a reserved caller input and must be set to exactly `true`
   or `false` whenever live-service validation is declared. The validator
