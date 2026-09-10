@@ -28,6 +28,89 @@ DISCOVERY_SPEC.loader.exec_module(validation_discovery)
 
 
 class ValidationPilotTests(unittest.TestCase):
+    def write_fake_yq(self, directory: Path) -> Path:
+        yq = directory / "yq"
+        yq.write_text(
+            """#!/usr/bin/env python3
+import re
+import sys
+from pathlib import Path
+
+import yaml
+
+if len(sys.argv) != 4 or sys.argv[1] != "eval":
+    raise SystemExit(2)
+
+query = sys.argv[2]
+document = yaml.safe_load(Path(sys.argv[3]).read_text(encoding="utf-8"))
+
+
+def resolve(path):
+    current = document
+    if path == ".":
+        return current
+    for part in path.lstrip(".").split("."):
+        if not part:
+            continue
+        match = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*)(?:[[]([0-9]+)[]])?", part)
+        if not match:
+            raise SystemExit(2)
+        current = current[match.group(1)]
+        if match.group(2) is not None:
+            current = current[int(match.group(2))]
+    return current
+
+
+def print_value(value):
+    if isinstance(value, bool):
+        print("true" if value else "false")
+    elif value is None:
+        print("null")
+    elif isinstance(value, (dict, list)):
+        print(yaml.safe_dump(value), end="")
+    else:
+        print(value)
+
+
+if query == ".":
+    print_value(document)
+    raise SystemExit(0)
+
+root_has_match = re.fullmatch(r'has\\("([^"]+)"\\)', query)
+if root_has_match:
+    print("true" if isinstance(document, dict) and root_has_match.group(1) in document else "false")
+    raise SystemExit(0)
+
+has_match = re.fullmatch(r'(.+) \\| has\\("([^"]+)"\\)', query)
+if has_match:
+    value = resolve(has_match.group(1))
+    print("true" if isinstance(value, dict) and has_match.group(2) in value else "false")
+    raise SystemExit(0)
+
+kind_match = re.fullmatch(r"(.+) \\| kind", query)
+if kind_match:
+    value = resolve(kind_match.group(1))
+    print("map" if isinstance(value, dict) else "seq" if isinstance(value, list) else "scalar")
+    raise SystemExit(0)
+
+tag_match = re.fullmatch(r"(.+) \\| tag", query)
+if tag_match:
+    value = resolve(tag_match.group(1))
+    print("!!str" if isinstance(value, str) else "!!null" if value is None else "!!int")
+    raise SystemExit(0)
+
+length_match = re.fullmatch(r"(.+) \\| length", query)
+if length_match:
+    print(len(resolve(length_match.group(1))))
+    raise SystemExit(0)
+
+print_value(resolve(query))
+""",
+            encoding="utf-8",
+        )
+        yq.chmod(0o755)
+        return yq
+
     def test_workflow_calls_report_after_completeness(self) -> None:
         workflow = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("  report:", workflow)
@@ -171,6 +254,61 @@ class ValidationPilotTests(unittest.TestCase):
         )
         self.assertIn('SKIP_PROVISION: "true"', workflow)
         self.assertIn('python -m pip install -r "${{ matrix.path }}/requirements.txt"', workflow)
+
+    def test_live_service_substitutions_replace_instructional_placeholders(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sample = root / "samples" / "python" / "substitution"
+            sample.mkdir(parents=True)
+            (sample / "quickstart.py").write_text(
+                'PROJECT_ENDPOINT = "your_project_endpoint"\n'
+                'AGENT_NAME = "your_agent_name"\n',
+                encoding="utf-8",
+            )
+            (sample / "check.py").write_text(
+                "from pathlib import Path\n"
+                "text = Path('quickstart.py').read_text(encoding='utf-8')\n"
+                "assert 'https://validation.example/api/projects/project' in text\n"
+                "assert 'your_agent_name' in text\n",
+                encoding="utf-8",
+            )
+            (sample / "sample.yaml").write_text(
+                "name: substitution\n"
+                "live_service_validation:\n"
+                "  command: \"python check.py\"\n"
+                "  substitutions:\n"
+                "    - file: quickstart.py\n"
+                "      replacements:\n"
+                "        - placeholder: \"your_project_endpoint\"\n"
+                "          env: AZURE_AI_PROJECT_ENDPOINT\n",
+                encoding="utf-8",
+            )
+            self.write_fake_yq(root)
+            env = {
+                **os.environ,
+                "PATH": f"{root}{os.pathsep}{Path(sys.executable).parent}{os.pathsep}{os.environ['PATH']}",
+                "SKIP_PROVISION": "true",
+                "AZURE_AI_PROJECT_ENDPOINT": "https://validation.example/api/projects/project",
+            }
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "validate-sample.sh"),
+                    "--mode",
+                    "live-service",
+                    "--sample-dir",
+                    str(sample),
+                ],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn("verdict=pass", completed.stdout)
+            quickstart = (sample / "quickstart.py").read_text(encoding="utf-8")
+            self.assertIn("https://validation.example/api/projects/project", quickstart)
+            self.assertIn("your_agent_name", quickstart)
 
     def test_discovery_jobs_install_pinned_dependencies(self) -> None:
         for workflow_path in (WORKFLOW, SELFTEST_WORKFLOW):

@@ -372,10 +372,119 @@ cleanup_python_venv() {
 #   live_service_validation:
 #     command: "<credentialed runtime assertion>"
 #     required_env: [OPTIONAL_ENV_NAME, ...]  # optional
+#     substitutions:                         # optional
+#       - file: "relative/sample-file.py"
+#         replacements:
+#           - placeholder: "your_project_endpoint"
+#             env: AZURE_AI_PROJECT_ENDPOINT
 #
 # The caller owns authentication and configuration. This script never provisions, logs in,
 # or invents defaults: it inherits the caller environment and requires the caller to set
 # SKIP_PROVISION to exactly true or false. A missing declaration is a successful no-op.
+apply_live_service_substitutions() {
+    local yaml="$SAMPLE_DIR/sample.yaml"
+    if [ "$(yq eval '.live_service_validation | has("substitutions")' "$yaml" 2>/dev/null)" != "true" ]; then
+        return 0
+    fi
+
+    local substitutions_kind substitutions_count i substitution_kind file_tag file replacement_count replacements_kind
+    substitutions_kind="$(yq eval '.live_service_validation.substitutions | kind' "$yaml" 2>/dev/null)" ||
+        error "failed to read sample.yaml live_service_validation.substitutions: $yaml"
+    [ "$substitutions_kind" = "seq" ] ||
+        error "sample.yaml live_service_validation.substitutions must be a list"
+    substitutions_count="$(yq eval '.live_service_validation.substitutions | length' "$yaml" 2>/dev/null)" ||
+        error "failed to read sample.yaml live_service_validation.substitutions: $yaml"
+
+    i=0
+    while [ "$i" -lt "$substitutions_count" ]; do
+        substitution_kind="$(yq eval ".live_service_validation.substitutions[$i] | kind" "$yaml" 2>/dev/null)" ||
+            error "failed to read sample.yaml live_service_validation.substitutions[$i]: $yaml"
+        [ "$substitution_kind" = "map" ] ||
+            error "sample.yaml live_service_validation.substitutions[$i] must be a mapping"
+
+        file_tag="$(yq eval ".live_service_validation.substitutions[$i].file | tag" "$yaml" 2>/dev/null)" ||
+            error "failed to read sample.yaml live_service_validation.substitutions[$i].file: $yaml"
+        [ "$file_tag" = "!!str" ] ||
+            error "sample.yaml live_service_validation.substitutions[$i].file must be a non-empty string"
+        file="$(yq eval ".live_service_validation.substitutions[$i].file" "$yaml" 2>/dev/null)" ||
+            error "failed to read sample.yaml live_service_validation.substitutions[$i].file: $yaml"
+        printf '%s' "$file" | grep -q '[^[:space:]]' ||
+            error "sample.yaml live_service_validation.substitutions[$i].file must be a non-empty string"
+        case "$file" in
+            /*|*../*|../*|*"/.."|".") error "sample.yaml live_service_validation.substitutions[$i].file must stay inside the sample directory: $file" ;;
+        esac
+        [ -f "$SAMPLE_DIR/$file" ] ||
+            error "sample.yaml live_service_validation.substitutions[$i].file does not exist or is not a regular file: $file"
+
+        replacements_kind="$(yq eval ".live_service_validation.substitutions[$i].replacements | kind" "$yaml" 2>/dev/null)" ||
+            error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements: $yaml"
+        [ "$replacements_kind" = "seq" ] ||
+            error "sample.yaml live_service_validation.substitutions[$i].replacements must be a list"
+        replacement_count="$(yq eval ".live_service_validation.substitutions[$i].replacements | length" "$yaml" 2>/dev/null)" ||
+            error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements: $yaml"
+        [ "$replacement_count" -gt 0 ] ||
+            error "sample.yaml live_service_validation.substitutions[$i].replacements must not be empty"
+
+        local j replacement_kind placeholder_tag placeholder env_tag env_name env_value target_file substitution_rc
+        j=0
+        while [ "$j" -lt "$replacement_count" ]; do
+            replacement_kind="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j] | kind" "$yaml" 2>/dev/null)" ||
+                error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j]: $yaml"
+            [ "$replacement_kind" = "map" ] ||
+                error "sample.yaml live_service_validation.substitutions[$i].replacements[$j] must be a mapping"
+            placeholder_tag="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j].placeholder | tag" "$yaml" 2>/dev/null)" ||
+                error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j].placeholder: $yaml"
+            [ "$placeholder_tag" = "!!str" ] ||
+                error "sample.yaml live_service_validation.substitutions[$i].replacements[$j].placeholder must be a non-empty string"
+            placeholder="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j].placeholder" "$yaml" 2>/dev/null)" ||
+                error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j].placeholder: $yaml"
+            printf '%s' "$placeholder" | grep -q '[^[:space:]]' ||
+                error "sample.yaml live_service_validation.substitutions[$i].replacements[$j].placeholder must be a non-empty string"
+
+            env_tag="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j].env | tag" "$yaml" 2>/dev/null)" ||
+                error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j].env: $yaml"
+            [ "$env_tag" = "!!str" ] ||
+                error "sample.yaml live_service_validation.substitutions[$i].replacements[$j].env must be a string"
+            env_name="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j].env" "$yaml" 2>/dev/null)" ||
+                error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j].env: $yaml"
+            [[ "$env_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] ||
+                error "sample.yaml live_service_validation.substitutions[$i].replacements[$j].env is not a valid environment-variable name: $env_name"
+            [ -n "${!env_name:-}" ] ||
+                error "required live-service substitution environment variable is missing or empty: $env_name"
+            env_value="${!env_name}"
+            target_file="$SAMPLE_DIR/$file"
+            require_tool python
+            SAMPLE_ROOT="$SAMPLE_DIR" TARGET_FILE="$target_file" PLACEHOLDER="$placeholder" REPLACEMENT_VALUE="$env_value" python - <<'PY'
+import os
+from pathlib import Path
+
+sample_root = Path(os.environ["SAMPLE_ROOT"]).resolve()
+path = Path(os.environ["TARGET_FILE"])
+placeholder = os.environ["PLACEHOLDER"]
+replacement = os.environ["REPLACEMENT_VALUE"]
+resolved_path = path.resolve()
+try:
+    resolved_path.relative_to(sample_root)
+except ValueError:
+    raise SystemExit(4)
+text = resolved_path.read_text(encoding="utf-8")
+if placeholder not in text:
+    raise SystemExit(3)
+resolved_path.write_text(text.replace(placeholder, replacement), encoding="utf-8")
+PY
+            substitution_rc=$?
+            case "$substitution_rc" in
+                0) ;;
+                3) error "live-service substitution placeholder not found in $file: $placeholder" ;;
+                4) error "sample.yaml live_service_validation.substitutions[$i].file resolves outside the sample directory: $file" ;;
+                *) error "live-service substitution failed for $file" ;;
+            esac
+            j=$((j + 1))
+        done
+        i=$((i + 1))
+    done
+}
+
 run_live_service_validation() {
     local yaml="$SAMPLE_DIR/sample.yaml"
     if [ ! -f "$yaml" ]; then
@@ -443,6 +552,8 @@ run_live_service_validation() {
         "") error "SKIP_PROVISION must be set by the live-service caller to true or false" ;;
         *) error "SKIP_PROVISION must be exactly true or false (got: $SKIP_PROVISION)" ;;
     esac
+
+    apply_live_service_substitutions
 
     echo "Running live-service command (SKIP_PROVISION=$SKIP_PROVISION): $cmd"
     local live_service_log

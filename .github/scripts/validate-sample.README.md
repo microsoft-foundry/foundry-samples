@@ -67,6 +67,11 @@ live_service_validation:
   required_env:
     - AZURE_OPENAI_ENDPOINT
     - MODEL_DEPLOYMENT
+  substitutions:
+    - file: run_sample.py
+      replacements:
+        - placeholder: "your_project_endpoint"
+          env: AZURE_AI_PROJECT_ENDPOINT
 ```
 
 The contract is:
@@ -90,6 +95,15 @@ The contract is:
 - `live_service_validation.required_env` is optional. When present, it must be a list of valid
   environment-variable names. Every listed variable must be non-empty or the
   validator returns infrastructure error (`2`) before executing sample code.
+- `live_service_validation.substitutions` is optional. Use it when source files
+  intentionally contain copy/paste instructional placeholders, such as
+  `"your_project_endpoint"`, but the validation caller owns the real value. Each
+  substitution names a file inside the sample directory and one or more
+  `placeholder` to `env` replacements. The validator requires each environment
+  variable to be non-empty, replaces every exact placeholder occurrence in the
+  workflow checkout before running the live-service command, and returns
+  infrastructure error (`2`) if the target file is outside the sample directory,
+  missing, malformed, or does not contain the placeholder.
 - `SKIP_PROVISION` is a reserved caller input and must be set to exactly `true`
   or `false` whenever live-service validation is declared. The validator
   passes it through but never provisions resources itself. Current repository
@@ -110,8 +124,8 @@ The contract is:
 
 The validator rejects the legacy `l4` key with a migration message. It also rejects
 a scalar `live_service_validation`, a missing/non-string/empty `command`, a non-list
-`required_env`, invalid variable names, malformed YAML, and missing declared
-environment inputs as infrastructure errors.
+`required_env`, invalid variable names, malformed YAML, invalid substitution
+declarations, and missing declared environment inputs as infrastructure errors.
 
 ## Caller responsibilities
 

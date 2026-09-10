@@ -69,6 +69,7 @@ def live_service_declaration(root: Path, metadata: Path) -> tuple[bool, str]:
 
 
 def discover(root: Path) -> dict:
+    root = root.resolve()
     discovered = []
     paths_by_id = {}
     for metadata in sorted(root.glob("samples/**/sample.yaml")):
