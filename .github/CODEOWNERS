@@ -11,6 +11,9 @@
 /samples/python/foundry-local/     @microsoft-foundry/foundry-local
 /samples/rust/foundry-local/       @microsoft-foundry/foundry-local
 
+# Fine-tuning samples — individually owned by their authors until a team slug exists.
+/samples/python/finetuning/schemaraft-dst/ @mikeslinmsft
+
 #### Partner / external collaborator sample areas #######################################################
 # Partners are outside collaborators (not org members). Each entry is the source of truth for that
 # partner. Update alongside step 3 of the onboarding process in docs/external-contributions.md.
