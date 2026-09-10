@@ -1,0 +1,8 @@
+name: Deployment-Faithful Schema Evaluation for Dialogue State Tracking (Python)
+description: >
+  Measure how much accuracy a schema-guided DST model loses when schemas are
+  retrieved instead of handed to it. Reproduces the oracle-schema vs.
+  retrieval-with-distractors gap on SGD, and ships the SchemaRAFT fine-tuning
+  recipe that recovers most of it.
+build: "pip install -r requirements.txt"
+validate: "python selftest.py"
