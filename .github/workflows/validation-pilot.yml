@@ -261,6 +261,7 @@ jobs:
           path: ${{ runner.temp }}/pilot-artifacts
       - name: Collect per-sample job links
         if: always() && steps.download.outcome == 'success'
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -273,6 +274,7 @@ jobs:
             --output "$RUNNER_TEMP/pilot-artifacts/job-links.json"
       - name: Collect per-sample artifact links
         if: always() && steps.download.outcome == 'success'
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -298,7 +300,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/site"
-          if [ "${{ steps.download.outcome }}" = "success" ]; then
+          if [ "${{ steps.download.outcome }}" = "success" ] && \
             python .github/scripts/render-validation-dashboard.py \
               --results-dir "$RUNNER_TEMP/pilot-artifacts" \
               --expected-samples "$RUNNER_TEMP/pilot-artifacts/manifest.json" \
@@ -306,7 +308,8 @@ jobs:
               --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
               --job-links "$RUNNER_TEMP/pilot-artifacts/job-links.json" \
               --artifact-links "$RUNNER_TEMP/pilot-artifacts/artifact-links.json" \
-              --codeowners .github/CODEOWNERS
+              --codeowners .github/CODEOWNERS; then
+            :
           else
             python .github/scripts/render-fallback-dashboard.py \
               --output "$RUNNER_TEMP/site/index.html" \

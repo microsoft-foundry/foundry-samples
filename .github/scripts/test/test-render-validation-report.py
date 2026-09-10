@@ -301,6 +301,21 @@ class ReportTests(unittest.TestCase):
         body = self.output.read_text(encoding="utf-8")
         self.assertIn("abcdef0", body)
 
+    def test_run_shape_error_reports_missing_and_extra_fields(self) -> None:
+        self.write_result(SAMPLE_A)
+        result_path = self.results / "a" / "sample-result.json"
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+        del result["run"]["ref"]
+        result["run"]["unexpected"] = "value"
+        result_path.write_text(json.dumps(result), encoding="utf-8")
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("missing fields: ['ref']", body)
+        self.assertIn("extra fields: ['unexpected']", body)
+
 
 if __name__ == "__main__":
     unittest.main()

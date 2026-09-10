@@ -131,8 +131,16 @@ def load_record(path: Path, expected: dict[str, str]) -> dict[str, Any]:
     run = value["run"]
     if not isinstance(run, dict):
         raise ContractError("run must be an object")
-    if set(run) != RUN_FIELDS:
-        raise ContractError(f"run is missing fields: {sorted(RUN_FIELDS - set(run))}")
+    run_fields = set(run)
+    missing_run_fields = RUN_FIELDS - run_fields
+    extra_run_fields = run_fields - RUN_FIELDS
+    if missing_run_fields or extra_run_fields:
+        problems = []
+        if missing_run_fields:
+            problems.append(f"missing fields: {sorted(missing_run_fields)}")
+        if extra_run_fields:
+            problems.append(f"extra fields: {sorted(extra_run_fields)}")
+        raise ContractError(f"run has {'; '.join(problems)}")
     timestamp(run["started_at"], "run.started_at")
     for field in ("diagnostic_reference", "artifact_reference"):
         reference = value[field]

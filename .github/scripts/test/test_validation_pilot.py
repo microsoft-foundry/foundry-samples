@@ -28,6 +28,23 @@ DISCOVERY_SPEC.loader.exec_module(validation_discovery)
 
 
 class ValidationPilotTests(unittest.TestCase):
+    def test_discovery_rejects_unsafe_or_reserved_sample_ids(self) -> None:
+        invalid_ids = (
+            ("python-has,comma", "must contain only"),
+            ("manifest", "collides with a reserved"),
+            ("run-123-4", "collides with a reserved"),
+        )
+        for identifier, message in invalid_ids:
+            with self.subTest(identifier=identifier):
+                with self.assertRaisesRegex(
+                    validation_discovery.DiscoveryError,
+                    message,
+                ):
+                    validation_discovery.validate_sample_id(
+                        identifier,
+                        f"samples/python/{identifier}",
+                    )
+
     def test_workflow_calls_report_after_completeness(self) -> None:
         workflow = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("  report:", workflow)
@@ -36,6 +53,27 @@ class ValidationPilotTests(unittest.TestCase):
         self.assertIn("uses: ./.github/workflows/validation-report.yml", workflow)
         self.assertIn(
             "results-artifact: validation-pilot-run-${{ github.run_id }}-${{ github.run_attempt }}",
+            workflow,
+        )
+
+    def test_dashboard_publication_falls_back_after_optional_handoff_failures(self) -> None:
+        workflow = WORKFLOW.read_text(encoding="utf-8")
+        publish_dashboard = workflow.split("  publish-dashboard:", 1)[1]
+        self.assertEqual(publish_dashboard.count("continue-on-error: true"), 3)
+        self.assertIn(
+            'if [ "${{ steps.download.outcome }}" = "success" ] && \\\n'
+            "            python .github/scripts/render-validation-dashboard.py",
+            publish_dashboard,
+        )
+        self.assertIn(
+            "python .github/scripts/render-fallback-dashboard.py",
+            publish_dashboard,
+        )
+
+    def test_dashboard_harness_runs_fallback_renderer_tests(self) -> None:
+        workflow = SELFTEST_WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn(
+            "python .github/scripts/test/test-render-fallback-dashboard.py",
             workflow,
         )
 
