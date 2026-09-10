@@ -720,7 +720,7 @@ def seed(repo_root: Path, manifest_path: Path, paths: list[str], tree: Tree, pin
         except CheckerError as exc:
             print(f"skip (cannot scan): {path}: {exc}", file=sys.stderr)
             entry_mode, snippets = MODE_WHOLE_FILE, []
-        item: dict[str, object] = {"path": path, "mode": entry_mode}
+        item = {"path": path, "mode": entry_mode}
         if snippets:
             item["snippets"] = snippets
         if previous and previous.note:
