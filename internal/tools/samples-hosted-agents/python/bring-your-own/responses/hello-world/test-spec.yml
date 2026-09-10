@@ -1,0 +1,14 @@
+version: 1
+
+sample:
+  owner: anksinha
+  experiences: [azd, vscode]
+
+tests:
+  - name: byo-responses-round-trip
+    turns:
+      - input: Reply briefly and include the exact marker BYO-RESPONSES-OK.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: BYO-RESPONSES-OK

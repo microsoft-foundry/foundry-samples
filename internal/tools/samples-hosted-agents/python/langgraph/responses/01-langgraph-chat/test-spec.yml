@@ -1,0 +1,14 @@
+version: 1
+
+sample:
+  owner: kuojianlu
+  experiences: [azd, vscode]
+
+tests:
+  - name: local-calculator
+    turns:
+      - input: Use the calculator tool to compute 113 multiplied by 624.
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: '(?<![0-9])70,?512(?![0-9])'

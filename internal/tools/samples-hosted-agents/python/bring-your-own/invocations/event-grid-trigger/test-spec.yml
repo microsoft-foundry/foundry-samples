@@ -1,0 +1,26 @@
+version: 1
+
+sample:
+  owner: kuojianlu
+  experiences: [azd, vscode]
+
+tests:
+  - name: subscription-validation
+    turns:
+      - input:
+          query: trigger
+      - input:
+          - id: ci-validation
+            eventType: Microsoft.EventGrid.SubscriptionValidationEvent
+            subject: ''
+            eventTime: '2026-01-01T00:00:00Z'
+            dataVersion: '1'
+            data:
+              validationCode: ci-handshake-code
+      - input:
+          query: ping
+
+    assertions:
+      - source: console_log
+        type: contains
+        value: event-grid-trigger:subscription-validation code=ci-handshake-code

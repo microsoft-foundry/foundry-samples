@@ -1,0 +1,14 @@
+version: 1
+
+sample:
+  owner: anksinha
+  experiences: [azd, vscode]
+
+tests:
+  - name: basic-response
+    turns:
+      - input: Reply briefly and include the exact marker PYTHON-AF-BASIC-OK.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: PYTHON-AF-BASIC-OK

@@ -4,6 +4,10 @@
 # Each contributing team owns their sample paths for review routing. See CONTRIBUTING.md for setup guide.
 /samples/python/hosted-agents/ @microsoft-foundry/hosted-agents
 /samples/csharp/hosted-agents/ @microsoft-foundry/hosted-agents
+/.azure-pipelines/hosted-agents-samples-ci.yml @microsoft-foundry/hosted-agents
+/internal/tools/samples-hosted-agents-ci/ @microsoft-foundry/hosted-agents
+/internal/tools/samples-hosted-agents/ @microsoft-foundry/hosted-agents
+/internal/tools/voicelive-e2e/voicelive_audio_smoke_test.py @microsoft-foundry/hosted-agents
 
 # Foundry Local samples — replace @microsoft-foundry/foundry-local with the actual team slug once created.
 /samples/csharp/foundry-local/     @microsoft-foundry/foundry-local

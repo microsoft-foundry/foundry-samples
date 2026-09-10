@@ -1,0 +1,24 @@
+version: 1
+
+sample:
+  owner: namantyagi
+  experiences: [azd, vscode]
+
+tests:
+  - name: research-run-accepts-and-starts
+    turns:
+      - input:
+          topic: quantum error correction
+        assertions:
+          # `azd ai agent invoke` captures the invocations ack / JSON snapshot
+          # (the live progress is an SSE stream it does not subscribe to). A
+          # healthy run routes the topic to the resilient research chain and
+          # reports a valid lifecycle status.
+          - source: raw
+            type: regex
+            value: '"task_id"\s*:\s*"research-'
+            min_matches: 1
+          - source: raw
+            type: regex
+            value: '"status"\s*:\s*"(started|running|completed)"'
+            min_matches: 1

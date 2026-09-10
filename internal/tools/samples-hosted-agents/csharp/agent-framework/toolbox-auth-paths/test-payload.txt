@@ -1,0 +1,3 @@
+What tools do you have available?
+Search the microsoft/agent-framework repo for open issues that mention hosted agents.
+List the most recent open pull requests in the microsoft/agent-framework repo.

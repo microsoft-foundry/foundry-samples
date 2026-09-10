@@ -1,0 +1,22 @@
+version: 1
+
+sample:
+  owner: rbarreto
+  experiences: [azd, vscode]
+
+tests:
+  - name: read-bundled-quarterly-report
+    turns:
+      - input: What bundled files do you have access to?
+      - input: Read the Contoso Q1 2026 report and tell me the headline total revenue.
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: '(?<![0-9])\$?1,?482\.6\s*M?(?![0-9])'
+
+    assertions:
+      - source: console_log
+        type: regex
+        value: '(?i)uncaught exception|unhandled exception|traceback'
+        min_matches: 0
+        max_matches: 0

@@ -1,0 +1,55 @@
+version: 1
+
+# Behavior contract for the Foundry Toolbox MCP Skills sample. The agent discovers
+# Agent Skills attached to a Foundry Toolbox over MCP and loads the relevant skill
+# on demand (advertise + load). Each bundled SKILL.md carries a unique canary token
+# the model is asked to echo, so a canary in the assistant text proves the skill body
+# was actually loaded rather than hallucinated.
+#
+# This sample needs a toolbox whose skills are the two bundled ones, so the tests are
+# pinned to the `mcp-skills` toolbox label provisioned for this sample in the cloud E2E
+# matrix. Against the generic tools toolboxes (web-search, code-interpreter, ...) the
+# tests are `not_applicable` rather than failing, matching how 17-foundry-iq-toolbox
+# pins to its dedicated `foundry-iq-kb` knowledge toolbox.
+sample:
+  owner: gilesodigwe
+  experiences: [azd, vscode]
+
+tests:
+  # Routine support question -> the model loads the support-style skill, proven by the
+  # STYLE canary. `disable_load_skill_approval=True` in main.py registers load_skill with
+  # approval_mode="never_require", so the runner sends no approval response for this
+  # unattended host (no approvals block).
+  - name: loads-support-style-skill
+    when:
+      toolbox_label: mcp-skills
+    turns:
+      # Quoted so YAML does not treat any later '#' as a comment.
+      - input: "Hi, I am Alex. Can I return my tent within the standard 30-day window?"
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: STYLE-CANARY-3318
+          - source: assistant_text
+            type: regex
+            value: '(?i)traceback|unhandled exception'
+            min_matches: 0
+            max_matches: 0
+
+  # Large refund + legal threat -> the model loads the escalation-policy skill (which
+  # carries the refund-authority matrix), proven by the ESC canary. The input is quoted
+  # because it contains '#A-1042'; unquoted, YAML would drop everything from '#' onward.
+  - name: loads-escalation-policy-skill
+    when:
+      toolbox_label: mcp-skills
+    turns:
+      - input: "I want a $750 refund on Order #A-1042 right now or I am calling my lawyer."
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: ESC-CANARY-7742
+          - source: assistant_text
+            type: regex
+            value: '(?i)traceback|unhandled exception'
+            min_matches: 0
+            max_matches: 0

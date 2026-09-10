@@ -1,0 +1,15 @@
+version: 1
+
+sample:
+  owner: taochen
+  experiences: [azd, vscode]
+
+tests:
+  - name: list-application-files
+    turns:
+      - input: Use only the local get_cwd and list_files tools to list the files in the application's current working directory. Do not use the code interpreter. Include the file names in your answer.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: main.py
+            case_sensitive: false

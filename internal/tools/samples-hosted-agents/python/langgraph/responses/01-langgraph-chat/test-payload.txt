@@ -1,0 +1,3 @@
+What time is it right now?
+Compute 42 multiplied by 17.
+What is the square root of 144?

@@ -1,0 +1,17 @@
+version: 1
+
+sample:
+  owner: namantyagi
+  experiences: [azd, vscode]
+
+tests:
+  - name: steering-agent-responds
+    turns:
+      - input: Explain quantum computing
+        assertions:
+          # The (simulated) handler streams a deterministic explanation of the
+          # user's input, so the assistant text always contains "explain".
+          - source: assistant_text
+            type: regex
+            value: '(?i)explain'
+            min_matches: 1

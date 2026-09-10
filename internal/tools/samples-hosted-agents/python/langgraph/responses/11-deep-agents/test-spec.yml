@@ -1,0 +1,17 @@
+version: 1
+
+sample:
+  owner: aochengwang
+  experiences: [azd, vscode]
+
+tests:
+  - name: delegated-web-research
+    turns:
+      - input: Research the official LangGraph overview using delegated research. Reply briefly and include the exact URL https://docs.langchain.com/oss/python/langgraph/overview.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: https://docs.langchain.com/oss/python/langgraph/overview
+          - source: raw
+            type: regex
+            value: '"name"\s*:\s*"task"'

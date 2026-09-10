@@ -1,0 +1,15 @@
+version: 1
+
+sample:
+  owner: aochengwang
+  experiences: [azd, vscode]
+
+tests:
+  - name: configuration-driven-invocations-round-trip
+    turns:
+      - input:
+          message: Reply briefly and include the exact marker LANGGRAPH-RUN-INVOCATIONS-OK.
+        assertions:
+          - source: raw
+            type: contains
+            value: LANGGRAPH-RUN-INVOCATIONS-OK

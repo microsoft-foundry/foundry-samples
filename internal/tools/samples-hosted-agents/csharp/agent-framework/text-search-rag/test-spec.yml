@@ -1,0 +1,17 @@
+version: 1
+
+sample:
+  owner: rbarreto
+  experiences: [azd, vscode]
+
+tests:
+  - name: grounded-return-policy
+    turns:
+      - input: Search the knowledge base and tell me the return window and how long refund processing takes.
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: '(?i)\b30\s+days?\b'
+          - source: assistant_text
+            type: regex
+            value: '(?i)\b5\s*(?:-|–|to)\s*7\s+business\s+days?\b'

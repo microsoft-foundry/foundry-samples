@@ -1,0 +1,14 @@
+version: 1
+
+sample:
+  owner: rbarreto
+  experiences: [azd, vscode]
+
+tests:
+  - name: hello-world-response
+    turns:
+      - input: Reply briefly and include the exact marker CSHARP-AF-HELLO-OK.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: CSHARP-AF-HELLO-OK

@@ -1,0 +1,17 @@
+version: 1
+
+sample:
+  owner: wixzhu
+  experiences: [azd, vscode]
+
+tests:
+  - name: local-flight-search
+    turns:
+      - input: Call search_flights with city Paris and list the two returned flight labels. And book a trip to Paris Express.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: Paris Express
+          - source: assistant_text
+            type: contains
+            value: Paris

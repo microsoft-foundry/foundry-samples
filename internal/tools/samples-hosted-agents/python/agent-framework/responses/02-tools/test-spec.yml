@@ -1,0 +1,18 @@
+version: 1
+
+sample:
+  owner: anksinha
+  experiences: [azd, vscode]
+
+tests:
+  - name: local-weather-tool
+    turns:
+      - input: Use the get_weather tool for Seattle and briefly report the returned weather.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: Seattle
+            case_sensitive: false
+          - source: assistant_text
+            type: regex
+            value: '(?i)\b(?:sunny|cloudy|rainy|stormy)\b'

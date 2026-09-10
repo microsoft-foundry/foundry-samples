@@ -1,0 +1,3 @@
+{"message":"What time is it right now?"}
+{"message":"Compute 42 multiplied by 17."}
+{"message":"What is the square root of 144?"}

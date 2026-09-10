@@ -1,0 +1,24 @@
+version: 1
+
+sample:
+  owner: evan.mattson
+  experiences: [azd, vscode]
+
+tests:
+  # Cloud E2E replaces toolbox samples with a cell-owned toolbox. Exercise one
+  # deterministic cell here; the user-identity integrations require interactive
+  # consent and are demonstrated by the sample's provisioned toolbox.
+  - name: native-toolbox-loading
+    when:
+      toolbox_label: code-interpreter
+    turns:
+      - input: Use the code interpreter to calculate 113 multiplied by 624.
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: '(?<![0-9])70,?512(?![0-9])'
+
+    assertions:
+      - source: console_log
+        type: regex
+        value: 'Loaded [1-9][0-9]* tool\(s\) from Foundry Toolbox'

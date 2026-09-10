@@ -1,0 +1,18 @@
+version: 1
+
+sample:
+  owner: rbarreto
+  experiences: [azd, vscode]
+
+tests:
+  - name: find-pet-friendly-hotel
+    turns:
+      - input: Use the available hotel tool. Which Seattle hotel is pet-friendly, and what is its nightly price?
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: Waterfront Lodge
+            case_sensitive: false
+          - source: assistant_text
+            type: regex
+            value: '(?<![0-9])\$?159(?![0-9])'

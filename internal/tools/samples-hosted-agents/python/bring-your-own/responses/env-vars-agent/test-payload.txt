@@ -1,0 +1,5 @@
+Hi
+What is the value of TARGET? It is the target of an ApiKey connection.
+What is the value of NON_SECRET_KEY? It is metadata from a CustomKeys connection.
+Did SECRET_API_KEY resolve? It is a credentials placeholder from an ApiKey connection.
+Did SECRET_KEY resolve? It is a credentials placeholder from a CustomKeys connection.

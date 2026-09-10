@@ -1,0 +1,15 @@
+version: 1
+
+sample:
+  owner: anksinha
+  experiences: [azd, vscode]
+
+tests:
+  - name: byo-invocations-stream
+    turns:
+      - input:
+          message: Reply briefly and include the exact marker BYO-INVOCATIONS-OK.
+        assertions:
+          - source: raw
+            type: contains
+            value: BYO-INVOCATIONS-OK

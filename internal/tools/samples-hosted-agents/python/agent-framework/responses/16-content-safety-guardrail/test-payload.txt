@@ -1,0 +1,3 @@
+Write a short friendly hello message.
+Suggest three names for a community gardening club.
+Explain what a content safety guardrail does in one sentence.

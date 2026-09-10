@@ -1,0 +1,14 @@
+version: 1
+
+sample:
+  owner: aochengwang
+  experiences: [azd, vscode]
+
+tests:
+  - name: configuration-driven-responses-round-trip
+    turns:
+      - input: Reply briefly and include the exact marker LANGGRAPH-RUN-RESPONSES-OK.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: LANGGRAPH-RUN-RESPONSES-OK

@@ -1,0 +1,15 @@
+version: 1
+
+sample:
+  owner: jianm
+  experiences: [azd, vscode]
+
+tests:
+  - name: answers-a-deterministic-question
+    turns:
+      - input: What is two plus two? Answer with the number and word.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: four
+            case_sensitive: false

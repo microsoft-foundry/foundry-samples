@@ -1,0 +1,22 @@
+version: 1
+
+sample:
+  owner: anksinha
+  experiences: [azd, vscode]
+
+tests:
+  - name: code-interpreter
+    when:
+      toolbox_label: code-interpreter
+    turns:
+      - input:
+          query: Use the code interpreter to calculate 113 multiplied by 624.
+        assertions:
+          - source: raw
+            type: regex
+            value: '(?<![0-9])70,?512(?![0-9])'
+
+    assertions:
+      - source: console_log
+        type: regex
+        value: "Tool 'code_interpreter' returned [1-9][0-9]* chars"

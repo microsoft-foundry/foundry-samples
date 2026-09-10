@@ -1,0 +1,34 @@
+version: 1
+
+sample:
+  owner: lakshminaarayanan.ramakrishnan
+  experiences: [azd, vscode]
+
+tests:
+  - name: generate-lisbon-travel-guide
+    turns:
+      - input: |
+          Create a colorful 1-day PDF travel guide for Lisbon focused on food,
+          viewpoints, and neighborhoods. Use the travel-guide skill and return
+          the generated $HOME-based file path.
+        approvals:
+          mcp:
+            # Verified from both approval steps in cloud E2E run 30240795734.
+            - server_label: agent_framework
+              name: load_skill
+            - server_label: agent_framework
+              name: run_skill_script
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: Lisbon
+
+          - source: assistant_text
+            type: regex
+            value: '(?i)traceback|unhandled exception'
+            min_matches: 0
+            max_matches: 0
+
+          - source: session_files
+            type: exists
+            path: /generated-travel-guides/lisbon-1-day-travel-guide.pdf

@@ -1,0 +1,3 @@
+What is the current weather?
+Now check the weather in a different location and compare.
+Summarize what tools you invoked across both turns.

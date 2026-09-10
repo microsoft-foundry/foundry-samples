@@ -1,0 +1,1 @@
+{"type":"input_audio.transcription", "input":"What is Microsoft Foundry?"}

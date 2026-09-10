@@ -1,0 +1,25 @@
+version: 1
+
+sample:
+  owner: namantyagi
+  experiences: [azd, vscode]
+
+tests:
+  - name: streaming-produces-all-stages
+    turns:
+      - input: Tell me about resilience
+        assertions:
+          # The handler streams three checkpointed stages, one output item each.
+          # A healthy run produces the analyze, generate, and refine stages.
+          - source: assistant_text
+            type: contains
+            value: "[analyze]"
+            min_matches: 1
+          - source: assistant_text
+            type: contains
+            value: "[generate]"
+            min_matches: 1
+          - source: assistant_text
+            type: contains
+            value: "[refine]"
+            min_matches: 1

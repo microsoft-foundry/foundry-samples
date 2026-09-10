@@ -1,0 +1,3 @@
+test connectivity
+test egress to https://httpbin.org/get
+help

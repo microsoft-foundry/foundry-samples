@@ -1,0 +1,3 @@
+What tools do you have?
+Find the quarterly report under {cwd}/resources and tell me the Q1 2026 and Q1 2025 revenue.
+Use the code interpreter to compute 1482.6 minus 1330.7.

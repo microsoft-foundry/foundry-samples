@@ -1,0 +1,21 @@
+version: 1
+
+sample:
+  owner: zhuoqunli
+  experiences: [azd, vscode]
+
+tests:
+  - name: code-interpreter
+    when:
+      toolbox_label: code-interpreter
+    turns:
+      - input: Use the code interpreter to calculate the requested expression.
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: '(?<![0-9])70,?512(?![0-9])'
+
+    assertions:
+      - source: console_log
+        type: regex
+        value: "Tool 'code_interpreter' returned [1-9][0-9]* chars"
