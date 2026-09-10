@@ -388,12 +388,21 @@ apply_live_service_substitutions() {
     fi
 
     local substitutions_kind substitutions_count i substitution_kind file_tag file replacement_count replacements_kind
+    local resolved_sample_root resolved_dir target_file
     substitutions_kind="$(yq eval '.live_service_validation.substitutions | kind' "$yaml" 2>/dev/null)" ||
         error "failed to read sample.yaml live_service_validation.substitutions: $yaml"
     [ "$substitutions_kind" = "seq" ] ||
         error "sample.yaml live_service_validation.substitutions must be a list"
     substitutions_count="$(yq eval '.live_service_validation.substitutions | length' "$yaml" 2>/dev/null)" ||
         error "failed to read sample.yaml live_service_validation.substitutions: $yaml"
+
+    resolved_sample_root="$(cd "$SAMPLE_DIR" 2>/dev/null && pwd -P)" ||
+        error "failed to resolve sample directory: $SAMPLE_DIR"
+
+    # Preflight: every replacement is validated and applied in memory first, so a
+    # later invalid replacement can never leave the checkout partially rewritten.
+    local -a pending_paths=()
+    local -A pending_content=()
 
     i=0
     while [ "$i" -lt "$substitutions_count" ]; do
@@ -415,6 +424,17 @@ apply_live_service_substitutions() {
         esac
         [ -f "$SAMPLE_DIR/$file" ] ||
             error "sample.yaml live_service_validation.substitutions[$i].file does not exist or is not a regular file: $file"
+        [ ! -L "$SAMPLE_DIR/$file" ] ||
+            error "sample.yaml live_service_validation.substitutions[$i].file must not be a symlink: $file"
+        resolved_dir="$(cd "$(dirname "$SAMPLE_DIR/$file")" 2>/dev/null && pwd -P)" ||
+            error "sample.yaml live_service_validation.substitutions[$i].file resolves outside the sample directory: $file"
+        case "$resolved_dir" in
+            "$resolved_sample_root"|"$resolved_sample_root"/*) ;;
+            *) error "sample.yaml live_service_validation.substitutions[$i].file resolves outside the sample directory: $file" ;;
+        esac
+        target_file="$resolved_dir/$(basename "$file")"
+        [ -r "$target_file" ] ||
+            error "sample.yaml live_service_validation.substitutions[$i].file is not readable: $file"
 
         replacements_kind="$(yq eval ".live_service_validation.substitutions[$i].replacements | kind" "$yaml" 2>/dev/null)" ||
             error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements: $yaml"
@@ -425,7 +445,14 @@ apply_live_service_substitutions() {
         [ "$replacement_count" -gt 0 ] ||
             error "sample.yaml live_service_validation.substitutions[$i].replacements must not be empty"
 
-        local j replacement_kind placeholder_tag placeholder env_tag env_name env_value target_file substitution_rc
+        if [ -z "${pending_content[$target_file]+set}" ]; then
+            local content=""
+            IFS= read -r -d '' content <"$target_file"
+            pending_content["$target_file"]="$content"
+            pending_paths+=("$target_file")
+        fi
+
+        local j replacement_kind placeholder_tag placeholder env_tag env_name env_value
         j=0
         while [ "$j" -lt "$replacement_count" ]; do
             replacement_kind="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j] | kind" "$yaml" 2>/dev/null)" ||
@@ -452,36 +479,22 @@ apply_live_service_substitutions() {
             [ -n "${!env_name:-}" ] ||
                 error "required live-service substitution environment variable is missing or empty: $env_name"
             env_value="${!env_name}"
-            target_file="$SAMPLE_DIR/$file"
-            require_tool python
-            SAMPLE_ROOT="$SAMPLE_DIR" TARGET_FILE="$target_file" PLACEHOLDER="$placeholder" REPLACEMENT_VALUE="$env_value" python - <<'PY'
-import os
-from pathlib import Path
 
-sample_root = Path(os.environ["SAMPLE_ROOT"]).resolve()
-path = Path(os.environ["TARGET_FILE"])
-placeholder = os.environ["PLACEHOLDER"]
-replacement = os.environ["REPLACEMENT_VALUE"]
-resolved_path = path.resolve()
-try:
-    resolved_path.relative_to(sample_root)
-except ValueError:
-    raise SystemExit(4)
-text = resolved_path.read_text(encoding="utf-8")
-if placeholder not in text:
-    raise SystemExit(3)
-resolved_path.write_text(text.replace(placeholder, replacement), encoding="utf-8")
-PY
-            substitution_rc=$?
-            case "$substitution_rc" in
-                0) ;;
-                3) error "live-service substitution placeholder not found in $file: $placeholder" ;;
-                4) error "sample.yaml live_service_validation.substitutions[$i].file resolves outside the sample directory: $file" ;;
-                *) error "live-service substitution failed for $file" ;;
+            case "${pending_content[$target_file]}" in
+                *"$placeholder"*) ;;
+                *) error "live-service substitution placeholder not found in $file: $placeholder" ;;
             esac
+            pending_content["$target_file"]="${pending_content[$target_file]//"$placeholder"/$env_value}"
             j=$((j + 1))
         done
         i=$((i + 1))
+    done
+
+    # Commit: the whole declaration validated, so every rewrite can now be written.
+    local path
+    for path in ${pending_paths[@]+"${pending_paths[@]}"}; do
+        printf '%s' "${pending_content[$path]}" >"$path" ||
+            error "live-service substitution failed to write file: $path"
     done
 }
 

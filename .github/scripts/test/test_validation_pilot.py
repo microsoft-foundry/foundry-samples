@@ -310,6 +310,112 @@ print_value(resolve(query))
             self.assertIn("https://validation.example/api/projects/project", quickstart)
             self.assertIn("your_agent_name", quickstart)
 
+    def test_live_service_substitutions_do_not_require_python(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sample = root / "samples" / "csharp" / "substitution"
+            sample.mkdir(parents=True)
+            (sample / "Program.cs").write_text(
+                'var endpoint = "your_project_endpoint";\n',
+                encoding="utf-8",
+            )
+            (sample / "sample.yaml").write_text(
+                "name: substitution\n"
+                "live_service_validation:\n"
+                "  command: \"grep -q 'https://validation.example/api/projects/project' Program.cs\"\n"
+                "  substitutions:\n"
+                "    - file: Program.cs\n"
+                "      replacements:\n"
+                "        - placeholder: \"your_project_endpoint\"\n"
+                "          env: AZURE_AI_PROJECT_ENDPOINT\n",
+                encoding="utf-8",
+            )
+            self.write_fake_yq(root)
+            # A caller without a Python toolchain must still get substitutions.
+            broken_python = root / "python"
+            broken_python.write_text(
+                "#!/bin/sh\necho 'python must not be required' >&2\nexit 97\n",
+                encoding="utf-8",
+            )
+            broken_python.chmod(0o755)
+            env = {
+                **os.environ,
+                "PATH": f"{root}{os.pathsep}{Path(sys.executable).parent}{os.pathsep}{os.environ['PATH']}",
+                "SKIP_PROVISION": "true",
+                "AZURE_AI_PROJECT_ENDPOINT": "https://validation.example/api/projects/project",
+            }
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "validate-sample.sh"),
+                    "--mode",
+                    "live-service",
+                    "--sample-dir",
+                    str(sample),
+                ],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn("verdict=pass", completed.stdout)
+            self.assertNotIn("python must not be required", completed.stderr)
+            self.assertEqual(
+                (sample / "Program.cs").read_text(encoding="utf-8"),
+                'var endpoint = "https://validation.example/api/projects/project";\n',
+            )
+
+    def test_live_service_substitutions_leave_files_untouched_when_invalid(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sample = root / "samples" / "python" / "partial"
+            sample.mkdir(parents=True)
+            original = (
+                'PROJECT_ENDPOINT = "your_project_endpoint"\n'
+                'AGENT_NAME = "your_agent_name"\n'
+            )
+            (sample / "quickstart.py").write_text(original, encoding="utf-8")
+            (sample / "sample.yaml").write_text(
+                "name: partial\n"
+                "live_service_validation:\n"
+                "  command: \"true\"\n"
+                "  substitutions:\n"
+                "    - file: quickstart.py\n"
+                "      replacements:\n"
+                "        - placeholder: \"your_project_endpoint\"\n"
+                "          env: AZURE_AI_PROJECT_ENDPOINT\n"
+                "        - placeholder: \"missing_placeholder\"\n"
+                "          env: AZURE_AI_PROJECT_ENDPOINT\n",
+                encoding="utf-8",
+            )
+            self.write_fake_yq(root)
+            env = {
+                **os.environ,
+                "PATH": f"{root}{os.pathsep}{Path(sys.executable).parent}{os.pathsep}{os.environ['PATH']}",
+                "SKIP_PROVISION": "true",
+                "AZURE_AI_PROJECT_ENDPOINT": "https://validation.example/api/projects/project",
+            }
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "validate-sample.sh"),
+                    "--mode",
+                    "live-service",
+                    "--sample-dir",
+                    str(sample),
+                ],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+            self.assertEqual(completed.returncode, 2, completed.stdout)
+            self.assertIn("verdict=error", completed.stdout)
+            self.assertEqual(
+                (sample / "quickstart.py").read_text(encoding="utf-8"), original
+            )
+
     def test_discovery_jobs_install_pinned_dependencies(self) -> None:
         for workflow_path in (WORKFLOW, SELFTEST_WORKFLOW):
             workflow = workflow_path.read_text(encoding="utf-8")

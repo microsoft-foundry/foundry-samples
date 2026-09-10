@@ -103,7 +103,11 @@ The contract is:
   variable to be non-empty, replaces every exact placeholder occurrence in the
   workflow checkout before running the live-service command, and returns
   infrastructure error (`2`) if the target file is outside the sample directory,
-  missing, malformed, or does not contain the placeholder.
+  missing, malformed, or does not contain the placeholder. Substitutions are
+  validated and applied in memory first and written only after the whole
+  declaration is valid, so a rejected declaration never leaves a partially
+  rewritten checkout. Rewriting uses Bash only, so a substitution never adds a
+  toolchain requirement beyond the sample's own language.
 - `SKIP_PROVISION` is a reserved caller input and must be set to exactly `true`
   or `false` whenever live-service validation is declared. The validator
   passes it through but never provisions resources itself. Current repository
