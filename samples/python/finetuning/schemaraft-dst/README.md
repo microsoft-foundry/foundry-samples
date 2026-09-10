@@ -12,7 +12,7 @@ distractors.
 
 The collapse is **not** a retrieval miss. On the subset of turns where the gold
 schema demonstrably *was* in the prompt, the base model still only reaches
-**24.8 JGA**. Better retrieval cannot fix that number.
+**24.0 JGA**. Better retrieval cannot fix that number.
 
 The sample then ships **SchemaRAFT**, the fine-tuning recipe that closes most of
 the gap (18.3 → 45.0) by building every training prompt the way the serving
@@ -37,7 +37,7 @@ Everything runs on the public [Schema-Guided Dialogue][sgd] dataset (CC BY-SA 4.
 | `goldpresent_strata.py` | Splits results by whether the gold schema was in the prompt. **This is the step that carries the argument.** |
 | `build_sft_data.py` | Emits the SchemaRAFT training file. |
 | `submit_finetune.py` | Submits and monitors the fine-tuning job. |
-| `selftest.py` | 40 offline checks over bundled fixtures. No Azure calls, no tokens. |
+| `selftest.py` | 42 offline checks over bundled fixtures. No Azure calls, no tokens. |
 
 The four modes in `build_prompts.py` are the whole experiment:
 
@@ -271,7 +271,10 @@ SGD test, n=1,810 turns, `gpt-4.1-mini` unless noted.
 | Retrieved top-3, base | 55.6 |
 | Oracle gold schema, base | 58.0 |
 
-Gold-in-prompt stratum: base **24.8** → SchemaRAFT **64.4**.
+Gold-in-prompt stratum: base **24.0** → SchemaRAFT **62.7**. This stratum is
+every turn where the gold schema reached the prompt — whether BM25 ranked it
+top-1 or a distractor draw happened to surface it — which is exactly what
+`goldpresent_strata.py` reports.
 
 Prompting does not substitute for this. A frontier reasoning model, prompted,
 reaches 16.6 JGA on the same turns at roughly 4.4 s and 24x the per-turn cost;
