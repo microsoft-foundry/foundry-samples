@@ -4,12 +4,12 @@ build: "dotnet restore --source https://api.nuget.org/v3/index.json && dotnet bu
 live_service_validation:
   command: "dotnet run"
   required_env:
-    - AZURE_AI_PROJECT_ENDPOINT
+    - FOUNDRY_PROJECT_ENDPOINT
     - MODEL_DEPLOYMENT
   substitutions:
     - file: quickstart-responses.cs
       replacements:
         - placeholder: "your_project_endpoint"
-          env: AZURE_AI_PROJECT_ENDPOINT
+          env: FOUNDRY_PROJECT_ENDPOINT
         - placeholder: "gpt-5-mini"
           env: MODEL_DEPLOYMENT
