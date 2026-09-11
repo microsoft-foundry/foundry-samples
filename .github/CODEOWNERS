@@ -95,6 +95,7 @@
 /samples/python/foundry-local/tutorial-voice-to-text/src/app.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/foundry-local/web-server/src/app.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/foundry-models/model-router/model-router-chat-completions-observability.py @microsoft-foundry/AI-Platform-Docs
+/samples/python/foundry-models/model-router/model-router-chat-completions-session-affinity.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/foundry-models/model-router/model-router-chat-completions.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/foundry-models/model-router/model-router-foundry-responses.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/quickstart/chat-with-agent/quickstart-chat-with-agent.py @microsoft-foundry/AI-Platform-Docs
