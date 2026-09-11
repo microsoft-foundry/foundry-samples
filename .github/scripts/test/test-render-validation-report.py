@@ -379,6 +379,30 @@ class ReportTests(unittest.TestCase):
         body = self.output.read_text(encoding="utf-8")
         self.assertIn("result schema_version 1 does not match manifest schema_version 2", body)
 
+    def test_manifest_schema_version_boolean_is_rejected(self) -> None:
+        manifest = json.loads(self.expected.read_text(encoding="utf-8"))
+        manifest["schema_version"] = True
+        self.expected.write_text(json.dumps(manifest), encoding="utf-8")
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("sample manifest must contain a non-empty samples array", completed.stderr)
+
+    def test_result_schema_version_float_is_rejected(self) -> None:
+        self.write_result(SAMPLE_A)
+        self.write_result(SAMPLE_B)
+        result_path = self.results / "a" / "sample-result.json"
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+        result["schema_version"] = 2.0
+        result_path.write_text(json.dumps(result), encoding="utf-8")
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("result must be a supported schema object", body)
+
     def test_all_samples_missing_still_links_validated_commit_from_run_metadata(self) -> None:
         # When every expected sample is missing, there is no per-sample `run`
         # block to draw the validated-commit link from -- but the

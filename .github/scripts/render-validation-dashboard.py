@@ -387,6 +387,14 @@ FILTER_SCRIPT = """
   var summary = document.getElementById("filter-summary");
   var total = rows.length;
 
+  function syncPressedState(buttons, activeButton) {
+    buttons.forEach(function (button) {
+      var isActive = button === activeButton;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+  }
+
   function matches(row, group) {
     if (group.active === "all") return true;
     var value = row.getAttribute("data-" + group.data) || "";
@@ -421,11 +429,15 @@ FILTER_SCRIPT = """
 
   groups.forEach(function (group) {
     var buttons = group.bar.querySelectorAll("button[" + group.attr + "]");
+    if (!buttons.length) return;
+    var initialButton = group.bar.querySelector("button[" + group.attr + "].active") || buttons[0];
+    var initialValue = initialButton.getAttribute(group.attr);
+    group.active = initialValue === null ? "all" : initialValue;
+    syncPressedState(buttons, initialButton);
     buttons.forEach(function (button) {
       button.addEventListener("click", function () {
         group.active = button.getAttribute(group.attr);
-        buttons.forEach(function (other) { other.classList.remove("active"); });
-        button.classList.add("active");
+        syncPressedState(buttons, button);
         applyFilters();
       });
     });
@@ -471,10 +483,12 @@ def render(
     status_lines.append(f'<p class="meta">{" · ".join(meta_bits)}</p>')
 
     filter_sections = []
-    filter_buttons = [f'<button type="button" data-filter-outcome="all" class="active">All ({len(records)})</button>']
+    filter_buttons = [
+        f'<button type="button" data-filter-outcome="all" class="active" aria-pressed="true">All ({len(records)})</button>'
+    ]
     for outcome in ("passed", "sample failure", "infrastructure/error", "skipped/not-completed"):
         filter_buttons.append(
-            f'<button type="button" data-filter-outcome="{esc(outcome)}" class="filter-btn {OUTCOME_CSS_CLASS.get(outcome, "")}">'
+            f'<button type="button" data-filter-outcome="{esc(outcome)}" class="filter-btn {OUTCOME_CSS_CLASS.get(outcome, "")}" aria-pressed="false">'
             f"{esc(OUTCOMES[outcome])} ({counts[outcome]})</button>"
         )
     filter_sections.append(
@@ -485,10 +499,12 @@ def render(
     for record in records:
         language = record["sample"]["language"]
         language_counts[language] = language_counts.get(language, 0) + 1
-    language_buttons = [f'<button type="button" data-filter-language="all" class="active">All ({len(records)})</button>']
+    language_buttons = [
+        f'<button type="button" data-filter-language="all" class="active" aria-pressed="true">All ({len(records)})</button>'
+    ]
     for language in sorted(language_counts, key=str.lower):
         language_buttons.append(
-            f'<button type="button" data-filter-language="{esc(language.lower())}" class="filter-btn">'
+            f'<button type="button" data-filter-language="{esc(language.lower())}" class="filter-btn" aria-pressed="false">'
             f"{esc(language)} ({language_counts[language]})</button>"
         )
     filter_sections.append(
@@ -502,10 +518,12 @@ def render(
         key = str(stage).lower()
         validation_counts[key] = validation_counts.get(key, 0) + 1
         validation_labels[key] = stage_label(stage)
-    validation_buttons = [f'<button type="button" data-filter-validation="all" class="active">All ({len(records)})</button>']
+    validation_buttons = [
+        f'<button type="button" data-filter-validation="all" class="active" aria-pressed="true">All ({len(records)})</button>'
+    ]
     for key in sorted(validation_counts, key=lambda value: validation_labels[value].lower()):
         validation_buttons.append(
-            f'<button type="button" data-filter-validation="{esc(key)}" class="filter-btn">'
+            f'<button type="button" data-filter-validation="{esc(key)}" class="filter-btn" aria-pressed="false">'
             f"{esc(validation_labels[key])} ({validation_counts[key]})</button>"
         )
     filter_sections.append(
@@ -524,15 +542,17 @@ def render(
             continue
         for owner in owners:
             codeowner_counts[owner] = codeowner_counts.get(owner, 0) + 1
-    codeowner_buttons = [f'<button type="button" data-filter-codeowner="all" class="active">All ({len(records)})</button>']
+    codeowner_buttons = [
+        f'<button type="button" data-filter-codeowner="all" class="active" aria-pressed="true">All ({len(records)})</button>'
+    ]
     for owner in sorted(codeowner_counts, key=str.lower):
         codeowner_buttons.append(
-            f'<button type="button" data-filter-codeowner="{esc(owner.lower())}" class="filter-btn">'
+            f'<button type="button" data-filter-codeowner="{esc(owner.lower())}" class="filter-btn" aria-pressed="false">'
             f"{esc(codeowner_display_name(owner))} ({codeowner_counts[owner]})</button>"
         )
     if unowned_count:
         codeowner_buttons.append(
-            f'<button type="button" data-filter-codeowner="" class="filter-btn">Unowned ({unowned_count})</button>'
+            f'<button type="button" data-filter-codeowner="" class="filter-btn" aria-pressed="false">Unowned ({unowned_count})</button>'
         )
     filter_sections.append(
         f'<div class="filter-group"><strong>Codeowner</strong><div id="codeowner-filters" class="filters">{"".join(codeowner_buttons)}</div></div>'

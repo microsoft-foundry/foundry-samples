@@ -66,6 +66,10 @@ def _in(value: Any, container: Any) -> bool:
         return False
 
 
+def _is_supported_schema_version(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value in SUPPORTED_SCHEMA_VERSIONS
+
+
 def load_json(path: Path, label: str) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -104,7 +108,7 @@ def load_expected(path: Path) -> ExpectedSamples:
     payload = load_json(path, "sample manifest")
     if (
         not isinstance(payload, dict)
-        or not _in(payload.get("schema_version"), SUPPORTED_SCHEMA_VERSIONS)
+        or not _is_supported_schema_version(payload.get("schema_version"))
         or not isinstance(payload.get("samples"), list)
         or not payload["samples"]
     ):
@@ -121,7 +125,7 @@ def load_record(path: Path, expected: dict[str, str], expected_schema_version: i
     if (
         not isinstance(value, dict)
         or set(value) != REQUIRED
-        or not _in(value.get("schema_version"), SUPPORTED_SCHEMA_VERSIONS)
+        or not _is_supported_schema_version(value.get("schema_version"))
     ):
         raise ContractError("result must be a supported schema object")
     missing = REQUIRED - value.keys()

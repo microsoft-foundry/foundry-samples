@@ -185,7 +185,7 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("invalid artifact: bad-one/sample-result.json", body)
         self.assertIn("invalid artifact: bad-two/sample-result.json", body)
         self.assertIn(
-            'data-filter-language="reporting" class="filter-btn">reporting (2)</button>',
+            'data-filter-language="reporting" class="filter-btn" aria-pressed="false">reporting (2)</button>',
             body,
         )
 
@@ -332,9 +332,9 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         body = self.output.read_text(encoding="utf-8")
         self.assertIn('<div id="language-filters" class="filters">', body)
-        self.assertIn('data-filter-language="all" class="active">All (2)</button>', body)
-        self.assertIn('data-filter-language="python" class="filter-btn">python (1)</button>', body)
-        self.assertIn('data-filter-language="csharp" class="filter-btn">csharp (1)</button>', body)
+        self.assertIn('data-filter-language="all" class="active" aria-pressed="true">All (2)</button>', body)
+        self.assertIn('data-filter-language="python" class="filter-btn" aria-pressed="false">python (1)</button>', body)
+        self.assertIn('data-filter-language="csharp" class="filter-btn" aria-pressed="false">csharp (1)</button>', body)
         # Rows carry a data-language attribute so the client-side filter can match on it.
         self.assertIn('data-language="python"', body)
         self.assertIn('data-language="csharp"', body)
@@ -346,13 +346,13 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         body = self.output.read_text(encoding="utf-8")
         self.assertIn('<div class="filter-group"><strong>Validation</strong>', body)
-        self.assertIn('data-filter-validation="all" class="active">All (2)</button>', body)
+        self.assertIn('data-filter-validation="all" class="active" aria-pressed="true">All (2)</button>', body)
         self.assertIn(
-            'data-filter-validation="build readiness validation" class="filter-btn">Build check (1)</button>',
+            'data-filter-validation="build readiness validation" class="filter-btn" aria-pressed="false">Build check (1)</button>',
             body,
         )
         self.assertIn(
-            'data-filter-validation="live-service validation" class="filter-btn">Live run (1)</button>',
+            'data-filter-validation="live-service validation" class="filter-btn" aria-pressed="false">Live run (1)</button>',
             body,
         )
         self.assertIn('data-validation="build readiness validation"', body)
@@ -383,9 +383,9 @@ class DashboardTests(unittest.TestCase):
         # owner, so it shows that owner rather than falling back to "—".
         self.assertIn('data-codeowner="@some-doc-owner"', body)
         self.assertIn(">@some-doc-owner</td>", body)
-        self.assertIn('data-filter-codeowner="all" class="active">All (2)</button>', body)
-        self.assertIn('data-filter-codeowner="@team-python" class="filter-btn">@team-python (1)</button>', body)
-        self.assertIn('data-filter-codeowner="@some-doc-owner" class="filter-btn">@some-doc-owner (1)</button>', body)
+        self.assertIn('data-filter-codeowner="all" class="active" aria-pressed="true">All (2)</button>', body)
+        self.assertIn('data-filter-codeowner="@team-python" class="filter-btn" aria-pressed="false">@team-python (1)</button>', body)
+        self.assertIn('data-filter-codeowner="@some-doc-owner" class="filter-btn" aria-pressed="false">@some-doc-owner (1)</button>', body)
         self.assertNotIn("Unowned (", body)
 
     def test_codeowner_directory_owner_and_nested_file_owner_are_deduplicated(self) -> None:
@@ -407,7 +407,7 @@ class DashboardTests(unittest.TestCase):
         body = self.output.read_text(encoding="utf-8")
         self.assertIn(">@team-python</td>", body)
         self.assertNotIn("@team-python, @team-python", body)
-        self.assertIn('data-filter-codeowner="@team-python" class="filter-btn">@team-python (1)</button>', body)
+        self.assertIn('data-filter-codeowner="@team-python" class="filter-btn" aria-pressed="false">@team-python (1)</button>', body)
 
     def test_codeowners_last_matching_entry_wins(self) -> None:
         self.write_result(SAMPLE_A, "passed")
@@ -432,7 +432,7 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         body = self.output.read_text(encoding="utf-8")
         self.assertIn('data-codeowner=""', body)
-        self.assertIn('data-filter-codeowner="" class="filter-btn">Unowned (1)</button>', body)
+        self.assertIn('data-filter-codeowner="" class="filter-btn" aria-pressed="false">Unowned (1)</button>', body)
 
 
 if __name__ == "__main__":
