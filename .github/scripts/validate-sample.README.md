@@ -65,8 +65,13 @@ live_service_validation:
   command: >-
     python run_sample.py --assert-response
   required_env:
-    - AZURE_OPENAI_ENDPOINT
-    - MODEL_DEPLOYMENT
+    - FOUNDRY_PROJECT_ENDPOINT
+    - FOUNDRY_MODEL_DEPLOYMENT
+  substitutions:
+    - file: run_sample.py
+      replacements:
+        - placeholder: "your_project_endpoint"
+          env: FOUNDRY_PROJECT_ENDPOINT
 ```
 
 The contract is:
@@ -90,6 +95,18 @@ The contract is:
 - `live_service_validation.required_env` is optional. When present, it must be a list of valid
   environment-variable names. Every listed variable must be non-empty or the
   validator returns infrastructure error (`2`) before executing sample code.
+- `live_service_validation.substitutions` is optional. Use it when source files
+  intentionally retain copy/paste instructional placeholders, such as
+  `"your_project_endpoint"`, but the validation caller owns the real value.
+  Each substitution names a file inside the sample directory and one or more
+  `placeholder` to `env` replacements. The validator requires each environment
+  variable to be non-empty and replaces every exact placeholder occurrence in
+  the workflow checkout before running the live-service command. It returns
+  infrastructure error (`2`) if a target is outside the sample directory,
+  missing, malformed, or lacks the placeholder. All substitutions are
+  validated and applied in memory before any file is written, so a rejected
+  declaration never leaves a partial rewrite. Target files must be regular,
+  non-symlinked text files without NUL bytes.
 - `SKIP_PROVISION` is a reserved caller input and must be set to exactly `true`
   or `false` whenever live-service validation is declared. The validator
   passes it through but never provisions resources itself. Current repository
@@ -110,8 +127,24 @@ The contract is:
 
 The validator rejects the legacy `l4` key with a migration message. It also rejects
 a scalar `live_service_validation`, a missing/non-string/empty `command`, a non-list
-`required_env`, invalid variable names, malformed YAML, and missing declared
-environment inputs as infrastructure errors.
+`required_env`, invalid variable names, malformed YAML, invalid substitution
+declarations, and missing declared environment inputs as infrastructure errors.
+
+## Daily cadence environment variables
+
+The daily cadence's live-service job provides these non-secret configuration
+variables to every declared live-service command:
+
+| Variable | Purpose |
+|---|---|
+| `FOUNDRY_PROJECT_ENDPOINT` | The existing warm Microsoft Foundry project endpoint. |
+| `FOUNDRY_MODEL_DEPLOYMENT` | The deployment name in that project. |
+| `SKIP_PROVISION` | Always `true`; the cadence uses an existing warm project and never provisions resources. |
+
+Use the `FOUNDRY_` names for new sample metadata. The older
+`AZURE_AI_PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT` aliases remain available for
+backward compatibility. The job authenticates through GitHub/Entra OIDC; it
+does not expose credentials as sample environment variables.
 
 ## Caller responsibilities
 

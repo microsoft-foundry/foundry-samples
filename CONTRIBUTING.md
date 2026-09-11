@@ -17,7 +17,7 @@ Contributors should always submit publishable changes through a public same-repo
 1. **Create a branch in this repository.** Use a same-repository branch for all sample changes.
 2. **Make a focused change.** Keep each pull request scoped to one sample, fix, or related set of updates. Follow the conventions in the surrounding sample.
 3. **Respect file ownership.** Review [CODEOWNERS](.github/CODEOWNERS) before editing. The listed owners receive review requests when their files change; CODEOWNERS routing does not itself require an approving review.
-4. **Validate locally.** Run the setup, build, test, or sample-specific validation documented by the affected sample. For metadata-bearing samples, use the [per-sample validation contract](.github/scripts/validate-sample.README.md) as the source for Build-readiness behavior and Live-service opt-in. Never commit credentials, local environment files, or generated secrets.
+4. **Validate locally.** Run the setup, build, test, or sample-specific validation documented by the affected sample. For metadata-bearing samples, start with the [quick guide to creating and validating samples](CREATE_SAMPLE.md); see the [per-sample validation contract](.github/scripts/validate-sample.README.md) for Build-readiness behavior, Live-service opt-in, substitutions, and available validation environment variables. Never commit credentials, local environment files, or generated secrets.
 5. **Open a pull request against `main`.** In the pull request description, explain what changed, why it changed, and the local validation you ran. Link the relevant issue when one exists.
 
 ### Pull request checks

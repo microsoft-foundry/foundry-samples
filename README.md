@@ -11,8 +11,11 @@ Use the samples in this repository to try out Microsoft Foundry scenarios on you
 Pull requests run the required `trusted` check. Sample authors can run the same
 per-sample Build-readiness validator locally and can opt a sample into
 sample-owned Live-service validation through `sample.yaml`. See the
-[per-sample validation contract](.github/scripts/validate-sample.README.md) for
-commands and language behavior.
+[quick guide to creating and validating samples](CREATE_SAMPLE.md) for the
+minimum metadata and local commands, or the [per-sample validation
+contract](.github/scripts/validate-sample.README.md) for the complete commands,
+language behavior, substitutions, and available validation environment
+variables.
 
 The [daily public validation cadence](.github/validation-pilot.README.md)
 discovers metadata-bearing samples and publishes a run summary plus diagnostic
