@@ -19,6 +19,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
+      - '.github/validation-health-pilot.json'
       - '.github/scripts/**'
       - '.github/workflows/validate.yml'
       - '.github/workflows/scripts-selftest.yml'
@@ -30,6 +31,18 @@ permissions:
   contents: read
 
 jobs:
+  # --- Health dashboard renderer: fixture-only, no status API or issue writes --------------------
+  health-dashboard-harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validation health dashboard renderer exit gate
+        run: python .github/scripts/test/test-render-validation-health.py
+
   # --- Required-gate structure: hermetic Bash assertions, no credentials -------------------------
   workflow-structure-harness:
     runs-on: ubuntu-latest
