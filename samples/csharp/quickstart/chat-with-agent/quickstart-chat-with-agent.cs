@@ -1,5 +1,6 @@
 using Azure.Identity;
 using Azure.AI.Projects;
+using Azure.AI.Projects.Agents;
 using Azure.AI.Extensions.OpenAI;
 using OpenAI.Responses;
 
@@ -7,12 +8,21 @@ using OpenAI.Responses;
 
 // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
 var foundryProjectEndpoint = "your_project_endpoint";
-var foundryAgentName = "your_agent_name";
+var foundryAgentName = "your-agent-name";
 
 // Create project client to call Foundry API
 AIProjectClient projectClient = new(
     endpoint: new Uri(foundryProjectEndpoint),
     tokenProvider: new DefaultAzureCredential());
+
+// Create the agent (or a new version, if it already exists)
+ProjectsAgentDefinition agentDefinition = new DeclarativeAgentDefinition("gpt-5-mini") // supports all Foundry direct models
+{
+    Instructions = "You are a helpful assistant that answers general questions",
+};
+projectClient.AgentAdministrationClient.CreateAgentVersion(
+    foundryAgentName,
+    options: new(agentDefinition));
 
 // Create a conversation for multi-turn chat
 ProjectConversation conversation = projectClient.ProjectOpenAIClient.GetProjectConversationsClient().CreateProjectConversation();
