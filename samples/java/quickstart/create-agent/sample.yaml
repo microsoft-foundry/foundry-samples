@@ -3,3 +3,22 @@ description: Basic quickstart sample demonstrating Microsoft Foundry agent creat
 
 build: "mvn compile"
 validate: "mvn compile"
+live_service_validation:
+  # live-cleanup.sh (auto-detected by the harness) deletes the agent
+  # CreateAgent.java creates, so a live run doesn't leave an agent behind. It runs
+  # automatically after the command below; no chaining needed here.
+  command: "mvn compile exec:java -Dexec.mainClass=com.azure.ai.agents.CreateAgent"
+  required_env:
+    - FOUNDRY_PROJECT_ENDPOINT
+    - MODEL_DEPLOYMENT
+  substitutions:
+    - file: src/main/java/com/azure/ai/agents/CreateAgent.java
+      replacements:
+        - placeholder: "your_project_endpoint"
+          env: FOUNDRY_PROJECT_ENDPOINT
+        - placeholder: "gpt-5-mini"
+          env: MODEL_DEPLOYMENT
+    - file: src/main/java/com/azure/ai/agents/LiveSetupDeleteAgent.java
+      replacements:
+        - placeholder: "your_project_endpoint"
+          env: FOUNDRY_PROJECT_ENDPOINT

@@ -1,3 +1,23 @@
 name: Quickstart Create Agent
 description: Basic quickstart sample demonstrating Microsoft Foundry agent creation.
 build: "dotnet restore --source https://api.nuget.org/v3/index.json && dotnet build --no-restore --verbosity minimal"
+live_service_validation:
+  # live-cleanup.sh (auto-detected by the harness) restores/runs the live-cleanup/
+  # helper project, deleting the agent quickstart-create-agent.cs creates, so a live
+  # run doesn't leave an agent behind. It runs automatically after the command below;
+  # no chaining needed here.
+  command: "dotnet run"
+  required_env:
+    - FOUNDRY_PROJECT_ENDPOINT
+    - MODEL_DEPLOYMENT
+  substitutions:
+    - file: quickstart-create-agent.cs
+      replacements:
+        - placeholder: "your_project_endpoint"
+          env: FOUNDRY_PROJECT_ENDPOINT
+        - placeholder: "gpt-5-mini"
+          env: MODEL_DEPLOYMENT
+    - file: live-cleanup/live-setup-delete-agent.cs
+      replacements:
+        - placeholder: "your_project_endpoint"
+          env: FOUNDRY_PROJECT_ENDPOINT

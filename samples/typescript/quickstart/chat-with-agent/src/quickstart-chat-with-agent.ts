@@ -3,11 +3,19 @@ import { AIProjectClient } from "@azure/ai-projects";
 
 // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
 const FOUNDRY_PROJECT_ENDPOINT = "your_project_endpoint";
-const FOUNDRY_AGENT_NAME = "your_agent_name";
+const FOUNDRY_AGENT_NAME = "your-agent-name";
 
 async function main(): Promise<void> {
     // Create project and openai clients to call Foundry API
     const project = new AIProjectClient(FOUNDRY_PROJECT_ENDPOINT, new DefaultAzureCredential());
+
+    // Create the agent (or a new version, if it already exists)
+    await project.agents.createVersion(FOUNDRY_AGENT_NAME, {
+        kind: "prompt",
+        model: "gpt-5-mini", //supports all Foundry direct models
+        instructions: "You are a helpful assistant that answers general questions",
+    });
+
     const openai = project.getOpenAIClient({
         azureConfig: { allowPreview: true, agentName: FOUNDRY_AGENT_NAME },
     });
