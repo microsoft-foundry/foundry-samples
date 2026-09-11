@@ -38,6 +38,37 @@ live_service_validation:
 ### How Full Runs Process This:
 - **Build Readiness:** Always runs build/compilation checks on PR touches and daily cadence.
 - **Live-Service Run:** Runs `live_service_validation.command` only if the `live_service_validation` section is present in `sample.yaml`.
+- **Environment variables:** The daily cadence provides both `AZURE_AI_PROJECT_ENDPOINT`/`MODEL_DEPLOYMENT` and the equivalent `FOUNDRY_PROJECT_ENDPOINT`/`FOUNDRY_MODEL_DEPLOYMENT` aliases, so `required_env` can reference either naming convention.
+
+### Handling Hardcoded "Provide Your Own" Placeholders
+
+Some quickstart samples intentionally keep copy/paste instructional placeholders in
+source (for example `"your_project_endpoint"`), so readers have an obvious spot to
+paste their own values. Live-service validation still needs the real value at
+runtime. Declare a `substitutions` list under `live_service_validation` to have the
+validator patch the placeholder in the workflow checkout, using an environment
+variable, before running the command:
+
+```yaml
+live_service_validation:
+  command: "python quickstart-create-agent.py"
+  required_env:
+    - AZURE_AI_PROJECT_ENDPOINT
+  substitutions:
+    - file: quickstart-create-agent.py
+      replacements:
+        - placeholder: "your_project_endpoint"
+          env: AZURE_AI_PROJECT_ENDPOINT
+```
+
+- `file` must be a path inside the sample directory to a regular, non-symlinked text file.
+- Each `replacements` entry maps an exact-match `placeholder` string to an `env`
+  variable that must be non-empty.
+- The validator rejects the whole declaration as an infrastructure error (`2`) if a
+  target file is missing, outside the sample directory, malformed, or does not
+  contain the placeholder — nothing is partially rewritten.
+- Only the declared placeholder is replaced; other instructional strings (like an
+  agent name meant to stay sample-owned) are left untouched.
 
 ---
 
