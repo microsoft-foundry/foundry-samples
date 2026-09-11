@@ -244,6 +244,17 @@ class ReportTests(unittest.TestCase):
         self.assertIn("`<invalid artifact: bad/sample-result.json>`", body)
         self.assertNotIn("tree/abcdef0/%3Cinvalid%20artifact", body)
 
+    def test_corrupt_run_metadata_falls_back_to_empty_metadata(self) -> None:
+        (self.results / "run-metadata.json").write_bytes(b"\xff\xfe\x00")
+        self.write_result(SAMPLE_A)
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("expected result artifact is missing for b", body)
+        self.assertNotIn("UnicodeDecodeError", completed.stderr)
+
     def test_invalid_result_for_a_known_sample_does_not_also_report_it_missing(self) -> None:
         # A result artifact that identifies a real expected sample but fails
         # validation for some other reason (here, an unsupported outcome)

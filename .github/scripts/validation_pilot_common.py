@@ -163,6 +163,9 @@ def load_record(path: Path, expected: dict[str, str], expected_schema_version: i
         if extra_run_fields:
             problems.append(f"extra fields: {sorted(extra_run_fields)}")
         raise ContractError(f"run has {'; '.join(problems)}")
+    for field in RUN_FIELDS:
+        if not isinstance(run[field], str) or not run[field]:
+            raise ContractError(f"run.{field} must be a non-empty string")
     timestamp(run["started_at"], "run.started_at")
     for field in ("diagnostic_reference", "artifact_reference"):
         reference = value[field]
@@ -203,7 +206,7 @@ def _load_run_fallback(results_dir: Path) -> dict[str, Any]:
     """
     try:
         payload = json.loads((results_dir / "run-metadata.json").read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, UnicodeError, json.JSONDecodeError):
         return {}
     if not isinstance(payload, dict):
         return {}

@@ -193,7 +193,12 @@ def load_link_map(path: Path | None, repository: str | None, url_suffix_pattern:
     (or the whole map) is silently dropped and the caller falls back to a
     less specific link.
     """
-    if not path or not path.is_file() or not repository or not REPOSITORY_PATTERN.fullmatch(repository):
+    if (
+        not path
+        or not path.is_file()
+        or not isinstance(repository, str)
+        or not REPOSITORY_PATTERN.fullmatch(repository)
+    ):
         return {}
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
@@ -222,7 +227,7 @@ def load_codeowners(path: Path | None) -> list[tuple[str, str]]:
         return []
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError:
+    except (OSError, UnicodeError):
         return []
     entries: list[tuple[str, str]] = []
     for line in lines:

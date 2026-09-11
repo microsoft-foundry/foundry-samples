@@ -46,6 +46,7 @@ class DashboardTests(unittest.TestCase):
         job_links: dict[str, str] | None = None,
         artifact_links: dict[str, str] | None = None,
         codeowners: str | None = None,
+        codeowners_bytes: bytes | None = None,
     ) -> subprocess.CompletedProcess[str]:
         args = [
             sys.executable,
@@ -71,6 +72,10 @@ class DashboardTests(unittest.TestCase):
             codeowners_path = self.root / "CODEOWNERS"
             codeowners_path.write_text(codeowners, encoding="utf-8")
             args.extend(["--codeowners", str(codeowners_path)])
+        if codeowners_bytes is not None:
+            codeowners_path = self.root / "CODEOWNERS"
+            codeowners_path.write_bytes(codeowners_bytes)
+            args.extend(["--codeowners", str(codeowners_path)])
         return subprocess.run(args, capture_output=True, text=True)
 
     def write_result(
@@ -79,6 +84,7 @@ class DashboardTests(unittest.TestCase):
         outcome: str = "passed",
         diagnostic_text: str = "diagnostic\n",
         completed_stage: str = "build readiness validation",
+        run_overrides: dict[str, object] | None = None,
     ) -> None:
         manifest = json.loads(self.expected.read_text(encoding="utf-8"))
         sample_definition = next(
@@ -88,6 +94,17 @@ class DashboardTests(unittest.TestCase):
         sample_dir = self.results / sample_id
         sample_dir.mkdir()
         (sample_dir / "diagnostics.log").write_text(diagnostic_text, encoding="utf-8")
+        run: dict[str, object] = {
+            "repository": "example/repo",
+            "workflow": "validation pilot",
+            "run_id": "42",
+            "run_attempt": "1",
+            "sha": "abcdef0",
+            "ref": "refs/heads/main",
+            "started_at": "2026-08-10T19:22:00Z",
+        }
+        if run_overrides:
+            run.update(run_overrides)
         (sample_dir / "sample-result.json").write_text(
             json.dumps(
                 {
@@ -99,15 +116,7 @@ class DashboardTests(unittest.TestCase):
                     "diagnostic_reference": "diagnostics.log",
                     "artifact_reference": f"validation-pilot-{sample_id}",
                     "completed_at": "2026-08-10T19:22:33Z",
-                    "run": {
-                        "repository": "example/repo",
-                        "workflow": "validation pilot",
-                        "run_id": "42",
-                        "run_attempt": "1",
-                        "sha": "abcdef0",
-                        "ref": "refs/heads/main",
-                        "started_at": "2026-08-10T19:22:00Z",
-                    },
+                    "run": run,
                 }
             ),
             encoding="utf-8",
@@ -296,6 +305,19 @@ class DashboardTests(unittest.TestCase):
         self.assertNotIn("some-other/repo", body)
         self.assertNotIn("Diagnostics</a>", body)
 
+    def test_result_with_non_string_run_repository_renders_as_error_row(self) -> None:
+        self.write_result(SAMPLE_A, "passed")
+        self.write_result(SAMPLE_B, "sample failure", run_overrides={"repository": ["example/repo"]})
+        completed = self.run_dashboard(
+            job_links={"b": "https://github.com/example/repo/actions/runs/42/job/999"},
+            artifact_links={"b": "https://github.com/example/repo/actions/runs/42/artifacts/555"},
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("banner banner-incomplete", body)
+        self.assertIn("⚠️ Infrastructure/error", body)
+        self.assertNotIn("Fix with Copilot", body)
+
     def test_failed_sample_offers_prefilled_copilot_issue(self) -> None:
         self.write_result(SAMPLE_A, "passed")
         self.write_result(SAMPLE_B, "sample failure", completed_stage="live-service validation")
@@ -421,6 +443,13 @@ class DashboardTests(unittest.TestCase):
     def test_missing_codeowners_file_falls_back_to_unowned(self) -> None:
         self.write_result(SAMPLE_A, "passed")
         completed = self.run_dashboard()
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn(">—</td>", body)
+
+    def test_corrupt_codeowners_file_falls_back_to_unowned(self) -> None:
+        self.write_result(SAMPLE_A, "passed")
+        completed = self.run_dashboard(codeowners_bytes=b"\xff\xfe\x00")
         self.assertEqual(completed.returncode, 0, completed.stderr)
         body = self.output.read_text(encoding="utf-8")
         self.assertIn(">—</td>", body)
