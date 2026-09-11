@@ -607,7 +607,7 @@ def render(
     display: flex; align-items: center; gap: 0.75rem; cursor: pointer; padding: 0.75rem 1rem;
   }}
   .filter-panel summary::-webkit-details-marker {{ display: none; }}
-  .filter-panel summary::before {{ content: "▸"; color: #57606a; }}
+  .filter-panel summary::before {{ content: "▸"; color: #57606a; font-size: 1.15rem; line-height: 1; }}
   .filter-panel[open] summary::before {{ content: "▾"; }}
   #filter-summary {{ color: #57606a; font-size: 0.9rem; }}
   .filter-group {{ border-top: 1px solid #d0d7de; padding: 0.75rem 1rem; }}
