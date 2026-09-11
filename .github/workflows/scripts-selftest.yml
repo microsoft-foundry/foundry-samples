@@ -25,6 +25,8 @@ on:
       - '.github/workflows/validation-report.yml'
       - '.github/workflows/validation-pilot.yml'
       - '.github/scripts/discover-validation-samples.py'
+      - '.github/docs-referenced-files.json'
+      - '.github/workflows/docs-referenced-files.yml'
 
 permissions:
   contents: read
@@ -37,6 +39,23 @@ jobs:
       - uses: actions/checkout@v4
       - name: validate.yml trusted-gate structure exit gate
         run: bash .github/scripts/test/run-workflow-structure-tests.sh
+
+  # --- Docs-referenced-file guard: hermetic Python unittest, temp git repos only -----------------
+  # Contract tests for the gate that stops a PR from breaking a published Learn article by
+  # deleting/renaming a referenced sample or removing a snippet delimiter or named notebook cell.
+  # The gate itself is `docs-referenced-files.yml`; this job only proves the checker still behaves.
+  docs-referenced-files-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: check-docs-referenced-files contract tests
+        run: python .github/scripts/test/test_docs_referenced_files.py
 
   # --- Detector harness: hermetic (git + coreutils only), runs fully GREEN anywhere --------------
   detect-harness:
