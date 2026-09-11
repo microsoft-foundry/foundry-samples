@@ -5,8 +5,11 @@ live_service_validation:
   command: "dotnet run"
   required_env:
     - AZURE_AI_PROJECT_ENDPOINT
+    - MODEL_DEPLOYMENT
   substitutions:
     - file: quickstart-responses.cs
       replacements:
         - placeholder: "your_project_endpoint"
           env: AZURE_AI_PROJECT_ENDPOINT
+        - placeholder: "gpt-5-mini"
+          env: MODEL_DEPLOYMENT

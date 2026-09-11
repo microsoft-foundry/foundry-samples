@@ -298,6 +298,11 @@ print_value(resolve(query))
             "FOUNDRY_MODEL_DEPLOYMENT: ${{ vars.MODEL_DEPLOYMENT }}",
             workflow,
         )
+        self.assertIn(
+            "FOUNDRY_AGENT_NAME: ${{ vars.FOUNDRY_AGENT_NAME || "
+            "'quickstart-create-agent-validation' }}",
+            workflow,
+        )
         self.assertIn('SKIP_PROVISION: "true"', workflow)
         self.assertIn('python -m pip install -r "${{ matrix.path }}/requirements.txt"', workflow)
 

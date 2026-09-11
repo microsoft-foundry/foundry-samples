@@ -7,8 +7,11 @@ live_service_validation:
   command: "python quickstart-responses.py"
   required_env:
     - AZURE_AI_PROJECT_ENDPOINT
+    - MODEL_DEPLOYMENT
   substitutions:
     - file: quickstart-responses.py
       replacements:
         - placeholder: "your_project_endpoint"
           env: AZURE_AI_PROJECT_ENDPOINT
+        - placeholder: "gpt-5-mini"
+          env: MODEL_DEPLOYMENT

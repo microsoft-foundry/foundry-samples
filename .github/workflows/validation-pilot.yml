@@ -125,6 +125,9 @@ jobs:
       FOUNDRY_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
       MODEL_DEPLOYMENT: ${{ vars.MODEL_DEPLOYMENT }}
       FOUNDRY_MODEL_DEPLOYMENT: ${{ vars.MODEL_DEPLOYMENT }}
+      # Fixed agent name: create_version adds a version under one durable agent,
+      # so a per-run unique name would leak a new agent entity every day.
+      FOUNDRY_AGENT_NAME: ${{ vars.FOUNDRY_AGENT_NAME || 'quickstart-create-agent-validation' }}
     strategy:
       fail-fast: false
       max-parallel: 4
