@@ -122,7 +122,9 @@ jobs:
       # P4.1 never provisions. P4.2 owns any future cold-provisioning caller.
       SKIP_PROVISION: "true"
       AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+      FOUNDRY_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
       MODEL_DEPLOYMENT: ${{ vars.MODEL_DEPLOYMENT }}
+      FOUNDRY_MODEL_DEPLOYMENT: ${{ vars.MODEL_DEPLOYMENT }}
     strategy:
       fail-fast: false
       max-parallel: 4
