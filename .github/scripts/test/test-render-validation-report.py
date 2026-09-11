@@ -206,6 +206,44 @@ class ReportTests(unittest.TestCase):
         self.assertIn("invalid artifact: bad-one/sample-result.json", body)
         self.assertIn("invalid artifact: bad-two/sample-result.json", body)
 
+    def test_corrupt_utf8_artifact_publishes_error_row_and_fails(self) -> None:
+        bad = self.results / "bad-utf8"
+        bad.mkdir()
+        (bad / "sample-result.json").write_bytes(b"\xff\xfe\x00")
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("invalid artifact: bad-utf8/sample-result.json", body)
+        self.assertIn("not valid UTF-8", body)
+
+    def test_orphaned_artifact_with_run_metadata_does_not_link_to_synthetic_path(self) -> None:
+        (self.results / "run-metadata.json").write_text(
+            json.dumps(
+                {
+                    "repository": "example/repo",
+                    "workflow": "validation pilot",
+                    "run_id": "42",
+                    "run_attempt": "1",
+                    "sha": "abcdef0",
+                    "ref": "refs/heads/main",
+                    "started_at": "2026-08-10T19:22:00Z",
+                }
+            ),
+            encoding="utf-8",
+        )
+        bad = self.results / "bad"
+        bad.mkdir()
+        (bad / "sample-result.json").write_text("{", encoding="utf-8")
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("`<invalid artifact: bad/sample-result.json>`", body)
+        self.assertNotIn("tree/abcdef0/%3Cinvalid%20artifact", body)
+
     def test_invalid_result_for_a_known_sample_does_not_also_report_it_missing(self) -> None:
         # A result artifact that identifies a real expected sample but fails
         # validation for some other reason (here, an unsupported outcome)
@@ -287,6 +325,59 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 1)
         body = self.output.read_text(encoding="utf-8")
         self.assertIn("⚠️ Infrastructure/error", body)
+
+    def test_non_finite_duration_is_reported_as_error_not_valid_result(self) -> None:
+        manifest = json.loads(self.expected.read_text(encoding="utf-8"))
+        sample_definition = next(value for value in manifest["samples"] if value["path"] == SAMPLE_A)
+        sample_dir = self.results / sample_definition["id"]
+        sample_dir.mkdir()
+        (sample_dir / "diagnostics.log").write_text("diagnostic\n", encoding="utf-8")
+        (sample_dir / "sample-result.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": manifest["schema_version"],
+                    "sample": sample_definition,
+                    "outcome": "passed",
+                    "completed_stage": "build readiness validation",
+                    "duration_seconds": float("nan"),
+                    "diagnostic_reference": "diagnostics.log",
+                    "artifact_reference": f"validation-pilot-{sample_definition['id']}",
+                    "completed_at": "2026-08-10T19:22:33Z",
+                    "run": {
+                        "repository": "example/repo",
+                        "workflow": "validation pilot",
+                        "run_id": "42",
+                        "run_attempt": "1",
+                        "sha": "abcdef0",
+                        "ref": "refs/heads/main",
+                        "started_at": "2026-08-10T19:22:00Z",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        self.write_result(SAMPLE_B)
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("duration_seconds must be a finite non-negative number", body)
+        self.assertNotIn("nans", body)
+
+    def test_result_schema_must_match_manifest_schema(self) -> None:
+        self.write_result(SAMPLE_A)
+        result_path = self.results / "a" / "sample-result.json"
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+        result["schema_version"] = 1
+        result_path.write_text(json.dumps(result), encoding="utf-8")
+        self.write_result(SAMPLE_B)
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("result schema_version 1 does not match manifest schema_version 2", body)
 
     def test_all_samples_missing_still_links_validated_commit_from_run_metadata(self) -> None:
         # When every expected sample is missing, there is no per-sample `run`

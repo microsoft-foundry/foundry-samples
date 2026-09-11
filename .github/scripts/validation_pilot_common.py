@@ -11,6 +11,7 @@ Presentation (Markdown vs. HTML, escaping, layout) stays in each renderer.
 from __future__ import annotations
 
 import json
+import math
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -43,6 +44,12 @@ class ContractError(ValueError):
     pass
 
 
+class ExpectedSamples(list[dict[str, str]]):
+    def __init__(self, samples: list[dict[str, str]], schema_version: int) -> None:
+        super().__init__(samples)
+        self.schema_version = schema_version
+
+
 def _in(value: Any, container: Any) -> bool:
     """Membership test that treats an unhashable value as simply absent.
 
@@ -64,6 +71,8 @@ def load_json(path: Path, label: str) -> Any:
         return json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
         raise ContractError(f"{label} not found: {path}") from exc
+    except UnicodeError as exc:
+        raise ContractError(f"{label} is not valid UTF-8: {exc}") from exc
     except json.JSONDecodeError as exc:
         raise ContractError(f"{label} is not valid JSON: {exc}") from exc
 
@@ -91,7 +100,7 @@ def sample_identity(value: Any, field: str) -> dict[str, str]:
     return {key: value[key] for key in keys}
 
 
-def load_expected(path: Path) -> list[dict[str, str]]:
+def load_expected(path: Path) -> ExpectedSamples:
     payload = load_json(path, "sample manifest")
     if (
         not isinstance(payload, dict)
@@ -104,10 +113,10 @@ def load_expected(path: Path) -> list[dict[str, str]]:
     ids = [value["id"] for value in samples]
     if ids != sorted(set(ids)):
         raise ContractError("manifest samples must be sorted and unique by id")
-    return samples
+    return ExpectedSamples(samples, payload["schema_version"])
 
 
-def load_record(path: Path, expected: dict[str, str]) -> dict[str, Any]:
+def load_record(path: Path, expected: dict[str, str], expected_schema_version: int | None = None) -> dict[str, Any]:
     value = load_json(path, f"result artifact {path}")
     if (
         not isinstance(value, dict)
@@ -118,6 +127,10 @@ def load_record(path: Path, expected: dict[str, str]) -> dict[str, Any]:
     missing = REQUIRED - value.keys()
     if missing:
         raise ContractError(f"result is missing fields: {sorted(missing)}")
+    if expected_schema_version is not None and value["schema_version"] != expected_schema_version:
+        raise ContractError(
+            f"result schema_version {value['schema_version']!r} does not match manifest schema_version {expected_schema_version!r}"
+        )
     sample = sample_identity(value["sample"], "result sample")
     if sample != expected:
         raise ContractError(f"sample identity does not match manifest: {sample['id']}")
@@ -125,8 +138,13 @@ def load_record(path: Path, expected: dict[str, str]) -> dict[str, Any]:
         raise ContractError(f"unsupported outcome: {value['outcome']!r}")
     if not isinstance(value["completed_stage"], str) or not value["completed_stage"]:
         raise ContractError("completed_stage must be non-empty")
-    if not isinstance(value["duration_seconds"], (int, float)) or isinstance(value["duration_seconds"], bool) or value["duration_seconds"] < 0:
-        raise ContractError("duration_seconds must be non-negative")
+    if (
+        not isinstance(value["duration_seconds"], (int, float))
+        or isinstance(value["duration_seconds"], bool)
+        or not math.isfinite(value["duration_seconds"])
+        or value["duration_seconds"] < 0
+    ):
+        raise ContractError("duration_seconds must be a finite non-negative number")
     timestamp(value["completed_at"], "completed_at")
     run = value["run"]
     if not isinstance(run, dict):
@@ -200,6 +218,7 @@ def collect(results_dir: Path, expected: list[dict[str, str]]) -> tuple[list[dic
     if not results_dir.is_dir():
         raise ContractError(f"result artifact directory not found: {results_dir}")
     expected_by_id = {value["id"]: value for value in expected}
+    expected_schema_version = getattr(expected, "schema_version", None)
     records: dict[str, dict[str, Any]] = {}
     incomplete = False
     run_fallback = _load_run_fallback(results_dir)
@@ -213,7 +232,7 @@ def collect(results_dir: Path, expected: list[dict[str, str]]) -> tuple[list[dic
                 raise ContractError(f"unexpected sample id: {sample_id!r}")
             if sample_id in records:
                 raise ContractError(f"duplicate result artifact for {sample_id}")
-            record = load_record(path, expected_by_id[sample_id])
+            record = load_record(path, expected_by_id[sample_id], expected_schema_version)
             records[sample_id] = record
         except ContractError as exc:
             incomplete = True
@@ -264,6 +283,9 @@ def sample_url(record: dict[str, Any]) -> str | None:
         or not REPOSITORY_PATTERN.fullmatch(repository)
         or not isinstance(sha, str)
         or not SHA_PATTERN.fullmatch(sha)
+        or not isinstance(path, str)
+        or not path.startswith("samples/")
+        or ".." in Path(path).parts
     ):
         return None
     return f"https://github.com/{repository}/tree/{sha}/{quote(path, safe='/')}"

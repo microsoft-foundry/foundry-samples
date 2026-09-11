@@ -42,9 +42,10 @@ def render(run_url: str | None) -> str:
 <body>
 <h1>foundry-samples validation dashboard</h1>
 <div class="banner">
-  &#9888;&#65039; The most recent run's results could not be retrieved (the
-  combined result artifact was missing or failed to download), so this page
-  could not be regenerated. Open the {link} for what happened.
+  &#9888;&#65039; The most recent run's results could not be retrieved or parsed
+  (the combined result artifact was missing, failed to download, or contained
+  malformed validation data), so this page could not be regenerated. Open the
+  {link} for what happened.
 </div>
 </body>
 </html>

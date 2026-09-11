@@ -32,6 +32,8 @@ class RenderFallbackDashboardTests(unittest.TestCase):
         self.assertIn("<html", body)
         self.assertIn('href="https://github.com/o/r/actions/runs/123"', body)
         self.assertIn("could not be retrieved", body)
+        self.assertIn("could not be retrieved or parsed", body)
+        self.assertIn("malformed validation data", body)
 
     def test_renders_a_page_even_without_a_run_url(self) -> None:
         body = self.run_script(None)

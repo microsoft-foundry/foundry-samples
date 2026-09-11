@@ -260,8 +260,8 @@ def codeowners_for(sample_path: str, codeowners: list[tuple[str, str]]) -> list[
             primary_owners = pattern_owners
         elif pattern_dir.startswith(sample_path + "/"):
             nested_owner_tokens.extend(pattern_owners.split())
-    tokens: list[str] = list(primary_owners.split()) if primary_owners else []
-    for token in nested_owner_tokens:
+    tokens: list[str] = []
+    for token in (primary_owners.split() if primary_owners else []) + nested_owner_tokens:
         if token not in tokens:
             tokens.append(token)
     return tokens
@@ -454,7 +454,7 @@ def render(
     if not complete:
         status_lines.append(
             '<div class="banner banner-incomplete">'
-            "⚠️ The most recent scheduled run reported an <strong>incomplete</strong> result set. "
+            "⚠️ The most recent validation run reported an <strong>incomplete</strong> result set. "
             "This snapshot is not authoritative fleet status — open the workflow run linked below "
             "for the details that could not be normalized here."
             "</div>"
