@@ -1,4 +1,5 @@
 azure-ai-projects==2.3.0
 azure-identity
+httpx
 python-dotenv
 openai

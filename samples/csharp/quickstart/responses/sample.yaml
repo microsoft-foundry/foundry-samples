@@ -2,7 +2,7 @@ name: Quickstart Responses
 description: Basic quickstart sample demonstrating Microsoft Foundry responses.
 build: "dotnet restore --source https://api.nuget.org/v3/index.json && dotnet build --no-restore --verbosity minimal"
 live_service_validation:
-  command: "dotnet run --no-build"
+  command: "dotnet run"
   required_env:
     - AZURE_AI_PROJECT_ENDPOINT
   substitutions:
