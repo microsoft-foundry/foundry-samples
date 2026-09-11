@@ -127,6 +127,8 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(body.count("<table"), 1)
         self.assertIn("✅ Passed (1)", body)
         self.assertIn("❌ Sample failure (1)", body)
+        self.assertIn('<details class="filter-panel">', body)
+        self.assertIn('<summary><strong>Filters</strong><span id="filter-summary">Showing all samples</span></summary>', body)
         self.assertIn('data-filter-outcome="all"', body)
         self.assertIn('data-filter-outcome="passed"', body)
         self.assertIn("Workflow run", body)
@@ -141,6 +143,7 @@ class DashboardTests(unittest.TestCase):
         self.assertIn(">Validation<", body)
         self.assertIn(">Build check</td>", body)
         self.assertIn('title="build readiness validation"', body)
+        self.assertIn('data-validation="build readiness validation"', body)
 
     def test_missing_result_is_shown_and_still_exits_zero_with_banner(self) -> None:
         # Sample "b" is in the manifest (i.e. discovery found its sample.yaml,
@@ -334,6 +337,27 @@ class DashboardTests(unittest.TestCase):
         # Rows carry a data-language attribute so the client-side filter can match on it.
         self.assertIn('data-language="python"', body)
         self.assertIn('data-language="csharp"', body)
+
+    def test_validation_filter_row_lists_each_distinct_validation_label(self) -> None:
+        self.write_result(SAMPLE_A, "passed", completed_stage="build readiness validation")
+        self.write_result(SAMPLE_B, "sample failure", completed_stage="live-service validation")
+        completed = self.run_dashboard()
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn('<div class="filter-group"><strong>Validation</strong>', body)
+        self.assertIn('data-filter-validation="all" class="active">All (2)</button>', body)
+        self.assertIn(
+            'data-filter-validation="build readiness validation" class="filter-btn">Build check (1)</button>',
+            body,
+        )
+        self.assertIn(
+            'data-filter-validation="live-service validation" class="filter-btn">Live run (1)</button>',
+            body,
+        )
+        self.assertIn('data-validation="build readiness validation"', body)
+        self.assertIn('data-validation="live-service validation"', body)
+        self.assertIn('data: "validation", label: "Validation"', body)
+        self.assertIn('summary.textContent = "Showing " + visibleCount + " of " + total + " samples"', body)
 
     def test_codeowner_column_combines_directory_owner_and_nested_file_owner(self) -> None:
         self.write_result(SAMPLE_A, "passed")

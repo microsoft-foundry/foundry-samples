@@ -317,7 +317,7 @@ def render_row(
     codeowner_tokens = " ".join(esc(owner.lower()) for owner in owners)
     return (
         f'<tr data-outcome="{esc(outcome)}" data-language="{esc(sample["language"].lower())}" '
-        f'data-codeowner="{codeowner_tokens}">'
+        f'data-validation="{esc(str(stage).lower())}" data-codeowner="{codeowner_tokens}">'
         f'<td data-sort-value="{esc(sample["path"].lower())}">{path_cell}</td>'
         f'<td data-sort-value="{esc(sample["language"].lower())}">{esc(sample["language"])}</td>'
         f'<td data-sort-value="{OUTCOME_RANK.get(outcome, 99)}">{status_cell}</td>'
@@ -378,11 +378,14 @@ FILTER_SCRIPT = """
   if (!table) return;
   var rows = table.tBodies[0].rows;
   var groups = [
-    { bar: document.getElementById("outcome-filters"), attr: "data-filter-outcome", data: "outcome", active: "all" },
-    { bar: document.getElementById("language-filters"), attr: "data-filter-language", data: "language", active: "all" },
-    { bar: document.getElementById("codeowner-filters"), attr: "data-filter-codeowner", data: "codeowner", active: "all", multi: true },
+  { bar: document.getElementById("outcome-filters"), attr: "data-filter-outcome", data: "outcome", label: "Status", active: "all" },
+  { bar: document.getElementById("language-filters"), attr: "data-filter-language", data: "language", label: "Language", active: "all" },
+  { bar: document.getElementById("validation-filters"), attr: "data-filter-validation", data: "validation", label: "Validation", active: "all" },
+  { bar: document.getElementById("codeowner-filters"), attr: "data-filter-codeowner", data: "codeowner", label: "Codeowner", active: "all", multi: true },
   ].filter(function (group) { return group.bar; });
   if (!groups.length) return;
+  var summary = document.getElementById("filter-summary");
+  var total = rows.length;
 
   function matches(row, group) {
     if (group.active === "all") return true;
@@ -397,10 +400,23 @@ FILTER_SCRIPT = """
   }
 
   function applyFilters() {
+    var visibleCount = 0;
     Array.prototype.forEach.call(rows, function (row) {
       var visible = groups.every(function (group) { return matches(row, group); });
       row.style.display = visible ? "" : "none";
+      if (visible) visibleCount += 1;
     });
+    if (summary) {
+      var active = groups
+        .filter(function (group) { return group.active !== "all"; })
+        .map(function (group) {
+          var button = group.bar.querySelector("button.active");
+          var label = button ? button.textContent.replace(/\\s*\\([^)]*\\)\\s*$/, "") : group.active;
+          return group.label + ": " + label;
+        });
+      summary.textContent = "Showing " + visibleCount + " of " + total + " samples" +
+        (active.length ? " · " + active.join(" · ") : " · All filters");
+    }
   }
 
   groups.forEach(function (group) {
@@ -414,6 +430,7 @@ FILTER_SCRIPT = """
       });
     });
   });
+  applyFilters();
 })();
 """
 
@@ -453,13 +470,16 @@ def render(
         meta_bits.append(f'<a href="{esc(rlink)}">Workflow run</a>')
     status_lines.append(f'<p class="meta">{" · ".join(meta_bits)}</p>')
 
+    filter_sections = []
     filter_buttons = [f'<button type="button" data-filter-outcome="all" class="active">All ({len(records)})</button>']
     for outcome in ("passed", "sample failure", "infrastructure/error", "skipped/not-completed"):
         filter_buttons.append(
             f'<button type="button" data-filter-outcome="{esc(outcome)}" class="filter-btn {OUTCOME_CSS_CLASS.get(outcome, "")}">'
             f"{esc(OUTCOMES[outcome])} ({counts[outcome]})</button>"
         )
-    status_lines.append(f'<div id="outcome-filters" class="filters">{"".join(filter_buttons)}</div>')
+    filter_sections.append(
+        f'<div class="filter-group"><strong>Status</strong><div id="outcome-filters" class="filters">{"".join(filter_buttons)}</div></div>'
+    )
 
     language_counts: dict[str, int] = {}
     for record in records:
@@ -471,7 +491,26 @@ def render(
             f'<button type="button" data-filter-language="{esc(language.lower())}" class="filter-btn">'
             f"{esc(language)} ({language_counts[language]})</button>"
         )
-    status_lines.append(f'<div id="language-filters" class="filters">{"".join(language_buttons)}</div>')
+    filter_sections.append(
+        f'<div class="filter-group"><strong>Language</strong><div id="language-filters" class="filters">{"".join(language_buttons)}</div></div>'
+    )
+
+    validation_counts: dict[str, int] = {}
+    validation_labels: dict[str, str] = {}
+    for record in records:
+        stage = record.get("completed_stage", "")
+        key = str(stage).lower()
+        validation_counts[key] = validation_counts.get(key, 0) + 1
+        validation_labels[key] = stage_label(stage)
+    validation_buttons = [f'<button type="button" data-filter-validation="all" class="active">All ({len(records)})</button>']
+    for key in sorted(validation_counts, key=lambda value: validation_labels[value].lower()):
+        validation_buttons.append(
+            f'<button type="button" data-filter-validation="{esc(key)}" class="filter-btn">'
+            f"{esc(validation_labels[key])} ({validation_counts[key]})</button>"
+        )
+    filter_sections.append(
+        f'<div class="filter-group"><strong>Validation</strong><div id="validation-filters" class="filters">{"".join(validation_buttons)}</div></div>'
+    )
 
     codeowners = codeowners or []
     sample_codeowners = {
@@ -495,7 +534,15 @@ def render(
         codeowner_buttons.append(
             f'<button type="button" data-filter-codeowner="" class="filter-btn">Unowned ({unowned_count})</button>'
         )
-    status_lines.append(f'<div id="codeowner-filters" class="filters">{"".join(codeowner_buttons)}</div>')
+    filter_sections.append(
+        f'<div class="filter-group"><strong>Codeowner</strong><div id="codeowner-filters" class="filters">{"".join(codeowner_buttons)}</div></div>'
+    )
+    status_lines.append(
+        '<details class="filter-panel">'
+        '<summary><strong>Filters</strong><span id="filter-summary">Showing all samples</span></summary>'
+        f'{"".join(filter_sections)}'
+        "</details>"
+    )
 
     # Prefer linking each row straight to the specific matrix job that
     # produced it -- that job page shows the failing step directly. Only
@@ -553,7 +600,19 @@ def render(
   }}
   h1 {{ margin-bottom: 0.25rem; }}
   .meta {{ color: #57606a; margin: 0.25rem 0; }}
-  .filters {{ display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }}
+  .filter-panel {{
+    border: 1px solid #d0d7de; border-radius: 8px; margin: 1rem 0; background: #ffffff;
+  }}
+  .filter-panel summary {{
+    display: flex; align-items: center; gap: 0.75rem; cursor: pointer; padding: 0.75rem 1rem;
+  }}
+  .filter-panel summary::-webkit-details-marker {{ display: none; }}
+  .filter-panel summary::before {{ content: "▸"; color: #57606a; }}
+  .filter-panel[open] summary::before {{ content: "▾"; }}
+  #filter-summary {{ color: #57606a; font-size: 0.9rem; }}
+  .filter-group {{ border-top: 1px solid #d0d7de; padding: 0.75rem 1rem; }}
+  .filter-group strong {{ display: block; margin-bottom: 0.5rem; }}
+  .filters {{ display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0; }}
   .filters button {{
     border: 1px solid #d0d7de; background: #f6f8fa; color: #1b1f23; border-radius: 999px;
     padding: 0.3rem 0.85rem; font-size: 0.85rem; cursor: pointer; font-family: inherit;

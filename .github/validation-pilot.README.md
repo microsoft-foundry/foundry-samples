@@ -103,7 +103,9 @@ investigates the failure and opens a pull request.
 The dashboard's **Validation** column uses short reader-facing labels: **Build
 check** for local/static validation, **Live run** for samples executed against
 the warm Azure AI Foundry project, and setup/reporting labels for infrastructure
-or handoff failures.
+or handoff failures. Its filter panel is collapsed by default with a one-line
+summary of the visible rows; expanding it exposes filters for status, language,
+validation type, and codeowner.
 
 ## Current limits
 
