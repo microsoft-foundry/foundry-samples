@@ -4,7 +4,7 @@ from azure.ai.projects.models import PromptAgentDefinition
 
 # Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
 FOUNDRY_PROJECT_ENDPOINT = "your_project_endpoint"
-FOUNDRY_AGENT_NAME = "your_agent_name"
+FOUNDRY_AGENT_NAME = "your-agent-name"
 
 # Create project client to call Foundry API
 project = AIProjectClient(

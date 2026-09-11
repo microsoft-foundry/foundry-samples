@@ -8,13 +8,10 @@ live_service_validation:
   required_env:
     - AZURE_AI_PROJECT_ENDPOINT
     - MODEL_DEPLOYMENT
-    - FOUNDRY_AGENT_NAME
   substitutions:
     - file: quickstart-create-agent.py
       replacements:
         - placeholder: "your_project_endpoint"
           env: AZURE_AI_PROJECT_ENDPOINT
-        - placeholder: "your_agent_name"
-          env: FOUNDRY_AGENT_NAME
         - placeholder: "gpt-5-mini"
           env: MODEL_DEPLOYMENT
