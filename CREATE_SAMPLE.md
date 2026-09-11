@@ -31,14 +31,28 @@ validate: "python -m py_compile *.py"
 live_service_validation:
   command: "python main.py"
   required_env:
-    - AZURE_AI_PROJECT_ENDPOINT
-    - MODEL_DEPLOYMENT
+    - FOUNDRY_PROJECT_ENDPOINT
+    - FOUNDRY_MODEL_DEPLOYMENT
+```
+
+For completeness, here is a full `sample.yaml` as it looks for a real quickstart sample:
+
+```yaml
+name: Quickstart Create Agent
+description: Basic quickstart sample demonstrating Microsoft Foundry agent creation.
+
+build: "pip install -r requirements.txt"
+validate: "python -m py_compile *.py"
+live_service_validation:
+  command: "python quickstart-create-agent.py"
+  required_env:
+    - FOUNDRY_PROJECT_ENDPOINT
 ```
 
 ### How Full Runs Process This:
 - **Build Readiness:** Always runs build/compilation checks on PR touches and daily cadence.
 - **Live-Service Run:** Runs `live_service_validation.command` only if the `live_service_validation` section is present in `sample.yaml`.
-- **Environment variables:** The daily cadence provides both `AZURE_AI_PROJECT_ENDPOINT`/`MODEL_DEPLOYMENT` and the equivalent `FOUNDRY_PROJECT_ENDPOINT`/`FOUNDRY_MODEL_DEPLOYMENT` aliases, so `required_env` can reference either naming convention.
+- **Environment variables:** Use the `FOUNDRY_PROJECT_ENDPOINT` / `FOUNDRY_MODEL_DEPLOYMENT` names in `required_env` — the daily cadence provides these. (The older `AZURE_AI_PROJECT_ENDPOINT` / `MODEL_DEPLOYMENT` names are still provided too, for backward compatibility, but new samples should use the `FOUNDRY_` names.)
 
 ### Handling Hardcoded "Provide Your Own" Placeholders
 
@@ -53,12 +67,12 @@ variable, before running the command:
 live_service_validation:
   command: "python quickstart-create-agent.py"
   required_env:
-    - AZURE_AI_PROJECT_ENDPOINT
+    - FOUNDRY_PROJECT_ENDPOINT
   substitutions:
     - file: quickstart-create-agent.py
       replacements:
         - placeholder: "your_project_endpoint"
-          env: AZURE_AI_PROJECT_ENDPOINT
+          env: FOUNDRY_PROJECT_ENDPOINT
 ```
 
 - `file` must be a path inside the sample directory to a regular, non-symlinked text file.
