@@ -1,0 +1,5 @@
+# Keyless auth to Microsoft Foundry (DefaultAzureCredential). No API keys.
+azure-identity>=1.15
+openai>=1.30
+
+# Everything else - BM25 retrieval, SGD download, metrics - is standard library.

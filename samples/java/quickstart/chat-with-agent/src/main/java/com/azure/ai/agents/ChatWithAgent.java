@@ -9,15 +9,15 @@ import com.openai.models.responses.ResponseCreateParams;
 public class ChatWithAgent {
     public static void main(String[] args) {
         // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
-        String ProjectEndpoint = "your_project_endpoint";
-        String AgentName = "your_agent_name";
+        String foundryProjectEndpoint = "your_project_endpoint";
+        String foundryAgentName = "your_agent_name";
         
         AgentsClientBuilder builder = new AgentsClientBuilder()
                 .credential(new DefaultAzureCredentialBuilder().build())
-                .endpoint(ProjectEndpoint);
+                .endpoint(foundryProjectEndpoint);
 
         // Create an OpenAI client bound to the agent endpoint
-        OpenAIClient openai = builder.buildAgentScopedOpenAIClient(AgentName);
+        OpenAIClient openai = builder.buildAgentScopedOpenAIClient(foundryAgentName);
 
         // Create a conversation for multi-turn chat
         Conversation conversation = openai.conversations().create();

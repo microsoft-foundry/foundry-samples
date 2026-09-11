@@ -11,8 +11,7 @@
   },
   "dependencies": {
     "@azure/ai-projects": "1.0.0",
-    "@azure/identity": "^4.11.1",
-    "dotenv": "^17.2.1"
+    "@azure/identity": "^4.11.1"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

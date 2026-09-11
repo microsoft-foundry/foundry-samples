@@ -4,12 +4,12 @@ using Azure.AI.Projects.Agents;
 using Azure.AI.Extensions.OpenAI;
 
 // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
-var ProjectEndpoint = "your_project_endpoint";
-var AgentName = "your_agent_name";
+var foundryProjectEndpoint = "your_project_endpoint";
+var foundryAgentName = "your_agent_name";
 
 // Create project client to call Foundry API
 AIProjectClient projectClient = new(
-    endpoint: new Uri(ProjectEndpoint),
+    endpoint: new Uri(foundryProjectEndpoint),
     tokenProvider: new DefaultAzureCredential());
 
 // Create an agent with a model and instructions
@@ -19,6 +19,6 @@ ProjectsAgentDefinition agentDefinition = new DeclarativeAgentDefinition("gpt-5-
 };
 
 ProjectsAgentVersion agent = projectClient.AgentAdministrationClient.CreateAgentVersion(
-    AgentName,
+    foundryAgentName,
     options: new(agentDefinition));
 Console.WriteLine($"Agent created (id: {agent.Id}, name: {agent.Name}, version: {agent.Version})");

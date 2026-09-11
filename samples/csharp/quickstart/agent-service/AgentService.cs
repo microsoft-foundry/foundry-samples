@@ -9,24 +9,25 @@ using OpenAI.Responses;
 
 #pragma warning disable OPENAI001
 
-string RAW_PROJECT_ENDPOINT = Environment.GetEnvironmentVariable("PROJECT_ENDPOINT")
-?? throw new InvalidOperationException("Missing environment variable 'PROJECT_ENDPOINT'");
-string MODEL_DEPLOYMENT = Environment.GetEnvironmentVariable("MODEL_DEPLOYMENT_NAME")
-?? throw new InvalidOperationException("Missing environment variable 'MODEL_DEPLOYMENT_NAME'");
-string AGENT_NAME = Environment.GetEnvironmentVariable("AGENT_NAME")
-?? throw new InvalidOperationException("Missing environment variable 'AGENT_NAME'");
+string foundryProjectEndpoint = "your_project_endpoint";
+string foundryAgentName = "your_agent_name";
 
-AIProjectClient projectClient = new AIProjectClient(new Uri(RAW_PROJECT_ENDPOINT), new DefaultAzureCredential());
+AIProjectClient projectClient = new AIProjectClient(
+    new Uri(foundryProjectEndpoint),
+    new DefaultAzureCredential());
 
 //
 // Create an agent version for a new prompt agent
 //
 
-ProjectsAgentDefinition agentDefinition = new DeclarativeAgentDefinition(MODEL_DEPLOYMENT)
+ProjectsAgentDefinition agentDefinition = new DeclarativeAgentDefinition(
+    "gpt-5-mini") // supports all Foundry direct models
 {
     Instructions = "You are a foo bar agent. In EVERY response you give, ALWAYS include both `foo` and `bar` strings somewhere in the response.",
 };
-ProjectsAgentVersion newAgentVersion = await projectClient.AgentAdministrationClient.CreateAgentVersionAsync(AGENT_NAME, options: new(agentDefinition));
+ProjectsAgentVersion newAgentVersion = await projectClient.AgentAdministrationClient.CreateAgentVersionAsync(
+    foundryAgentName,
+    options: new(agentDefinition));
 
 //
 // Create a conversation to maintain state between calls
@@ -42,10 +43,10 @@ ProjectConversation conversation = await projectClient.ProjectOpenAIClient.GetPr
 //
 // Add items to an existing conversation to supplement the interaction state
 //
-string EXISTING_CONVERSATION_ID = conversation.Id;
+string existingConversationId = conversation.Id;
 
 _ = await projectClient.ProjectOpenAIClient.GetProjectConversationsClient().CreateProjectConversationItemsAsync(
-    EXISTING_CONVERSATION_ID,
+    existingConversationId,
     [ResponseItem.CreateSystemMessageItem("Story theme to use: department of licensing.")]);
 
 //
@@ -53,8 +54,8 @@ _ = await projectClient.ProjectOpenAIClient.GetProjectConversationsClient().Crea
 //
 
 ProjectResponsesClient responseClient = projectClient.ProjectOpenAIClient.GetProjectResponsesClientForAgent(
-    defaultAgent: AGENT_NAME,
-    defaultConversationId: EXISTING_CONVERSATION_ID);
+    defaultAgent: foundryAgentName,
+    defaultConversationId: existingConversationId);
 List<ResponseItem> items = [ResponseItem.CreateUserMessageItem(inputTextContent: "Tell me a one-line story.")] ;
 ResponseResult response = await responseClient.CreateResponseAsync(items);
 

@@ -1,0 +1,103 @@
+[
+  {
+    "dialogue_id": "fixture_0001",
+    "services": ["Restaurants_2"],
+    "turns": [
+      {
+        "speaker": "USER",
+        "utterance": "Find a mid-priced Italian restaurant for two in San Francisco.",
+        "frames": [
+          {
+            "service": "Restaurants_2",
+            "state": {
+              "active_intent": "FindRestaurants",
+              "requested_slots": [],
+              "slot_values": {
+                "category": ["Italian"],
+                "location": ["San Francisco"],
+                "price_range": ["moderate"],
+                "number_of_seats": ["2"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "speaker": "SYSTEM",
+        "utterance": "What time would you like the table?",
+        "frames": [{"service": "Restaurants_2", "actions": []}]
+      },
+      {
+        "speaker": "USER",
+        "utterance": "7 pm tomorrow.",
+        "frames": [
+          {
+            "service": "Restaurants_2",
+            "state": {
+              "active_intent": "ReserveRestaurant",
+              "requested_slots": [],
+              "slot_values": {
+                "category": ["Italian"],
+                "location": ["San Francisco"],
+                "price_range": ["moderate"],
+                "number_of_seats": ["2"],
+                "time": ["7 pm"],
+                "date": ["tomorrow"]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dialogue_id": "fixture_0002",
+    "services": ["Buses_3"],
+    "turns": [
+      {
+        "speaker": "USER",
+        "utterance": "I need a direct bus from Sacramento to Fresno on the 5th.",
+        "frames": [
+          {
+            "service": "Buses_3",
+            "state": {
+              "active_intent": "FindBus",
+              "requested_slots": [],
+              "slot_values": {
+                "from_city": ["Sacramento"],
+                "to_city": ["Fresno"],
+                "departure_date": ["2019-03-05"],
+                "category": ["direct"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "speaker": "SYSTEM",
+        "utterance": "How many tickets do you need?",
+        "frames": [{"service": "Buses_3", "actions": []}]
+      },
+      {
+        "speaker": "USER",
+        "utterance": "Three tickets please.",
+        "frames": [
+          {
+            "service": "Buses_3",
+            "state": {
+              "active_intent": "BuyBusTicket",
+              "requested_slots": [],
+              "slot_values": {
+                "from_city": ["Sacramento"],
+                "to_city": ["Fresno"],
+                "departure_date": ["2019-03-05"],
+                "category": ["direct"],
+                "num_passengers": ["3"]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

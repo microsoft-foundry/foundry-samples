@@ -111,6 +111,21 @@ jobs:
       - name: Run normalized-artifact reporting tests
         run: python .github/scripts/test/test-render-validation-report.py
 
+  # --- Dashboard consumer contract tests: same fixture contract as report-harness, plus HTML-escaping
+  # and public-diagnostic-omission assertions specific to a durably published page ------------------
+  dashboard-harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run normalized-artifact dashboard tests
+        run: python .github/scripts/test/test-render-validation-dashboard.py
+      - name: Run fallback-dashboard tests
+        run: python .github/scripts/test/test-render-fallback-dashboard.py
+      - name: Run per-sample job-link mapping tests
+        run: python .github/scripts/test/test-collect-job-links.py
+      - name: Run per-sample artifact-link mapping tests
+        run: python .github/scripts/test/test-collect-artifact-links.py
+
   validation-pilot-contract:
     runs-on: ubuntu-latest
     steps:

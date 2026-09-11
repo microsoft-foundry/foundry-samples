@@ -190,8 +190,270 @@ class ReportTests(unittest.TestCase):
         completed = self.run_report()
         self.assertEqual(completed.returncode, 1)
         body = self.output.read_text(encoding="utf-8")
-        self.assertIn("invalid artifact: sample-result.json", body)
+        self.assertIn("invalid artifact: bad/sample-result.json", body)
         self.assertIn("⚠️ Infrastructure/error", body)
+
+    def test_multiple_orphaned_artifacts_keep_unique_identities(self) -> None:
+        for directory in ("bad-one", "bad-two"):
+            bad = self.results / directory
+            bad.mkdir()
+            (bad / "sample-result.json").write_text("{", encoding="utf-8")
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("invalid artifact: bad-one/sample-result.json", body)
+        self.assertIn("invalid artifact: bad-two/sample-result.json", body)
+
+    def test_corrupt_utf8_artifact_publishes_error_row_and_fails(self) -> None:
+        bad = self.results / "bad-utf8"
+        bad.mkdir()
+        (bad / "sample-result.json").write_bytes(b"\xff\xfe\x00")
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("invalid artifact: bad-utf8/sample-result.json", body)
+        self.assertIn("not valid UTF-8", body)
+
+    def test_orphaned_artifact_with_run_metadata_does_not_link_to_synthetic_path(self) -> None:
+        (self.results / "run-metadata.json").write_text(
+            json.dumps(
+                {
+                    "repository": "example/repo",
+                    "workflow": "validation pilot",
+                    "run_id": "42",
+                    "run_attempt": "1",
+                    "sha": "abcdef0",
+                    "ref": "refs/heads/main",
+                    "started_at": "2026-08-10T19:22:00Z",
+                }
+            ),
+            encoding="utf-8",
+        )
+        bad = self.results / "bad"
+        bad.mkdir()
+        (bad / "sample-result.json").write_text("{", encoding="utf-8")
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("`<invalid artifact: bad/sample-result.json>`", body)
+        self.assertNotIn("tree/abcdef0/%3Cinvalid%20artifact", body)
+
+    def test_corrupt_run_metadata_falls_back_to_empty_metadata(self) -> None:
+        (self.results / "run-metadata.json").write_bytes(b"\xff\xfe\x00")
+        self.write_result(SAMPLE_A)
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("expected result artifact is missing for b", body)
+        self.assertNotIn("UnicodeDecodeError", completed.stderr)
+
+    def test_invalid_result_for_a_known_sample_does_not_also_report_it_missing(self) -> None:
+        # A result artifact that identifies a real expected sample but fails
+        # validation for some other reason (here, an unsupported outcome)
+        # should produce exactly one error row for that sample -- not both an
+        # "invalid artifact" row and a separate "missing" row for the same
+        # sample.
+        manifest = json.loads(self.expected.read_text(encoding="utf-8"))
+        sample_definition = next(value for value in manifest["samples"] if value["path"] == SAMPLE_A)
+        sample_dir = self.results / sample_definition["id"]
+        sample_dir.mkdir()
+        (sample_dir / "diagnostics.log").write_text("diagnostic\n", encoding="utf-8")
+        (sample_dir / "sample-result.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": manifest["schema_version"],
+                    "sample": sample_definition,
+                    "outcome": "not-a-real-outcome",
+                    "completed_stage": "build readiness validation",
+                    "duration_seconds": 12.5,
+                    "diagnostic_reference": "diagnostics.log",
+                    "artifact_reference": f"validation-pilot-{sample_definition['id']}",
+                    "completed_at": "2026-08-10T19:22:33Z",
+                    "run": {
+                        "repository": "example/repo",
+                        "workflow": "validation pilot",
+                        "run_id": "42",
+                        "run_attempt": "1",
+                        "sha": "abcdef0",
+                        "ref": "refs/heads/main",
+                        "started_at": "2026-08-10T19:22:00Z",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        self.write_result(SAMPLE_B)
+        completed = self.run_report()
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertEqual(body.count(SAMPLE_A), 1, body)
+        self.assertNotIn("expected result artifact is missing for a", body)
+
+    def test_outcome_of_wrong_json_type_is_reported_as_error_not_a_crash(self) -> None:
+        # A malformed artifact whose outcome is e.g. a list rather than a
+        # string must not crash normalization with an uncaught TypeError --
+        # it should become an infrastructure/error row like any other
+        # malformed artifact.
+        manifest = json.loads(self.expected.read_text(encoding="utf-8"))
+        sample_definition = next(value for value in manifest["samples"] if value["path"] == SAMPLE_A)
+        sample_dir = self.results / sample_definition["id"]
+        sample_dir.mkdir()
+        (sample_dir / "diagnostics.log").write_text("diagnostic\n", encoding="utf-8")
+        (sample_dir / "sample-result.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": manifest["schema_version"],
+                    "sample": sample_definition,
+                    "outcome": ["passed"],
+                    "completed_stage": "build readiness validation",
+                    "duration_seconds": 12.5,
+                    "diagnostic_reference": "diagnostics.log",
+                    "artifact_reference": f"validation-pilot-{sample_definition['id']}",
+                    "completed_at": "2026-08-10T19:22:33Z",
+                    "run": {
+                        "repository": "example/repo",
+                        "workflow": "validation pilot",
+                        "run_id": "42",
+                        "run_attempt": "1",
+                        "sha": "abcdef0",
+                        "ref": "refs/heads/main",
+                        "started_at": "2026-08-10T19:22:00Z",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        self.write_result(SAMPLE_B)
+        completed = self.run_report()
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("⚠️ Infrastructure/error", body)
+
+    def test_non_finite_duration_is_reported_as_error_not_valid_result(self) -> None:
+        manifest = json.loads(self.expected.read_text(encoding="utf-8"))
+        sample_definition = next(value for value in manifest["samples"] if value["path"] == SAMPLE_A)
+        sample_dir = self.results / sample_definition["id"]
+        sample_dir.mkdir()
+        (sample_dir / "diagnostics.log").write_text("diagnostic\n", encoding="utf-8")
+        (sample_dir / "sample-result.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": manifest["schema_version"],
+                    "sample": sample_definition,
+                    "outcome": "passed",
+                    "completed_stage": "build readiness validation",
+                    "duration_seconds": float("nan"),
+                    "diagnostic_reference": "diagnostics.log",
+                    "artifact_reference": f"validation-pilot-{sample_definition['id']}",
+                    "completed_at": "2026-08-10T19:22:33Z",
+                    "run": {
+                        "repository": "example/repo",
+                        "workflow": "validation pilot",
+                        "run_id": "42",
+                        "run_attempt": "1",
+                        "sha": "abcdef0",
+                        "ref": "refs/heads/main",
+                        "started_at": "2026-08-10T19:22:00Z",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        self.write_result(SAMPLE_B)
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("duration_seconds must be a finite non-negative number", body)
+        self.assertNotIn("nans", body)
+
+    def test_result_schema_must_match_manifest_schema(self) -> None:
+        self.write_result(SAMPLE_A)
+        result_path = self.results / "a" / "sample-result.json"
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+        result["schema_version"] = 1
+        result_path.write_text(json.dumps(result), encoding="utf-8")
+        self.write_result(SAMPLE_B)
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("result schema_version 1 does not match manifest schema_version 2", body)
+
+    def test_manifest_schema_version_boolean_is_rejected(self) -> None:
+        manifest = json.loads(self.expected.read_text(encoding="utf-8"))
+        manifest["schema_version"] = True
+        self.expected.write_text(json.dumps(manifest), encoding="utf-8")
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("sample manifest must contain a non-empty samples array", completed.stderr)
+
+    def test_result_schema_version_float_is_rejected(self) -> None:
+        self.write_result(SAMPLE_A)
+        self.write_result(SAMPLE_B)
+        result_path = self.results / "a" / "sample-result.json"
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+        result["schema_version"] = 2.0
+        result_path.write_text(json.dumps(result), encoding="utf-8")
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("result must be a supported schema object", body)
+
+    def test_all_samples_missing_still_links_validated_commit_from_run_metadata(self) -> None:
+        # When every expected sample is missing, there is no per-sample `run`
+        # block to draw the validated-commit link from -- but the
+        # completeness job always persists a run-metadata.json alongside the
+        # per-sample result directories, and that should be used as a
+        # fallback so the report doesn't lose run/commit context entirely.
+        (self.results / "run-metadata.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "repository": "example/repo",
+                    "workflow": "validation pilot",
+                    "run_id": "42",
+                    "run_attempt": "1",
+                    "sha": "abcdef0",
+                    "ref": "refs/heads/main",
+                    "completed_at": "2026-08-10T19:22:33Z",
+                }
+            ),
+            encoding="utf-8",
+        )
+        completed = self.run_report()
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("abcdef0", body)
+
+    def test_run_shape_error_reports_missing_and_extra_fields(self) -> None:
+        self.write_result(SAMPLE_A)
+        result_path = self.results / "a" / "sample-result.json"
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+        del result["run"]["ref"]
+        result["run"]["unexpected"] = "value"
+        result_path.write_text(json.dumps(result), encoding="utf-8")
+
+        completed = self.run_report()
+
+        self.assertEqual(completed.returncode, 1)
+        body = self.output.read_text(encoding="utf-8")
+        self.assertIn("missing fields: ['ref']", body)
+        self.assertIn("extra fields: ['unexpected']", body)
 
 
 if __name__ == "__main__":

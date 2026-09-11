@@ -20,7 +20,7 @@ jobs:
       build_readiness_matrix: ${{ steps.discovery.outputs.build_readiness_matrix }}
       live_service_matrix: ${{ steps.discovery.outputs.live_service_matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -59,7 +59,7 @@ jobs:
       max-parallel: 32
       matrix: ${{ fromJSON(needs.discover.outputs.build_readiness_matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         if: matrix.validator_language == 'csharp'
         with:
@@ -128,7 +128,7 @@ jobs:
       max-parallel: 4
       matrix: ${{ fromJSON(needs.discover.outputs.live_service_matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         if: matrix.validator_language == 'csharp'
         with:
@@ -179,7 +179,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v4
         with:
           pattern: validation-pilot-*
@@ -218,3 +218,106 @@ jobs:
     with:
       results-artifact: validation-pilot-run-${{ github.run_id }}-${{ github.run_attempt }}
       manifest-path: manifest.json
+
+  # Publishes a durable "current status of every sample" dashboard to GitHub
+  # Pages. Unlike `report` (a run-scoped summary that only lives on this run's
+  # job summary page), this is the one stable URL for "what is passing right
+  # now". It intentionally still publishes on an incomplete completeness
+  # result (with a visible banner) rather than skip -- see
+  # render-validation-dashboard.py -- so a broken run is never silently masked
+  # by the previous day's stale deployment.
+  #
+  # Scoped to the canonical repository's default branch so a fork enabling its
+  # own Pages site can't be confused with this workflow's publication, and
+  # given its own `pages` concurrency group (queued, not cancel-in-progress)
+  # so a manual dispatch can never race a scheduled run's deployment.
+  publish-dashboard:
+    needs: completeness
+    if: >-
+      always() && !cancelled() &&
+      github.repository == 'microsoft-foundry/foundry-samples' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      actions: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download normalized run
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: validation-pilot-run-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pilot-artifacts
+      - name: Collect per-sample job links
+        if: always() && steps.download.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" \
+            --paginate -q '.jobs[] | {name, html_url}' \
+            > "$RUNNER_TEMP/jobs.ndjson"
+          python .github/scripts/collect-job-links.py \
+            --jobs-file "$RUNNER_TEMP/jobs.ndjson" \
+            --output "$RUNNER_TEMP/pilot-artifacts/job-links.json"
+      - name: Collect per-sample artifact links
+        if: always() && steps.download.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" \
+            --paginate -q '.artifacts[] | {name, id}' \
+            > "$RUNNER_TEMP/artifacts.ndjson"
+          python .github/scripts/collect-artifact-links.py \
+            --artifacts-file "$RUNNER_TEMP/artifacts.ndjson" \
+            --repository "$GITHUB_REPOSITORY" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --output "$RUNNER_TEMP/pilot-artifacts/artifact-links.json"
+      - name: Render dashboard
+        # Always renders *something* deployable, even when the run artifact
+        # above couldn't be downloaded (e.g. discovery or completeness
+        # failed before uploading it). Without this fallback, this step --
+        # and therefore the deploy-pages step below -- would simply never
+        # run, leaving whatever was deployed by a previous run looking like
+        # the current status. A visible "couldn't retrieve results" page is
+        # always preferable to a silently stale one.
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/site"
+          if [ "${{ steps.download.outcome }}" = "success" ] && \
+            python .github/scripts/render-validation-dashboard.py \
+              --results-dir "$RUNNER_TEMP/pilot-artifacts" \
+              --expected-samples "$RUNNER_TEMP/pilot-artifacts/manifest.json" \
+              --output "$RUNNER_TEMP/site/index.html" \
+              --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+              --job-links "$RUNNER_TEMP/pilot-artifacts/job-links.json" \
+              --artifact-links "$RUNNER_TEMP/pilot-artifacts/artifact-links.json" \
+              --codeowners .github/CODEOWNERS; then
+            :
+          else
+            python .github/scripts/render-fallback-dashboard.py \
+              --output "$RUNNER_TEMP/site/index.html" \
+              --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/site
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -80,6 +80,33 @@ Open the
 [workflow runs](https://github.com/microsoft-foundry/foundry-samples/actions/workflows/validation-pilot.yml)
 to inspect the latest report and artifacts.
 
+## Dashboard
+
+The `publish-dashboard` job renders every manifest sample's latest outcome to
+a durable static page on GitHub Pages, so "what's currently passing" has one
+stable URL instead of requiring you to open the latest scheduled run. It only
+publishes from scheduled/dispatched runs on this repository's `main` branch,
+uses its own `pages` concurrency group so a manual dispatch can't race a
+scheduled deployment, and republishes (with a visible banner) even when a run
+is incomplete rather than leaving a stale prior deployment looking current.
+New samples require no dashboard changes: like the report, it renders
+whatever discovery's manifest already contains, so a sample with a
+`sample.yaml` appears the next time the cadence runs. The dashboard doesn't
+inline diagnostic text — instead it links each sample's status to its job
+run for logs, and links to that sample's diagnostics artifact for download
+when one was uploaded, alongside stage, duration, completion time, and
+codeowner. Failed and errored rows also provide a **Fix with Copilot** action.
+The action opens a prefilled issue for review with the sample, run, job, and
+artifact context and assigns it to Copilot when submitted; Copilot then
+investigates the failure and opens a pull request.
+
+The dashboard's **Validation** column uses short reader-facing labels: **Build
+check** for local/static validation, **Live run** for samples executed against
+the warm Azure AI Foundry project, and setup/reporting labels for infrastructure
+or handoff failures. Its filter panel is collapsed by default with a one-line
+summary of the visible rows; expanding it exposes filters for status, language,
+validation type, and codeowner.
+
 ## Current limits
 
 The delivered cadence is daily/manual and warm-project only. Cold provisioning,

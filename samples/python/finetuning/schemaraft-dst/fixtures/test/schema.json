@@ -1,0 +1,68 @@
+[
+  {
+    "service_name": "Restaurants_2",
+    "description": "A leading provider for restaurant search and reservations",
+    "slots": [
+      {"name": "restaurant_name", "description": "Name of the restaurant", "is_categorical": false, "possible_values": []},
+      {"name": "date", "description": "Date for the reservation or the restaurant search", "is_categorical": false, "possible_values": []},
+      {"name": "time", "description": "Time for the reservation", "is_categorical": false, "possible_values": []},
+      {"name": "number_of_seats", "description": "Number of seats to reserve", "is_categorical": true, "possible_values": ["1", "2", "3", "4", "5", "6"]},
+      {"name": "location", "description": "City where the restaurant is located", "is_categorical": false, "possible_values": []},
+      {"name": "category", "description": "The cuisine of food served in the restaurant", "is_categorical": false, "possible_values": []},
+      {"name": "price_range", "description": "Price range of the restaurant", "is_categorical": true, "possible_values": ["cheap", "moderate", "pricey", "ultra high-end"]}
+    ],
+    "intents": [
+      {"name": "ReserveRestaurant", "description": "Reserve a table at a restaurant", "is_transactional": true, "required_slots": ["restaurant_name", "location", "time"], "optional_slots": {}, "result_slots": []},
+      {"name": "FindRestaurants", "description": "Find restaurants by location and cuisine", "is_transactional": false, "required_slots": ["category", "location"], "optional_slots": {}, "result_slots": []}
+    ]
+  },
+  {
+    "service_name": "Restaurants_1",
+    "description": "A leading provider for restaurant search and reservations",
+    "slots": [
+      {"name": "restaurant_name", "description": "Name of the restaurant", "is_categorical": false, "possible_values": []},
+      {"name": "date", "description": "Tentative date of restaurant reservation", "is_categorical": false, "possible_values": []},
+      {"name": "time", "description": "Tentative time of restaurant reservation", "is_categorical": false, "possible_values": []},
+      {"name": "party_size", "description": "Party size for a reservation", "is_categorical": true, "possible_values": ["1", "2", "3", "4", "5", "6"]},
+      {"name": "city", "description": "City where the restaurant is located", "is_categorical": false, "possible_values": []},
+      {"name": "cuisine", "description": "Cuisine of food served by the restaurant", "is_categorical": true, "possible_values": ["Mexican", "Chinese", "Indian", "American", "Italian"]},
+      {"name": "price_range", "description": "Price range for the restaurant", "is_categorical": true, "possible_values": ["cheap", "moderate", "expensive", "very expensive"]}
+    ],
+    "intents": [
+      {"name": "ReserveRestaurant", "description": "Book a table at a restaurant", "is_transactional": true, "required_slots": ["restaurant_name", "city"], "optional_slots": {}, "result_slots": []},
+      {"name": "FindRestaurants", "description": "Search for a restaurant by cuisine and city", "is_transactional": false, "required_slots": ["cuisine", "city"], "optional_slots": {}, "result_slots": []}
+    ]
+  },
+  {
+    "service_name": "Hotels_4",
+    "description": "Accommodation searching and booking portal",
+    "slots": [
+      {"name": "location", "description": "City or town where the accommodation is located", "is_categorical": false, "possible_values": []},
+      {"name": "number_of_rooms", "description": "Number of rooms to reserve", "is_categorical": true, "possible_values": ["1", "2", "3"]},
+      {"name": "check_in_date", "description": "Start date for the reservation", "is_categorical": false, "possible_values": []},
+      {"name": "stay_length", "description": "Number of nights of the stay", "is_categorical": false, "possible_values": []},
+      {"name": "star_rating", "description": "Star rating of the accommodation", "is_categorical": true, "possible_values": ["1", "2", "3", "4", "5"]},
+      {"name": "place_name", "description": "Name of the hotel or accommodation", "is_categorical": false, "possible_values": []}
+    ],
+    "intents": [
+      {"name": "ReserveHotel", "description": "Reserve rooms at a selected place of stay", "is_transactional": true, "required_slots": ["place_name", "location", "check_in_date"], "optional_slots": {}, "result_slots": []},
+      {"name": "SearchHotel", "description": "Search for a place of stay in a given city", "is_categorical": false, "is_transactional": false, "required_slots": ["location"], "optional_slots": {}, "result_slots": []}
+    ]
+  },
+  {
+    "service_name": "Buses_3",
+    "description": "Bus transportation search and booking",
+    "slots": [
+      {"name": "from_city", "description": "City where the journey originates", "is_categorical": false, "possible_values": []},
+      {"name": "to_city", "description": "City where the journey ends", "is_categorical": false, "possible_values": []},
+      {"name": "departure_date", "description": "Date of departure", "is_categorical": false, "possible_values": []},
+      {"name": "departure_time", "description": "Time of departure", "is_categorical": false, "possible_values": []},
+      {"name": "num_passengers", "description": "Number of tickets for the trip", "is_categorical": true, "possible_values": ["1", "2", "3", "4", "5"]},
+      {"name": "category", "description": "Number of stops on the route", "is_categorical": true, "possible_values": ["direct", "one-stop"]}
+    ],
+    "intents": [
+      {"name": "BuyBusTicket", "description": "Buy tickets for a bus journey", "is_transactional": true, "required_slots": ["from_city", "to_city", "departure_date"], "optional_slots": {}, "result_slots": []},
+      {"name": "FindBus", "description": "Find a bus journey between two cities", "is_transactional": false, "required_slots": ["from_city", "to_city"], "optional_slots": {}, "result_slots": []}
+    ]
+  }
+]

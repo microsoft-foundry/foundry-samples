@@ -1,0 +1,7 @@
+data/
+results/
+.env
+finetune_job.json
+__pycache__/
+*.pyc
+.ruff_cache/
