@@ -366,6 +366,97 @@ print_value(resolve(query))
                 'var endpoint = "https://validation.example/api/projects/project";\n',
             )
 
+    def test_live_service_substitutions_reject_trailing_parent_directory_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sample = root / "samples" / "python" / "parent"
+            (sample / "subdir").mkdir(parents=True)
+            (sample / "sample.yaml").write_text(
+                "name: parent\n"
+                "live_service_validation:\n"
+                "  command: \"true\"\n"
+                "  substitutions:\n"
+                "    - file: subdir/..\n"
+                "      replacements:\n"
+                "        - placeholder: \"your_project_endpoint\"\n"
+                "          env: AZURE_AI_PROJECT_ENDPOINT\n",
+                encoding="utf-8",
+            )
+            self.write_fake_yq(root)
+            env = {
+                **os.environ,
+                "PATH": f"{root}{os.pathsep}{Path(sys.executable).parent}{os.pathsep}{os.environ['PATH']}",
+                "SKIP_PROVISION": "true",
+                "AZURE_AI_PROJECT_ENDPOINT": "https://validation.example/api/projects/project",
+            }
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "validate-sample.sh"),
+                    "--mode",
+                    "live-service",
+                    "--sample-dir",
+                    str(sample),
+                ],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+            self.assertEqual(completed.returncode, 2, completed.stdout)
+            self.assertIn("must stay inside the sample directory: subdir/..", completed.stderr)
+
+    def test_live_service_substitutions_treat_glob_placeholders_literally(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sample = root / "samples" / "python" / "literal"
+            sample.mkdir(parents=True)
+            (sample / "config.txt").write_text(
+                "value=token*?[value]\n"
+                "other=tokenXYZvalue\n"
+                "again=token*?[value]\n",
+                encoding="utf-8",
+            )
+            (sample / "sample.yaml").write_text(
+                "name: literal\n"
+                "live_service_validation:\n"
+                "  command: \"grep -Fq 'literal replacement' config.txt && grep -Fq 'tokenXYZvalue' config.txt\"\n"
+                "  substitutions:\n"
+                "    - file: config.txt\n"
+                "      replacements:\n"
+                "        - placeholder: \"token*?[value]\"\n"
+                "          env: AZURE_AI_PROJECT_ENDPOINT\n",
+                encoding="utf-8",
+            )
+            self.write_fake_yq(root)
+            env = {
+                **os.environ,
+                "PATH": f"{root}{os.pathsep}{Path(sys.executable).parent}{os.pathsep}{os.environ['PATH']}",
+                "SKIP_PROVISION": "true",
+                "AZURE_AI_PROJECT_ENDPOINT": "literal replacement",
+            }
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "validate-sample.sh"),
+                    "--mode",
+                    "live-service",
+                    "--sample-dir",
+                    str(sample),
+                ],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertEqual(
+                (sample / "config.txt").read_text(encoding="utf-8"),
+                "value=literal replacement\n"
+                "other=tokenXYZvalue\n"
+                "again=literal replacement\n",
+            )
+
     def test_live_service_substitutions_leave_files_untouched_when_invalid(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -381,6 +381,22 @@ cleanup_python_venv() {
 # The caller owns authentication and configuration. This script never provisions, logs in,
 # or invents defaults: it inherits the caller environment and requires the caller to set
 # SKIP_PROVISION to exactly true or false. A missing declaration is a successful no-op.
+escape_bash_pattern_literal() {
+    local value="$1"
+    value="${value//\\/\\\\}"
+    value="${value//\*/\\*}"
+    value="${value//\?/\\?}"
+    value="${value//\[/\\[}"
+    value="${value//\]/\\]}"
+    value="${value//\(/\\(}"
+    value="${value//\)/\\)}"
+    value="${value//@/\\@}"
+    value="${value//\!/\\!}"
+    value="${value//+/\\+}"
+    value="${value//|/\\|}"
+    printf '%s' "$value"
+}
+
 apply_live_service_substitutions() {
     local yaml="$SAMPLE_DIR/sample.yaml"
     if [ "$(yq eval '.live_service_validation | has("substitutions")' "$yaml" 2>/dev/null)" != "true" ]; then
@@ -423,7 +439,7 @@ apply_live_service_substitutions() {
         printf '%s' "$file" | grep -q '[^[:space:]]' ||
             error "sample.yaml live_service_validation.substitutions[$i].file must be a non-empty string"
         case "$file" in
-            /*|*../*|../*|*"/.."|".") error "sample.yaml live_service_validation.substitutions[$i].file must stay inside the sample directory: $file" ;;
+            /*|*../*|../*|*/..|..|".") error "sample.yaml live_service_validation.substitutions[$i].file must stay inside the sample directory: $file" ;;
         esac
         [ -f "$SAMPLE_DIR/$file" ] ||
             error "sample.yaml live_service_validation.substitutions[$i].file does not exist or is not a regular file: $file"
@@ -472,7 +488,7 @@ apply_live_service_substitutions() {
             pending_count=$((pending_count + 1))
         fi
 
-        local j replacement_kind placeholder_tag placeholder env_tag env_name env_value
+        local j replacement_kind placeholder_tag placeholder placeholder_pattern env_tag env_name env_value
         j=0
         while [ "$j" -lt "$replacement_count" ]; do
             replacement_kind="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j] | kind" "$yaml" 2>/dev/null)" ||
@@ -487,6 +503,7 @@ apply_live_service_substitutions() {
                 error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j].placeholder: $yaml"
             printf '%s' "$placeholder" | grep -q '[^[:space:]]' ||
                 error "sample.yaml live_service_validation.substitutions[$i].replacements[$j].placeholder must be a non-empty string"
+            placeholder_pattern="$(escape_bash_pattern_literal "$placeholder")"
 
             env_tag="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j].env | tag" "$yaml" 2>/dev/null)" ||
                 error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j].env: $yaml"
@@ -501,10 +518,17 @@ apply_live_service_substitutions() {
             env_value="${!env_name}"
 
             case "${pending_contents[$slot]}" in
-                *"$placeholder"*) ;;
+                *$placeholder_pattern*) ;;
                 *) error "live-service substitution placeholder not found in $file: $placeholder" ;;
             esac
-            pending_contents[$slot]="${pending_contents[$slot]//"$placeholder"/$env_value}"
+            local updated_content="" remaining_content="${pending_contents[$slot]}" prefix
+            while case "$remaining_content" in *$placeholder_pattern*) true ;; *) false ;; esac; do
+                prefix="${remaining_content%%$placeholder_pattern*}"
+                updated_content+="$prefix$env_value"
+                remaining_content="${remaining_content#"$prefix"}"
+                remaining_content="${remaining_content#"$placeholder"}"
+            done
+            pending_contents[$slot]="$updated_content$remaining_content"
             j=$((j + 1))
         done
         i=$((i + 1))
