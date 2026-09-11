@@ -74,15 +74,25 @@ live_service_validation:
 
 ## Scenario B: Create a File/Sample Validated Without Full Run
 
-To validate a sample without running live cloud services during full runs, or to run validation locally on demand:
+Use this when you don't want (or aren't ready) to opt into automatic live-service
+runs in CI/daily cadence — either because you're still iterating, or because the
+sample should never call a live service in automation. `sample.yaml` is still
+recommended (and required for automation to discover the sample at all), but
+these options avoid triggering a live-service run in the shared pipeline.
 
 ### Option 1: Build-Readiness Only (No Live Execution in CI)
 Include `sample.yaml` but **omit** the `live_service_validation` block.
-- The sample will be compiled/checked for build readiness in PRs and daily runs.
-- **No live service calls** will be executed during full runs.
+- The sample is still discovered and compiled/checked for build readiness by PRs
+  and the daily cadence (that part of "full run" still happens automatically).
+- No live-service call is ever made by CI/daily cadence, because there's nothing
+  declared for it to run.
 
-### Option 2: Local On-Demand Validation
-To test and validate locally before or without committing to full pipeline runs, use the local validation script:
+### Option 2: Run Validation Yourself, On Demand
+Instead of waiting for CI or the daily cadence to pick up your sample, invoke the
+same validator script yourself, locally, whenever you want a quick check. This
+works whether or not the sample has a `sample.yaml` — without one, the script
+falls back to the language's default build/compile check; with one, it honors any
+declared `build`/`validate`/`test` commands or `live_service_validation` block.
 
 ```bash
 # Validate build readiness locally
@@ -90,11 +100,15 @@ bash .github/scripts/validate-sample.sh \
   --language <language> \
   --sample-dir samples/<language>/<sample-name>
 
-# Validate live-service execution locally
+# Validate live-service execution locally (only meaningful if
+# live_service_validation is declared in sample.yaml)
 SKIP_PROVISION=true bash .github/scripts/validate-sample.sh \
   --mode live-service \
   --sample-dir samples/<language>/<sample-name>
 ```
+
+This is just you running the script directly — it never registers the sample with
+CI or the daily cadence. Those still only pick up samples that have `sample.yaml`.
 
 ---
 
