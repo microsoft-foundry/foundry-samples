@@ -62,6 +62,14 @@ OUTCOME_CSS_CLASS = {
     "infrastructure/error": "errored",
     "skipped/not-completed": "skipped",
 }
+STAGE_LABELS = {
+    "inventory eligibility": "Not validated",
+    "build readiness validation": "Build check",
+    "build readiness invocation": "Build check setup error",
+    "live-service validation": "Live run",
+    "live-service validation invocation": "Live run setup error",
+    "reporting": "Reporting issue",
+}
 
 # Small inline SVG download glyph for the Artifact column -- avoids pulling
 # in an external icon font or network dependency on a page that must render
@@ -78,6 +86,12 @@ DOWNLOAD_ICON = (
 
 def esc(value: Any) -> str:
     return html.escape(str(value), quote=True)
+
+
+def stage_label(stage: Any) -> str:
+    if not isinstance(stage, str) or not stage:
+        return "Unknown"
+    return STAGE_LABELS.get(stage, stage)
 
 
 def run_metadata(records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -133,7 +147,7 @@ def copilot_issue_link(
         f"- Sample: `{sample['path']}`",
         f"- Language: `{sample['language']}`",
         f"- Outcome: `{record['outcome']}`",
-        f"- Stage: `{record.get('completed_stage', 'unknown')}`",
+        f"- Validation: `{stage_label(record.get('completed_stage'))}`",
     ]
     if isinstance(run_id, str) and run_id.isdigit():
         details.append(f"- Run ID: `{run_id}`")
@@ -294,7 +308,9 @@ def render_row(
         else "—"
     )
     copilot_sort = "1" if copilot_href else "0"
-    stage = record.get("completed_stage", "—")
+    stage = record.get("completed_stage", "")
+    stage_display = stage_label(stage)
+    stage_title = f' title="{esc(stage)}"' if isinstance(stage, str) and stage != stage_display else ""
     owners = codeowners or []
     codeowner_display = ", ".join(codeowner_display_name(owner) for owner in owners)
     codeowner_cell = esc(codeowner_display) if owners else "—"
@@ -305,7 +321,7 @@ def render_row(
         f'<td data-sort-value="{esc(sample["path"].lower())}">{path_cell}</td>'
         f'<td data-sort-value="{esc(sample["language"].lower())}">{esc(sample["language"])}</td>'
         f'<td data-sort-value="{OUTCOME_RANK.get(outcome, 99)}">{status_cell}</td>'
-        f'<td data-sort-value="{esc(stage.lower())}">{esc(stage)}</td>'
+        f'<td data-sort-value="{esc(str(stage).lower())}"{stage_title}>{esc(stage_display)}</td>'
         f'<td data-sort-value="{duration_sort}">{duration_cell}</td>'
         f'<td data-sort-value="{esc(completed_sort)}">{completed_cell}</td>'
         f'<td data-sort-value="{artifact_sort}">{artifact_cell}</td>'
@@ -504,7 +520,7 @@ def render(
         ("Sample", "text"),
         ("Language", "text"),
         ("Status", "number"),
-        ("Stage", "text"),
+        ("Validation", "text"),
         ("Duration", "number"),
         ("Last checked", "text"),
         ("Artifact", "number"),

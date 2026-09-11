@@ -138,6 +138,9 @@ class DashboardTests(unittest.TestCase):
         self.assertIn('data-sort-index="0"', body)
         self.assertIn('data-sort-index="2"', body)
         self.assertIn("<script>", body)
+        self.assertIn(">Validation<", body)
+        self.assertIn(">Build check</td>", body)
+        self.assertIn('title="build readiness validation"', body)
 
     def test_missing_result_is_shown_and_still_exits_zero_with_banner(self) -> None:
         # Sample "b" is in the manifest (i.e. discovery found its sample.yaml,
@@ -307,7 +310,7 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(query["assignees"], ["copilot-swe-agent[bot]"])
         self.assertEqual(query["title"], [f"Fix validation failure: {SAMPLE_B}"])
         self.assertIn(SAMPLE_B, query["body"][0])
-        self.assertIn("live-service validation", query["body"][0])
+        self.assertIn("Live run", query["body"][0])
         self.assertIn("https://github.com/example/repo/actions/runs/42/job/999", query["body"][0])
         self.assertIn("https://github.com/example/repo/actions/runs/42/artifacts/555", query["body"][0])
 
