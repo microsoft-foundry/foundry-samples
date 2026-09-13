@@ -1,0 +1,11 @@
+# Dataset download and PDF text extraction
+huggingface-hub>=0.23
+pypdf>=4.0
+
+# Model access. Auth is keyless via DefaultAzureCredential; there is no API-key path.
+openai>=1.30
+azure-identity>=1.15
+
+# transformers is deliberately not listed. It is only needed for the optional
+# --tokenizer envelope pass in prepare_data.py, it is a heavy install, and the
+# import is lazy so everything else works without it.

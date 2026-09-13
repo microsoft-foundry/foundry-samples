@@ -1,0 +1,5 @@
+# Downloaded corpus, built splits and saved responses. Nothing here is ours to
+# redistribute, and prepare_data.py rebuilds all of it.
+data/
+__pycache__/
+*.pyc

@@ -1,0 +1,8 @@
+name: extractbench-text-eval
+description: >
+  Build a text-only structured-extraction dataset from the public ExtractBench
+  corpus and screen a model for fine-tuning headroom. Measures refusal rate,
+  JSON validity and output coverage zero-shot, so you can tell whether a model
+  has a broken behaviour worth repairing before paying for a training run.
+build: "pip install -r requirements.txt"
+validate: "python selftest.py"
