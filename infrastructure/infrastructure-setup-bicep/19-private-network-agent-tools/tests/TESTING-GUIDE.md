@@ -10,18 +10,19 @@ This guide covers testing Azure AI Foundry agents with tools that access private
 
 1. [Prerequisites](#prerequisites)
 2. [Connecting to a Private Foundry Resource](#connecting-to-a-private-foundry-resource)
-3. [Switching the Foundry Resource to Public Access](#switching-the-foundry-resource-to-public-access)
-4. [Step 1: Deploy the Template](#step-1-deploy-the-template)
-5. [Step 2: Verify Private Endpoints](#step-2-verify-private-endpoints)
-6. [Step 3: Create Test Data in AI Search](#step-3-create-test-data-in-ai-search)
-7. [Step 4: Deploy MCP Server](#step-4-deploy-mcp-server)
-8. [Step 5: Deploy OpenAPI Server](#step-5-deploy-openapi-server)
-9. [Step 6: Configure A2A Connection](#step-6-configure-a2a-connection)
-10. [Step 7: Configure Fabric Data Agent](#step-7-configure-fabric-data-agent)
-11. [Step 8: Test via SDK](#step-8-test-via-sdk)
-12. [Azure Functions Behind a VNet](#azure-functions-behind-a-vnet)
-13. [Troubleshooting](#troubleshooting)
-14. [Test Results Summary](#test-results-summary)
+3. [Private MCP Evidence Checklist](#private-mcp-evidence-checklist)
+4. [Switching the Foundry Resource to Public Access](#switching-the-foundry-resource-to-public-access)
+5. [Step 1: Deploy the Template](#step-1-deploy-the-template)
+6. [Step 2: Verify Private Endpoints](#step-2-verify-private-endpoints)
+7. [Step 3: Create Test Data in AI Search](#step-3-create-test-data-in-ai-search)
+8. [Step 4: Deploy MCP Server](#step-4-deploy-mcp-server)
+9. [Step 5: Deploy OpenAPI Server](#step-5-deploy-openapi-server)
+10. [Step 6: Configure A2A Connection](#step-6-configure-a2a-connection)
+11. [Step 7: Configure Fabric Data Agent](#step-7-configure-fabric-data-agent)
+12. [Step 8: Test via SDK](#step-8-test-via-sdk)
+13. [Azure Functions Behind a VNet](#azure-functions-behind-a-vnet)
+14. [Troubleshooting](#troubleshooting)
+15. [Test Results Summary](#test-results-summary)
 
 ---
 
@@ -48,6 +49,42 @@ Azure provides three methods:
 For step-by-step setup instructions, see: [Securely connect to Azure AI Foundry](https://learn.microsoft.com/en-us/azure/ai-foundry/how-to/configure-private-link?view=foundry#securely-connect-to-foundry).
 
 Once connected to the VNet, all SDK commands and portal interactions in this guide will work as documented.
+
+---
+
+## Private MCP Evidence Checklist
+
+When troubleshooting private MCP connectivity, confirm the following. SDK test steps are in [Step 8: Test via SDK](#step-8-test-via-sdk).
+
+### 1. Foundry configuration
+- **Standard Agent** setup with network injection (`networkInjections.scenario='agent'`)
+- **Agent Subnet** delegated to `Microsoft.App/environments` (one Foundry account per subnet)
+- **Bring Your Own Virtual Network (BYO VNet)** — custom VNet support with subnet delegation
+
+### 2. MCP hosting
+- Container Apps environment created with `--internal-only true`
+- Environment deployed on the **MCP Subnet** (`--infrastructure-subnet-resource-id`)
+- Environment virtual IP is **internal** (static IP in the MCP Subnet range)
+- Private DNS zone for the Container Apps domain is linked to the VNet
+- App-level `--ingress external` reports `external=true` but is **not** internet-facing: the FQDN has no public DNS resolution, and the environment VIP remains in the MCP Subnet
+
+### 3. Runtime
+
+**MCP connectivity (direct HTTP)** — requires a secure connection (VPN Gateway, ExpressRoute, or Azure Bastion):
+
+- Private DNS: `nslookup <mcp-server-fqdn>` resolves to the environment static IP
+- `initialize` succeeds and returns `mcp-session-id`
+- `tools/list` enumerates available tools
+- `tools/call` executes a tool
+
+Direct HTTP from the internet fails (no public DNS; no route to the internal VIP).
+
+**MCP tool via agent (Data Proxy)** — if the Foundry resource has **public network access enabled**, SDK tests work from the internet without VPN/ExpressRoute/Bastion:
+
+- Agent response includes `mcp_list_tools`
+- Agent response includes `mcp_call`
+
+The Data Proxy routes MCP traffic via the `scenario: 'agent'` network injection. Direct MCP connectivity still requires a VNet connection; the agent path does not.
 
 ---
 
@@ -235,6 +272,8 @@ az containerapp create \
 MCP_FQDN=$(az containerapp show -g $RESOURCE_GROUP -n "mcp-http-server" --query "properties.configuration.ingress.fqdn" -o tsv)
 echo "MCP Server URL: https://${MCP_FQDN}/noauth/mcp"
 ```
+
+> **Note on `--ingress external`**: App-level `--ingress external` is external to the app within the Container Apps environment boundary. It does **not** create an internet-reachable endpoint when the environment is `--internal-only` and public network access is disabled. Internal Container Apps environments have no public endpoint — the FQDN only resolves within the VNet.
 
 ### 4.4 Configure Private DNS
 
@@ -685,7 +724,7 @@ python test_azure_function_agents_v2.py --test private --retry 3
 
 ### 8.9 Understanding Test Results
 
-**MCP Connectivity Test**: Direct HTTP test to verify the MCP server responds correctly:
+**MCP Connectivity Test**: Direct HTTP test to verify the MCP server responds correctly. Requires a secure connection (VPN Gateway, ExpressRoute, or Azure Bastion) — see [Private MCP Evidence Checklist](#private-mcp-evidence-checklist).
 - Sends `initialize` request and captures `mcp-session-id` header
 - Sends `tools/list` to enumerate available tools
 - Sends `tools/call` to execute the `add` tool
@@ -694,6 +733,7 @@ python test_azure_function_agents_v2.py --test private --retry 3
 - Creates an agent with MCP tool configuration
 - Sends a request that triggers the MCP tool
 - Validates the agent can call MCP tools through the Data Proxy
+- If the Foundry resource has **public network access enabled**, this path works from the internet without VPN/ExpressRoute/Bastion
 
 > **Known Issue**: Agent tests may fail ~50% of the time with `TaskCanceledException` due to Hyena cluster routing. The Data Proxy is only deployed on one of two scale units, and the load balancer routes in round-robin fashion. Use `--retry` to mitigate.
 
@@ -1034,3 +1074,5 @@ This is expected when network injection is configured. Use SDK testing instead -
 # Delete all resources
 az group delete --name $RESOURCE_GROUP --yes --no-wait
 ```
+
+> See [Account Deletion Prerequisites and Cleanup Guidance](../README.md#account-deletion-prerequisites-and-cleanup-guidance). The account capability host can remain in **Deleting** for approximately 20–30 minutes; wait until it is gone before reusing the Agent Subnet.

@@ -151,6 +151,8 @@ az containerapp create \
   --min-replicas 1
 ```
 
+> **Note on `--ingress external`**: App-level `--ingress external` is external to the app within the Container Apps environment boundary. It does **not** create an internet-reachable endpoint when the environment is `--internal-only` and public network access is disabled. Internal Container Apps environments have no public endpoint — the FQDN only resolves within the VNet.
+
 ### 4. Configure Private DNS for Container Apps
 
 Since the environment is `--internal-only`, its FQDNs resolve only inside the VNet. Create a private DNS zone so the DataProxy (and VPN clients) can reach them.

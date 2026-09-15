@@ -166,7 +166,7 @@ Before deleting an **Account** resource, it is essential to first delete the ass
 
 **Cleanup Options**
 
-**1. Full Account Removal**: To completely remove an account, you must delete and purge the account. Simply deleting the account is not sufficient, you must purge so that deletion of the associated capability host is triggered. The service will automatically handle the removal of the capability host and any linked resources in the background. To purge the account, use the following [link](https://learn.microsoft.com/en-us/azure/ai-services/recover-purge-resources?tabs=azure-portal#purge-a-deleted-resource). Please allow approximately max of 20 minutes for all resources to be fully unlinked from the account.
+**1. Full Account Removal**: To completely remove an account, you must delete and purge the account. Simply deleting the account is not sufficient, you must purge so that deletion of the associated capability host is triggered. The service will automatically handle the removal of the capability host and any linked resources in the background. To purge the account, use the following [link](https://learn.microsoft.com/en-us/azure/ai-services/recover-purge-resources?tabs=azure-portal#purge-a-deleted-resource). Please allow approximately max of 20 minutes for all resources to be fully unlinked from the account. The account capability host can remain in **Deleting** for approximately 20–30 minutes; wait until it is gone before reusing the Agent Subnet.
 
 **2. Retain Account, Remove Capability Host**: If you intend to retain the account but remove the capability host, execute the script `deleteCapHost.sh` located in this folder. After deletion, allow approximately max of 20 minutes for all resources to be fully unlinked from the account. To recreate the capability host for the account, use the script `createCapHost.sh` located in the same folder.
 
@@ -599,6 +599,40 @@ When public network access is disabled (the default), you need a secure connecti
 
 For detailed setup instructions, see: [Securely connect to Azure AI Foundry](https://learn.microsoft.com/en-us/azure/ai-foundry/how-to/configure-private-link?view=foundry#securely-connect-to-foundry).
 
+## Private MCP Evidence Checklist
+
+When troubleshooting private MCP connectivity, confirm the following. SDK test steps are in [TESTING-GUIDE.md](tests/TESTING-GUIDE.md).
+
+### 1. Foundry configuration
+- **Standard Agent** setup with network injection (`networkInjections.scenario='agent'`)
+- **Agent Subnet** delegated to `Microsoft.App/environments` (one Foundry account per subnet)
+- **Bring Your Own Virtual Network (BYO VNet)** — custom VNet support with subnet delegation
+
+### 2. MCP hosting
+- Container Apps environment created with `--internal-only true`
+- Environment deployed on the **MCP Subnet** (`--infrastructure-subnet-resource-id`)
+- Environment virtual IP is **internal** (static IP in the MCP Subnet range)
+- Private DNS zone for the Container Apps domain is linked to the VNet
+- App-level `--ingress external` reports `external=true` but is **not** internet-facing: the FQDN has no public DNS resolution, and the environment VIP remains in the MCP Subnet
+
+### 3. Runtime
+
+**MCP connectivity (direct HTTP)** — requires a secure connection (VPN Gateway, ExpressRoute, or Azure Bastion):
+
+- Private DNS: `nslookup <mcp-server-fqdn>` resolves to the environment static IP
+- `initialize` succeeds and returns `mcp-session-id`
+- `tools/list` enumerates available tools
+- `tools/call` executes a tool
+
+Direct HTTP from the internet fails (no public DNS; no route to the internal VIP).
+
+**MCP tool via agent (Data Proxy)** — if the Foundry resource has **public network access enabled**, SDK tests work from the internet without VPN/ExpressRoute/Bastion:
+
+- Agent response includes `mcp_list_tools`
+- Agent response includes `mcp_call`
+
+The Data Proxy routes MCP traffic via the `scenario: 'agent'` network injection. Direct MCP connectivity still requires a VNet connection; the agent path does not.
+
 ---
 
 ## Testing Agents with Private Resources
@@ -644,7 +678,9 @@ az containerapp create \
   --min-replicas 1
 ```
 
-Then configure private DNS zone for Container Apps (see TESTING-GUIDE.md Step 6.3).
+> **Note on `--ingress external`**: App-level `--ingress external` is external to the app within the Container Apps environment boundary. It does **not** create an internet-reachable endpoint when the environment is `--internal-only` and public network access is disabled. Internal Container Apps environments have no public endpoint — the FQDN only resolves within the VNet.
+
+Then configure private DNS zone for Container Apps (see TESTING-GUIDE.md Step 4.4).
 
   - **Azure Monitor (Application Insights)**
     - Log Analytics Reader (`73c42c96-874c-492b-b04d-ab87d138a893`) — read the agent trace/telemetry data

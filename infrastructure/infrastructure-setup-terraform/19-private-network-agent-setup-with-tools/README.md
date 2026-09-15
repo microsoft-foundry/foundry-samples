@@ -381,6 +381,40 @@ When public network access is disabled (the default), you need a secure connecti
 
 For detailed setup instructions, see: [Securely connect to Azure AI Foundry](https://learn.microsoft.com/en-us/azure/ai-foundry/how-to/configure-private-link?view=foundry#securely-connect-to-foundry).
 
+## Private MCP Evidence Checklist
+
+When troubleshooting private MCP connectivity, confirm the following. SDK test steps are in the [Bicep 19 TESTING-GUIDE.md](../../infrastructure-setup-bicep/19-private-network-agent-tools/tests/TESTING-GUIDE.md).
+
+### 1. Foundry configuration
+- **Standard Agent** setup with network injection (`networkInjections.scenario='agent'`)
+- **Agent Subnet** delegated to `Microsoft.App/environments` (one Foundry account per subnet)
+- **Bring Your Own Virtual Network (BYO VNet)** — custom VNet support with subnet delegation
+
+### 2. MCP hosting
+- Container Apps environment created with `--internal-only true`
+- Environment deployed on the **MCP Subnet** (`--infrastructure-subnet-resource-id`)
+- Environment virtual IP is **internal** (static IP in the MCP Subnet range)
+- Private DNS zone for the Container Apps domain is linked to the VNet
+- App-level `--ingress external` reports `external=true` but is **not** internet-facing: the FQDN has no public DNS resolution, and the environment VIP remains in the MCP Subnet
+
+### 3. Runtime
+
+**MCP connectivity (direct HTTP)** — requires a secure connection (VPN Gateway, ExpressRoute, or Azure Bastion):
+
+- Private DNS: `nslookup <mcp-server-fqdn>` resolves to the environment static IP
+- `initialize` succeeds and returns `mcp-session-id`
+- `tools/list` enumerates available tools
+- `tools/call` executes a tool
+
+Direct HTTP from the internet fails (no public DNS; no route to the internal VIP).
+
+**MCP tool via agent (Data Proxy)** — if the Foundry resource has **public network access enabled**, SDK tests work from the internet without VPN/ExpressRoute/Bastion:
+
+- Agent response includes `mcp_list_tools`
+- Agent response includes `mcp_call`
+
+The Data Proxy routes MCP traffic via the `scenario: 'agent'` network injection. Direct MCP connectivity still requires a VNet connection; the agent path does not.
+
 ## MCP Server Deployment
 
 To deploy MCP servers on the private VNet after the base infrastructure is deployed:
@@ -405,23 +439,27 @@ az containerapp create \
   --min-replicas 1
 ```
 
+> **Note on `--ingress external`**: App-level `--ingress external` is external to the app within the Container Apps environment boundary. It does **not** create an internet-reachable endpoint when the environment is `--internal-only` and public network access is disabled. Internal Container Apps environments have no public endpoint — the FQDN only resolves within the VNet.
+
 Then configure a private DNS zone for Container Apps. See the [Bicep 19 TESTING-GUIDE.md](../../infrastructure-setup-bicep/19-private-network-agent-tools/tests/TESTING-GUIDE.md) for details on DNS configuration for tools behind VNet.
 
 ---
 
 ## Teardown
 
-### Account Deletion Prerequisites
+### Account Deletion Prerequisites and Cleanup Guidance
 
-Before deleting an Account resource, the associated capability hosts must be removed first. The `terraform destroy` command handles this automatically via dependency ordering and the account purger resource.
+Before deleting an **Account** resource, it is essential to first delete the associated **Account Capability Host**. Failure to do so may result in residual dependencies—such as subnets and other provisioned resources (e.g., ACA applications)—remaining linked to the capability host. This can lead to errors such as **"Subnet already in use"** when attempting to reuse the same subnet in a different account deployment.
 
-If you need to manually clean up:
-1. Delete the **project capability host** first
-2. Delete the **account capability host**
-3. Delete and [**purge**](https://learn.microsoft.com/en-us/azure/ai-services/recover-purge-resources?tabs=azure-portal#purge-a-deleted-resource) the Foundry account
-4. Allow approximately **20 minutes** for all resources to be fully unlinked
+The `terraform destroy` command handles this automatically via dependency ordering and the account purger resource.
 
-> **Important**: Simply deleting the account is not sufficient — you must also purge it so that the associated capability host deletion is triggered. The service will automatically handle the removal of the capability host and any linked resources in the background.
+**Cleanup Options**
+
+**1. Full Account Removal**: To completely remove an account, you must delete and purge the account. Simply deleting the account is not sufficient, you must purge so that deletion of the associated capability host is triggered. The service will automatically handle the removal of the capability host and any linked resources in the background. To purge the account, use the following [link](https://learn.microsoft.com/en-us/azure/ai-services/recover-purge-resources?tabs=azure-portal#purge-a-deleted-resource). Please allow approximately max of 20 minutes for all resources to be fully unlinked from the account. The account capability host can remain in **Deleting** for approximately 20–30 minutes; wait until it is gone before reusing the Agent Subnet.
+
+**2. Retain Account, Remove Capability Host**: If you intend to retain the account but remove the capability host, you must delete the capability host resource directly. After deletion, allow approximately max of 20 minutes for all resources to be fully unlinked from the account.
+
+> **Important**: Before deleting the account capability host, ensure that the **project capability host** is deleted first.
 
 ---
 
