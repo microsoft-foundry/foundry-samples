@@ -1,0 +1,12 @@
+{
+  "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
+  "type": "QuickStart",
+  "itemDisplayName": "Network Secured Agent Setup with capabilitySettings (Implicit Capability Hosts)",
+  "description": "Network-secured Standard Agent setup (derived from template 15) where the project capability host is created implicitly from the project's capabilitySettings and the account capability host is implicit via networkInjections. No explicit capability-host resources are declared.",
+  "summary": "Network-secured agent setup that uses capabilitySettings so the account and project capability hosts are implicit resources.",
+  "githubUsername": "fosteramanda",
+  "dateUpdated": "2026-06-29",
+  "environments": [
+    "AzureCloud"
+  ]
+}
