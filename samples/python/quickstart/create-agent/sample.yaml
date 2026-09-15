@@ -4,6 +4,9 @@ description: Basic quickstart sample demonstrating Microsoft Foundry agent creat
 build: "pip install -r requirements.txt"
 validate: "python -m py_compile *.py"
 live_service_validation:
+  # live-cleanup.sh (auto-detected by the harness) deletes the agent
+  # quickstart-create-agent.py creates, so a live run doesn't leave an agent
+  # behind. It runs automatically after the command below; no chaining needed here.
   command: "python quickstart-create-agent.py"
   required_env:
     - FOUNDRY_PROJECT_ENDPOINT
@@ -15,3 +18,7 @@ live_service_validation:
           env: FOUNDRY_PROJECT_ENDPOINT
         - placeholder: "gpt-5-mini"
           env: MODEL_DEPLOYMENT
+    - file: live_setup_delete_agent.py
+      replacements:
+        - placeholder: "your_project_endpoint"
+          env: FOUNDRY_PROJECT_ENDPOINT

@@ -8,7 +8,7 @@ public class CreateAgent {
     public static void main(String[] args) {
         // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
         String foundryProjectEndpoint = "your_project_endpoint";
-        String foundryAgentName = "your_agent_name";
+        String foundryAgentName = "your-agent-name";
 
         // Create agents client to call Foundry API
         AgentsClient agentsClient = new AgentsClientBuilder()

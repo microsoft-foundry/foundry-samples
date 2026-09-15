@@ -7,6 +7,7 @@
   "main": "dist/quickstart-chat-with-agent.js",
   "scripts": {
     "start": "tsx --no-deprecation src/quickstart-chat-with-agent.ts",
+    "live-cleanup:delete-agent": "tsx --no-deprecation src/live-setup-delete-agent.ts",
     "build": "npx tsc"
   },
   "dependencies": {

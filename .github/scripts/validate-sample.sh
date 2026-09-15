@@ -621,6 +621,24 @@ run_live_service_validation() {
     live_service_rc=$?
     cat "$live_service_log"
     rm -f "$live_service_log"
+
+    # Best-effort, convention-based per-sample cleanup: if the sample directory ships
+    # a live-cleanup.sh, run it automatically here — no sample.yaml declaration needed.
+    # This only ever deletes what that sample's own live_service_validation.command
+    # created (e.g. a named agent); it never touches shared/pre-existing project
+    # resources such as the model deployment. Its own exit status is logged but never
+    # changes the pass/fail verdict below, which is always driven by $live_service_rc.
+    if [ -f "$SAMPLE_DIR/live-cleanup.sh" ]; then
+        echo "Running live-cleanup.sh (best-effort; does not affect pass/fail)"
+        local cleanup_log cleanup_rc
+        cleanup_log="$(mktemp)" || error "failed to create temporary live-cleanup log"
+        ( cd "$SAMPLE_DIR" && bash live-cleanup.sh ) >"$cleanup_log" 2>&1
+        cleanup_rc=$?
+        cat "$cleanup_log"
+        rm -f "$cleanup_log"
+        [ "$cleanup_rc" -eq 0 ] || echo "WARNING: live-cleanup.sh exited $cleanup_rc (ignored)"
+    fi
+
     case "$live_service_rc" in
         0) pass ;;
         1) fail "sample.yaml live_service_validation.command reported sample failure (exit 1)" ;;
