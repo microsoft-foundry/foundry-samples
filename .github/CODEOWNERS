@@ -26,7 +26,28 @@
 # # Mistral AI — onboarded: 2026-06-22 — partner: @peymanmohajerian — dri: @truptiparkar7
 # /samples/python/mistral/  @FILL_IN
 
+#### docs-referenced-file guard (Docs team) ##################################################
+# These three paths ARE the guard that stops a PR from breaking a published Learn article.
+# They must not be editable without AI Platform Docs review, or the gate can be disabled in the
+# same PR that breaks a reference. Also mark `docs-referenced-files / check` as a required status
+# check on `main` -- CODEOWNERS alone only routes review, it does not block a merge.
+/.github/docs-referenced-files.json @microsoft-foundry/AI-Platform-Docs
+/.github/scripts/check-docs-referenced-files.py @microsoft-foundry/AI-Platform-Docs
+/.github/workflows/docs-referenced-files.yml @microsoft-foundry/AI-Platform-Docs
+
 #### files referenced in docs (DO NOT EDIT, except for Docs team!!!) ##########################################
+#
+# MIGRATION IN PROGRESS -- this per-file block is being replaced by
+# `.github/docs-referenced-files.json`, which the `docs-referenced-files / check` workflow
+# enforces automatically. That check fails the PR when a referenced file is deleted or renamed,
+# or when a snippet delimiter comment or a named notebook cell is removed.
+#
+# Once that check is required on `main`, delete the entries below: the docs team no longer needs
+# to own or approve routine edits to these samples, only to be consulted when a reference breaks.
+# Until then, keep both in sync.
+#
+# Questions: General - AI Platform Docs <7f0acdb3.microsoft.com@amer.teams.ms>
+#
 /infrastructure/infrastructure-setup-bicep/01-connections/connection-key-vault.bicep @microsoft-foundry/AI-Platform-Docs
 /infrastructure/infrastructure-setup-bicep/05-custom-policy-definitions/deny-disallowed-connections.json @microsoft-foundry/AI-Platform-Docs
 /infrastructure/infrastructure-setup-terraform/00-basic-azurerm/code/main.tf @microsoft-foundry/AI-Platform-Docs
