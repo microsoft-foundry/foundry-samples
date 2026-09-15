@@ -39,6 +39,7 @@ client = AzureOpenAI(
 )
 # </response_observability_enable>
 
+# <response_observability_request>
 response = client.chat.completions.create(
     model=deployment,
     messages=[
@@ -49,6 +50,7 @@ response = client.chat.completions.create(
         },
     ],
 )
+# </response_observability_request>
 
 print("--- Chat Completions Response ---")
 print(f"Response:{response.choices[0].message.content}")

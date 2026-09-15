@@ -87,6 +87,7 @@ def print_response(turn, response):
         print("No model selection details were returned.")
     else:
         model_router_details = model_selection_details.get("model_router_details", {})
+        print(f"Routing mode: {model_router_details.get('mode', 'unknown')}")
 
         # <session_affinity_extract>
         affinity_details = model_router_details.get("session_affinity")

@@ -61,15 +61,25 @@ Model Router is a deployable AI chat model in Azure AI Foundry that **automatica
 python model-router-chat-completions.py
 ```
 
-### Chat Completions Observability
+### Request-Level Observability (Preview)
+
+The observability and session affinity samples opt in to request-level metadata with the `Foundry-Features: ModelRouterControls=V1Preview` header. A response can include the optional `response.model_selection_details` envelope:
+
+| Field | What it describes |
+| ----- | ----------------- |
+| `model_router_details.mode` | The routing mode used for the request. |
+| `model_router_details.routing_trace` | Ordered model attempts, routing latency, status, and optional errors. |
+| `model_router_details.session_affinity` | The affinity mode, identity source, and final association decision. |
+
+The envelope is extensible during preview. Treat it and its child fields as optional, and tolerate additional fields in future service versions.
+
+#### Inspect Routing Attempts and Fallback
 
 ```bash
 python model-router-chat-completions-observability.py
 ```
 
-#### Model Selection Details
-
-This sample reads `response.model_selection_details`. The code inside the `<response_observability_extract>` tags parses that response fragment to print the routing mode, routing latency, and each model attempt.
+This sample parses `routing_trace` to print the routing mode, routing latency, and each model attempt. Its `<response_observability_enable>`, `<response_observability_request>`, and `<response_observability_extract>` markers identify the sections that can be included in Microsoft Learn documentation.
 
 The following JSON shows the `model_selection_details` fragment parsed by that code when the router falls back from one model to another:
 
@@ -108,13 +118,31 @@ The following JSON shows the `model_selection_details` fragment parsed by that c
 
 This payload is illustrative. The selected models, number of attempts, errors, latency, and preview response schema can vary by request and service version.
 
-### Chat Completions Session Affinity (Preview)
+**Illustrative sample output:**
+
+```text
+--- Chat Completions Response ---
+Response:Pike Place Market is Seattle's most popular tourist destination.
+Usage: 29 prompt + 278 completion = 307 total tokens
+
+Routed to model: example-model-b
+--- Model Selection Details ---
+Routing mode: balanced
+Routing decision 1 (latency: 19 ms)
+   Attempt 1: example-model-a - HTTP 404 (failed)
+      Error: NotFound - The request failed.
+   Attempt 2: example-model-b - HTTP 200 (selected)
+```
+
+#### Track Session Affinity Across Turns
 
 ```bash
 python model-router-chat-completions-session-affinity.py
 ```
 
-This sample creates an opaque session ID and sends it in `routing_config.session_affinity.session_id` for two conversation turns. It parses the affinity mode, identity source, and final decision from a response fragment like this:
+This sample creates an opaque session ID and sends it in `routing_config.session_affinity.session_id` for two conversation turns. Its `<session_affinity_enable>`, `<session_affinity_turns>`, and `<session_affinity_extract>` markers isolate the configuration, multi-turn request flow, and feature-specific response parsing for documentation reuse.
+
+It parses the affinity mode, identity source, and final decision from a response fragment like this:
 
 ```json
 {
@@ -137,9 +165,12 @@ This sample creates an opaque session ID and sends it in `routing_config.session
 | `retain` | The associated model served the response. |
 | `switch` | Eligibility or fallback caused another model to serve the response. |
 
-The sample is designed to demonstrate `initialize` followed by `retain`, but fallback can produce `switch` on either turn. The sample reports the actual outcome instead of forcing a service failure. Use the Chat Completions observability sample to inspect the routing attempts behind a `switch` decision. Session affinity is best-effort and does not store conversation content or guarantee a provider cache hit.
+The sample is designed to demonstrate `initialize` followed by `retain`, but fallback can produce `switch` on either turn. The sample reports the actual outcome instead of forcing a service failure.
 
-**Sample output:**
+`session_affinity` and `routing_trace` are complementary and can appear in the same response. When the affinity decision is `switch`, use the top-level `response.model` to identify the serving model and inspect `routing_trace` to understand the attempts or fallback that caused the change. Session affinity is best-effort and does not store conversation content or guarantee a provider cache hit.
+
+**Illustrative sample output:**
+
 ```text
 --- First turn ---
 Serving model: grok-4-1-fast-reasoning
