@@ -86,10 +86,10 @@ param agentName string = '${environmentName}-autopilot-agent'
 // =================================================================================================
 
 @description('Model name')
-param modelName string = 'gpt-5-mini'
+param modelName string = 'gpt-chat-latest'
 
 @description('Model version')
-param modelVersion string = '2025-08-07'
+param modelVersion string = '2026-05-28'
 
 // =================================================================================================
 // Common parameters

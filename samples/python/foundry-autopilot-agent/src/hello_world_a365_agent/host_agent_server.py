@@ -23,13 +23,19 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 import socket
 from os import environ
 from typing import Optional
 
 from aiohttp.web import Application, Request, Response, json_response, run_app
 from aiohttp.web_middlewares import middleware as web_middleware
-from microsoft_agents.activity import Activity, load_configuration_from_env
+from microsoft_agents.activity import (
+    Activity,
+    ClientCitation,
+    ClientCitationAppearance,
+    load_configuration_from_env,
+)
 from microsoft_agents.authentication.msal import MsalConnectionManager
 from microsoft_agents.hosting.aiohttp import (
     jwt_authorization_middleware,
@@ -65,6 +71,28 @@ from .request_correlation import (
     AgentRequestCorrelationMiddleware,
     CorrelatingCloudAdapter,
 )
+
+_CITATION_REFERENCE_PATTERN = re.compile(
+    r'^\[(\d+)\]:\s+(https?://\S+?)(?:\s+"([^"]*)")?\s*$',
+    re.MULTILINE,
+)
+
+
+def _create_message_activity(text: str) -> Activity:
+    activity = Activity(type="message", text=text, text_format="markdown")
+    citations = [
+        ClientCitation(
+            position=int(match.group(1)),
+            appearance=ClientCitationAppearance(
+                name=(match.group(3) or match.group(2))[:80],
+                url=match.group(2),
+            ),
+        )
+        for match in _CITATION_REFERENCE_PATTERN.finditer(text)
+    ]
+    if citations:
+        activity.add_ai_metadata(citations=citations)
+    return activity
 
 
 def is_wpx_comment_notification(notification_activity: AgentNotificationActivity) -> bool:
@@ -401,7 +429,7 @@ class GenericAgentHost:
                         self.auth_handler_name,
                         context,
                     )
-                    await context.send_activity(response)
+                    await context.send_activity(_create_message_activity(response))
                 finally:
                     typing_task.cancel()
                     try:

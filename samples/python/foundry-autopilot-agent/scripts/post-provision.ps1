@@ -9,6 +9,9 @@ Write-Host "Starting post-provision script..."
 
 Write-Host "Resources were deployed to: location $env:LOCATION subscriptionId $env:SUBSCRIPTION_ID agentName $env:AGENT_NAME"
 
+Write-Host "===============Creating Foundry Toolbox==============="
+& "$PSScriptRoot/setup-toolbox.ps1"
+
 Write-Host "===============Stopping Active Agent Sessions==============="
 & "$PSScriptRoot/stop-agent-sessions.ps1"
 

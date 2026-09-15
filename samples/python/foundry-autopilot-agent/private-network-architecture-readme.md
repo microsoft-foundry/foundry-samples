@@ -370,7 +370,7 @@ sequenceDiagram
     Operator->>Foundry: Create hosted-agent version
     Foundry->>ACR: Pull image
     Foundry-->>Operator: Agent and blueprint identities
-    Operator->>Entra: Assign Cognitive Services User role
+    Operator->>Entra: Assign project-scoped Foundry User role
     Operator->>Foundry: Patch BotServiceRbac endpoint
     Operator->>Foundry: Publish Microsoft 365 digital worker
     Foundry->>M365: Submit tenant publication request
@@ -433,4 +433,3 @@ After provisioning, `azd env get-values` includes:
 | `VIRTUAL_MACHINE_SUBNET_ID` | Subnet for optional VMs |
 | `PRIVATE_ENDPOINT_ID` | Foundry account private endpoint |
 | `AZURE_AI_PROJECT_ENDPOINT` | Foundry project data-plane endpoint |
-

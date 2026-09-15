@@ -1,0 +1,12 @@
+description: Managed tools for the Foundry Autopilot agent
+tools:
+  - type: web_search
+    name: web_search
+    description: Search the public web for current information
+    require_approval: "never"
+  - type: code_interpreter
+    name: code_interpreter
+    description: Run Python for calculations and data analysis
+    container:
+      type: auto
+    require_approval: "never"

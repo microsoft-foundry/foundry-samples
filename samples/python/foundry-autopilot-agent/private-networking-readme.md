@@ -454,7 +454,7 @@ The hook runs these operations in order:
 3. Creates a new hosted-agent version with Activity Protocol v1 and the
    Microsoft 365 public endpoint enabled.
 4. Waits for the agent version to become active.
-5. Grants the agent instance identity the Cognitive Services User role.
+5. Grants the agent instance identity the Foundry User role on the project.
 6. Configures `BotServiceRbac` authorization.
 7. Publishes the digital worker to the Microsoft 365 tenant.
 
