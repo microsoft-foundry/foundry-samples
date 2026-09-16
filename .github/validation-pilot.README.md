@@ -42,9 +42,16 @@ is named `L4-validation` only because that legacy external identifier is part
 of the GitHub/Entra OIDC configuration. `L4` is not a current validation
 concept.
 
-See the [per-sample validation contract](scripts/validate-sample.README.md) for
-local commands, Build-readiness behavior, Live-service metadata, and result
-classification.
+Live-service commands receive `FOUNDRY_PROJECT_ENDPOINT`,
+`FOUNDRY_MODEL_DEPLOYMENT`, and `SKIP_PROVISION=true`. The older
+`AZURE_AI_PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT` aliases remain available for
+backward compatibility; new metadata should use the `FOUNDRY_` names.
+
+See the [quick guide to creating and validating samples](../CREATE_SAMPLE.md)
+for the minimum sample metadata and [per-sample validation
+contract](scripts/validate-sample.README.md) for local commands, Build-readiness
+behavior, Live-service metadata (including substitutions), available
+environment variables, and result classification.
 
 ## Results and report
 

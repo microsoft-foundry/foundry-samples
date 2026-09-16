@@ -65,13 +65,13 @@ live_service_validation:
   command: >-
     python run_sample.py --assert-response
   required_env:
-    - AZURE_OPENAI_ENDPOINT
-    - MODEL_DEPLOYMENT
+    - FOUNDRY_PROJECT_ENDPOINT
+    - FOUNDRY_MODEL_DEPLOYMENT
   substitutions:
     - file: run_sample.py
       replacements:
         - placeholder: "your_project_endpoint"
-          env: AZURE_AI_PROJECT_ENDPOINT
+          env: FOUNDRY_PROJECT_ENDPOINT
 ```
 
 The contract is:
@@ -131,6 +131,22 @@ The validator rejects the legacy `l4` key with a migration message. It also reje
 a scalar `live_service_validation`, a missing/non-string/empty `command`, a non-list
 `required_env`, invalid variable names, malformed YAML, invalid substitution
 declarations, and missing declared environment inputs as infrastructure errors.
+
+## Daily cadence environment variables
+
+The daily cadence's live-service job provides these non-secret configuration
+variables to every declared live-service command:
+
+| Variable | Purpose |
+|---|---|
+| `FOUNDRY_PROJECT_ENDPOINT` | The existing warm Microsoft Foundry project endpoint. |
+| `FOUNDRY_MODEL_DEPLOYMENT` | The deployment name in that project. |
+| `SKIP_PROVISION` | Always `true`; the cadence uses an existing warm project and never provisions resources. |
+
+Use the `FOUNDRY_` names for new sample metadata. The older
+`AZURE_AI_PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT` aliases remain available for
+backward compatibility. The job authenticates through GitHub/Entra OIDC; it
+does not expose credentials as sample environment variables.
 
 ## Caller responsibilities
 
