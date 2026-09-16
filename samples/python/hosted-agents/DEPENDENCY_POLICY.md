@@ -113,14 +113,16 @@ If a separate authoring manifest or native lock changes, regenerate and commit `
 
 ## Validation
 
-> [!NOTE]
-> The checker and exception configuration are maintained in the private `microsoft-foundry/foundry-samples-pr` staging repository and are not published with the public sample repository. Public sample consumers only need the standard pip installation command shown above. Contributors should run the following commands from a staging-repository checkout.
+The [Hosted-agent policies workflow](../../../.github/workflows/hosted-agent-policies.yml)
+runs this check on pull requests, including forks subject to GitHub's workflow
+approval controls. It uses read-only permissions and no Azure credentials.
 
-Run the same static policy check used by CI from the repository root:
+Use Python 3.13 and run the same static policy check from the repository root:
 
 ```bash
+python -m pip install "pip==25.1.1" -r .github/scripts/requirements.txt
 BASE=$(git merge-base origin/main HEAD)
-python .azure-pipelines/scripts/check-hosted-agent-python-requirements.py \
+python .github/scripts/check-hosted-agent-python-requirements.py \
   --base "$BASE" \
   --head HEAD
 ```
@@ -128,7 +130,7 @@ python .azure-pipelines/scripts/check-hosted-agent-python-requirements.py \
 To also ask pip to verify that the artifact includes the complete transitive graph:
 
 ```bash
-python .azure-pipelines/scripts/check-hosted-agent-python-requirements.py \
+python .github/scripts/check-hosted-agent-python-requirements.py \
   --base "$BASE" \
   --head HEAD \
   --resolve
@@ -136,11 +138,15 @@ python .azure-pipelines/scripts/check-hosted-agent-python-requirements.py \
 
 The closure check uses pip in dry-run mode with an empty installed-package view. It fails if pip introduces a transitive package that is not explicitly pinned in `requirements.txt`. For PR security, it resolves binary distributions only; a package available only as a source distribution requires a narrow exception until a wheel is published.
 
-The blocking PR check validates the Hosted Agent runtime's primary Linux/Python CI environment. Environment markers are accepted, but authors remain responsible for verifying additional platforms and supported Python versions documented by the sample.
+The PR check validates the Hosted Agent runtime's primary Linux/Python CI environment. Required merge checks are configured separately in repository rules. Environment markers are accepted, but authors remain responsible for verifying additional platforms and supported Python versions documented by the sample.
 
 ## Exceptions
 
-Exceptions must be narrow, temporary, and reviewable. Contributors configure them in `.azure-pipelines/hosted-agent-python-requirements-exceptions.toml` in the private staging repository; that operational file is not part of the public sample export. An exception identifies an exact runtime root and diagnostic code and requires a reason, owner, tracking issue, and expiration date.
+Exceptions must be narrow, temporary, and reviewable. Contributors propose them
+in [`.azure-pipelines/hosted-agent-tests/python-requirements-exceptions.toml`](../../../.azure-pipelines/hosted-agent-tests/python-requirements-exceptions.toml)
+as part of a public pull request. An exception identifies an exact runtime root
+and diagnostic code and requires a reason, owner, public tracking issue, and
+expiration date.
 
 Do not request an exception merely to keep using a preferred dependency manager. Native manifests and locks are allowed; the requirement is to export their resolution to the portable consumer artifact.
 

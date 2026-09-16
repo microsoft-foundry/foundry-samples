@@ -28,6 +28,13 @@ Pull requests run repository validation automatically:
 - Review and address the other checks reported on the pull request.
 - Contributor pull requests are not merged automatically; after required checks pass, a maintainer considers review feedback and triggers the merge.
 
+The [Hosted-agent policies workflow](.github/workflows/hosted-agent-policies.yml)
+checks [behavior contracts for new Python/C# hosted agents](.azure-pipelines/hosted-agent-tests/README.md)
+and [reproducible dependencies for new or dependency-updated Python hosted agents](samples/python/hosted-agents/DEPENDENCY_POLICY.md).
+Both policy jobs are credential-free and can run on fork PRs after any required
+GitHub approval. This does not change the same-repository contribution requirement
+or the required `trusted` check.
+
 The required check reports on the pull request. The separate
 [daily validation cadence](.github/validation-pilot.README.md) publishes its
 fleet report and diagnostic artifacts in GitHub Actions.

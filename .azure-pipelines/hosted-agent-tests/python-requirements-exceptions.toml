@@ -1,0 +1,10 @@
+# Narrow, temporary exceptions to the Python Hosted Agent dependency policy.
+#
+# Example:
+# [[exceptions]]
+# path = "samples/python/hosted-agents/example/src/example"
+# code = "PYREQ003"
+# reason = "Package is not yet published to a package index."
+# owner = "@microsoft-foundry/hosted-agents"
+# issue = "https://github.com/microsoft-foundry/foundry-samples/issues/<tracking-issue>"
+# expires = 2026-12-31

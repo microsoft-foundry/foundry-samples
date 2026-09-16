@@ -1,0 +1,68 @@
+name: Hosted-agent policies
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hosted-agent-policies-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: Hosted-agent contract policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install policy dependencies
+        run: python -m pip install --disable-pip-version-check -r .github/scripts/requirements.txt
+      - name: Test contract policy and workflow
+        run: |
+          python .github/scripts/test/test_check_hosted_agent_contracts.py
+          python .github/scripts/test/test_hosted_agent_fixture.py
+          python .github/scripts/test/test_hosted_agent_policies_workflow.py
+      - name: Check new hosted-agent contracts
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          base="$(git merge-base "$BASE_SHA" HEAD)"
+          python .github/scripts/check_hosted_agent_contracts.py --base "$base" --head HEAD
+
+  dependencies:
+    name: Python hosted-agent dependency policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install policy dependencies
+        run: >-
+          python -m pip install --disable-pip-version-check
+          "pip==25.1.1" -r .github/scripts/requirements.txt
+      - name: Test dependency policy
+        run: python .github/scripts/test/test_check_hosted_agent_python_requirements.py
+      - name: Check changed Python runtime dependencies
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          POLICY_URL: https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/DEPENDENCY_POLICY.md
+        run: |
+          base="$(git merge-base "$BASE_SHA" HEAD)"
+          python .github/scripts/check-hosted-agent-python-requirements.py \
+            --base "$base" --head HEAD --resolve --policy-url "$POLICY_URL"

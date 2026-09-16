@@ -7,13 +7,13 @@ conventions and a starting point — adapt to what each sample actually needs.
 
 ## Cloud E2E contract for new samples
 
-Every new C# hosted-agent sample must add a private `test-spec.yml` with a
+Every new C# hosted-agent sample must add a public `test-spec.yml` with a
 responsible Microsoft owner alias, supported experiences, deterministic turns,
 and assertions for its defining behavior. Legacy payload/default support is for
 migration and is not sufficient for a new sample.
 
 Read and follow the authoritative [hosted-agent cloud E2E test-spec schema and
-onboarding checklist](../../../internal/tools/samples-hosted-agents/README.md).
+onboarding checklist](../../../.azure-pipelines/hosted-agent-tests/README.md).
 Run both the documented `validate` and protocol-aware `plan` commands before
 submitting changes.
 
