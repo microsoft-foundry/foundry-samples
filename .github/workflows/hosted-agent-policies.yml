@@ -31,6 +31,7 @@ jobs:
         run: |
           python .github/scripts/test/test_check_hosted_agent_contracts.py
           python .github/scripts/test/test_hosted_agent_fixture.py
+          python .github/scripts/test/test_hosted_agent_test_spec.py
           python .github/scripts/test/test_hosted_agent_policies_workflow.py
       - name: Check new hosted-agent contracts
         env:

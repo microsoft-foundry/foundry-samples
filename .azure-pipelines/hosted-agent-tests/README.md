@@ -97,8 +97,9 @@ Both `test-spec.yml` and legacy `test-payload.txt` use this same directory ident
 Do not shorten it to the sample directory basename. Preserving the framework,
 transport grouping, and other intermediate directories prevents distinct samples
 with the same basename from implicitly sharing test input or a behavior contract.
-CI rejects any fixture whose full path does not map back to a sample containing
-`azure.yaml`.
+The PR policy validates the expected contract for each new sample containing
+`azure.yaml`. It does not scan the fixture tree for orphan files or validate
+contracts belonging to existing samples.
 
 The PR policy discovers new Python/C# hosted-agent `azure.yaml` files, excluding
 samples marked `.ci-skip`. A contract defines behavior for a cloud runner to test;
@@ -350,8 +351,12 @@ At least one of `name`, `attributes`, or `status` is required. Each attribute
 predicate contains exactly one of:
 
 - `exists: true|false`;
-- `equals: <any YAML/JSON value>` (type-sensitive);
+- `equals: <any JSON-compatible value>` (type-sensitive);
 - `regex: <Python regex>`.
+
+`equals` accepts JSON scalars, lists, and mappings with string keys. YAML-only
+values such as timestamps, sets, and binary data, non-finite numbers, and
+recursive values are rejected before an execution plan is written.
 
 Attribute names and span names are non-empty strings. Bounds follow the common
 rules. If trace evidence or Application Insights access is unavailable, the

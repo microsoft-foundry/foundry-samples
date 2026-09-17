@@ -300,6 +300,57 @@ class RequirementParserTests(unittest.TestCase):
 
 
 class ExceptionTests(unittest.TestCase):
+    def load_rule(self, **overrides):
+        rule = {
+            "path": "samples/python/hosted-agents/x/src/x",
+            "code": "PYREQ003",
+            "reason": "Package wheel is not available yet.",
+            "owner": "@microsoft-foundry/hosted-agents",
+            "issue": "https://github.com/microsoft-foundry/foundry-samples/issues/983",
+            "expires": "2099-01-01",
+        }
+        rule.update(overrides)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "exceptions.toml"
+            path.write_text(
+                "[[exceptions]]\n"
+                + "\n".join(f"{key} = {json.dumps(value)}" for key, value in rule.items()),
+                encoding="utf-8",
+            )
+            return checker.load_exceptions(path)
+
+    def test_valid_public_issue_exception_applies(self) -> None:
+        rules = self.load_rule()
+        root = PurePosixPath("samples/python/hosted-agents/x/src/x")
+        finding = checker.Finding("PYREQ003", "vcs", root, root / "requirements.txt")
+        remaining, used = checker.apply_exceptions([finding], rules)
+        self.assertEqual([], remaining)
+        self.assertEqual(rules, used)
+
+    def test_exception_text_fields_require_nonempty_strings(self) -> None:
+        for field in ("path", "code", "reason", "owner", "issue"):
+            for value in ("", " \t ", 0, False, [], {}):
+                with self.subTest(field=field, value=value):
+                    with self.assertRaisesRegex(checker.CheckError, field):
+                        self.load_rule(**{field: value})
+
+    def test_issue_requires_this_public_repository_issue_url(self) -> None:
+        invalid_urls = (
+            "https://github.com/microsoft-foundry/foundry-samples-pr/issues/983",
+            "http://github.com/microsoft-foundry/foundry-samples/issues/983",
+            "https://github.com/microsoft-foundry/foundry-samples/pull/983",
+            "https://github.com/microsoft-foundry/foundry-samples/issues/",
+            "https://github.com/microsoft-foundry/foundry-samples/issues/0",
+            "https://github.com/microsoft-foundry/foundry-samples/issues/983?token=value",
+            "https://github.com/microsoft-foundry/foundry-samples/issues/983/extra",
+            "https://github.com.example.com/microsoft-foundry/foundry-samples/issues/983",
+            "https://github.com@other.example/microsoft-foundry/foundry-samples/issues/983",
+        )
+        for issue in invalid_urls:
+            with self.subTest(issue=issue):
+                with self.assertRaisesRegex(checker.CheckError, "issue"):
+                    self.load_rule(issue=issue)
+
     def test_expired_exception_does_not_hide_a_finding(self) -> None:
         root = PurePosixPath("samples/python/hosted-agents/x/src/x")
         finding = checker.Finding("PYREQ003", "vcs", root, root / "requirements.txt")

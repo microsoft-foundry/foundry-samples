@@ -507,13 +507,26 @@ def load_exceptions(path: Path) -> list[ExceptionRule]:
         missing = {"path", "code", "reason", "owner", "issue", "expires"} - raw.keys()
         if missing:
             raise CheckError(f"{path}: exception {index} is missing {sorted(missing)}")
+        for field in ("path", "code", "reason", "owner", "issue"):
+            if not isinstance(raw[field], str) or not raw[field].strip():
+                raise CheckError(
+                    f"{path}: exception {index} {field} must be a non-empty string"
+                )
+        if not re.fullmatch(
+            r"https://github\.com/microsoft-foundry/foundry-samples/issues/[1-9][0-9]*",
+            raw["issue"],
+        ):
+            raise CheckError(
+                f"{path}: exception {index} issue must be an HTTPS issue URL "
+                "under github.com/microsoft-foundry/foundry-samples/issues/"
+            )
         expires = raw["expires"]
         if isinstance(expires, str):
             expires = dt.date.fromisoformat(expires)
         if type(expires) is not dt.date:
             raise CheckError(f"{path}: exception {index} has an invalid expiration")
-        rule_path = PurePosixPath(str(raw["path"]))
-        code = str(raw["code"])
+        rule_path = PurePosixPath(raw["path"])
+        code = raw["code"]
         if not is_under(rule_path, SCOPE):
             raise CheckError(f"{path}: exception {index} path must be under {SCOPE}")
         if code not in VALID_CODES:
@@ -522,9 +535,9 @@ def load_exceptions(path: Path) -> list[ExceptionRule]:
             ExceptionRule(
                 rule_path,
                 code,
-                str(raw["reason"]),
-                str(raw["owner"]),
-                str(raw["issue"]),
+                raw["reason"],
+                raw["owner"],
+                raw["issue"],
                 expires,
             )
         )

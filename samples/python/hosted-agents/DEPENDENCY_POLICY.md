@@ -148,6 +148,12 @@ as part of a public pull request. An exception identifies an exact runtime root
 and diagnostic code and requires a reason, owner, public tracking issue, and
 expiration date.
 
+The path, code, reason, owner, and issue must be non-empty strings. The tracking
+issue must use `https://github.com/microsoft-foundry/foundry-samples/issues/<number>`
+with a positive issue number and no query string or fragment. Requiring this
+public repository's issue URL avoids accepting private tracking links without
+adding a credentialed lookup to the policy check.
+
 Do not request an exception merely to keep using a preferred dependency manager. Native manifests and locks are allowed; the requirement is to export their resolution to the portable consumer artifact.
 
 ## Troubleshooting CI failures

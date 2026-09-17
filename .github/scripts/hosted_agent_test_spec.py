@@ -166,6 +166,8 @@ def _validate_attribute_predicate(value: Any, context: str) -> None:
         )
     if "exists" in predicate and not isinstance(predicate["exists"], bool):
         raise SpecError(f"{context}.exists must be a boolean")
+    if "equals" in predicate:
+        _validate_json_value(predicate["equals"], f"{context}.equals")
     if "regex" in predicate:
         _compile_regex(predicate["regex"], f"{context}.regex")
 
@@ -489,7 +491,7 @@ def decide_mcp_approvals(
 
     if not isinstance(response, dict):
         return error("Responses protocol evidence must be an object", [])
-    output = response.get("output") or []
+    output = response.get("output", [])
     if not isinstance(output, list):
         return error("Responses protocol output must be an array", [])
     requests = [
