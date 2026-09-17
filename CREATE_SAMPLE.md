@@ -6,7 +6,7 @@ This guide provides the minimum steps to create a sample in this repository and 
 
 ## Minimal Requirements for a Sample
 
-All samples live under `samples/<language>/<sample-folder>/` (supported languages: `csharp`, `java`, `javascript`, `python`, `typescript`, `go`).
+Samples live under `samples/<language>/<sample-folder>/` (build-readiness languages: `csharp`, `java`, `python`, `typescript`, and `go`; pass `typescript` to the validator for JavaScript samples, Go is local/PR-only, and Rust is currently unsupported by build readiness).
 
 > **Note:** `validate-sample.sh` itself only accepts `csharp`, `python`, `typescript`, `java`, and `go` as a `--language` value. CI maps `javascript` samples to the `typescript` validator automatically, but if you invoke the script directly (see Option 2 below), pass `--language typescript` for JavaScript samples — passing `--language javascript` will fail. Daily cadence discovery does not currently enable Go samples.
 
