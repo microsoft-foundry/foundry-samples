@@ -1,5 +1,5 @@
 name: A2A Delegation Hosted Agent
 description: Hosted Agent Framework sample that delegates tasks to a remote agent over the Agent-to-Agent (A2A) protocol via a Foundry Toolbox A2A connection.
 
-build: "python -m pip install --disable-pip-version-check uv==0.11.7 && uv sync --frozen --no-dev --no-install-project"
+build: "uv sync --frozen --no-dev --no-install-project"
 validate: "uv run --no-sync python -m compileall -q ."

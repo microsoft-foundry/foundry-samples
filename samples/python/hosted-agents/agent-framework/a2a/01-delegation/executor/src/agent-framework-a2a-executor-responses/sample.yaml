@@ -1,5 +1,5 @@
 name: A2A Executor Hosted Agent
 description: Hosted Agent Framework sample (Responses protocol) that acts as a math-expert specialist exposed as an Agent-to-Agent (A2A) endpoint via the companion enable-incoming-a2a script.
 
-build: "python -m pip install --disable-pip-version-check uv==0.11.7 && uv sync --frozen --no-dev --no-install-project"
+build: "uv sync --frozen --no-dev --no-install-project"
 validate: "uv run --no-sync python -m compileall -q ."
