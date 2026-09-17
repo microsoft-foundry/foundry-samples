@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "repository": "microsoft-foundry/foundry-samples",
+  "samples": [
+    "samples/csharp/quickstart/chat-with-agent",
+    "samples/python/quickstart/chat-with-agent"
+  ]
+}
