@@ -169,8 +169,8 @@ azd ai agent invoke "What tools do you have?"
 - Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
 - Install dependencies in the virtual environment:
   ```bash
-  pip install uv
-  uv pip install -r requirements.txt
+   pip install uv==0.11.7
+   uv sync --frozen
   ```
 
 #### Create the toolbox
@@ -199,7 +199,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 #### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
+2. Start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 #### Deploy to Foundry
@@ -266,7 +266,7 @@ portal **Agent Playground** (signed-in user) and by `azd ai agent invoke` (the d
 so the tools operate as that user and only act on resources the user can already access. The Foundry MCP
 server requires no extra license — just access to the Foundry project.
 
-Because the tool acts as a specific user, running the agent **locally** (`python main.py`) or calling the
+Because the tool acts as a specific user, running the agent **locally** (`uv run --no-sync python main.py`) or calling the
 endpoint with a raw token uses whatever identity that token represents (`az login` user locally, the
 agent's managed identity when hosted). If that identity has no access to the target resources, the tool
 returns an authorization error even though it is discovered and called correctly.

@@ -65,7 +65,7 @@ The `eval/` directory contains the evaluation dataset with travel request scenar
 
 2. **Azure CLI** — `az login`
 
-3. **Python 3.12+**
+3. **Python 3.13+**
 
 ### Environment Variables
 
@@ -117,12 +117,8 @@ azd ai agent invoke "I need to book a trip to Tokyo next week for a client meeti
 - Install dependencies in the virtual environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+  pip install uv==0.11.7
+  uv sync --frozen
   ```
 
 ### Run and debug the agent
@@ -132,7 +128,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
+2. Start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry
@@ -175,7 +171,8 @@ azd ai agent invoke "I need to fly to London tomorrow for an emergency meeting. 
 | `azure.yaml` | Hosted agent deployment config |
 | `azure.yaml` | Template manifest for `azd ai agent init` |
 | `Dockerfile` | Container image build |
-| `requirements.txt` | Python dependencies (Agent Framework + optimization wheel) |
+| `pyproject.toml` | Project metadata and Python dependencies |
+| `uv.lock` | Reproducible dependency lockfile |
 | `eval.yaml` | Agent optimizer configuration (dataset, evaluators, models) |
 | `eval/` | Evaluation dataset with travel request scenarios |
 | `evaluators/` | Custom evaluators for domain-specific scoring |

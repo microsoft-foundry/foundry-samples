@@ -23,8 +23,11 @@ manifest for that deployment mode.
   environment variables, and default deployment mode
 - `src/agent-framework-harness-research-responses/main.py` - harness configuration and
   Responses server entry point
-- `src/agent-framework-harness-research-responses/requirements.txt` - Python
-  dependencies
+- `src/agent-framework-harness-research-responses/pyproject.toml` - Python project
+  metadata and dependencies
+- `src/agent-framework-harness-research-responses/uv.lock` - reproducible dependency
+  lockfile
+- `src/agent-framework-harness-research-responses/uv.toml` - uv configuration
 - `src/agent-framework-harness-research-responses/Dockerfile` - Python 3.13 container
   definition for optional container deployment
 - `src/agent-framework-harness-research-responses/.dockerignore` - files excluded from

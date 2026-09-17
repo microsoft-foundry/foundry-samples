@@ -33,11 +33,12 @@ The triage agent is configured with `response_format=TriageResponse` (a Pydantic
 ### Prerequisites
 
 1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
-2. Install the AI agent extension:
+2. **.NET 10 Runtime** for local runs — [Install .NET 10](https://dotnet.microsoft.com/download/dotnet/10.0). The container image installs it automatically.
+3. Install the AI agent extension:
    ```bash
    azd ext install microsoft.foundry
    ```
-3. Authenticate:
+4. Authenticate:
    ```bash
    azd auth login
    ```
@@ -122,6 +123,7 @@ azd ai agent invoke "I have a problem"
 
 1. **VS Code** with the **[Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)** extension installed.
 2. For debugging Python in VS Code, install the **[Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)** extension pack.
+3. **.NET 10 Runtime** for local runs — [Install .NET 10](https://dotnet.microsoft.com/download/dotnet/10.0). The container image installs it automatically.
 
 ### Set up the Python virtual environment
 
@@ -129,12 +131,8 @@ azd ai agent invoke "I have a problem"
 - Install dependencies in the virtual environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+   pip install uv==0.11.7
+   uv sync --frozen
   ```
 
 ### Run and debug the agent
@@ -144,7 +142,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
+2. Start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry
