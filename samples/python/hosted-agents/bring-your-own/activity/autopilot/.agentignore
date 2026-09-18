@@ -1,0 +1,15 @@
+.azure/
+.agentignore
+.git/
+.gitignore
+.github/
+.venv/
+.vscode/
+__pycache__/
+*.py[cod]
+AGENTS.md
+README.md
+azure.yaml
+.env.example
+.dockerignore
+Dockerfile

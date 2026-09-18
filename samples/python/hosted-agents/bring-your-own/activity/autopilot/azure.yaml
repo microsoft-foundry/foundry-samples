@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.13'
+name: echo-autopilot
+services:
+  echo-autopilot:
+    host: azure.ai.agent
+    metadata:
+      tags:
+        - Autopilot
+        - Activity Protocol
+        - Bring Your Own
+        - Python
+    project: .
+    language: python
+    codeConfiguration:
+      runtime: python_3_13
+      entryPoint: main.py
+    kind: hosted
+    name: echo-autopilot
+    displayName: Echo (Python, Autopilot)
+    description: >
+      Minimal echo agent using the Activity protocol with a bring-your-own
+      approach, published as a Microsoft 365 Autopilot (digital worker).
+      Echoes the user's message back. Uses the M365 Agents SDK for activity
+      processing and outbound channel delivery, hosted by
+      azure-ai-agentserver-activity's digital-worker auth model.
+    protocols:
+      - protocol: activity
+        version: 2.0.0
+    activity:
+      useCase: digital_worker
+      publish:
+        publishScope: tenant
+        canRespondWithoutMention: true
+        appVersion: 1.0.0
+        agentDisplayName: Echo Autopilot
+        shortDescription: A minimal echo Microsoft 365 Autopilot agent.
+        fullDescription: >
+          A Microsoft Foundry agent, built with azure-ai-agentserver-activity,
+          that echoes back whatever message you send it.
+        developerName: Microsoft
+        developerWebsiteUrl: https://www.microsoft.com
+        privacyUrl: https://privacy.microsoft.com
+        termsOfUseUrl: https://www.microsoft.com/legal/terms-of-use
+        agenticUserTemplate:
+          id: digitalWorkerTemplate
+          file: agenticUserTemplateManifest.json
+          schemaVersion: 0.1.0-preview
+          communicationProtocol: activityProtocol
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1Gi
