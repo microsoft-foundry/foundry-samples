@@ -53,6 +53,12 @@ surface (create, version, list, delete) used for prompt, workflow, hosted, and e
    pip install -r requirements.txt
    ```
 
+   Optionally, install PyAudio too (see [Prerequisites](#prerequisites)):
+
+   ```bash
+   pip install pyaudio
+   ```
+
 3. **Create your `.env` file**
 
    ```bash
