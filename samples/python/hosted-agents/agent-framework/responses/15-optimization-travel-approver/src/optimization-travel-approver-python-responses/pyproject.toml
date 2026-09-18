@@ -10,6 +10,3 @@ dependencies = [
     "azure-ai-agentserver-optimization>=1.0.0b1",
     "debugpy",
 ]
-
-[tool.uv]
-package = false

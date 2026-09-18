@@ -10,6 +10,3 @@ dependencies = [
     "azure-servicebus",
     "debugpy",
 ]
-
-[tool.uv]
-package = false

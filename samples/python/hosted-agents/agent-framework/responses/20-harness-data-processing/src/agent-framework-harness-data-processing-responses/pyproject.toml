@@ -9,6 +9,3 @@ dependencies = [
     "agent-framework-foundry-hosting==1.0.0b260813",
     "debugpy",
 ]
-
-[tool.uv]
-package = false
