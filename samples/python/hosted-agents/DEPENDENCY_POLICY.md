@@ -71,14 +71,6 @@ pip-compile requirements.in --output-file requirements.txt
 # Backward-compatible requirements.txt exported from uv
 uv export --frozen --no-dev --no-emit-project --format requirements-txt --output-file requirements.txt
 
-# Poetry (requires poetry-plugin-export)
-poetry export --format requirements.txt --output requirements.txt
-
-# PDM
-pdm export --format requirements --output requirements.txt
-
-# Pipenv
-pipenv requirements > requirements.txt
 ```
 
 Generated artifacts should include a comment describing the source and regeneration command when the generator supports it. Do not maintain two independent dependency lists by hand.
