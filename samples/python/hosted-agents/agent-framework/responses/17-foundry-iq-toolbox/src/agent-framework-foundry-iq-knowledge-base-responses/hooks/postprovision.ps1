@@ -42,8 +42,7 @@ if (-not $env:AZURE_OPENAI_ENDPOINT -and $env:FOUNDRY_PROJECT_ENDPOINT) {
 }
 
 Write-Host "Provisioning the Foundry IQ knowledge base..."
-Invoke-Checked { python -m pip install -q requests azure-identity python-dotenv } "pip install"
-Invoke-Checked { python provision_kb.py } "provision_kb.py"   # stores the KB MCP endpoint as KB_MCP_ENDPOINT
+Invoke-Checked { uv run --frozen --group provisioning python provision_kb.py } "provision_kb.py"   # stores the KB MCP endpoint as KB_MCP_ENDPOINT
 
 $kb = azd env get-value KB_MCP_ENDPOINT
 if (-not $kb) { throw "provision_kb.py did not set KB_MCP_ENDPOINT." }
