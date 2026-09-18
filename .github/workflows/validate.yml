@@ -45,7 +45,7 @@ jobs:
       count:       ${{ steps.detect.outputs.count }}
       samples:     ${{ steps.detect.outputs.samples }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0            # detector diffs origin/<target>..HEAD; needs full history
       - name: Detect changed samples
@@ -65,7 +65,7 @@ jobs:
         sample: ${{ fromJSON(needs.detect.outputs.samples) }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Derive language from sample path
         id: lang
@@ -93,32 +93,32 @@ jobs:
       # Each installs ONLY for the language this leg actually needs (barren-by-default).
       - name: Set up .NET
         if: steps.lang.outputs.language == 'csharp'
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: '8.0.x'
 
       - name: Set up Python
         if: steps.lang.outputs.language == 'python'
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
 
       - name: Set up Node.js
         if: steps.lang.outputs.language == 'typescript'
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '20'
 
       - name: Set up Java (Temurin)
         if: steps.lang.outputs.language == 'java'
-        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Go
         if: steps.lang.outputs.language == 'go'
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.22'
 
@@ -234,7 +234,7 @@ jobs:
           fi
           echo "Detection contract valid: has_changes=$HAS_CHANGES count=$COUNT."
 
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # --- Docs-only short-circuit (BEFORE any secret/Azure step) ---------------
       # If detect found no changed sample, nothing owes live-service validation, so the trusted gate is satisfied.
@@ -275,28 +275,28 @@ jobs:
       # --- Toolchain setup (only what the changed samples need) -----------------
       - name: Set up .NET
         if: needs.detect.outputs.has_changes == 'true' && steps.langs.outputs.has_csharp == 'true'
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: '8.0.x'
       - name: Set up Python
         if: needs.detect.outputs.has_changes == 'true' && steps.langs.outputs.has_python == 'true'
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
       - name: Set up Node.js
         if: needs.detect.outputs.has_changes == 'true' && steps.langs.outputs.has_node == 'true'
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '20'
       - name: Set up Java (Temurin)
         if: needs.detect.outputs.has_changes == 'true' && steps.langs.outputs.has_java == 'true'
-        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '17'
       - name: Set up Go
         if: needs.detect.outputs.has_changes == 'true' && steps.langs.outputs.has_go == 'true'
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.22'
       - name: Install yq
@@ -386,7 +386,7 @@ jobs:
       # is the trusted secret boundary: federated OIDC login, no stored secret.
       - name: Azure login via OIDC (no secret)
         if: needs.detect.outputs.has_changes == 'true' && github.event.pull_request.head.repo.fork != true
-        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2.3.1
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
