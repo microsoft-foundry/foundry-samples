@@ -3,3 +3,16 @@ description: Basic quickstart sample demonstrating Microsoft Foundry chat with A
 
 build: "mvn compile"
 validate: "mvn compile"
+live_service_validation:
+  command: "mvn compile exec:java -Dexec.mainClass=com.azure.ai.agents.ChatWithAgent"
+  required_env:
+    - FOUNDRY_PROJECT_ENDPOINT
+  cleanup_resources:
+    - type: foundry_agent_versions
+  substitutions:
+    - file: src/main/java/com/azure/ai/agents/ChatWithAgent.java
+      replacements:
+        - placeholder: "your_project_endpoint"
+          env: FOUNDRY_PROJECT_ENDPOINT
+        - placeholder: "your-agent-name"
+          generate: unique_name

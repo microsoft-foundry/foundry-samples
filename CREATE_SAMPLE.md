@@ -50,6 +50,8 @@ live_service_validation:
   required_env:
     - FOUNDRY_PROJECT_ENDPOINT
     - MODEL_DEPLOYMENT
+  cleanup_resources:
+    - type: foundry_agent_versions
   substitutions:
     - file: quickstart-create-agent.py
       replacements:
@@ -57,6 +59,8 @@ live_service_validation:
           env: FOUNDRY_PROJECT_ENDPOINT
         - placeholder: "gpt-5-mini"
           env: MODEL_DEPLOYMENT
+        - placeholder: "your-agent-name"
+          generate: unique_name
 ```
 
 ### How Full Runs Process This:
@@ -87,12 +91,58 @@ live_service_validation:
 
 - `file` must be a path inside the sample directory to a regular, non-symlinked text file.
 - Each `replacements` entry maps an exact-match `placeholder` string to an `env`
-  variable that must be non-empty.
+  variable that must be non-empty, or to `generate: unique_name` (see next section).
 - The validator rejects the whole declaration as an infrastructure error (`2`) if a
   target file is missing, outside the sample directory, malformed, or does not
   contain the placeholder — nothing is partially rewritten.
 - Only the declared placeholder is replaced; other instructional strings (like an
   agent name meant to stay sample-owned) are left untouched.
+
+### Cleaning Up Live-Service Resources
+
+If your sample's live-service command creates a Foundry Agent (most quickstarts
+do), add `cleanup_resources` so the resource is deleted automatically after the
+run instead of being left behind in the shared project:
+
+```yaml
+live_service_validation:
+  command: "python quickstart-create-agent.py"
+  cleanup_resources:
+    - type: foundry_agent_versions
+  substitutions:
+    - file: quickstart-create-agent.py
+      replacements:
+        - placeholder: "your-agent-name"
+          generate: unique_name
+```
+
+- `cleanup_resources` currently supports exactly one `type`:
+  `foundry_agent_versions`. It needs no other fields.
+- It must be paired with a `generate: unique_name` substitution (see above) —
+  the validator generates one unique agent name per run and reuses it for
+  every `generate: unique_name` placeholder in the sample, then passes that
+  same name to cleanup. Declaring `cleanup_resources` without a paired
+  `generate: unique_name` substitution is an infrastructure error, since
+  cleanup would otherwise have no name to scope itself to.
+- Nothing else is required — no environment variable, no workflow wiring, no
+  sample-owned code to record or report what was created.
+- Despite the single `type` name, this one declaration already sweeps more
+  than just the agent: it deletes the agent's versions, the agent itself (if
+  it did not exist before the run), and any conversations created against
+  that agent name (via the Foundry conversations API's `agent_name` filter).
+  This is safe without a separate snapshot for conversations, because an
+  agent name that's fresh for this run cannot have pre-existing conversations
+  attached to it. If your sample doesn't create a conversation, there's
+  simply nothing to delete there.
+- There is currently no other supported `type` value — `foundry_agent_versions`
+  is the only one, and it's the one to use for any sample that creates an
+  agent (with or without a conversation). A sample that creates a Foundry
+  resource that can't be scoped this same way (for example, an actual Azure
+  Resource Manager resource like a new project, which has no relationship to
+  the generated agent name) isn't covered by `cleanup_resources` today; if you
+  hit that case, check with the sample-validation maintainers before adding
+  one — a new `type` would need matching support in
+  `.github/scripts/live-resource-cleanup.py`.
 
 ---
 

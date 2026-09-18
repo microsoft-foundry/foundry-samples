@@ -67,11 +67,15 @@ live_service_validation:
   required_env:
     - FOUNDRY_PROJECT_ENDPOINT
     - FOUNDRY_MODEL_DEPLOYMENT
+  cleanup_resources:
+    - type: foundry_agent_versions
   substitutions:
     - file: run_sample.py
       replacements:
         - placeholder: "your_project_endpoint"
           env: FOUNDRY_PROJECT_ENDPOINT
+        - placeholder: "your-agent-name"
+          generate: unique_name
 ```
 
 The contract is:
@@ -99,9 +103,15 @@ The contract is:
   intentionally contain copy/paste instructional placeholders, such as
   `"your_project_endpoint"`, but the validation caller owns the real value. Each
   substitution names a file inside the sample directory and one or more
-  `placeholder` to `env` replacements. The validator requires each environment
-  variable to be non-empty, replaces every exact placeholder occurrence in the
-  workflow checkout before running the live-service command, and returns
+  replacements, each mapping a `placeholder` to exactly one of:
+  - `env`: a caller-supplied environment variable. The validator requires it to
+    be non-empty.
+  - `generate: unique_name`: a name the validator generates itself — one per
+    sample run, reused for every `generate: unique_name` replacement in that
+    sample (and by `cleanup_resources`, see below). No environment variable or
+    workflow wiring is needed for this case.
+  Every exact placeholder occurrence is replaced in the workflow checkout
+  before running the live-service command, and the validator returns
   infrastructure error (`2`) if the target file is outside the sample directory,
   missing, malformed, or does not contain the placeholder. Substitutions are
   validated and applied in memory first and written only after the whole
@@ -109,13 +119,37 @@ The contract is:
   rewritten checkout. Target files must be regular, non-symlinked text files
   without NUL bytes. Rewriting uses Bash only, so a substitution never adds a
   toolchain requirement beyond the sample's own language.
+- `live_service_validation.cleanup_resources` is optional. It declares resource
+  scopes that the shared cleanup utility snapshots immediately before the live
+  command and compares immediately afterward. The currently supported type is
+  `foundry_agent_versions`, which needs no further fields: it always tracks the
+  one run-unique name the validator generates for `generate: unique_name` (see
+  above), so a sample declaring `cleanup_resources` must also wire a
+  `generate: unique_name` substitution into its source — declaring one without
+  the other is an infrastructure error, since otherwise cleanup would track a
+  name the sample never actually created. For that name, cleanup removes:
+  - the whole agent, if it did not exist before the command; for a
+    pre-existing agent, only versions absent from the pre-command snapshot.
+    Agents and versions that existed before the run are preserved.
+  - any conversations associated with that agent name, via the Foundry
+    conversations API's `agent_name` filter. This needs no separate
+    declaration or snapshot: an agent name that is fresh for this run cannot
+    have pre-existing conversations, so everything the filter returns was
+    created by this run. Samples that never create a conversation simply
+    have nothing to delete here.
+  Cleanup failure is an infrastructure error rather than a successful
+  validation with leaked resources. Any future resource kind that can be
+  scoped the same way (queryable by this run's unique agent name, with no
+  pre-existing collisions possible) can be added the same way, without a new
+  `sample.yaml` field.
 - `SKIP_PROVISION` is a reserved caller input and must be set to exactly `true`
   or `false` whenever live-service validation is declared. The validator
   passes it through but never provisions resources itself. Current repository
   workflows use the warm project with `true`; cold provisioning and a caller
   policy for `false` are not yet delivered.
 - Authentication and cloud configuration are caller-owned. The command inherits
-  the caller's environment and existing CLI/OIDC login. Do not put credentials,
+  the caller's environment and existing CLI/OIDC login. Cleanup declarations
+  additionally require Python 3 and Azure CLI on `PATH`. Do not put credentials,
   secrets, resource provisioning, or production mutations in `sample.yaml`.
 - If `live_service_validation` is omitted (or `sample.yaml` itself is absent),
   `--mode live-service` exits `0`
