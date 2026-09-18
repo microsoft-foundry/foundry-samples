@@ -1,0 +1,67 @@
+name: docs-referenced-files
+
+# Protects the sample files that PUBLISHED Microsoft Learn articles include by reference
+# (`:::code source="<path>" id="<snippet>":::`). Three changes break the docs build:
+#   1. the referenced file is deleted
+#   2. the referenced file is renamed/moved
+#   3. a `# <snippet_id>` / `# </snippet_id>` delimiter comment is removed
+# `.github/docs-referenced-files.json` is the manifest of what the docs reference; the checker
+# derives expected regions from the PR base, validates the PR head, and fails with instructions
+# to contact the docs team.
+#
+# This replaces per-file CODEOWNERS entries + manual docs-team approval on every PR.
+#
+# FORK-SAFE BY CONSTRUCTION, following the conventions documented in validate.yml:
+#   - on: pull_request (NEVER pull_request_target) -> fork PRs run with a read-only token.
+#   - permissions: contents: read only. No secrets, no OIDC, no privileged runner.
+#   - No `paths:` filter: a required check must never conclude `skipped` (GitHub treats a skipped
+#     required check as satisfied, which would silently open the gate).
+#   - Single job with a stable name, so the required-check context is exactly
+#     `docs-referenced-files / check`.
+# The checker only reads the repo and runs git plumbing; it executes no sample code.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-referenced-files-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so --base-ref can resolve the PR base commit. The base contains the
+          # expected regions that the head is required to preserve.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify docs-referenced files and snippet delimiters
+        env:
+          # Exact SHA from the event payload, not a moving branch ref. The manifest lists bare
+          # paths, so the checker reads each file's expected snippet ids from the BASE revision --
+          # that is what makes a REMOVED delimiter detectable. Load-bearing, not a hint: if the
+          # base is unavailable the job fails rather than silently degrading to a weaker check.
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BASE_SHA:-}" ]; then
+            echo "::error::No base SHA in the event payload; cannot compare against the PR base."
+            exit 1
+          fi
+          if ! git rev-parse --verify --quiet "${BASE_SHA}^{commit}" >/dev/null; then
+            echo "::error::Base commit ${BASE_SHA} is missing. Check out with fetch-depth: 0."
+            exit 1
+          fi
+          python .github/scripts/check-docs-referenced-files.py --ref HEAD --base-ref "$BASE_SHA"
