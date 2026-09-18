@@ -64,15 +64,6 @@ hosted agent container. The agent authenticates to the Toolbox with its managed
 identity. The existing Microsoft 365 MCP tools continue to use the signed-in
 user's delegated token.
 
-#### Activity container protocol 2.0.0
-
-The creation script declares `activity_protocol` version `2.0.0`, matching
-`POST /activity/messages`. Deploy the updated image and protocol declaration
-together; version `v1`/`1.0.0` routes to the old endpoint.
-
-The existing M365 Agents SDK handling, authentication, and conversation history
-remain unchanged, following the newer [Hello World sample](../autopilot-agents/hello-world/README.md).
-
 After deployment completes, inspect your resource values:
 
 ```powershell

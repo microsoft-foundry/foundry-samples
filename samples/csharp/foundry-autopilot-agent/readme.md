@@ -6,12 +6,6 @@
 
 ## 📋 Prerequisites
 
-### Activity container protocol
-
-This sample uses container protocol **2.0.0** at `POST /activity/messages`. The provisioning script retains the `activity_protocol` alias for its `2025-11-15-preview` REST API; the public protocol name is `activity`.
-
-Deploy the new image and protocol declaration together. The existing M365 Agents SDK handling, authentication, and conversation history remain unchanged.
-
 **Note:** You must be enrolled in the [Frontier preview program](https://adoption.microsoft.com/en-us/copilot/frontier-program/) to publish a Foundry agent as Autopilot.
 
 Ensure you have the following installed:
