@@ -1,9 +1,15 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 
 requiredVersions:
+  azd: '>=1.31.2'
   extensions:
     azure.ai.agents: '>=1.0.0-beta.13'
 name: hello-world-autopilot
+hooks:
+  preprovision:
+    shell: pwsh
+    run: ./scripts/prepare-provision.ps1
+    interactive: true
 services:
   hello-world-autopilot:
     host: azure.ai.agent
@@ -56,3 +62,7 @@ services:
       resources:
         cpu: '0.5'
         memory: 1Gi
+infra:
+  provider: bicep
+  path: infra
+  module: main

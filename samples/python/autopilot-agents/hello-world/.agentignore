@@ -13,5 +13,6 @@ azure.yaml
 pyproject.toml
 tests/
 scripts/
+infra/
 .dockerignore
 Dockerfile
