@@ -48,7 +48,7 @@
           container_protocol_versions = @(
               @{
                   protocol = "activity_protocol"
-                  version  = "v1"
+                  version  = "2.0.0"
               }
           )
       }
