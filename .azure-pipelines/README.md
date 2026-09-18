@@ -7,7 +7,7 @@ or authorize an Azure DevOps pipeline.
 | Pipeline | Scope | Execution |
 |---|---|---|
 | [hosted-agents-samples-ci.yml](hosted-agents-samples-ci.yml) | Python/C# hosted agents and their test fixtures | Changed samples on PRs; full discovery on relevant `main` pushes, daily at 09:00 UTC, and manual runs |
-| [bicep-pr-ci.yml](bicep-pr-ci.yml) | Bicep infrastructure templates and diagnostic tooling | Changed templates on PRs and `main` pushes; manual `samplePath` or `validateAll` |
+| [private-bicep-pr-ci.yml](private-bicep-pr-ci.yml) | Bicep infrastructure templates and diagnostic tooling | Changed templates on PRs and `main` pushes; manual `samplePath` or `validateAll` |
 
 The GitHub [policy checks](../.github/workflows/hosted-agent-policies.yml) remain
 credential-free. The public `trusted` check and
@@ -19,7 +19,7 @@ from these deployment pipelines.
 ```text
 .azure-pipelines/
   hosted-agents-samples-ci.yml
-  bicep-pr-ci.yml
+  private-bicep-pr-ci.yml
   hosted-agent-tests/<language>/<full-sample-path>/
     test-spec.yml
     test-payload.txt

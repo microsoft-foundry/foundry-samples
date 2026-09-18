@@ -7,7 +7,7 @@ trigger:
       - main
   paths:
     include:
-      - .azure-pipelines/bicep-pr-ci.yml
+      - .azure-pipelines/private-bicep-pr-ci.yml
       - .azure-pipelines/scripts/bicep/**
       - samples/python/hosted-agents/bring-your-own/invocations/diagnostic-agent/**
       - infrastructure/infrastructure-setup-bicep/**
@@ -18,7 +18,7 @@ pr:
       - main
   paths:
     include:
-      - .azure-pipelines/bicep-pr-ci.yml
+      - .azure-pipelines/private-bicep-pr-ci.yml
       - .azure-pipelines/scripts/bicep/**
       - samples/python/hosted-agents/bring-your-own/invocations/diagnostic-agent/**
       - infrastructure/infrastructure-setup-bicep/**
@@ -115,7 +115,7 @@ stages:
 
                 mapfile -t bicep_files < <(printf '%s\n' "${bicep_files[@]:-}" | sed '/^$/d' | sort -u)
 
-                if [ "${#bicep_files[@]}" -eq 0 ] && git diff --quiet "$base_ref" HEAD -- .azure-pipelines/bicep-pr-ci.yml .azure-pipelines/scripts/bicep samples/python/hosted-agents/bring-your-own/invocations/diagnostic-agent; then
+                if [ "${#bicep_files[@]}" -eq 0 ] && git diff --quiet "$base_ref" HEAD -- .azure-pipelines/private-bicep-pr-ci.yml .azure-pipelines/scripts/bicep samples/python/hosted-agents/bring-your-own/invocations/diagnostic-agent; then
                   :
                 elif [ "${#bicep_files[@]}" -eq 0 ]; then
                   echo "Pipeline or diagnostic tooling changed without template changes; building smoke sample."
@@ -270,7 +270,7 @@ stages:
 
                   mapfile -t deployment_files < <(printf '%s\n' "${deployment_files[@]:-}" | sed '/^$/d' | sort -u)
 
-                  if [ "${#deployment_files[@]}" -eq 0 ] && git diff --quiet "$base_ref" HEAD -- .azure-pipelines/bicep-pr-ci.yml .azure-pipelines/scripts/bicep samples/python/hosted-agents/bring-your-own/invocations/diagnostic-agent; then
+                  if [ "${#deployment_files[@]}" -eq 0 ] && git diff --quiet "$base_ref" HEAD -- .azure-pipelines/private-bicep-pr-ci.yml .azure-pipelines/scripts/bicep samples/python/hosted-agents/bring-your-own/invocations/diagnostic-agent; then
                     :
                   elif [ "${#deployment_files[@]}" -eq 0 ]; then
                     echo "Pipeline or diagnostic tooling changed without template changes; deploying smoke sample."

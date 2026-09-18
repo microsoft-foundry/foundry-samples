@@ -11,7 +11,7 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[3]
-PIPELINE = ROOT / ".azure-pipelines/bicep-pr-ci.yml"
+PIPELINE = ROOT / ".azure-pipelines/private-bicep-pr-ci.yml"
 SAMPLE_ROOT = "infrastructure/infrastructure-setup-bicep"
 
 
@@ -31,6 +31,7 @@ class BicepPipelineTests(unittest.TestCase):
     def test_trigger_and_diagnostic_paths_resolve_publicly(self):
         for trigger in ("trigger", "pr"):
             included = self.pipeline[trigger]["paths"]["include"]
+            self.assertIn(PIPELINE.relative_to(ROOT).as_posix(), included)
             self.assertIn(".azure-pipelines/scripts/bicep/**", included)
             self.assertIn(
                 "samples/python/hosted-agents/bring-your-own/invocations/diagnostic-agent/**",
@@ -73,6 +74,7 @@ class BicepPipelineTests(unittest.TestCase):
             for changed, expected in (
                 (f"{SAMPLE_ROOT}/01-example/main.bicep", "01-example"),
                 (".azure-pipelines/scripts/bicep/run-data-plane-diagnostics.sh", "00-basic"),
+                (PIPELINE.relative_to(ROOT).as_posix(), "00-basic"),
             ):
                 with self.subTest(changed=changed):
                     path = repo / changed
