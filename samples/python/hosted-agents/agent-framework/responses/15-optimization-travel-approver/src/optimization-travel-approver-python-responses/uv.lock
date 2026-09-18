@@ -1591,7 +1591,7 @@ wheels = [
 [[package]]
 name = "optimization-travel-approver-python-responses"
 version = "0.1.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
     { name = "agent-framework-foundry" },
     { name = "agent-framework-foundry-hosting" },
