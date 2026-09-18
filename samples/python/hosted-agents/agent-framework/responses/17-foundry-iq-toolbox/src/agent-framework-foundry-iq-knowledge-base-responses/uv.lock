@@ -67,10 +67,24 @@ dependencies = [
     { name = "agent-framework-foundry-hosting" },
 ]
 
+[package.dev-dependencies]
+provisioning = [
+    { name = "azure-identity" },
+    { name = "python-dotenv" },
+    { name = "requests" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "agent-framework-foundry" },
     { name = "agent-framework-foundry-hosting", specifier = ">=1.0.0b260813" },
+]
+
+[package.metadata.requires-dev]
+provisioning = [
+    { name = "azure-identity" },
+    { name = "python-dotenv" },
+    { name = "requests" },
 ]
 
 [[package]]

@@ -35,8 +35,7 @@ if [ -z "$AZURE_OPENAI_ENDPOINT" ] && [ -n "$FOUNDRY_PROJECT_ENDPOINT" ]; then
 fi
 
 echo "Provisioning the Foundry IQ knowledge base..."
-python -m pip install -q requests azure-identity python-dotenv
-python provision_kb.py   # stores the KB MCP endpoint as KB_MCP_ENDPOINT
+uv run --frozen --group provisioning python provision_kb.py   # stores the KB MCP endpoint as KB_MCP_ENDPOINT
 
 KB="$(azd env get-value KB_MCP_ENDPOINT)"
 if [ -z "$KB" ]; then

@@ -8,5 +8,12 @@ dependencies = [
     "agent-framework-foundry-hosting>=1.0.0b260813",
 ]
 
+[dependency-groups]
+provisioning = [
+    "azure-identity",
+    "python-dotenv",
+    "requests",
+]
+
 [tool.uv]
 package = false
