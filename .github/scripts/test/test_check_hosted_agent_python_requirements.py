@@ -131,7 +131,7 @@ class RepositoryCheckTests(unittest.TestCase):
             self.repo.path, self.base, "HEAD", resolve, sys.executable
         )
 
-    def test_new_service_with_pinned_requirements_passes(self) -> None:
+    def test_new_service_with_pinned_requirements_fallback_passes(self) -> None:
         self.add_service()
         self.repo.commit("add sample")
         self.assertEqual([], self.findings())
@@ -196,11 +196,10 @@ class RepositoryCheckTests(unittest.TestCase):
                 )
                 self.assertEqual(["PYREQ001"], [finding.code for finding in findings])
 
-    def test_requirements_take_precedence_over_supplemental_uv_files(self) -> None:
+    def test_uv_pair_takes_precedence_over_legacy_requirements(self) -> None:
         root = self.add_uv_service()
-        self.repo.write(f"{root}/requirements.txt", "six==1.16.0\n")
-        self.repo.write(f"{root}/uv.lock", "not valid toml =\n")
-        self.repo.commit("add pip-consumer sample with supplemental uv files")
+        self.repo.write(f"{root}/requirements.txt", "six>=1.0\n")
+        self.repo.commit("add uv-native sample with legacy requirements fallback")
         self.assertEqual([], self.findings())
 
     def test_uv_project_change_requires_updated_lock(self) -> None:

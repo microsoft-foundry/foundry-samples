@@ -898,12 +898,12 @@ def collect_findings(
         requirements_source = root / REQUIREMENTS_ARTIFACT
         uv_manifest = root / UV_MANIFEST
         uv_source = root / UV_LOCK
-        if requirements_source in head_files:
-            source = requirements_source
-            artifact_kind = "requirements"
-        elif uv_manifest in head_files and uv_source in head_files:
+        if uv_manifest in head_files and uv_source in head_files:
             source = uv_source
             artifact_kind = "uv"
+        elif requirements_source in head_files:
+            source = requirements_source
+            artifact_kind = "requirements"
         else:
             source = requirements_source
             artifact_kind = "missing"

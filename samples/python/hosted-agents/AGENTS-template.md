@@ -31,7 +31,7 @@ Keep the bullet that matches this sample's `azure.yaml`:
   environment variables, and deployment mode
 - `src/{{agent-source-directory}}/{{entry-point}}` - agent implementation and server
   entry point
-- `src/{{agent-source-directory}}/requirements.txt` - portable, fully resolved Python runtime dependencies; for a uv-native sample, replace this with `pyproject.toml`, `uv.lock`, and optionally `uv.toml`
+- `src/{{agent-source-directory}}/pyproject.toml` and `uv.lock` - default, fully resolved Python runtime dependencies; use `requirements.txt` only as the backward-compatible fallback
 - `src/{{agent-source-directory}}/Dockerfile` - container definition; keep this bullet
   only for container-mode samples
 - `README.md` - prerequisites and supported local run, test, and deployment paths
@@ -44,14 +44,14 @@ task files generated when the Foundry Toolkit scaffolds a local workspace.
 Follow the shared Python Hosted Agent dependency policy at
 `samples/python/hosted-agents/DEPENDENCY_POLICY.md`.
 
-Commit one supported dependency artifact: either a fully resolved
-`requirements.txt`, or both `pyproject.toml` and `uv.lock` for a uv-native sample.
-The selected artifact must pin the complete direct and transitive runtime graph.
-A uv-native sample must use a pinned uv version and `uv sync --frozen` in its
-validation and deployment paths. Update the selected artifact whenever a
-dependency input changes. Run the policy checker, including its `--resolve`
-closure check when network access is available, before completing dependency
-changes.
+Use `pyproject.toml` and `uv.lock` by default. A fully resolved
+`requirements.txt` remains accepted as a backward-compatible fallback. The
+selected artifact must pin the complete direct and transitive runtime graph; if
+both forms exist, the uv pair is authoritative. A uv-native sample must use a
+pinned uv version and `uv sync --frozen` in its validation and deployment paths.
+Update the selected artifact whenever a dependency input changes. Run the policy
+checker, including its `--resolve` closure check when network access is available,
+before completing dependency changes.
 
 ## Runtime logging
 

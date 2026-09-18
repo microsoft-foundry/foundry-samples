@@ -8,12 +8,32 @@ Hosted Agent samples are built locally, in pull-request validation, and by remot
 
 To give consumers and build systems a reproducible installation path, each new or dependency-updated Python Hosted Agent runtime must commit one supported dependency artifact:
 
-- a fully resolved `requirements.txt`; or
-- for a uv-native runtime, `pyproject.toml` together with `uv.lock`.
+- **Default:** `pyproject.toml` together with `uv.lock`.
+- **Backward-compatible fallback:** a fully resolved `requirements.txt`.
+
+New samples should use uv unless they have a concrete compatibility reason not to. Existing requirements-based samples can continue using `requirements.txt`; this policy does not force an immediate repository-wide migration.
 
 ## Supported consumer artifacts
 
-`requirements.txt` is the canonical portable dependency artifact for sample consumers, CI, and deployment systems that use pip:
+### Default: pyproject.toml and uv.lock
+
+A new runtime should use uv throughout its documented development, validation, and deployment paths:
+
+```text
+sample/
+├── azure.yaml
+└── src/
+    └── my-agent/
+        ├── main.py
+        ├── pyproject.toml
+        └── uv.lock
+```
+
+CI validates that the lock matches the project and exports a complete runtime graph. The sample's `sample.yaml` build command must install a pinned uv version and use `uv sync --frozen`. Deployment must use Hosted Agent remote dependency resolution or a Dockerfile that installs a pinned uv version and uses `uv sync --frozen`. Consumers use uv directly; a duplicate `requirements.txt` export is not required.
+
+### Backward-compatible fallback: requirements.txt
+
+Existing requirements-based runtimes—and new runtimes with a concrete compatibility constraint—may use a fully resolved `requirements.txt`:
 
 ```bash
 python -m pip install -r requirements.txt
@@ -30,37 +50,25 @@ sample/
         └── requirements.txt
 ```
 
-A separately executable nested client with its own dependencies should have its own supported artifact: either `requirements.txt`, or both `pyproject.toml` and `uv.lock`. A standard-library-only runtime should commit an empty `requirements.txt` with a comment explaining that it has no third-party runtime dependencies.
+A separately executable nested client with its own dependencies should have its own supported artifact. A standard-library-only runtime may use an empty `requirements.txt` with a comment explaining that it has no third-party runtime dependencies.
 
-A runtime that intentionally uses uv throughout its documented development, validation, and deployment paths may instead use its native pair:
+When both artifact forms are present, the uv pair is authoritative and must satisfy the uv policy. `requirements.txt` is treated as a compatibility artifact and is not independently validated.
 
-```text
-sample/
-├── azure.yaml
-└── src/
-    └── my-agent/
-        ├── main.py
-        ├── pyproject.toml
-        └── uv.lock
-```
+## Dependency tooling
 
-CI validates that the lock matches the project and exports a complete runtime graph. The sample's `sample.yaml` build command must install a pinned uv version and use `uv sync --frozen`. Deployment must use Hosted Agent remote dependency resolution or a Dockerfile that installs a pinned uv version and uses `uv sync --frozen`. Consumers of a uv-native sample are expected to use uv; a duplicate `requirements.txt` export is not required.
-
-When both artifact forms are present, `requirements.txt` remains authoritative and must satisfy the pip policy. Remove it when intentionally adopting the complete uv-native contract.
-
-## Authors may choose their locking tools
-
-This policy does not require consumers or authors to adopt a particular dependency manager. Authors may use pip-tools, uv, Poetry, PDM, Pipenv, or another resolver. Tool-specific manifests and native locks may be committed in addition to `requirements.txt`.
-
-Unless uv is intentionally the sample's consumer workflow, export and commit a pip-compatible `requirements.txt` containing the complete resolved runtime graph. Consumers must not need another authoring tool.
+Use uv for new samples. Existing requirements-based samples may keep their current resolver and committed `requirements.txt` fallback. Authors maintaining the fallback may use pip-tools, Poetry, PDM, Pipenv, uv export, or another resolver, but must commit a pip-compatible `requirements.txt` containing the complete resolved runtime graph.
 
 Examples:
 
 ```bash
-# pip-tools
+# Default uv-native workflow
+uv lock
+uv sync --frozen
+
+# Backward-compatible requirements.txt with pip-tools
 pip-compile requirements.in --output-file requirements.txt
 
-# uv export for a pip-consumer sample
+# Backward-compatible requirements.txt exported from uv
 uv export --frozen --no-dev --no-emit-project --format requirements-txt --output-file requirements.txt
 
 # Poetry (requires poetry-plugin-export)
@@ -141,7 +149,7 @@ The check runs when:
 
 An existing sample with legacy floating dependencies remains grandfathered during source-only or documentation-only updates. Once its dependency inputs change, the affected runtime must satisfy this policy.
 
-For pip-consumer projects, if a separate authoring manifest or native lock changes, regenerate and commit `requirements.txt` in the same PR even when the resolved versions happen to remain unchanged. For uv-native projects, changing `pyproject.toml` or another dependency input requires an updated `uv.lock`.
+For uv-native projects, changing `pyproject.toml`, `uv.toml`, or another dependency input requires an updated `uv.lock`. For requirements-based projects, regenerate and commit `requirements.txt` when a separate authoring manifest or native lock changes, even when the resolved versions happen to remain unchanged.
 
 ## Validation
 
@@ -188,7 +196,7 @@ with a positive issue number and no query string or fragment. Requiring this
 public repository's issue URL avoids accepting private tracking links without
 adding a credentialed lookup to the policy check.
 
-Do not request an exception merely to keep using a preferred dependency manager. Use `requirements.txt`, or adopt the complete uv-native contract.
+Do not request an exception merely to keep using a preferred dependency manager. Adopt the uv-native default or use the backward-compatible `requirements.txt` path.
 
 ## Troubleshooting CI failures
 

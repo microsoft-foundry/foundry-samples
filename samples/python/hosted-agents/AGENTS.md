@@ -27,14 +27,12 @@ applies only when the sample uses container deployment through `docker.path`.
 Follow [`DEPENDENCY_POLICY.md`](./DEPENDENCY_POLICY.md) whenever you create a
 Python Hosted Agent runtime or change its dependencies.
 
-- Commit either `requirements.txt`, or both `pyproject.toml` and `uv.lock`, in
-  each executable runtime project referenced by `services.<name>.project` in
-  `azure.yaml`.
+- Use `pyproject.toml` and `uv.lock` by default in each executable runtime
+  project referenced by `services.<name>.project` in `azure.yaml`.
+- A fully resolved `requirements.txt` remains accepted as a backward-compatible
+  fallback for existing samples or concrete compatibility constraints.
 - The selected artifact must pin the complete direct and transitive runtime
-  dependency graph.
-- You may use pip-tools, uv, Poetry, PDM, Pipenv, or another resolver. Unless
-  the runtime follows the complete uv-native contract below, export its
-  resolution to `requirements.txt` and commit the export.
+  dependency graph. When both forms exist, the uv pair is authoritative.
 - Preserve required extras, prereleases, and environment markers. Do not leave
   bare names, version ranges, wildcard pins, editable/local paths, or mutable
   source references in the consumer artifact.
