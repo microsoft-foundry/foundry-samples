@@ -459,7 +459,7 @@ if [ ! -f "$SERVICE_SRC/main.py" ] && [ ! -f "$SERVICE_SRC/Program.cs" ]; then
   # Remove non-source files that shouldn't be in the build context
   rm -f "$SERVICE_SRC/azure.yaml" "$SERVICE_SRC/.env" \
         "$SERVICE_SRC/.env.example" "$SERVICE_SRC/README.md" \
-        "$SERVICE_SRC/.foundry-agent-build.log" "$SERVICE_SRC/.ci-skip" \
+        "$SERVICE_SRC/.foundry-agent-build.log" \
         "$SERVICE_SRC/test-payload.txt" "$SERVICE_SRC/test-payload.json"
 else
   echo "Scaffolded service already has source — skipping source copy"

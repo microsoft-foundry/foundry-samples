@@ -1,0 +1,11 @@
+# Skip code deployment only; container deployment remains enabled.
+# One exact repository-relative sample directory per line. Blank lines and # comments are ignored.
+
+# Remote code builds do not include a shell-resolvable playwright-cli.
+samples/csharp/hosted-agents/agent-framework/browser-automation
+samples/csharp/hosted-agents/bring-your-own/responses/browser-automation
+samples/python/hosted-agents/agent-framework/responses/14-browser-automation-agent
+samples/python/hosted-agents/bring-your-own/responses/browser-automation
+
+# Existing code-mode exclusion.
+samples/python/hosted-agents/agent-framework/responses/09-declarative-customer-support

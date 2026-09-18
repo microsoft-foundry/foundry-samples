@@ -7,7 +7,7 @@ import unittest
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from hosted_agent_fixture import FIXTURE_ROOT, sample_dir_for_fixture
+from hosted_agent_fixture import CI_SKIPLIST, CODE_CI_SKIPLIST, FIXTURE_ROOT, load_skiplist, sample_dir_for_fixture
 from hosted_agent_test_spec import build_plan, load_spec
 
 
@@ -15,6 +15,12 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 class PublishedFixtureTests(unittest.TestCase):
+    def test_skiplist_entries_map_to_public_samples(self):
+        for filename in (CI_SKIPLIST, CODE_CI_SKIPLIST):
+            for sample in load_skiplist(ROOT, filename):
+                with self.subTest(skiplist=str(filename), sample=str(sample)):
+                    self.assertTrue((ROOT / sample / "azure.yaml").is_file())
+
     def test_all_fixtures_map_to_public_samples(self):
         fixtures = sorted(
             path for path in (ROOT / FIXTURE_ROOT).rglob("*")

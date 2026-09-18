@@ -1,2 +1,0 @@
-Code deploy is intentionally excluded for this sample.
-The hosted code/remote_build runtime does not include a shell-resolvable playwright-cli, so the browser automation sample is validated only in container deploy mode.

@@ -4,11 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Iterable
 
 FIXTURE_ROOT = PurePosixPath(".azure-pipelines/hosted-agent-tests")
+CI_SKIPLIST = PurePosixPath(".azure-pipelines/scripts/hosted-agent-samples-ci-skiplist")
+CODE_CI_SKIPLIST = PurePosixPath(".azure-pipelines/scripts/hosted-agent-samples-code-ci-skiplist")
 SAMPLE_ROOTS = {
     "python": PurePosixPath("samples/python/hosted-agents"),
     "csharp": PurePosixPath("samples/csharp/hosted-agents"),
@@ -72,6 +75,27 @@ def sample_dir_for_fixture(fixture_path: str) -> PurePosixPath:
     return SAMPLE_ROOTS[language].joinpath(*sample_parts)
 
 
+def load_skiplist(repo: Path, filename: PurePosixPath) -> set[PurePosixPath]:
+    try:
+        lines = (repo / filename).read_text(encoding="utf-8-sig").splitlines()
+    except (OSError, UnicodeError) as error:
+        raise FixturePathError(f"Could not read {filename}: {error}") from error
+    samples: set[PurePosixPath] = set()
+    for number, raw in enumerate(lines, start=1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            fixture_dir_for_sample(line)
+            sample = PurePosixPath(line)
+            if sample.as_posix() != line or "\\" in line:
+                raise FixturePathError("expected an exact normalized sample directory")
+        except FixturePathError as error:
+            raise FixturePathError(f"{filename}:{number}: {error}") from error
+        samples.add(sample)
+    return samples
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -81,6 +105,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
     sample = subparsers.add_parser("sample-dir")
     sample.add_argument("--fixture", required=True)
+    skiplists = subparsers.add_parser("skiplists")
+    skiplists.add_argument("--repo-root", type=Path, default=Path.cwd())
     return parser
 
 
@@ -89,8 +115,13 @@ def main(argv: Iterable[str] | None = None) -> int:
     try:
         if args.command == "fixture-dir":
             result = fixture_dir_for_sample(args.sample_dir)
-        else:
+        elif args.command == "sample-dir":
             result = sample_dir_for_fixture(args.fixture)
+        else:
+            result = json.dumps({
+                "samples": sorted(map(str, load_skiplist(args.repo_root, CI_SKIPLIST))),
+                "code": sorted(map(str, load_skiplist(args.repo_root, CODE_CI_SKIPLIST))),
+            })
     except FixturePathError as error:
         print(f"error: {error}", file=sys.stderr)
         return 2

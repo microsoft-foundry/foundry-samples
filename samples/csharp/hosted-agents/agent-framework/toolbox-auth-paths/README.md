@@ -90,7 +90,7 @@ The `hosted-agents-cloud-e2e` workflow treats this as a **toolbox sample** (its 
 auth-paths=https://<account>.services.ai.azure.com/api/projects/<project>/toolboxes/auth-paths-tools/mcp?api-version=v1|<query that exercises the github tool>
 ```
 
-The workflow derives `TOOLBOX_NAME` from the URL slug (`.../toolboxes/auth-paths-tools/mcp`) and drives the toolbox with that query. Until the toolbox is registered, add a `.ci-skip` file in this directory to keep the sample out of the gated set.
+The workflow derives `TOOLBOX_NAME` from the URL slug (`.../toolboxes/auth-paths-tools/mcp`) and drives the toolbox with that query. Until the toolbox is registered, add `samples/csharp/hosted-agents/agent-framework/toolbox-auth-paths` to `.azure-pipelines/scripts/hosted-agent-samples-ci-skiplist` at the repository root to keep the sample out of the gated set.
 
 ## Option 1: Azure Developer CLI (`azd`)
 

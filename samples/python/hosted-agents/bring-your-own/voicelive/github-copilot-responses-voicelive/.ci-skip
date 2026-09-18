@@ -1,1 +1,0 @@
-This sample requires Cognitive Services OpenAI User on its hosted agent identity; the shared cloud E2E pipeline does not assign that account-level role.

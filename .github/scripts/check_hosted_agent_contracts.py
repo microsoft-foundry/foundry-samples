@@ -10,7 +10,7 @@ from typing import Iterable
 
 import yaml
 
-from hosted_agent_fixture import fixture_dir_for_sample
+from hosted_agent_fixture import CI_SKIPLIST, fixture_dir_for_sample, load_skiplist
 from hosted_agent_test_spec import SpecError, build_plan, load_spec
 
 SAMPLE_ROOTS = (
@@ -158,9 +158,10 @@ def _invalid_contract_error(
 
 def check_new_samples(repo: Path, samples: Iterable[PurePosixPath]) -> list[str]:
     errors: list[str] = []
+    skipped = load_skiplist(repo, CI_SKIPLIST)
     for sample in samples:
         manifest_path = repo / sample / "azure.yaml"
-        if (repo / sample / ".ci-skip").is_file():
+        if sample in skipped:
             continue
         try:
             fixture_dir = fixture_dir_for_sample(str(sample))

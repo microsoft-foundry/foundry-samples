@@ -1,0 +1,26 @@
+# Skip all deployment modes. One exact repository-relative sample directory per line.
+# Blank lines and lines beginning with # are ignored.
+
+# A2A callers require executor deployment and toolbox/connection setup first.
+samples/csharp/hosted-agents/agent-framework/a2a/01-delegation/caller
+samples/python/hosted-agents/agent-framework/a2a/01-delegation/caller
+samples/python/hosted-agents/langgraph/a2a/a2a-caller
+
+# Activity and WebSocket protocols need dedicated orchestration/clients.
+samples/csharp/hosted-agents/bring-your-own/invocations_ws/HelloWorld
+samples/python/hosted-agents/bring-your-own/activity/echo
+samples/python/hosted-agents/bring-your-own/activity/github-copilot
+samples/python/hosted-agents/bring-your-own/invocations_ws/duplex-live-agent
+samples/python/hosted-agents/bring-your-own/invocations_ws/hello-world
+samples/python/hosted-agents/bring-your-own/invocations_ws/livekit-server
+samples/python/hosted-agents/bring-your-own/invocations_ws/pipecat-webrtc
+samples/python/hosted-agents/bring-your-own/invocations_ws/pipecat-ws-server
+samples/python/hosted-agents/bring-your-own/voice-agent-target-agent/basic
+samples/python/hosted-agents/bring-your-own/voice-agent-target-agent/langchain
+samples/python/hosted-agents/bring-your-own/voice-agent-target-agent/langgraph
+
+# Requires external Anthropic credentials.
+samples/python/hosted-agents/bring-your-own/invocations/claude-agent-sdk
+
+# Requires Cognitive Services OpenAI User on the hosted identity at account scope.
+samples/python/hosted-agents/bring-your-own/voicelive/github-copilot-responses-voicelive

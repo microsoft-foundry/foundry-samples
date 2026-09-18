@@ -89,9 +89,19 @@ Read the runner's configuration phase when a sample introduces a new variable.
 Missing optional configuration may exclude combinations or skip special probes;
 review the discovery log rather than treating a smaller matrix as full coverage.
 
-Discovery reads hosted-agent `azure.yaml` files. `.ci-skip` excludes a sample;
-`.code-ci-skip` excludes only its code deployment variant. PR changes to shared
-runner code exercise the full matrix; sample or fixture changes select the
+Discovery reads hosted-agent `azure.yaml` files. Exclusions are maintained in two
+central lists:
+
+- [`scripts/hosted-agent-samples-ci-skiplist`](scripts/hosted-agent-samples-ci-skiplist)
+  excludes the whole sample and exempts it from the new-sample contract policy.
+- [`scripts/hosted-agent-samples-code-ci-skiplist`](scripts/hosted-agent-samples-code-ci-skiplist)
+  excludes only code deployment; container validation and the contract policy remain.
+
+Use one exact repository-relative sample directory per line, without globs or a
+trailing slash. Blank lines and full-line `#` comments are allowed; add a comment
+explaining each exclusion. Missing or malformed lists fail validation.
+PR changes to either list or shared runner code exercise the full matrix;
+sample or fixture changes select the
 affected samples. The matrix is sharded by language and expanded by deployment
 mode and applicable toolbox combinations.
 
@@ -107,8 +117,8 @@ scripts.
 The initial port includes 29 behavior contracts and 45 legacy payloads for
 samples already present publicly.
 
-Existing `.ci-skip` and `.code-ci-skip` markers are carried over for matching
-public samples. Their per-sample reason files remain the source of truth; this
+The two lists preserve the existing 16 whole-sample and five code-only exclusions.
+Their comments record the reasons rather than per-sample marker files; this
 avoids turning unsupported protocols or credential-dependent samples into
 accidental new CI targets.
 

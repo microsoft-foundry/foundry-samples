@@ -36,6 +36,8 @@ trigger:
       - samples/csharp/hosted-agents/**
       - .azure-pipelines/hosted-agents-samples-ci.yml
       - .azure-pipelines/scripts/hosted-agents/**
+      - .azure-pipelines/scripts/hosted-agent-samples-ci-skiplist
+      - .azure-pipelines/scripts/hosted-agent-samples-code-ci-skiplist
       - .azure-pipelines/hosted-agent-tests/**
       - .github/scripts/hosted_agent_fixture.py
       - .github/scripts/hosted_agent_test_spec.py
@@ -53,6 +55,8 @@ pr:
       - samples/csharp/hosted-agents/**
       - .azure-pipelines/hosted-agents-samples-ci.yml
       - .azure-pipelines/scripts/hosted-agents/**
+      - .azure-pipelines/scripts/hosted-agent-samples-ci-skiplist
+      - .azure-pipelines/scripts/hosted-agent-samples-code-ci-skiplist
       - .azure-pipelines/hosted-agent-tests/**
       - .github/scripts/hosted_agent_fixture.py
       - .github/scripts/hosted_agent_test_spec.py

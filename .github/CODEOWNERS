@@ -7,6 +7,8 @@
 /.azure-pipelines/hosted-agent-tests/ @microsoft-foundry/hosted-agents
 /.azure-pipelines/hosted-agents-samples-ci.yml @microsoft-foundry/hosted-agents
 /.azure-pipelines/scripts/hosted-agents/ @microsoft-foundry/hosted-agents
+/.azure-pipelines/scripts/hosted-agent-samples-ci-skiplist @microsoft-foundry/hosted-agents
+/.azure-pipelines/scripts/hosted-agent-samples-code-ci-skiplist @microsoft-foundry/hosted-agents
 
 # Foundry Local samples — replace @microsoft-foundry/foundry-local with the actual team slug once created.
 /samples/csharp/foundry-local/     @microsoft-foundry/foundry-local

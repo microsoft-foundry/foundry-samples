@@ -48,7 +48,8 @@ head. Every sample root that exists only at the head must provide a valid full-p
 
 The initial rollout is intentionally conservative: updates to existing sample roots,
 documentation-only changes, Git-detected moves or renames, deletions, and samples
-excluded with `.ci-skip` do not trigger contract migration. The credential-free
+listed in [`hosted-agent-samples-ci-skiplist`](../scripts/hosted-agent-samples-ci-skiplist)
+do not trigger contract migration. Code-only exclusions still require contracts. The credential-free
 workflow reports policy failures on the PR. Required merge checks are configured
 separately in repository rules. Run it locally from the checked-out PR head with:
 
@@ -102,7 +103,7 @@ The PR policy validates the expected contract for each new sample containing
 contracts belonging to existing samples.
 
 The PR policy discovers new Python/C# hosted-agent `azure.yaml` files, excluding
-samples marked `.ci-skip`. A contract defines behavior for a cloud runner to test;
+samples in the whole-sample CI skiplist. A contract defines behavior for a cloud runner to test;
 adding it does not by itself deploy or invoke the sample.
 
 The separate [ADO cloud pipeline](../hosted-agents-samples-ci.yml) checks all

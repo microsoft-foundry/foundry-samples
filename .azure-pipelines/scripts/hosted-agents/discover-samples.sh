@@ -38,6 +38,10 @@ for tool in jq yq git python3; do
   command -v "$tool" >/dev/null 2>&1 || { echo "$tool is required." >&2; exit 1; }
 done
 
+skiplists=$(python3 .github/scripts/hosted_agent_fixture.py skiplists)
+skipped_samples=$(jq -r '.samples[]' <<< "$skiplists")
+code_skipped_samples=$(jq -r '.code[]' <<< "$skiplists")
+
 # ── Parse TOOLBOX_ENDPOINT_NCUS into a list ────────────────────────────
 # Format: one entry per line, "label=https://...|optional query text"
 # Used to expand toolbox samples into a cartesian product.
@@ -167,12 +171,11 @@ emit_entries() {
       ;;
   esac
 
-  # Per-sample code-deploy opt-out: drop a `.code-ci-skip` file in the sample
-  # directory to skip just the code deploy arm while keeping the container arm
-  # (cf. `.ci-skip`, which excludes the sample entirely).
+  # Code-only exclusions keep the container arm; whole-sample exclusions are
+  # applied before entry generation.
   local code_compatible="true"
-  if [ -f "$sample_dir/.code-ci-skip" ]; then
-    echo "  - $sample_dir (code deploy skipped via .code-ci-skip — container-only)" >&2
+  if grep -Fxq -- "$sample_dir" <<< "$code_skipped_samples"; then
+    echo "  - $sample_dir (code deploy excluded by skiplist — container-only)" >&2
     code_compatible="false"
   fi
 
@@ -288,15 +291,15 @@ if [ "$DISCOVERY_MODE" = "changed" ]; then
   # Without this, a runner change triggers the pipeline but the changed-sample
   # filter emits an empty matrix, so the change is never validated before merge.
   test_all="false"
-  if echo "$changed_files" | grep -qE '^(\.azure-pipelines/hosted-agents-samples-ci\.yml$|\.azure-pipelines/scripts/hosted-agents/|\.github/scripts/hosted_agent_(fixture|test_spec)\.py$)'; then
+  if echo "$changed_files" | grep -qE '^(\.azure-pipelines/hosted-agents-samples-ci\.yml$|\.azure-pipelines/scripts/hosted-agents/|\.azure-pipelines/scripts/hosted-agent-samples-(code-)?ci-skiplist$|\.github/scripts/hosted_agent_(fixture|test_spec)\.py$)'; then
     test_all="true"
     echo "Hosted-agent E2E infrastructure changed — testing the full matrix" >&2
   fi
 
   while IFS= read -r yaml_file; do
     sample_dir=$(dirname "$yaml_file")
-    if [ -f "$sample_dir/.ci-skip" ]; then
-      echo "  - $sample_dir (skipped - requires external credentials)" >&2
+    if grep -Fxq -- "$sample_dir" <<< "$skipped_samples"; then
+      echo "  - $sample_dir (excluded by CI skiplist)" >&2
       continue
     fi
     if [ "$(yq '[.services[] | select(.host == "azure.ai.agent") | .protocols[]?.protocol] | any_c(. == "invocations")' "$yaml_file")" = "true" ]; then
@@ -318,8 +321,8 @@ else
   echo "Full discovery - testing all samples" >&2
   while IFS= read -r yaml_file; do
     sample_dir=$(dirname "$yaml_file")
-    if [ -f "$sample_dir/.ci-skip" ]; then
-      echo "  - $sample_dir (skipped - requires external credentials)" >&2
+    if grep -Fxq -- "$sample_dir" <<< "$skipped_samples"; then
+      echo "  - $sample_dir (excluded by CI skiplist)" >&2
       continue
     fi
     agent_name=$(yq '.name // ""' "$yaml_file")

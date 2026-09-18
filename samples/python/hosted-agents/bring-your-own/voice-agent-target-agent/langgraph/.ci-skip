@@ -1,1 +1,0 @@
-The shared hosted-agent E2E runner does not support the invocations_ws protocol. Validate this sample with its unit tests and protocol-aware local smoke client.

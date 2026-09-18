@@ -6,9 +6,11 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import json
 import sys
+import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 SCRIPTS = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -90,6 +92,51 @@ class FixturePathTests(unittest.TestCase):
             )
         self.assertEqual(result, 2)
         self.assertIn("error:", stderr.getvalue())
+
+
+class SkiplistTests(unittest.TestCase):
+    def test_comments_blank_lines_and_exact_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sample = "samples/python/hosted-agents/framework/example"
+            path = root / module.CI_SKIPLIST
+            path.parent.mkdir(parents=True)
+            path.write_bytes(f"\ufeff# comment\r\n \r\n  {sample}  \r\n{sample}\r\n".encode("utf-8"))
+            paths = module.load_skiplist(root, module.CI_SKIPLIST)
+            self.assertEqual(paths, {PurePosixPath(sample)})
+            self.assertNotIn(PurePosixPath(sample + "-other"), paths)
+
+    def test_invalid_paths_and_missing_files_fail_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / module.CI_SKIPLIST
+            with self.assertRaises(module.FixturePathError):
+                module.load_skiplist(root, module.CI_SKIPLIST)
+            path.parent.mkdir(parents=True)
+            for value in (
+                "/absolute/path", "samples/python/agents/example",
+                "samples/python/hosted-agents", "samples/python/hosted-agents/../example",
+                "samples/python/hosted-agents//example", "samples/python/hosted-agents/example/",
+                "samples/python/hosted-agents/foo\\bar",
+            ):
+                with self.subTest(path=value):
+                    path.write_text(value, encoding="utf-8")
+                    with self.assertRaises(module.FixturePathError):
+                        module.load_skiplist(root, module.CI_SKIPLIST)
+
+    def test_cli_exports_separate_whole_and_code_lists(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = (module.CI_SKIPLIST, module.CODE_CI_SKIPLIST)
+            samples = ("samples/python/hosted-agents/whole", "samples/csharp/hosted-agents/code")
+            for filename, sample in zip(paths, samples):
+                path = root / filename
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(sample + "\n", encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(0, module.main(["skiplists", "--repo-root", str(root)]))
+            self.assertEqual(json.loads(output.getvalue()), {"samples": [samples[0]], "code": [samples[1]]})
 
 
 if __name__ == "__main__":

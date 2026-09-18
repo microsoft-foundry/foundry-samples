@@ -97,6 +97,9 @@ class ContractCoverageTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.repo = Path(self.directory.name)
+        skiplist = self.repo / module.CI_SKIPLIST
+        skiplist.parent.mkdir(parents=True)
+        skiplist.write_text("", encoding="utf-8")
         sample_dir = self.repo / SAMPLE
         sample_dir.mkdir(parents=True)
         (sample_dir / "azure.yaml").write_text(MANIFEST, encoding="utf-8")
@@ -174,8 +177,19 @@ class ContractCoverageTests(unittest.TestCase):
         self.assertIn("assistant_text", errors[0])
 
     def test_ci_skipped_sample_does_not_require_contract(self):
-        (self.repo / SAMPLE / ".ci-skip").touch()
+        (self.repo / module.CI_SKIPLIST).write_text(str(SAMPLE) + "\n", encoding="utf-8")
         self.assertEqual(module.check_new_samples(self.repo, [SAMPLE]), [])
+
+    def test_code_only_exclusion_still_requires_contract(self):
+        (self.repo / ".azure-pipelines/scripts/hosted-agent-samples-code-ci-skiplist").write_text(
+            str(SAMPLE) + "\n", encoding="utf-8"
+        )
+        self.assertEqual(len(module.check_new_samples(self.repo, [SAMPLE])), 1)
+
+    def test_missing_skiplist_fails_closed(self):
+        (self.repo / module.CI_SKIPLIST).unlink()
+        with self.assertRaisesRegex(ValueError, "Could not read"):
+            module.check_new_samples(self.repo, [SAMPLE])
 
     def test_malformed_manifest_reports_policy_error(self):
         manifest = self.repo / SAMPLE / "azure.yaml"

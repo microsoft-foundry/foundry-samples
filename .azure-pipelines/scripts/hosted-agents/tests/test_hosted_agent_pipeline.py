@@ -156,6 +156,8 @@ class PipelineTests(unittest.TestCase):
             ".azure-pipelines/scripts/hosted-agents/run-hosted-agent.sh",
             ".azure-pipelines/scripts/hosted-agents/tests/test_hosted_agent_pipeline.py",
             ".azure-pipelines/scripts/hosted-agents/voicelive/fixtures/voice-live-ci.wav",
+            ".azure-pipelines/scripts/hosted-agent-samples-ci-skiplist",
+            ".azure-pipelines/scripts/hosted-agent-samples-code-ci-skiplist",
             ".github/scripts/hosted_agent_fixture.py",
             ".github/scripts/hosted_agent_test_spec.py",
         ):
@@ -169,10 +171,20 @@ class PipelineTests(unittest.TestCase):
             paths = PIPELINE[trigger]["paths"]["include"]
             for path in (
                 ".azure-pipelines/hosted-agent-tests/**",
+                ".azure-pipelines/scripts/hosted-agent-samples-ci-skiplist",
+                ".azure-pipelines/scripts/hosted-agent-samples-code-ci-skiplist",
                 ".github/scripts/hosted_agent_fixture.py",
                 ".github/scripts/hosted_agent_test_spec.py",
             ):
                 self.assertIn(path, paths)
+
+    def test_discovery_uses_shared_exact_skiplist_matching(self):
+        discovery = (CI / "discover-samples.sh").read_text(encoding="utf-8")
+        self.assertIn("python3 .github/scripts/hosted_agent_fixture.py skiplists", discovery)
+        self.assertEqual(discovery.count('grep -Fxq -- "$sample_dir" <<< "$skipped_samples"'), 2)
+        self.assertIn('grep -Fxq -- "$sample_dir" <<< "$code_skipped_samples"', discovery)
+        self.assertNotIn('/.ci-skip', discovery)
+        self.assertNotIn('/.code-ci-skip', discovery)
 
     def test_discovery_requires_explicit_nonfork_pr(self):
         discover = next(
