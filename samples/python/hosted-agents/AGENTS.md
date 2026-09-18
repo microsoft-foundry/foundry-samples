@@ -27,25 +27,28 @@ applies only when the sample uses container deployment through `docker.path`.
 Follow [`DEPENDENCY_POLICY.md`](./DEPENDENCY_POLICY.md) whenever you create a
 Python Hosted Agent runtime or change its dependencies.
 
-- Commit `requirements.txt` in each executable runtime project referenced by
-  `services.<name>.project` in `azure.yaml`.
-- Treat `requirements.txt` as the portable consumer artifact. It must pin the
-  complete direct and transitive runtime dependency graph.
-- You may use pip-tools, uv, Poetry, PDM, Pipenv, or another resolver, but export
-  its resolution to `requirements.txt` and commit the export.
+- Commit either `requirements.txt`, or both `pyproject.toml` and `uv.lock`, in
+  each executable runtime project referenced by `services.<name>.project` in
+  `azure.yaml`.
+- The selected artifact must pin the complete direct and transitive runtime
+  dependency graph.
+- You may use pip-tools, uv, Poetry, PDM, Pipenv, or another resolver. Unless
+  the runtime follows the complete uv-native contract below, export its
+  resolution to `requirements.txt` and commit the export.
 - Preserve required extras, prereleases, and environment markers. Do not leave
   bare names, version ranges, wildcard pins, editable/local paths, or mutable
   source references in the consumer artifact.
-- When `pyproject.toml`, a native lockfile, or another dependency input changes,
-  regenerate and commit `requirements.txt` in the same change.
+- When a dependency input changes, update the selected lock artifact in the
+  same change.
 - Do not update dependency versions during unrelated work. Existing legacy
   samples are grandfathered until a dependency input changes.
 - Before finishing a dependency change, run the checker documented in
   `DEPENDENCY_POLICY.md`, including `--resolve` when network access is available.
 
-A sample whose purpose is to demonstrate a particular package manager may keep
-that tool as its primary authoring workflow, but it still exports the portable
-`requirements.txt` unless a narrow, documented exception applies.
+A uv-native sample may omit `requirements.txt` when `sample.yaml` installs a
+pinned uv version and runs `uv sync --frozen`. Its deployment must consume the
+lock through `dependencyResolution: remote_build`, or through a Dockerfile that
+uses a versioned `ghcr.io/astral-sh/uv` image and runs `uv sync --frozen`.
 
 ## Cloud E2E contract for new samples
 

@@ -31,7 +31,7 @@ Keep the bullet that matches this sample's `azure.yaml`:
   environment variables, and deployment mode
 - `src/{{agent-source-directory}}/{{entry-point}}` - agent implementation and server
   entry point
-- `src/{{agent-source-directory}}/requirements.txt` - portable, fully resolved Python runtime dependencies
+- `src/{{agent-source-directory}}/requirements.txt` - portable, fully resolved Python runtime dependencies; for a uv-native sample, replace this with `pyproject.toml`, `uv.lock`, and optionally `uv.toml`
 - `src/{{agent-source-directory}}/Dockerfile` - container definition; keep this bullet
   only for container-mode samples
 - `README.md` - prerequisites and supported local run, test, and deployment paths
@@ -44,12 +44,14 @@ task files generated when the Foundry Toolkit scaffolds a local workspace.
 Follow the shared Python Hosted Agent dependency policy at
 `samples/python/hosted-agents/DEPENDENCY_POLICY.md`.
 
-`requirements.txt` is the portable consumer artifact and must pin the complete
-direct and transitive runtime graph. You may use any dependency-management tool,
-but export and commit its pip-compatible `requirements.txt`. Regenerate the
-artifact whenever `pyproject.toml`, a native lockfile, or another dependency input
-changes. Run the policy checker, including its `--resolve` closure check when
-network access is available, before completing dependency changes.
+Commit one supported dependency artifact: either a fully resolved
+`requirements.txt`, or both `pyproject.toml` and `uv.lock` for a uv-native sample.
+The selected artifact must pin the complete direct and transitive runtime graph.
+A uv-native sample must use a pinned uv version and `uv sync --frozen` in its
+validation and deployment paths. Update the selected artifact whenever a
+dependency input changes. Run the policy checker, including its `--resolve`
+closure check when network access is available, before completing dependency
+changes.
 
 ## Runtime logging
 

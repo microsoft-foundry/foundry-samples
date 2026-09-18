@@ -86,6 +86,46 @@ class RepositoryCheckTests(unittest.TestCase):
             self.repo.write(f"{sample}/{service}/requirements.txt", requirements)
         return f"{sample}/{service}"
 
+    def add_uv_service(
+        self,
+        sample: str = "samples/python/hosted-agents/framework/uv-example",
+        service: str = "src/example",
+    ) -> str:
+        root = self.add_service(
+            sample=sample,
+            service=service,
+            requirements=None,
+        )
+        self.repo.write(
+            f"{sample}/azure.yaml",
+            "name: example\nservices:\n  example:\n    language: python\n"
+            f"    project: {service}\n"
+            "    codeConfiguration:\n"
+            "      dependencyResolution: remote_build\n",
+        )
+        self.repo.write(
+            f"{sample}/sample.yaml",
+            "name: uv example\n"
+            'build: python -m pip install "uv==0.11.7" && uv sync --frozen\n',
+        )
+        self.repo.write(
+            f"{root}/pyproject.toml",
+            '[project]\nname = "example"\nversion = "0.1.0"\n'
+            'requires-python = ">=3.11"\ndependencies = ["six==1.16.0"]\n',
+        )
+        self.repo.write(
+            f"{root}/uv.lock",
+            'version = 1\nrevision = 3\nrequires-python = ">=3.11"\n\n'
+            "[[package]]\n"
+            'name = "example"\nversion = "0.1.0"\n'
+            'source = { editable = "." }\n'
+            'dependencies = [{ name = "six" }]\n\n'
+            "[[package]]\n"
+            'name = "six"\nversion = "1.16.0"\n'
+            'source = { registry = "https://pypi.org/simple" }\n',
+        )
+        return root
+
     def findings(self, *, resolve: bool = False):
         return checker.collect_findings(
             self.repo.path, self.base, "HEAD", resolve, sys.executable
@@ -118,6 +158,161 @@ class RepositoryCheckTests(unittest.TestCase):
         findings = self.findings()
         self.assertEqual(["PYREQ001"], [finding.code for finding in findings])
         self.assertEqual(PurePosixPath(root), findings[0].root)
+
+    def test_new_service_with_uv_project_and_lock_passes(self) -> None:
+        self.add_uv_service()
+        self.repo.commit("add uv sample")
+        self.assertEqual([], self.findings())
+
+    def test_incomplete_uv_pair_fails(self) -> None:
+        for present, missing in (
+            ("pyproject.toml", "uv.lock"),
+            ("uv.lock", "pyproject.toml"),
+        ):
+            with self.subTest(missing=missing):
+                repo = GitRepository()
+                self.addCleanup(repo.cleanup)
+                sample = "samples/python/hosted-agents/framework/incomplete"
+                service = "src/incomplete"
+                repo.write(
+                    f"{sample}/azure.yaml",
+                    "name: incomplete\nservices:\n  incomplete:\n"
+                    "    language: python\n    project: src/incomplete\n",
+                )
+                repo.write(f"{sample}/{service}/main.py", "pass\n")
+                content = (
+                    '[project]\nname = "incomplete"\nversion = "0.1.0"\n'
+                    if present == "pyproject.toml"
+                    else 'version = 1\nrevision = 3\nrequires-python = ">=3.13"\n'
+                )
+                repo.write(f"{sample}/{service}/{present}", content)
+                repo.commit("add incomplete uv sample")
+                findings = checker.collect_findings(
+                    repo.path,
+                    repo.run("rev-parse", "HEAD^"),
+                    "HEAD",
+                    False,
+                    sys.executable,
+                )
+                self.assertEqual(["PYREQ001"], [finding.code for finding in findings])
+
+    def test_requirements_take_precedence_over_supplemental_uv_files(self) -> None:
+        root = self.add_uv_service()
+        self.repo.write(f"{root}/requirements.txt", "six==1.16.0\n")
+        self.repo.write(f"{root}/uv.lock", "not valid toml =\n")
+        self.repo.commit("add pip-consumer sample with supplemental uv files")
+        self.assertEqual([], self.findings())
+
+    def test_uv_project_change_requires_updated_lock(self) -> None:
+        root = self.add_uv_service()
+        self.repo.commit("add uv sample")
+        self.base = self.repo.run("rev-parse", "HEAD")
+        self.repo.write(
+            f"{root}/pyproject.toml",
+            '[project]\nname = "example"\nversion = "0.1.0"\n'
+            'requires-python = ">=3.11"\ndependencies = ["six==1.17.0"]\n',
+        )
+        self.repo.commit("change uv dependencies")
+        self.assertEqual(["PYREQ006"], [finding.code for finding in self.findings()])
+
+    def test_uv_config_change_requires_updated_lock(self) -> None:
+        root = self.add_uv_service()
+        self.repo.write(f"{root}/uv.toml", "system-certs = true\n")
+        self.repo.commit("add uv sample")
+        self.base = self.repo.run("rev-parse", "HEAD")
+        self.repo.write(f"{root}/uv.toml", "system-certs = false\n")
+        self.repo.commit("change uv configuration")
+        self.assertEqual(["PYREQ006"], [finding.code for finding in self.findings()])
+
+    def test_uv_project_requires_pinned_frozen_validation(self) -> None:
+        root = self.add_uv_service()
+        sample = Path(root).parents[1].as_posix()
+        self.repo.write(f"{sample}/sample.yaml", "name: uv example\nbuild: uv sync\n")
+        self.repo.commit("add invalid uv sample")
+        self.assertEqual(["PYREQ013"], [finding.code for finding in self.findings()])
+
+    def test_uv_project_requires_lock_aware_deployment(self) -> None:
+        root = self.add_uv_service()
+        sample = Path(root).parents[1].as_posix()
+        self.repo.write(
+            f"{sample}/azure.yaml",
+            "name: example\nservices:\n  example:\n    language: python\n"
+            "    project: src/example\n",
+        )
+        self.repo.commit("add uv sample without lock-aware deployment")
+        self.assertEqual(["PYREQ013"], [finding.code for finding in self.findings()])
+
+    def test_uv_project_accepts_lock_aware_docker_deployment(self) -> None:
+        root = self.add_uv_service()
+        sample = Path(root).parents[1].as_posix()
+        self.repo.write(
+            f"{sample}/azure.yaml",
+            "name: example\nservices:\n  example:\n    language: python\n"
+            "    project: src/example\n",
+        )
+        self.repo.write(
+            f"{root}/Dockerfile",
+            "FROM ghcr.io/astral-sh/uv:0.11.7 AS uv\n"
+            "RUN uv sync --frozen --no-dev\n",
+        )
+        self.repo.commit("add containerized uv sample")
+        self.assertEqual([], self.findings())
+
+    def test_adopting_uv_requires_the_validation_and_deployment_contract(self) -> None:
+        root = self.add_uv_service()
+        sample = Path(root).parents[1].as_posix()
+        self.repo.write(f"{root}/requirements.txt", "six==1.16.0\n")
+        self.repo.write(f"{sample}/sample.yaml", "name: uv example\nbuild: uv sync\n")
+        self.repo.commit("add pip sample with supplemental uv files")
+        self.base = self.repo.run("rev-parse", "HEAD")
+        self.repo.remove(f"{root}/requirements.txt")
+        self.repo.commit("adopt uv without complete runtime contract")
+        self.assertEqual(["PYREQ013"], [finding.code for finding in self.findings()])
+
+    def test_uv_resolution_is_wired_through_repository_check(self) -> None:
+        root = self.add_uv_service()
+        self.repo.commit("add uv sample")
+        with mock.patch.object(
+            checker, "validate_uv_resolution", return_value=[]
+        ) as validate:
+            self.assertEqual([], self.findings(resolve=True))
+        validate.assert_called_once()
+        self.assertEqual(PurePosixPath(root), validate.call_args.args[3])
+        self.assertEqual("uv", validate.call_args.args[5])
+
+    def test_uv_project_and_lock_can_change_together(self) -> None:
+        root = self.add_uv_service()
+        self.repo.commit("add uv sample")
+        self.base = self.repo.run("rev-parse", "HEAD")
+        self.repo.write(
+            f"{root}/pyproject.toml",
+            '[project]\nname = "example"\nversion = "0.1.0"\n'
+            'requires-python = ">=3.11"\ndependencies = ["six==1.17.0"]\n',
+        )
+        self.repo.write(
+            f"{root}/uv.lock",
+            'version = 1\nrevision = 3\nrequires-python = ">=3.11"\n\n'
+            "[[package]]\n"
+            'name = "example"\nversion = "0.1.0"\n'
+            'source = { editable = "." }\n'
+            'dependencies = [{ name = "six" }]\n\n'
+            "[[package]]\n"
+            'name = "six"\nversion = "1.17.0"\n'
+            'source = { registry = "https://pypi.org/simple" }\n',
+        )
+        self.repo.commit("update uv dependencies")
+        self.assertEqual([], self.findings())
+
+    def test_deleting_requirements_adopts_existing_uv_lock_without_lock_churn(
+        self,
+    ) -> None:
+        root = self.add_uv_service()
+        self.repo.write(f"{root}/requirements.txt", "six==1.16.0\n")
+        self.repo.commit("add dual-lock sample")
+        self.base = self.repo.run("rev-parse", "HEAD")
+        self.repo.remove(f"{root}/requirements.txt")
+        self.repo.commit("adopt uv lock")
+        self.assertEqual([], self.findings())
 
     def test_new_manifest_checks_each_python_service_only(self) -> None:
         sample = "samples/python/hosted-agents/framework/multi"
@@ -209,6 +404,28 @@ class RepositoryCheckTests(unittest.TestCase):
         self.assertEqual(["PYREQ006"], [finding.code for finding in findings])
         self.assertEqual(PurePosixPath(root), findings[0].root)
 
+    def test_nested_uv_project_is_checked_independently(self) -> None:
+        root = self.add_service()
+        nested = f"{root}/tool"
+        self.repo.write(
+            f"{nested}/pyproject.toml",
+            '[project]\nname = "tool"\nversion = "0.1.0"\n',
+        )
+        self.repo.write(
+            f"{nested}/uv.lock",
+            'version = 1\nrevision = 3\nrequires-python = ">=3.11"\n\n'
+            "[[package]]\n"
+            'name = "tool"\nversion = "0.1.0"\n'
+            'source = { editable = "." }\n',
+        )
+        self.repo.commit("add nested uv project")
+        self.base = self.repo.run("rev-parse", "HEAD")
+        self.repo.write(f"{nested}/uv.lock", "not valid toml =\n")
+        self.repo.commit("break nested uv lock")
+        findings = self.findings()
+        self.assertEqual(["PYREQ010"], [finding.code for finding in findings])
+        self.assertEqual(PurePosixPath(nested), findings[0].root)
+
     def test_requirements_dev_is_not_a_runtime_trigger(self) -> None:
         root = self.add_service(requirements="six>=1\n")
         self.repo.write(f"{root}/requirements-dev.in", "pytest>=8\n")
@@ -299,6 +516,71 @@ class RequirementParserTests(unittest.TestCase):
         self.assertEqual(1, findings[0].line)
 
 
+class UvLockParserTests(unittest.TestCase):
+    root = PurePosixPath("samples/python/hosted-agents/x/src/x")
+    source = root / "uv.lock"
+
+    def parse(self, lock_content: str, project_content: str | None = None):
+        return checker.parse_uv_lock(
+            lock_content,
+            project_content or '[project]\nname = "example"\nversion = "0.1.0"\n',
+            self.root,
+            self.source,
+            self.source,
+        )
+
+    def test_registry_and_project_editable_sources_are_allowed(self) -> None:
+        findings = self.parse(
+            "[[package]]\n"
+            'name = "example"\nversion = "0.1.0"\n'
+            'source = { editable = "." }\n\n'
+            "[[package]]\n"
+            'name = "six"\nversion = "1.16.0"\n'
+            'source = { registry = "https://pypi.org/simple" }\n'
+        )
+        self.assertEqual([], findings)
+
+    def test_virtual_root_project_source_is_allowed(self) -> None:
+        findings = self.parse(
+            "[[package]]\n"
+            'name = "example"\nversion = "0.1.0"\n'
+            'source = { virtual = "." }\n'
+        )
+        self.assertEqual([], findings)
+
+    def test_mutable_and_nonportable_sources_are_rejected(self) -> None:
+        findings = self.parse(
+            "[[package]]\n"
+            'name = "git-package"\nversion = "1.0.0"\n'
+            'source = { git = "https://example.test/repo" }\n\n'
+            "[[package]]\n"
+            'name = "url-package"\nversion = "1.0.0"\n'
+            'source = { url = "https://example.test/package.whl" }\n\n'
+            "[[package]]\n"
+            'name = "local-package"\nversion = "1.0.0"\n'
+            'source = { directory = "../local" }\n\n'
+            "[[package]]\n"
+            'name = "private-package"\nversion = "1.0.0"\n'
+            'source = { registry = "https://packages.example.test/simple" }\n'
+        )
+        self.assertEqual(
+            ["PYREQ003", "PYREQ011", "PYREQ004", "PYREQ009"],
+            [finding.code for finding in findings],
+        )
+
+    def test_missing_version_and_malformed_toml_are_rejected(self) -> None:
+        findings = self.parse(
+            "[[package]]\n"
+            'name = "six"\n'
+            'source = { registry = "https://pypi.org/simple" }\n'
+        )
+        self.assertEqual(["PYREQ002"], [finding.code for finding in findings])
+        self.assertEqual(
+            ["PYREQ010"],
+            [finding.code for finding in self.parse("not valid toml =\n")],
+        )
+
+
 class ExceptionTests(unittest.TestCase):
     def load_rule(self, **overrides):
         rule = {
@@ -314,7 +596,9 @@ class ExceptionTests(unittest.TestCase):
             path = Path(directory) / "exceptions.toml"
             path.write_text(
                 "[[exceptions]]\n"
-                + "\n".join(f"{key} = {json.dumps(value)}" for key, value in rule.items()),
+                + "\n".join(
+                    f"{key} = {json.dumps(value)}" for key, value in rule.items()
+                ),
                 encoding="utf-8",
             )
             return checker.load_exceptions(path)
@@ -425,6 +709,110 @@ class ResolverComparisonTests(unittest.TestCase):
                 )
         self.assertEqual(["PYREQ007"], [finding.code for finding in findings])
         self.assertIn("urllib3", findings[0].message)
+
+    def test_uv_validation_runs_lock_check_and_export(self) -> None:
+        root = PurePosixPath("samples/python/hosted-agents/x/src/x")
+        trigger = root / "uv.lock"
+        completed = subprocess.CompletedProcess([], 0, "", "")
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            project = repo / root / "pyproject.toml"
+            lock = repo / root / "uv.lock"
+            project.parent.mkdir(parents=True)
+            project.write_text(
+                '[project]\nname = "x"\nversion = "0.1.0"\n',
+                encoding="utf-8",
+            )
+            lock.write_text(
+                'version = 1\n[[package]]\nname = "x"\nversion = "0.1.0"\n'
+                'source = { editable = "." }\n',
+                encoding="utf-8",
+            )
+            uv_config = repo / root / "uv.toml"
+            uv_config.write_text("native-tls = true\n", encoding="utf-8")
+
+            def fake_read_tree_file(_repo, _revision, path):
+                return (repo / path).read_bytes()
+
+            commands = []
+
+            def fake_run(command, **kwargs):
+                project_root = Path(command[command.index("--project") + 1])
+                self.assertEqual(
+                    "native-tls = true\n",
+                    (project_root / "uv.toml").read_text(encoding="utf-8"),
+                )
+                commands.append(command)
+                return completed
+
+            with (
+                mock.patch.object(
+                    checker, "read_tree_file", side_effect=fake_read_tree_file
+                ),
+                mock.patch.object(checker.subprocess, "run", side_effect=fake_run),
+            ):
+                findings = checker.validate_uv_resolution(
+                    repo,
+                    "HEAD",
+                    {root / "pyproject.toml", root / "uv.lock", root / "uv.toml"},
+                    root,
+                    trigger,
+                    "test-uv",
+                )
+        self.assertEqual([], findings)
+        self.assertEqual(["test-uv", "lock", "--check"], commands[0][:3])
+        self.assertEqual(["test-uv", "export", "--frozen"], commands[1][:3])
+        self.assertIn("--no-dev", commands[1])
+        self.assertIn("--no-emit-project", commands[1])
+        self.assertEqual(
+            "requirements-txt", commands[1][commands[1].index("--format") + 1]
+        )
+
+    def test_missing_uv_is_reported_as_checker_infrastructure_error(self) -> None:
+        root = PurePosixPath("samples/python/hosted-agents/x/src/x")
+        trigger = root / "uv.lock"
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            mock.patch.object(
+                checker,
+                "read_tree_file",
+                return_value=b'[project]\nname = "x"\nversion = "0.1.0"\n',
+            ),
+            mock.patch.object(checker.subprocess, "run", side_effect=FileNotFoundError),
+        ):
+            with self.assertRaisesRegex(checker.CheckError, "uv executable not found"):
+                checker.validate_uv_resolution(
+                    Path(directory),
+                    "HEAD",
+                    {root / "pyproject.toml", root / "uv.lock"},
+                    root,
+                    trigger,
+                    "missing-uv",
+                )
+
+    def test_uv_validation_failure_is_reported(self) -> None:
+        root = PurePosixPath("samples/python/hosted-agents/x/src/x")
+        trigger = root / "uv.lock"
+        completed = subprocess.CompletedProcess([], 1, "", "lock is stale")
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            mock.patch.object(
+                checker,
+                "read_tree_file",
+                return_value=b'[project]\nname = "x"\nversion = "0.1.0"\n',
+            ),
+            mock.patch.object(checker.subprocess, "run", return_value=completed),
+        ):
+            findings = checker.validate_uv_resolution(
+                Path(directory),
+                "HEAD",
+                {root / "pyproject.toml", root / "uv.lock"},
+                root,
+                trigger,
+                "uv",
+            )
+        self.assertEqual(["PYREQ012"], [finding.code for finding in findings])
+        self.assertIn("lock is stale", findings[0].detail)
 
 
 if __name__ == "__main__":

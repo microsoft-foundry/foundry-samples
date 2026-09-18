@@ -118,15 +118,14 @@ azd ai agent invoke "{{prompt}}"
 ### Set up the Python virtual environment
 
 - Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install the complete, resolved dependency graph from the committed `requirements.txt`. It is the sample's portable consumer artifact; when authoring or updating a sample, see the [Python Hosted Agent dependency policy](https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/DEPENDENCY_POLICY.md).
+- Install the complete, resolved dependency graph from the sample's committed dependency artifact. Most samples use `requirements.txt`; uv-native samples use `pyproject.toml` with `uv.lock`. When authoring or updating a sample, see the [Python Hosted Agent dependency policy](https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/DEPENDENCY_POLICY.md).
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
+  # requirements.txt sample
   pip install -r requirements.txt
+
+  # uv-native sample (use the exact uv version documented by the sample)
+  uv sync --frozen
   ```
 
 ### Run and debug the agent

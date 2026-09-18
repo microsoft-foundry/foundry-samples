@@ -32,7 +32,12 @@ class PolicyWorkflowTests(unittest.TestCase):
                 self.assertEqual(check["env"]["BASE_SHA"], "${{ github.event.pull_request.base.sha }}")
                 self.assertIn('git merge-base "$BASE_SHA" HEAD', check["run"])
                 self.assertIn('--base "$base" --head HEAD', check["run"])
-        self.assertIn("--resolve", workflow["jobs"]["dependencies"]["steps"][-1]["run"])
+        dependency_job = workflow["jobs"]["dependencies"]
+        install = next(
+            step for step in dependency_job["steps"] if step.get("name") == "Install policy dependencies"
+        )
+        self.assertIn('"uv==0.11.7"', install["run"])
+        self.assertIn("--resolve", dependency_job["steps"][-1]["run"])
         self.assertNotIn("secrets.", path.read_text(encoding="utf-8"))
         self.assertNotIn("id-token", path.read_text(encoding="utf-8"))
 

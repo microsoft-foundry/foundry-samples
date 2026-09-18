@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Enforce reproducible requirements for new or dependency-updated Python hosted agents."""
+"""Enforce reproducible locks for new or dependency-updated Python hosted agents."""
 
 from __future__ import annotations
 
@@ -37,13 +37,19 @@ DEPENDENCY_FILENAMES = {
     "setup.cfg",
     "setup.py",
     "uv.lock",
+    "uv.toml",
 }
 REQUIREMENTS_NAME = re.compile(r"^requirements(?:[-.][^/]*)?\.(?:in|txt)$")
 NON_RUNTIME_REQUIREMENTS = re.compile(r"^requirements-(?:dev|test|tests)\.(?:in|txt)$")
+REQUIREMENTS_ARTIFACT = "requirements.txt"
+UV_MANIFEST = "pyproject.toml"
+UV_LOCK = "uv.lock"
 HASH_OPTION = re.compile(r"(?:^|\s)--hash(?:=|\s+)\S+")
 INLINE_COMMENT = re.compile(r"\s+#.*$")
 VCS_PREFIXES = ("git+", "hg+", "svn+", "bzr+")
-VALID_CODES = {f"PYREQ{number:03d}" for number in range(1, 13)}
+PINNED_UV = re.compile(r"(?<![\w-])uv==\d+\.\d+\.\d+(?:[A-Za-z0-9.-]*)?")
+FROZEN_UV_SYNC = re.compile(r"\buv\s+sync\b[^;&\n]*\s--frozen(?:\s|$)")
+VALID_CODES = {f"PYREQ{number:03d}" for number in range(1, 14)}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -236,10 +242,15 @@ def runtime_root_for_input(
     service = closest_service(path, services)
     if service is not None:
         # A nested project is independently installable only when that directory
-        # owns a consumer artifact. Tests and vendored pyprojects otherwise remain
-        # part of the declared service runtime.
-        nested_requirements = path.parent / "requirements.txt"
-        if path.parent != service and nested_requirements in files:
+        # owns a supported lock artifact. Tests and vendored pyprojects otherwise
+        # remain part of the declared service runtime.
+        nested_requirements = path.parent / REQUIREMENTS_ARTIFACT
+        nested_uv_lock = path.parent / UV_LOCK
+        nested_uv_manifest = path.parent / UV_MANIFEST
+        if path.parent != service and (
+            nested_requirements in files
+            or (nested_uv_lock in files and nested_uv_manifest in files)
+        ):
             return path.parent
         return service
     sample_services = closest_manifest_sample(path, services)
@@ -493,6 +504,282 @@ def resolve_requirements(
     return findings
 
 
+def parse_uv_lock(
+    lock_content: str,
+    project_content: str,
+    root: PurePosixPath,
+    trigger: PurePosixPath,
+    source: PurePosixPath,
+) -> list[Finding]:
+    try:
+        lock = tomllib.loads(lock_content)
+        project = tomllib.loads(project_content)
+    except tomllib.TOMLDecodeError as exc:
+        return [
+            Finding(
+                "PYREQ010",
+                f"invalid uv project or lock TOML: {exc}",
+                root,
+                trigger,
+                source,
+            )
+        ]
+
+    project_table = project.get("project")
+    project_name = (
+        canonicalize_name(str(project_table.get("name")))
+        if isinstance(project_table, Mapping) and project_table.get("name")
+        else None
+    )
+    packages = lock.get("package")
+    if not isinstance(packages, list):
+        return [
+            Finding(
+                "PYREQ010",
+                "uv.lock must contain a package array",
+                root,
+                trigger,
+                source,
+            )
+        ]
+
+    findings: list[Finding] = []
+    for package in packages:
+        if not isinstance(package, Mapping):
+            findings.append(
+                Finding(
+                    "PYREQ010",
+                    "uv.lock contains an invalid package entry",
+                    root,
+                    trigger,
+                    source,
+                )
+            )
+            continue
+        name = str(package.get("name", "<unnamed>"))
+        if not package.get("version"):
+            findings.append(
+                Finding(
+                    "PYREQ002",
+                    f"uv.lock package {name} does not pin an immutable version",
+                    root,
+                    trigger,
+                    source,
+                )
+            )
+        raw_source = package.get("source")
+        if not isinstance(raw_source, Mapping):
+            findings.append(
+                Finding(
+                    "PYREQ010",
+                    f"uv.lock package {name} has no valid source",
+                    root,
+                    trigger,
+                    source,
+                )
+            )
+            continue
+        if "git" in raw_source:
+            findings.append(
+                Finding(
+                    "PYREQ003",
+                    f"uv.lock package {name} uses a VCS source; publish and pin a package or request a narrow exception",
+                    root,
+                    trigger,
+                    source,
+                )
+            )
+        elif "url" in raw_source:
+            findings.append(
+                Finding(
+                    "PYREQ011",
+                    f"uv.lock package {name} uses a direct URL source",
+                    root,
+                    trigger,
+                    source,
+                )
+            )
+        elif any(
+            key in raw_source for key in ("directory", "path", "editable", "virtual")
+        ):
+            local_project_source = raw_source.get("editable", raw_source.get("virtual"))
+            is_project = (
+                local_project_source == "."
+                and project_name is not None
+                and canonicalize_name(name) == project_name
+            )
+            if not is_project:
+                findings.append(
+                    Finding(
+                        "PYREQ004",
+                        f"uv.lock package {name} uses a local-path or editable source",
+                        root,
+                        trigger,
+                        source,
+                    )
+                )
+        elif raw_source.get("registry") != "https://pypi.org/simple":
+            findings.append(
+                Finding(
+                    "PYREQ009",
+                    f"uv.lock package {name} does not use the portable PyPI registry",
+                    root,
+                    trigger,
+                    source,
+                )
+            )
+    return findings
+
+
+def validate_uv_resolution(
+    repo: Path,
+    revision: str,
+    files: set[PurePosixPath],
+    root: PurePosixPath,
+    trigger: PurePosixPath,
+    uv: str,
+) -> list[Finding]:
+    source = root / UV_LOCK
+    with tempfile.TemporaryDirectory(prefix="hosted-agent-uv-lock-") as directory:
+        project_root = Path(directory)
+        for name in (UV_MANIFEST, UV_LOCK):
+            (project_root / name).write_bytes(
+                read_tree_file(repo, revision, root / name)
+            )
+        uv_config = root / "uv.toml"
+        if uv_config in files:
+            (project_root / uv_config.name).write_bytes(
+                read_tree_file(repo, revision, uv_config)
+            )
+        commands = [
+            [uv, "lock", "--check", "--project", str(project_root)],
+            [
+                uv,
+                "export",
+                "--frozen",
+                "--no-dev",
+                "--no-emit-project",
+                "--no-hashes",
+                "--no-annotate",
+                "--format",
+                "requirements-txt",
+                "--project",
+                str(project_root),
+            ],
+        ]
+        for command in commands:
+            try:
+                result = subprocess.run(
+                    command,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=180,
+                )
+            except FileNotFoundError as exc:
+                raise CheckError(
+                    f"uv executable not found while validating {source}: {uv}"
+                ) from exc
+            except subprocess.TimeoutExpired as exc:
+                raise CheckError(
+                    f"uv timed out while validating {source} after {exc.timeout} seconds"
+                ) from exc
+            if result.returncode:
+                detail = (result.stderr or result.stdout).strip()[-4000:]
+                return [
+                    Finding(
+                        "PYREQ012",
+                        "uv could not validate or export the committed lock",
+                        root,
+                        trigger,
+                        source,
+                        detail=detail,
+                    )
+                ]
+    return []
+
+
+def validate_uv_runtime_contract(
+    repo: Path,
+    revision: str,
+    files: set[PurePosixPath],
+    service: ServiceRoot,
+    trigger: PurePosixPath,
+) -> list[Finding]:
+    sample_yaml = service.manifest.parent / "sample.yaml"
+    if sample_yaml not in files:
+        return [
+            Finding(
+                "PYREQ013",
+                "uv-native runtime requires sample.yaml build validation with a pinned uv version and uv sync --frozen",
+                service.path,
+                trigger,
+                sample_yaml,
+            )
+        ]
+    try:
+        sample = yaml.safe_load(read_tree_file(repo, revision, sample_yaml)) or {}
+    except (yaml.YAMLError, UnicodeDecodeError) as exc:
+        return [
+            Finding(
+                "PYREQ013",
+                f"cannot validate uv-native sample.yaml build contract: {exc}",
+                service.path,
+                trigger,
+                sample_yaml,
+            )
+        ]
+    build = sample.get("build") if isinstance(sample, Mapping) else None
+    if (
+        not isinstance(build, str)
+        or not PINNED_UV.search(build)
+        or not FROZEN_UV_SYNC.search(build)
+    ):
+        return [
+            Finding(
+                "PYREQ013",
+                "uv-native sample.yaml build must install an exact uv version and run uv sync --frozen",
+                service.path,
+                trigger,
+                sample_yaml,
+            )
+        ]
+
+    manifest = yaml.safe_load(read_tree_file(repo, revision, service.manifest)) or {}
+    services = manifest.get("services", {}) if isinstance(manifest, Mapping) else {}
+    declaration = (
+        services.get(service.service, {}) if isinstance(services, Mapping) else {}
+    )
+    code_configuration = (
+        declaration.get("codeConfiguration", {})
+        if isinstance(declaration, Mapping)
+        else {}
+    )
+    remote_build = (
+        isinstance(code_configuration, Mapping)
+        and code_configuration.get("dependencyResolution") == "remote_build"
+    )
+    dockerfile = service.path / "Dockerfile"
+    docker_build = False
+    if dockerfile in files:
+        content = read_tree_file(repo, revision, dockerfile).decode("utf-8")
+        docker_build = bool(
+            re.search(r"ghcr\.io/astral-sh/uv:\d+\.\d+\.\d+", content)
+            and FROZEN_UV_SYNC.search(content)
+        )
+    if not remote_build and not docker_build:
+        return [
+            Finding(
+                "PYREQ013",
+                "uv-native deployment must use remote dependency resolution or a Dockerfile with pinned uv and uv sync --frozen",
+                service.path,
+                trigger,
+                service.manifest,
+            )
+        ]
+    return []
+
+
 def load_exceptions(path: Path) -> list[ExceptionRule]:
     if not path.exists():
         return []
@@ -573,6 +860,7 @@ def collect_findings(
     head: str,
     resolve: bool,
     python: str,
+    uv: str = "uv",
 ) -> list[Finding]:
     base_files = tree_files(repo, base)
     head_files = tree_files(repo, head)
@@ -607,18 +895,29 @@ def collect_findings(
 
     findings: list[Finding] = []
     for root, root_triggers in sorted(triggers.items(), key=lambda item: str(item[0])):
-        source = root / "requirements.txt"
+        requirements_source = root / REQUIREMENTS_ARTIFACT
+        uv_manifest = root / UV_MANIFEST
+        uv_source = root / UV_LOCK
+        if requirements_source in head_files:
+            source = requirements_source
+            artifact_kind = "requirements"
+        elif uv_manifest in head_files and uv_source in head_files:
+            source = uv_source
+            artifact_kind = "uv"
+        else:
+            source = requirements_source
+            artifact_kind = "missing"
         requirements_triggers = sorted(path for path in root_triggers if path == source)
         trigger = (
             requirements_triggers[0]
             if requirements_triggers
             else sorted(root_triggers)[0]
         )
-        if source not in head_files:
+        if artifact_kind == "missing":
             findings.append(
                 Finding(
                     "PYREQ001",
-                    "new or dependency-updated Python hosted-agent runtime must commit requirements.txt as its portable consumer artifact",
+                    "new or dependency-updated Python hosted-agent runtime must commit requirements.txt or both pyproject.toml and uv.lock",
                     root,
                     trigger,
                     source,
@@ -627,31 +926,61 @@ def collect_findings(
             continue
         # If a separate authoring input changed, require an updated export in
         # the same PR. requirements.txt itself is already the trigger otherwise.
+        authoring_changed = any(
+            path != source
+            and not (artifact_kind == "uv" and path.name == REQUIREMENTS_ARTIFACT)
+            for path in root_triggers
+        )
         if (
             root not in new_roots
-            and trigger.name != "requirements.txt"
+            and authoring_changed
             and source not in head_side_paths
         ):
+            artifact_description = (
+                "requirements.txt export"
+                if artifact_kind == "requirements"
+                else "uv.lock"
+            )
             findings.append(
                 Finding(
                     "PYREQ006",
-                    "a dependency authoring input changed without updating the committed requirements.txt export",
+                    f"a dependency authoring input changed without updating the committed {artifact_description}",
                     root,
                     trigger,
                     source,
                 )
             )
-        content = read_tree_file(repo, head, source).decode("utf-8")
-        requirements, parse_findings = parse_requirements(
-            content, root, trigger, source
-        )
-        findings.extend(parse_findings)
-        if resolve and not parse_findings:
-            findings.extend(
-                resolve_requirements(
-                    content, source, requirements, root, trigger, python
-                )
+        if artifact_kind == "requirements":
+            content = read_tree_file(repo, head, source).decode("utf-8")
+            requirements, parse_findings = parse_requirements(
+                content, root, trigger, source
             )
+            findings.extend(parse_findings)
+            if resolve and not parse_findings:
+                findings.extend(
+                    resolve_requirements(
+                        content, source, requirements, root, trigger, python
+                    )
+                )
+        else:
+            service = head_services.get(root)
+            if service is not None:
+                contract_findings = validate_uv_runtime_contract(
+                    repo, head, head_files, service, trigger
+                )
+                findings.extend(contract_findings)
+            else:
+                contract_findings = []
+            lock_content = read_tree_file(repo, head, uv_source).decode("utf-8")
+            project_content = read_tree_file(repo, head, uv_manifest).decode("utf-8")
+            uv_findings = parse_uv_lock(
+                lock_content, project_content, root, trigger, uv_source
+            )
+            findings.extend(uv_findings)
+            if resolve and not contract_findings and not uv_findings:
+                findings.extend(
+                    validate_uv_resolution(repo, head, head_files, root, trigger, uv)
+                )
     return findings
 
 
@@ -694,12 +1023,19 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--head", default="HEAD", help="Head Git revision")
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Repository root")
     parser.add_argument(
-        "--resolve", action="store_true", help="Use pip to verify transitive closure"
+        "--resolve",
+        action="store_true",
+        help="Use pip or uv to verify the committed dependency artifact",
     )
     parser.add_argument(
         "--python",
         default=sys.executable,
         help="Python executable used for pip resolution",
+    )
+    parser.add_argument(
+        "--uv",
+        default="uv",
+        help="uv executable used for native uv lock validation",
     )
     parser.add_argument(
         "--exceptions",
@@ -723,7 +1059,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     exception_path = args.exceptions or repo / DEFAULT_EXCEPTIONS
     try:
         findings = collect_findings(
-            repo, args.base, args.head, args.resolve, args.python
+            repo, args.base, args.head, args.resolve, args.python, args.uv
         )
         rules = load_exceptions(exception_path)
         findings, used = apply_exceptions(findings, rules)
