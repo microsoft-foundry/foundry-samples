@@ -20,6 +20,7 @@ import requests
 from typing import Dict, Any, Optional, Tuple, List
 from enum import Enum
 from dataclasses import dataclass
+from urllib.parse import parse_qsl, quote, unquote, urlsplit, urlunsplit
 
 # Color constants for terminal output
 class Colors:
@@ -321,13 +322,18 @@ class ModelGatewayValidator:
             return False
         
         # Validate getModelEndpoint template
-        if "{deploymentName}" not in config.get_model_endpoint:
-            self.print_colored("❌ Error: getModelEndpoint must contain '{deploymentName}' template", Colors.RED)
+        if config.get_model_endpoint.count("{deploymentName}") != 1:
+            self.print_colored("❌ Error: getModelEndpoint must contain exactly one '{deploymentName}' template", Colors.RED)
             self.print_colored(f"Current value: {config.get_model_endpoint}", Colors.NC)
             print()
             self.print_colored("📋 Fix in your Bicep parameter file:", Colors.BLUE)
             print("Update getModelEndpoint to include the {deploymentName} placeholder:")
-            print("Example: \"/deployments/{deploymentName}\" or \"/models/{deploymentName}\"")
+            print("Example: \"/deployments/{deploymentName}\" or \"https://gateway.example/deployments/{deploymentName}\"")
+            return False
+
+        endpoint_parts = urlsplit(config.get_model_endpoint)
+        if "{deploymentName}" in endpoint_parts.netloc or "{deploymentName}" in endpoint_parts.query or "{deploymentName}" in endpoint_parts.fragment:
+            self.print_colored("❌ Error: {deploymentName} must appear in the getModelEndpoint path", Colors.RED)
             return False
         
         print("✅ Dynamic discovery structure valid")
@@ -389,9 +395,15 @@ class ModelGatewayValidator:
         """Test the list models endpoint"""
         self.print_colored("🔍 2a. List Models Endpoint Test:", Colors.YELLOW)
         
-        list_url = f"{base_url}{config.list_models_endpoint}"
-        if config.deployment_api_version:
-            list_url += f"?api-version={config.deployment_api_version}"
+        try:
+            list_url = self._build_discovery_url(
+                base_url,
+                config.list_models_endpoint,
+                config.deployment_api_version
+            )
+        except ValueError as error:
+            self.print_colored(f"❌ Invalid listModelsEndpoint: {error}", Colors.RED)
+            return False
         
         print(f"Testing: {list_url}")
         
@@ -463,9 +475,16 @@ class ModelGatewayValidator:
             self.print_colored("❌ Error: getModelEndpoint missing {deploymentName} template", Colors.RED)
             return False
         
-        get_url = f"{base_url}{config.get_model_endpoint.replace('{deploymentName}', config.deployment_name)}"
-        if config.deployment_api_version:
-            get_url += f"?api-version={config.deployment_api_version}"
+        try:
+            get_url = self._build_discovery_url(
+                base_url,
+                config.get_model_endpoint,
+                config.deployment_api_version,
+                config.deployment_name
+            )
+        except ValueError as error:
+            self.print_colored(f"❌ Invalid getModelEndpoint: {error}", Colors.RED)
+            return False
         
         print(f"Testing: {get_url}")
         
@@ -546,6 +565,70 @@ class ModelGatewayValidator:
             return False
         
         return True
+
+    def _build_discovery_url(self, base_url: str, endpoint: str,
+                             deployment_api_version: str,
+                             deployment_name: Optional[str] = None) -> str:
+        """Build a relative or absolute discovery URL using runtime query precedence."""
+        configured_endpoint_parts = urlsplit(endpoint)
+        if configured_endpoint_parts.scheme and configured_endpoint_parts.netloc:
+            self._validate_absolute_discovery_endpoint(base_url, configured_endpoint_parts)
+
+        resolved_endpoint = endpoint
+        if deployment_name is not None:
+            resolved_endpoint = resolved_endpoint.replace(
+                "{deploymentName}", quote(deployment_name, safe="")
+            )
+
+        endpoint_parts = urlsplit(resolved_endpoint)
+        if endpoint_parts.scheme and endpoint_parts.netloc:
+            resolved_url = resolved_endpoint
+        else:
+            resolved_url = f"{base_url.rstrip('/')}{resolved_endpoint}"
+
+        url_parts = urlsplit(resolved_url)
+        api_version_count = sum(
+            1 for name, _ in parse_qsl(url_parts.query, keep_blank_values=True)
+            if name.lower() == "api-version"
+        )
+        if api_version_count > 1:
+            raise ValueError("the endpoint contains duplicate api-version parameters")
+
+        query = url_parts.query
+        if api_version_count == 0 and deployment_api_version:
+            separator = "&" if query else ""
+            query = f"{query}{separator}api-version={quote(deployment_api_version, safe='')}"
+
+        return urlunsplit((url_parts.scheme, url_parts.netloc, url_parts.path, query, url_parts.fragment))
+
+    def _validate_absolute_discovery_endpoint(self, target: str, endpoint_parts) -> None:
+        """Reject absolute discovery endpoints outside the target's HTTPS origin."""
+        target_parts = urlsplit(target)
+        if target_parts.scheme.lower() != "https" or endpoint_parts.scheme.lower() != "https":
+            raise ValueError("absolute discovery endpoints and targetUrl must use HTTPS")
+        if target_parts.username or target_parts.password or endpoint_parts.username or endpoint_parts.password:
+            raise ValueError("user information is not allowed")
+        if endpoint_parts.fragment:
+            raise ValueError("fragments are not allowed")
+
+        try:
+            target_origin = (target_parts.hostname.encode("idna").decode("ascii").lower(), target_parts.port or 443)
+            endpoint_origin = (endpoint_parts.hostname.encode("idna").decode("ascii").lower(), endpoint_parts.port or 443)
+        except (AttributeError, UnicodeError, ValueError) as error:
+            raise ValueError("targetUrl and endpoint must contain valid hosts and ports") from error
+        if target_origin != endpoint_origin:
+            raise ValueError("absolute discovery endpoints must use the same origin as targetUrl")
+
+        path_segments = endpoint_parts.path.split("/")
+        for _ in range(3):
+            decoded_segments = [unquote(segment) for segment in path_segments]
+            if any(segment in (".", "..") for segment in decoded_segments):
+                raise ValueError("path traversal segments are not allowed")
+            if any("/" in segment or "\\" in segment for segment in decoded_segments):
+                raise ValueError("encoded path separators are not allowed")
+            if decoded_segments == path_segments:
+                break
+            path_segments = decoded_segments
 
     # ============================================================================
     # 3. MODEL VALIDATION MODULE
