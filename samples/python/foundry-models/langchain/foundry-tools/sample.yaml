@@ -1,5 +1,5 @@
 name: Foundry Model Web Search
 description: Use a Foundry model with the server-side Web Search tool.
 
-build: "pip install -r requirements.txt"
+build: "python -m pip install --upgrade 'pip>=26.0' && python -m pip install -r requirements.txt"
 validate: "python -m py_compile web-search.py"
