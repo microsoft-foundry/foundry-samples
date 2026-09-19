@@ -1,0 +1,9 @@
+agent-framework-foundry
+agent-framework-foundry-hosting>=1.0.0b260813
+python-dotenv
+redis>=5.0
+# Passwordless Microsoft Entra ID auth for Azure Managed Redis via DefaultAzureCredential.
+redis-entraid>=1.2,<2
+
+# debugpy enables local debugging of this agent with the Foundry Toolkit VS Code extension.
+debugpy
