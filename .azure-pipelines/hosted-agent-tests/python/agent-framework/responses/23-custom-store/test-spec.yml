@@ -1,0 +1,69 @@
+version: 1
+
+sample:
+  owner: sapsing
+  experiences: [azd, vscode]
+
+tests:
+  - name: validates-response-and-session-stores
+    turns:
+      - input: Remember the exact marker INC-2301 for my next message. Reply briefly.
+      - input: |
+          What exact marker did I ask you to remember? Then call
+          inspect_custom_store exactly once and include its result verbatim.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: INC-2301
+
+          - source: assistant_text
+            type: regex
+            value: 'response_store=[1-9][0-9]*'
+
+          - source: assistant_text
+            type: regex
+            value: 'agent_session_store=[1-9][0-9]*'
+
+  - name: validates-checkpoint-store
+    turns:
+      - input: |
+          Call validate_checkpoint_store exactly once with marker CHK-2301.
+          Include the tool result verbatim.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: CHECKPOINT_STORE_OK CHK-2301
+
+  - name: validates-function-approval-store
+    turns:
+      - input: |
+          Call approve_incident_change exactly once with change_id CHG-2301.
+          Include the tool result verbatim after approval.
+        approvals:
+          mcp:
+            - server_label: agent_framework
+              name: approve_incident_change
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: APPROVAL_STORE_OK CHG-2301
+
+  - name: confirms-all-four-stores-contain-data
+    turns:
+      - input: Call inspect_custom_store exactly once and include its result verbatim.
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: 'response_store=[1-9][0-9]*'
+
+          - source: assistant_text
+            type: regex
+            value: 'agent_session_store=[1-9][0-9]*'
+
+          - source: assistant_text
+            type: regex
+            value: 'checkpoint_store=[1-9][0-9]*'
+
+          - source: assistant_text
+            type: regex
+            value: 'function_approval_store=[1-9][0-9]*'
