@@ -481,3 +481,7 @@ logs_new/
 # Local azd validation scratch (do not commit)
 .azd-test-*/
 
+# Voice Agents sample runtime output (regenerated on each run)
+output.pcm
+voice-agent-output.pcm
+
