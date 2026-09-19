@@ -1,0 +1,4 @@
+name: Voice Agent Telephony Inspection
+description: List telephony bindings, transfer targets, and call history for a voice agent (read-only).
+
+build: "npm install --registry=https://registry.npmjs.org/"
