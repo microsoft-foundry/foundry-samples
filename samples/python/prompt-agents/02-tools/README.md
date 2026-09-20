@@ -8,14 +8,3 @@ A prompt agent that declares **client-executed function tools** (`get_weather`, 
 azd up
 azd ai agent invoke "What is the weather in Seattle in celsius?"
 ```
-
-## GitHub Copilot Harness
-
-Supported with non-strict function tools. To use the GitHub Copilot harness, add this block to the agent service in [`azure.yaml`](./azure.yaml):
-
-```yaml
-harness:
-  type: github_copilot_preview
-```
-
-Also set `strict: false` on each function tool. Strict function mode is not supported by the GitHub Copilot harness.
