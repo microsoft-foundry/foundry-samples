@@ -1,0 +1,5 @@
+name: Voice Agents (Python)
+description: Create, manage, and converse with Microsoft Foundry Voice Agents (preview) using azure-ai-projects.
+
+build: "pip install -r requirements.txt"
+validate: "python -m py_compile *.py"

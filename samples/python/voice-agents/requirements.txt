@@ -1,0 +1,10 @@
+azure-ai-projects[voice]==2.7.0
+azure-identity
+python-dotenv
+
+# PyAudio is optional: it enables local microphone capture and speaker playback in the
+# realtime samples, which fall back to a headless mode (no local audio I/O) if it isn't
+# installed. It's excluded from the required installs above because it has no prebuilt wheel
+# on Linux and must compile against the PortAudio C library there:
+#   Windows/macOS: pip install pyaudio
+#   Linux (Debian/Ubuntu): sudo apt-get install portaudio19-dev && pip install pyaudio
