@@ -15,15 +15,15 @@ import type { FullOperationResponse } from "@azure-rest/core-client";
 async function main(): Promise<void> {
   // Set these values in .env for an existing voice agent with telephony configured.
   const projectEndpoint = process.env.FOUNDRY_PROJECT_ENDPOINT;
-  const agentName = process.env.FOUNDRY_AGENT_NAME;
+  const agentName = process.env.FOUNDRY_VOICE_AGENT_NAME;
   if (!projectEndpoint || !agentName) {
     throw new Error(
-      "Set FOUNDRY_PROJECT_ENDPOINT and FOUNDRY_AGENT_NAME before running this sample.",
+      "Set FOUNDRY_PROJECT_ENDPOINT and FOUNDRY_VOICE_AGENT_NAME before running this sample.",
     );
   }
   const project = new AIProjectClient(projectEndpoint, new DefaultAzureCredential());
   const options = {
-    foundryFeatures: "VoiceAgents=V1Preview" as const,
+    requestOptions: { headers: { "foundry-features": "VoiceAgents=V1Preview" } },
     onResponse: (rawResponse: FullOperationResponse) =>
       console.log(`  HTTP ${rawResponse.status} ${rawResponse.request.method} ${rawResponse.request.url}`),
   };
