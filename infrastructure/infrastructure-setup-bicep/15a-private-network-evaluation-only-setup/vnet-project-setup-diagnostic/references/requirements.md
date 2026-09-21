@@ -1,6 +1,7 @@
 # Requirement catalog and certainty boundaries
 
 Contents: [Check families](#requirement-catalog-and-certainty-boundaries) |
+[Authentication and transport](#authentication-and-transport) |
 [Public references and assessment rules](#public-references-and-assessment-rules) |
 [Evidence rules](#evidence-rules).
 
@@ -8,6 +9,32 @@ This document describes this tool's checks, not a complete specification of
 Foundry service internals. Paths refer only to files in this diagnostic bundle.
 API versions are explicit in `scripts\ArmReader.ps1`; unsupported versions are
 Unknown, not a reason to use another identity or a mutating API.
+
+## Authentication and transport
+
+Both providers use the same ARM allowlist, paging guards, checks, and report
+objects. `AzureCli` retains existing invocation behavior; `AzurePowerShell` requires
+installed Az.Accounts 5.3.3+ and a pre-authenticated AzureCloud context for the
+selected subscription. The 5.3.3 command/type surface is locally inspected and is
+the enforced prerequisite, not a verified earliest compatible release; older
+versions are not qualified. [Get-AzAccessToken](https://learn.microsoft.com/en-us/powershell/module/az.accounts/get-azaccesstoken)
+documents `ResourceUrl`, `TenantId`, `DefaultProfile`, and SecureString token output.
+The captured in-memory context container is passed explicitly; the diagnostic never
+signs in, changes subscription/identity or invokes a fallback provider.
+
+The AzurePowerShell HTTP handler disables redirects/cookies/default credentials,
+uses the fixed public ARM token audience, bounds token acquisition and GET time,
+and discards non-200 bodies. 401/403 remain distinct from 404; only 429/503/504 are
+retried, at most three attempts. Tokens stay in memory, not arguments, environment
+variables, files or output. A token-acquisition timeout does not launch repeated
+auth attempts or use a late result.
+
+`scripts\MetadataProjection.ps1` applies an allowlisted projection before either
+provider response enters the shared cache. It preserves permission blocks and safe
+identity/network/monitoring fields while excluding secret-bearing fields. Native
+projection is compared offline with CLI JMESPath plus the same final metadata
+boundary. Fixtures use neither provider. No live authentication, customer evaluation
+or effective authorization is exercised by the offline tests.
 
 | Check family | Selected by / principal | Metadata and interpretation |
 | --- | --- | --- |

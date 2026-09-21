@@ -494,4 +494,5 @@ foreach ($kind in @('Resource','Connection','Authorization','Role','Deployment',
 }
 $projections | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $OutputDirectory 'projections.json')
 . (Join-Path $PSScriptRoot 'Test-NoiseClassification.ps1')
+. (Join-Path $PSScriptRoot 'Test-AzurePowerShell.ps1')
 Write-Output "PASS: $script:assertions offline assertions. Artifacts: $OutputDirectory"

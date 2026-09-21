@@ -5,7 +5,10 @@ description: "Assess existing Foundry VNet setup, RBAC, private DNS, and templat
 
 # Foundry VNet project setup diagnostic
 
-Use the customer's existing Azure CLI login and PowerShell 7. Do not request Owner,
+Use PowerShell 7.2+ and the customer's existing login. Select
+`-AuthenticationProvider AzurePowerShell` for a CLI-free path using installed
+Az.Accounts 5.3.3+; authenticate separately with `Connect-AzAccount` as described
+in the guide. `AzureCli` remains the default for existing invocations. Do not request Owner,
 impersonate an identity, change the default subscription, or run an evaluation.
 Reader on the project and its dependencies is normally sufficient; inaccessible
 shared scopes produce **Unknown**, not missing resources or absent grants.
@@ -19,6 +22,7 @@ Use the bundled entry point against an **existing** project:
 
 ```powershell
 & .\scripts\Invoke-VNetProjectDiagnostics.ps1 `
+  -AuthenticationProvider AzurePowerShell `
   -ProjectResourceId '/subscriptions/SUB/resourceGroups/RG/providers/Microsoft.CognitiveServices/accounts/ACCOUNT/projects/PROJECT' `
   -OutputDirectory .\diagnostic-report
 ```
@@ -55,11 +59,17 @@ Basic network mode does not run optional DNS-only/route detail commands. Select
 `-AdvancedNetworkDetails` for those; unsupported commands are informational
 `NotAssessed`, while an attempted probe failure remains visible.
 
-If `az.cmd` is broken, pass the executable and non-secret prefix explicitly from
+Neither provider installs tools, logs in, switches context or falls back to another
+provider. AzurePowerShell captures an existing AzureCloud context for the selected
+project subscription; it never discovers or invokes Azure CLI. Its token/HTTP
+transport has bounded deadlines, disables redirects and projects metadata in process.
+
+For the optional AzureCli provider, if `az.cmd` is broken, pass the executable and non-secret prefix explicitly from
 PowerShell (not as a single shell command):
 
 ```powershell
 & .\scripts\Invoke-VNetProjectDiagnostics.ps1 @projectArguments `
+  -AuthenticationProvider AzureCli `
   -AzureCliExecutable 'C:\your-cli-install\python.exe' `
   -AzureCliPrefixArguments @('-IBm', 'azure.cli')
 ```
@@ -96,10 +106,13 @@ API-key validity are outside the customer ARM assessment.
 Run `pwsh -NoProfile -File .\tests\Test-Diagnostics.ps1`. Synthetic fixtures cover
 evaluation with monitoring, evaluation with private monitoring, and minimal
 evaluation with custom DNS. They are not live inventories.
-`-FixturePath` is an offline-only transport: no Azure CLI or network calls occur,
+`-FixturePath` is an offline-only transport: neither auth provider nor network is invoked,
 and reports are explicitly labelled fixtures. Never treat fixture results as live
 qualification. No additional test framework is required.
 
-For transport projection validation, run `tests\Test-Projections.py` with the
-Azure CLI's existing Python (which includes JMESPath), passing `projections.json`
-from the offline test output directory. This does not log in or contact Azure.
+Developer-only projection parity tests use `tests\Test-Projections.py` with Python
+and JMESPath (an existing CLI-bundled Python can also supply it), passing
+`projections.json` from the offline output directory. This is not a customer
+prerequisite and does not log in or contact Azure. Synthetic HTTP handlers test the
+Az.Accounts path offline; real-module checks inspect signatures only. Live provider
+qualification must be reported separately.

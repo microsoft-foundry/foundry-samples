@@ -18,6 +18,7 @@ param(
     [ValidateSet('Auto','ApiKey','Entra')][string]$ModelAuthentication = 'Auto',
     [switch]$PrivilegedTraceContent,
     [string]$OutputDirectory = (Join-Path (Get-Location) 'vnet-project-diagnostic-report'),
+    [ValidateSet('AzureCli','AzurePowerShell')][string]$AuthenticationProvider = 'AzureCli',
     [string]$AzureCliExecutable = 'az',
     [string[]]$AzureCliPrefixArguments = @(),
     [ValidateRange(5,120)][int]$RequestTimeoutSeconds = 25,
@@ -43,10 +44,15 @@ try {
     if ($EvaluationCallerObjectId -and ![guid]::TryParse($EvaluationCallerObjectId, [ref]([guid]::Empty))) { throw 'Caller object ID must be a GUID.' }
     if ($FixturePath -and $Mode -ne 'Configuration') { throw 'Offline fixtures support Configuration only.' }
     if ($AdvancedNetworkDetails -and $Mode -ne 'ConfigurationAndNetwork') { throw 'AdvancedNetworkDetails requires ConfigurationAndNetwork.' }
+    if (!$FixturePath -and $AuthenticationProvider -eq 'AzurePowerShell' -and
+        ($PSBoundParameters.ContainsKey('AzureCliExecutable') -or $PSBoundParameters.ContainsKey('AzureCliPrefixArguments'))) {
+        throw 'CLI override parameters do not apply to AzurePowerShell.'
+    }
     if ($PrivilegedTraceContent -and 'Traces' -notin $Profiles) { throw 'PrivilegedTraceContent requires the Traces profile.' }
     $Profiles = @(@('Core') + $Profiles | Sort-Object -Unique)
     $stage = 'Bootstrap'
-    $context = New-DiagnosticContext $FixturePath $AzureCliExecutable $AzureCliPrefixArguments $RequestTimeoutSeconds
+    $context = New-DiagnosticContext $FixturePath $AzureCliExecutable $AzureCliPrefixArguments $RequestTimeoutSeconds `
+        -AuthenticationProvider $AuthenticationProvider -SubscriptionId ($ProjectResourceId.Split('/')[2])
     $catalog = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\references\requirements.json') -Raw | ConvertFrom-Json -AsHashtable
     $options = @{
         ProjectId = $ProjectResourceId; Profiles = $Profiles; Caller = $EvaluationCallerObjectId
@@ -62,6 +68,7 @@ try {
         schemaVersion = 2; assessmentTime = [DateTimeOffset]::UtcNow.ToString('o')
         projectResourceId = $ProjectResourceId; profiles = $Profiles; mode = $Mode
         fixture = $context.Offline; tenantId = $context.TenantId; advancedNetworkDetails = [bool]$AdvancedNetworkDetails
+        authenticationProvider = $(if ($context.Offline) {'OfflineFixture'} else {$AuthenticationProvider})
         summary = $outcome; hostContext = $context.HostContext
         statement = 'No evaluation, inference, agent call, setup-validation API, or data-plane authorization probe was made. No Azure state was changed. Passed means selected implemented configuration/connectivity checks only; coverage is reported separately. No effective-access, whole-VNet health, or evaluation verification is claimed.'
         checks = @($context.Checks.ToArray())
@@ -115,6 +122,11 @@ catch {
     $errorType = $_.Exception.GetType().Name
     $errorLine = $_.InvocationInfo.ScriptLineNumber
     $errorFile = [IO.Path]::GetFileName($_.InvocationInfo.ScriptName)
-    Write-Output "Diagnostic stopped during $stage; exit=3; type=$errorType; source=${errorFile}:$errorLine. Check input, customer CLI login, metadata schema, and local output access. No evaluation was run."
+    $prerequisite = $_.Exception.Data['DiagnosticPrerequisite']
+    Write-Output "Diagnostic stopped during $stage; exit=3; type=$errorType; source=${errorFile}:$errorLine. Check input, selected authentication provider prerequisites, metadata schema, and local output access. No evaluation was run."
+    if ($prerequisite) { Write-Output "Prerequisite: $prerequisite" }
     exit 3
+}
+finally {
+    Close-DiagnosticContext $context
 }

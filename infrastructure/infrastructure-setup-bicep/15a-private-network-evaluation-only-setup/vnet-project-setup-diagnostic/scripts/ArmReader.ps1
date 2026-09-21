@@ -1,4 +1,7 @@
 # All outbound ARM operations pass through this allowlist, including fixture reads.
+. (Join-Path $PSScriptRoot 'MetadataProjection.ps1')
+. (Join-Path $PSScriptRoot 'AzurePowerShellReader.ps1')
+
 function Get-ArmRule {
     param([string]$Path)
     $root = '/subscriptions/[0-9a-f-]{36}/resourceGroups/[^/]+/providers/'
@@ -121,7 +124,8 @@ try {
         @{Code=200;Data=(`$text | ConvertFrom-Json -AsHashtable)} | ConvertTo-Json -Depth 80 -Compress
     } else {
         `$code = 0
-        if (`$text -match 'AuthorizationFailed|Forbidden|\b403\b') { `$code = 403 }
+        if (`$text -match 'Unauthorized|InvalidAuthenticationToken|\b401\b') { `$code = 401 }
+        elseif (`$text -match 'AuthorizationFailed|Forbidden|\b403\b') { `$code = 403 }
         elseif (`$text -match 'ResourceNotFound|ResourceGroupNotFound|\b404\b') { `$code = 404 }
         elseif (`$text -match 'TooManyRequests|\b429\b') { `$code = 429 }
         elseif (`$text -match 'ServiceUnavailable|\b503\b') { `$code = 503 }
@@ -158,12 +162,14 @@ try {
 }
 
 function New-DiagnosticContext {
-    param([string]$FixturePath, [string]$Cli, [string[]]$Prefix, [int]$TimeoutSeconds = 25)
+    param([string]$FixturePath, [string]$Cli, [string[]]$Prefix, [int]$TimeoutSeconds = 25,
+        [ValidateSet('AzureCli','AzurePowerShell')][string]$AuthenticationProvider = 'AzureCli', [string]$SubscriptionId)
     if ($Prefix.Count -and ($Prefix.Count -ne 2 -or $Prefix[0] -ne '-IBm' -or $Prefix[1] -ne 'azure.cli')) {
         throw 'Only the Python Azure CLI module prefix is supported.'
     }
     $context = @{
-        Cli = $Cli; Prefix = $Prefix; TimeoutSeconds = $TimeoutSeconds
+        Cli = $Cli; Prefix = $Prefix; TimeoutSeconds = $TimeoutSeconds; AuthenticationProvider = $AuthenticationProvider
+        TimedOutTokenWorkers = [Collections.Generic.List[object]]::new()
         Fixture = $null; Offline = [bool]$FixturePath; Cache = @{}; Requests = [Collections.Generic.List[string]]::new()
         Checks = [Collections.Generic.List[object]]::new(); Endpoints = @{}
         HostContext = @{ location = 'Customer execution host; VNet membership unknown'; machine = [Environment]::MachineName }
@@ -174,6 +180,9 @@ function New-DiagnosticContext {
             throw 'Offline fixture must contain a responses dictionary; never fall back to Azure.'
         }
         $context.HostContext = @{ location = 'Offline sanitized fixture'; machine = 'fixture' }
+    }
+    elseif ($AuthenticationProvider -eq 'AzurePowerShell') {
+        Initialize-AzurePowerShellProvider $context $SubscriptionId
     }
     else {
         $null = Get-Command $Cli -ErrorAction Stop
@@ -213,7 +222,16 @@ function Read-Arm {
         else {
             $projection = Get-MetadataProjection $rule.Kind ([bool]$Collection)
             for ($attempt = 0; $attempt -lt 3; $attempt++) {
-                $response = Invoke-CliMetadata $Context @('rest', '--method', 'get', '--url', $uri, '--query', $projection, '--output', 'json', '--only-show-errors')
+                if ($Context.AuthenticationProvider -eq 'AzurePowerShell') {
+                    $response = Invoke-AzurePowerShellMetadata $Context $uri ([bool]$Collection)
+                }
+                else {
+                    $response = Invoke-CliMetadata $Context @('rest', '--method', 'get', '--url', $uri, '--query', $projection, '--output', 'json', '--only-show-errors')
+                    if ($response.Code -eq 200) {
+                        try { $response.Data = ConvertTo-ArmMetadata $response.Data $rule.Kind ([bool]$Collection) }
+                        catch { $response = @{ Code = 0; Data = $null } }
+                    }
+                }
                 if ($response.Code -notin @(429, 503, 504) -or $attempt -eq 2) { break }
                 Start-Sleep -Seconds ($attempt + 1)
             }

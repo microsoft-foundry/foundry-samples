@@ -30,7 +30,11 @@ repository location is required.
 Prepare:
 
 - PowerShell **7.2 or newer**, not Windows PowerShell 5.1.
-- Azure CLI, with an existing authorized login.
+- **Az.Accounts 5.3.3 or later** for the AzurePowerShell provider, with an existing
+  authorized Azure PowerShell login. Azure CLI is not required for this path.
+  Version 5.3.3 is the locally inspected command-contract baseline and the
+  deliberately enforced prerequisite, not a claim about the earliest compatible
+  release. Older versions are not qualified. Azure CLI remains an optional provider.
 - An existing Foundry account/project ARM ID, or its subscription, resource group,
   account name, and project name.
 - Reader or equivalent read permissions on the resources to inspect. Include
@@ -41,6 +45,8 @@ This version supports **AzureCloud**. Other Azure clouds are explicitly rejected
 The script does not install tools, sign in, change the default subscription, or
 grant permissions. Establish prerequisites separately with appropriate approval.
 
+This is **CLI-free**, not dependency-free. Establish the Az.Accounts installation
+separately if needed; the diagnostic never installs modules.
 The login identity reads configuration. It is **not** automatically treated as
 the project managed identity or the intended evaluation caller.
 
@@ -49,6 +55,20 @@ the project managed identity or the intended evaluation caller.
 Run these examples in a **PowerShell 7 session**, starting from the directory
 containing this `usage.md`.
 Replace the example identifiers with your existing resources.
+
+Sign in separately as the intended customer identity and explicitly choose the
+tenant and project subscription. This is a prerequisite, not a diagnostic action:
+
+```powershell
+Import-Module Az.Accounts -MinimumVersion 5.3.3
+Connect-AzAccount -Tenant '<tenant-guid>' -Subscription '<subscription-guid>' `
+    -Environment AzureCloud -Scope Process
+```
+
+The diagnostic captures that AzureCloud context once and requires its subscription
+to match the project. It passes the captured context explicitly for ARM token
+acquisition; it does not switch identity/subscription, prompt for credentials,
+sign in, or fall back to Azure CLI on failure.
 
 ```powershell
 $script = '.\scripts\Invoke-VNetProjectDiagnostics.ps1'
@@ -60,6 +80,7 @@ $project = @{
 }
 
 & $script @project `
+    -AuthenticationProvider AzurePowerShell `
     -Mode Configuration `
     -OutputDirectory '.\reports\configuration'
 $LASTEXITCODE
@@ -74,6 +95,7 @@ resource parameters. Do not mix the two forms.
 
 ```powershell
 & $script `
+    -AuthenticationProvider AzurePowerShell `
     -ProjectResourceId '/subscriptions/<subscription-guid>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>/projects/<project>' `
     -OutputDirectory '.\reports\configuration'
 ```
@@ -82,6 +104,7 @@ Add local DNS, address-mapping, TCP 443, and TLS observations with:
 
 ```powershell
 & $script @project `
+    -AuthenticationProvider AzurePowerShell `
     -Mode ConfigurationAndNetwork `
     -OutputDirectory '.\reports\network'
 ```
@@ -107,6 +130,7 @@ For a model/grader connection, pass its **connection name**, not a secret:
 
 ```powershell
 & $script @project `
+    -AuthenticationProvider AzurePowerShell `
     -Profiles @('Core', 'Models', 'Graders') `
     -ModelConnectionName '<connection-name>' `
     -ModelDeploymentName '<deployment-name>' `
@@ -118,6 +142,7 @@ For trace dependencies:
 
 ```powershell
 & $script @project `
+    -AuthenticationProvider AzurePowerShell `
     -Profiles @('Core', 'Traces') `
     -MonitoringConnectionName '<monitoring-connection-name>' `
     -Mode ConfigurationAndNetwork `
@@ -147,13 +172,18 @@ fabricated workspace pass. Otherwise the fallback assessment still runs.
 
 1. Confirm the host is attached to the intended VNet or established private path.
 2. Copy the complete diagnostic bundle directory using an approved transfer mechanism.
-3. Ensure PowerShell and Azure CLI are available. Obtain approval before installing
+3. Ensure PowerShell and Az.Accounts (or the selected Azure CLI alternative) are
+   available. Obtain approval before installing
    missing tools; do not modify shared tool installations or another user's login.
-4. Use an existing authorized Azure CLI login. If explicitly using the VM's
-   system-assigned identity, sign in with `az login --identity` in an isolated CLI
-   configuration directory. Never copy a user's bearer token onto the VM or use an
+4. Use an existing authorized login. For the CLI-free path on a host supporting
+   managed identity, explicitly sign in as the approved system-assigned identity
+   using `Connect-AzAccount -Identity -Subscription '<subscription-guid>' -Scope Process`
+   before diagnosis. For the CLI alternative, use the intended existing CLI login
+   (`az login --identity` only when that identity is intended).
+   Never copy a user's bearer token onto the VM or use an
    unrelated attached identity to bypass denied access.
-5. Run the same entry point with `-Mode ConfigurationAndNetwork`.
+5. Run the entry point with `-AuthenticationProvider AzurePowerShell -Mode ConfigurationAndNetwork`
+   (or explicitly select `AzureCli` when using CLI credentials).
 6. Retain both report files and the exit code, recording the execution host and
    identity. Keep reports from different attempts separate.
 
@@ -181,6 +211,7 @@ TLS targets: the original service hostname is used for certificate validation.
 | `SubscriptionId`, `ResourceGroup`, `AccountName`, `ProjectName` | Identify the existing target explicitly. |
 | `Profiles` | Array of selected profiles; default `Core`. |
 | `Mode` | `Configuration` by default; optionally `ConfigurationAndNetwork`. |
+| `AuthenticationProvider` | `AzurePowerShell` for installed Az.Accounts and a captured customer context; no CLI dependency. `AzureCli` remains the default for backward compatibility. No automatic fallback. |
 | `AdvancedNetworkDetails` | Optional DNS-only/CNAME and selected-route details. Requires `ConfigurationAndNetwork`; unsupported commands are informational `NotAssessed`. |
 | `EvaluationCallerObjectId` | Optional known evaluation-caller object ID. Omitted means caller access is not assessed, not a required Unknown. Supplied caller checks remain required. |
 | `StorageConnectionName`, `ModelConnectionName`, `MonitoringConnectionName` | Disambiguate discovered dependencies using connection aliases. |
@@ -188,16 +219,27 @@ TLS targets: the original service hostname is used for certificate validation.
 | `ModelAuthentication` | `Auto`, `ApiKey`, or `Entra`; default `Auto` uses connection metadata. |
 | `PrivilegedTraceContent` | Select additional privileged-content coverage reporting; requires `Traces`. Does not read content or certify runtime access. |
 | `OutputDirectory` | Local report directory; default `vnet-project-diagnostic-report` under the current directory. Use a new directory to preserve previous results. |
-| `RequestTimeoutSeconds` | Azure CLI subprocess deadline, including startup; default 25 seconds, allowed 5-120. |
-| `AzureCliExecutable` | CLI executable name/path; default `az`. |
-| `AzureCliPrefixArguments` | Empty by default; the only supported alternative is `@('-IBm', 'azure.cli')` for an existing Azure CLI Python installation. |
-| `FixturePath` | Offline development only, with `Configuration` mode. Fixture output is not live qualification. |
+| `RequestTimeoutSeconds` | Per-attempt deadline including token acquisition and HTTP for AzurePowerShell, or CLI subprocess startup/read. Default 25 seconds, allowed 5-120; up to three attempts for 429/503/504 only. |
+| `AzureCliExecutable` | AzureCli provider only: executable name/path; default `az`. Do not supply with live AzurePowerShell runs. |
+| `AzureCliPrefixArguments` | AzureCli provider only: empty by default; supported override `@('-IBm', 'azure.cli')` for an existing CLI Python installation. |
+| `FixturePath` | Offline development only, with `Configuration` mode. Invokes neither auth provider nor network; not live qualification. |
 
-If the normal Windows CLI launcher is broken, use the existing CLI installation's
+### Optional original Azure CLI path
+
+Existing commands without `AuthenticationProvider` retain their Azure CLI behavior.
+To select it explicitly, with a pre-existing customer CLI login:
+
+```powershell
+& $script @project -AuthenticationProvider AzureCli `
+    -OutputDirectory '.\reports\cli-configuration'
+```
+
+If that provider's normal Windows CLI launcher is broken, use the existing CLI installation's
 Python executable. This is not a command string and must not contain credentials:
 
 ```powershell
 & $script @project `
+    -AuthenticationProvider AzureCli `
     -AzureCliExecutable 'C:\path-to-existing-azure-cli\python.exe' `
     -AzureCliPrefixArguments @('-IBm', 'azure.cli') `
     -OutputDirectory '.\reports\configuration'
@@ -240,6 +282,8 @@ Schema **2** adds `classification` and the statuses `Observed` and `NotAssessed`
 `status`/`exitCode`. Markdown separates actionable summary, finding details,
 coverage, and inventory. Consumers of earlier reports must check `schemaVersion`;
 historical reports are not rewritten or reinterpreted as schema 2.
+`authenticationProvider` identifies `AzurePowerShell`, `AzureCli`, or `OfflineFixture`.
+No account credential, profile object, or bearer token is included in reports.
 
 | Exit | Meaning |
 |---:|---|
@@ -259,10 +303,12 @@ warnings. Remediation text is guidance, not an action the script took.
 
 | Observation | Interpretation/action |
 |---|---|
+| AzurePowerShell prerequisite error | Verify installed Az.Accounts and establish the intended AzureCloud context separately. No auto-login, context switch or CLI fallback is attempted. |
+| ARM/token status 401 | The captured identity could not supply valid authorization. Re-establish the intended login separately; do not bypass using another identity. |
 | Caller access is NotAssessed | Optional caller was omitted. Supply it only if that assessment is wanted; do not assume the operator or VM identity is the caller. |
 | Explicit caller check is Unknown | Actual selected caller evidence is insufficient; it remains a required finding, not an optional coverage note. |
 | Resource read is 403 | The diagnostic identity could not read that metadata. Check its identity and precise scope; do not infer the project MI lacks runtime permissions or automatically grant broader roles. |
-| Ancestor role read is 408 | The bounded CLI call timed out. This is not proof of absent assignments. A larger bounded timeout may help; retain visibility limitations. |
+| Ancestor role read is 408 | The bounded authentication/read attempt timed out. This is not proof of absent assignments. A larger bounded timeout may help; retain visibility limitations. |
 | DNS resolves public IPs | Check execution location, resolver, and expected PE mappings. Do not enable public access as a workaround. |
 | DNS succeeds but TCP/TLS fails | These are separate host/path observations. Check routing and certificate/hostname evidence; never disable certificate verification. |
 | Private monitoring path is NotAssessed | This is an explicit implementation limit, not evidence of broken configuration. AMPLS association metadata does not prove AMPLS/DNS/query reachability. Missing actual query-policy metadata remains a separate required Unknown. |
@@ -280,3 +326,9 @@ outside the diagnostic's coverage.
 Treat reports as private resource metadata. Do not publish them publicly or add
 credentials to parameters, fixtures, or reports. See [requirements.md](references/requirements.md)
 for public references, the check catalog, and detailed certainty boundaries.
+
+AzurePowerShell uses controlled HTTPS GETs with redirects disabled and per-page
+ARM host/path/version validation. Tokens remain transient in memory, including
+current Az.Accounts SecureString output. Payloads are projected to allowlisted
+metadata before caching; errors never print raw response bodies. Both providers
+share one diagnostic engine and report model.
