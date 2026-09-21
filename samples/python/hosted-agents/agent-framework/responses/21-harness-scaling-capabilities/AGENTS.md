@@ -18,7 +18,8 @@ logic.
   environment variables, and direct code deployment
 - `src/harness-scaling-capabilities-responses/main.py` - agent implementation and Responses server
   entry point
-- `src/harness-scaling-capabilities-responses/requirements.txt` - Python dependencies
+- `src/harness-scaling-capabilities-responses/pyproject.toml` - project metadata and dependencies
+- `src/harness-scaling-capabilities-responses/uv.lock` - reproducible dependency lock
 - `src/harness-scaling-capabilities-responses/skills/` - bundled valuation and risk-scoring skills
 - `src/harness-scaling-capabilities-responses/working/` - seed portfolio and trade-confirmation
   files copied into writable session storage
@@ -26,7 +27,7 @@ logic.
 
 Do not commit `.vscode` launch or task files generated when the Foundry Toolkit scaffolds a local
 workspace. Keep the project's `.venv` in `src/harness-scaling-capabilities-responses/`, next to
-`requirements.txt`.
+`pyproject.toml`.
 
 ## Development workflow
 

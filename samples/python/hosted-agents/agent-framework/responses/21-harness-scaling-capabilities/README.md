@@ -57,7 +57,7 @@ or the VS Code Foundry Toolkit) is listed under its option below.
 
 1. An existing Foundry project with a deployed model (or create them during setup in Option 1). The
    default deployment name is `gpt-5.4-mini`.
-2. **Python 3.10 or later.**
+2. **Python 3.13 or later.**
 3. **Environment variables:** `FOUNDRY_PROJECT_ENDPOINT` and `AZURE_AI_MODEL_DEPLOYMENT_NAME` (see
    `src/harness-scaling-capabilities-responses/.env.example`).
    `FOUNDRY_TOOLBOX_MCP_SERVER_URL` is optional — set it to enable centrally-managed Foundry skills;
@@ -176,16 +176,10 @@ azd ai agent invoke "Value MSFT for me."
 
 ### Set up the Python virtual environment
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install dependencies in the virtual environment:
+- Install the locked dependencies, then select the generated `.venv` in VS Code:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+  uv sync --frozen
   ```
 
 ### Run and debug the agent
@@ -199,7 +193,7 @@ automatically; file writes, shell commands, and simulated trades pause for appro
 
 1. Change to `src/harness-scaling-capabilities-responses`.
 2. Copy `.env.example` to `.env`, set the required environment variables, and sign in with `az login`.
-3. Start the agent with `python main.py`; it listens on `http://localhost:8088`.
+3. Start the agent with `uv run --no-sync python main.py`; it listens on `http://localhost:8088`.
 4. Open the Command Palette (`Ctrl+Shift+P`), run **Foundry Toolkit: Open Agent Inspector**, and send
    a message to test.
 

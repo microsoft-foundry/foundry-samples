@@ -1,0 +1,16 @@
+[project]
+name = "harness-scaling-capabilities-responses"
+version = "0.1.0"
+description = "A personal-finance harness agent hosted through the Foundry Responses protocol."
+requires-python = ">=3.13"
+dependencies = [
+    "agent-framework-core==1.13.0",
+    "agent-framework-foundry==1.10.3",
+    "agent-framework-foundry-hosting==1.0.0b260813",
+    "agent-framework-monty==1.0.0b260721",
+    "agent-framework-openai==1.13.0",
+    "agent-framework-tools==1.0.0b260721",
+    "debugpy",
+    "httpx",
+    "mcp",
+]
