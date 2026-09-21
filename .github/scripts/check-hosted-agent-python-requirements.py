@@ -47,7 +47,6 @@ UV_LOCK = "uv.lock"
 HASH_OPTION = re.compile(r"(?:^|\s)--hash(?:=|\s+)\S+")
 INLINE_COMMENT = re.compile(r"\s+#.*$")
 VCS_PREFIXES = ("git+", "hg+", "svn+", "bzr+")
-PINNED_UV = re.compile(r"(?<![\w-])uv==\d+\.\d+\.\d+(?:[A-Za-z0-9.-]*)?")
 FROZEN_UV_SYNC = re.compile(r"\buv\s+sync\b[^;&\n]*\s--frozen(?:\s|$)")
 VALID_CODES = {f"PYREQ{number:03d}" for number in range(1, 14)}
 
@@ -699,52 +698,13 @@ def validate_uv_resolution(
     return []
 
 
-def validate_uv_runtime_contract(
+def validate_uv_deployment_contract(
     repo: Path,
     revision: str,
     files: set[PurePosixPath],
     service: ServiceRoot,
     trigger: PurePosixPath,
 ) -> list[Finding]:
-    sample_yaml = service.manifest.parent / "sample.yaml"
-    if sample_yaml not in files:
-        return [
-            Finding(
-                "PYREQ013",
-                "uv-native runtime requires sample.yaml build validation with a pinned uv version and uv sync --frozen",
-                service.path,
-                trigger,
-                sample_yaml,
-            )
-        ]
-    try:
-        sample = yaml.safe_load(read_tree_file(repo, revision, sample_yaml)) or {}
-    except (yaml.YAMLError, UnicodeDecodeError) as exc:
-        return [
-            Finding(
-                "PYREQ013",
-                f"cannot validate uv-native sample.yaml build contract: {exc}",
-                service.path,
-                trigger,
-                sample_yaml,
-            )
-        ]
-    build = sample.get("build") if isinstance(sample, Mapping) else None
-    if (
-        not isinstance(build, str)
-        or not PINNED_UV.search(build)
-        or not FROZEN_UV_SYNC.search(build)
-    ):
-        return [
-            Finding(
-                "PYREQ013",
-                "uv-native sample.yaml build must install an exact uv version and run uv sync --frozen",
-                service.path,
-                trigger,
-                sample_yaml,
-            )
-        ]
-
     manifest = yaml.safe_load(read_tree_file(repo, revision, service.manifest)) or {}
     services = manifest.get("services", {}) if isinstance(manifest, Mapping) else {}
     declaration = (
@@ -965,7 +925,7 @@ def collect_findings(
         else:
             service = head_services.get(root)
             if service is not None:
-                contract_findings = validate_uv_runtime_contract(
+                contract_findings = validate_uv_deployment_contract(
                     repo, head, head_files, service, trigger
                 )
                 findings.extend(contract_findings)

@@ -43,10 +43,10 @@ Python Hosted Agent runtime or change its dependencies.
 - Before finishing a dependency change, run the checker documented in
   `DEPENDENCY_POLICY.md`, including `--resolve` when network access is available.
 
-A uv-native sample may omit `requirements.txt` when `sample.yaml` installs a
-pinned uv version and runs `uv sync --frozen`. Its deployment must consume the
+A uv-native sample may omit `requirements.txt`. Its deployment must consume the
 lock through `dependencyResolution: remote_build`, or through a Dockerfile that
 uses a versioned `ghcr.io/astral-sh/uv` image and runs `uv sync --frozen`.
+`sample.yaml` remains optional metadata for the separate build-readiness system.
 
 ## Cloud E2E contract for new samples
 

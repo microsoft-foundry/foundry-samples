@@ -104,11 +104,6 @@ class RepositoryCheckTests(unittest.TestCase):
             "      dependencyResolution: remote_build\n",
         )
         self.repo.write(
-            f"{sample}/sample.yaml",
-            "name: uv example\n"
-            'build: python -m pip install "uv==0.11.7" && uv sync --frozen\n',
-        )
-        self.repo.write(
             f"{root}/pyproject.toml",
             '[project]\nname = "example"\nversion = "0.1.0"\n'
             'requires-python = ">=3.11"\ndependencies = ["six==1.16.0"]\n',
@@ -159,9 +154,11 @@ class RepositoryCheckTests(unittest.TestCase):
         self.assertEqual(["PYREQ001"], [finding.code for finding in findings])
         self.assertEqual(PurePosixPath(root), findings[0].root)
 
-    def test_new_service_with_uv_project_and_lock_passes(self) -> None:
-        self.add_uv_service()
+    def test_new_service_with_uv_project_and_lock_needs_no_sample_yaml(self) -> None:
+        root = self.add_uv_service()
+        sample = Path(root).parents[1].as_posix()
         self.repo.commit("add uv sample")
+        self.assertFalse((self.repo.path / sample / "sample.yaml").exists())
         self.assertEqual([], self.findings())
 
     def test_incomplete_uv_pair_fails(self) -> None:
@@ -223,13 +220,6 @@ class RepositoryCheckTests(unittest.TestCase):
         self.repo.commit("change uv configuration")
         self.assertEqual(["PYREQ006"], [finding.code for finding in self.findings()])
 
-    def test_uv_project_requires_pinned_frozen_validation(self) -> None:
-        root = self.add_uv_service()
-        sample = Path(root).parents[1].as_posix()
-        self.repo.write(f"{sample}/sample.yaml", "name: uv example\nbuild: uv sync\n")
-        self.repo.commit("add invalid uv sample")
-        self.assertEqual(["PYREQ013"], [finding.code for finding in self.findings()])
-
     def test_uv_project_requires_lock_aware_deployment(self) -> None:
         root = self.add_uv_service()
         sample = Path(root).parents[1].as_posix()
@@ -257,15 +247,19 @@ class RepositoryCheckTests(unittest.TestCase):
         self.repo.commit("add containerized uv sample")
         self.assertEqual([], self.findings())
 
-    def test_adopting_uv_requires_the_validation_and_deployment_contract(self) -> None:
+    def test_adopting_uv_requires_a_lock_aware_deployment(self) -> None:
         root = self.add_uv_service()
         sample = Path(root).parents[1].as_posix()
         self.repo.write(f"{root}/requirements.txt", "six==1.16.0\n")
-        self.repo.write(f"{sample}/sample.yaml", "name: uv example\nbuild: uv sync\n")
+        self.repo.write(
+            f"{sample}/azure.yaml",
+            "name: example\nservices:\n  example:\n    language: python\n"
+            "    project: src/example\n",
+        )
         self.repo.commit("add pip sample with supplemental uv files")
         self.base = self.repo.run("rev-parse", "HEAD")
         self.repo.remove(f"{root}/requirements.txt")
-        self.repo.commit("adopt uv without complete runtime contract")
+        self.repo.commit("adopt uv without lock-aware deployment")
         self.assertEqual(["PYREQ013"], [finding.code for finding in self.findings()])
 
     def test_uv_resolution_is_wired_through_repository_check(self) -> None:
