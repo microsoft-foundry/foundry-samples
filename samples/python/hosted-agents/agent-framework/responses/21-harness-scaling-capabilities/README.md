@@ -4,8 +4,7 @@ This sample hosts the Agent Framework **"scaling its capabilities"** personal-fi
 (Post 3 of *Build your own claw and agent harness*) through the Foundry **Responses** protocol v2. It
 preserves the original agent instructions, tools, file skills, background research agent, confined
 shell, CodeAct provider, and token limits while replacing the interactive console host with the native
-Foundry `ResponsesHostServer`. File-write, shell, and trade approvals are temporarily disabled as an
-upstream bug workaround.
+Foundry `ResponsesHostServer`. File writes, shell commands, and simulated trades require approval.
 
 **Source:** ported from [`claw_step03_scaling_capabilities.py`](https://github.com/microsoft/agent-framework/blob/main/python/samples/02-agents/harness/build_your_own_claw/claw_step03_scaling_capabilities.py)
 in the Microsoft Agent Framework. The original runs the agent in an interactive console; this project
@@ -40,20 +39,16 @@ filesystem persists across turns and idle periods; deleting the session removes 
 back to the current working directory when `$HOME` is unavailable.
 
 The Responses host owns conversation history. Continue a conversation with `previous_response_id` (or
-a conversation ID). File reads and writes, shell commands, and the simulated `place_trade` tool
-currently run without approval.
+a conversation ID). File reads run without approval; file writes, shell commands, and the simulated
+`place_trade` tool pause for approval.
 
 ### Approval policy
 
 Read-only file operations have approval disabled so reading `portfolio.csv` is frictionless. The
-source requires approval for file writes, `place_trade`, and every `run_shell` command. This hosted
-port temporarily bypasses all three approval paths because the Responses approval-handshake bug tracked
-in
-[microsoft/agent-framework#7267](https://github.com/microsoft/agent-framework/issues/7267) can leave
-the function call unanswered. The trade tool is simulated and places no real order. File writes are
-confined to the session's writable working directory. For the shell, `acknowledge_unsafe=True` is
-explicit: the deny-list and confined working directory are guardrails, not a security boundary. Use
-this sample only with trusted input until the upstream fix lands and these approvals are restored.
+source requires approval for file writes, `place_trade`, and every `run_shell` command, and this port
+preserves that policy. The trade tool is simulated and places no real order. File writes are confined
+to the session's writable working directory. The shell's deny-list and confined working directory are
+additional guardrails, not a security boundary.
 
 ## Prerequisites
 
@@ -62,7 +57,7 @@ or the VS Code Foundry Toolkit) is listed under its option below.
 
 1. An existing Foundry project with a deployed model (or create them during setup in Option 1). The
    default deployment name is `gpt-5.4-mini`.
-2. **Python 3.10 or later.**
+2. **Python 3.13 or later.**
 3. **Environment variables:** `FOUNDRY_PROJECT_ENDPOINT` and `AZURE_AI_MODEL_DEPLOYMENT_NAME` (see
    `src/harness-scaling-capabilities-responses/.env.example`).
    `FOUNDRY_TOOLBOX_MCP_SERVER_URL` is optional — set it to enable centrally-managed Foundry skills;
@@ -121,7 +116,7 @@ suggests. `azd ai agent invoke` reuses the session across consecutive local invo
 frictionless turns chain naturally.
 
 **Frictionless turns** — skills, file reads, mode, CodeAct, and background research all run without
-prompting:
+approval:
 
 ```bash
 # Skills — loads the valuation skill and runs its script
@@ -133,12 +128,6 @@ azd ai agent invoke --local "Score the risk of my portfolio."
 # Mode — switch to plan mode (the agent proposes before acting; sets up the shell turn)
 azd ai agent invoke --local "Switch to plan mode."
 
-# Shell — temporarily runs without approval because of https://github.com/microsoft/agent-framework/issues/7267
-azd ai agent invoke --local "Use the run_shell tool to reorganize working/confirmations into year/month folders and rename each file to YYYY-MM-DD_TICKER_BUY|SELL.txt. Inspect with shell commands first."
-
-# Trade — simulated; temporarily runs without approval because of https://github.com/microsoft/agent-framework/issues/7267
-azd ai agent invoke --local "Buy 10 shares of MSFT."
-
 # CodeAct — writes and runs Python to sum the portfolio
 azd ai agent invoke --local "Write and run a Python script to work out the total value of my portfolio."
 
@@ -146,7 +135,16 @@ azd ai agent invoke --local "Write and run a Python script to work out the total
 azd ai agent invoke --local "Research MSFT, NVDA and SPY and summarize the latest news."
 ```
 
-Confirm the trade response contains a `TRADE-…` confirmation and no `mcp_approval_request`.
+**Approval-gated turns** — use the Agent Inspector opened by `azd ai agent run`:
+
+1. Send `Buy 10 shares of MSFT.` The Responses host returns an `mcp_approval_request`; the simulated
+   trade has not run yet and no `TRADE-…` confirmation is present.
+2. Select **Approve**. The Inspector sends an `mcp_approval_response` in the same conversation. The
+   host resumes the turn, runs `place_trade` once, and returns its `TRADE-…` confirmation.
+
+Shell commands follow the same contract and may require one approval per proposed command. The
+Responses host owns translating and persisting pending approval items; the client or Inspector owns
+the user's explicit approve/reject decision.
 
 > **One more capability — Foundry skills.** With `FOUNDRY_TOOLBOX_MCP_SERVER_URL` set and a
 > `financial-agent-rules` skill published to your toolbox, asking an off-topic question
@@ -178,30 +176,24 @@ azd ai agent invoke "Value MSFT for me."
 
 ### Set up the Python virtual environment
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install dependencies in the virtual environment:
+- Install the locked dependencies, then select the generated `.venv` in VS Code:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+  uv sync --frozen
   ```
 
 ### Run and debug the agent
 
 The Foundry Toolkit generates `.vscode/launch.json` and `.vscode/tasks.json` for the local workspace;
 these files are intentionally not checked in. Press **F5** to start the agent. The agent starts and
-the **Agent Inspector** opens automatically. Chat with the agent in the Inspector — file reads and
-writes, shell commands, and simulated trades run automatically.
+the **Agent Inspector** opens automatically. Chat with the agent in the Inspector — file reads run
+automatically; file writes, shell commands, and simulated trades pause for approval.
 
 ### Or run manually, then open the Inspector
 
 1. Change to `src/harness-scaling-capabilities-responses`.
 2. Copy `.env.example` to `.env`, set the required environment variables, and sign in with `az login`.
-3. Start the agent with `python main.py`; it listens on `http://localhost:8088`.
+3. Start the agent with `uv run --no-sync python main.py`; it listens on `http://localhost:8088`.
 4. Open the Command Palette (`Ctrl+Shift+P`), run **Foundry Toolkit: Open Agent Inspector**, and send
    a message to test.
 

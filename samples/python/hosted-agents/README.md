@@ -205,7 +205,7 @@ Already built an agent with CrewAI or your own code? The protocol SDKs (`azure-a
 
 ## Python dependencies
 
-New Python Hosted Agent runtimes use `pyproject.toml` with `uv.lock` by default. A fully resolved `requirements.txt` remains accepted as a backward-compatible fallback. The selected artifact must capture the complete dependency graph; uv-native validation and deployment use a pinned uv version with `uv sync --frozen`.
+New Python Hosted Agent runtimes use `pyproject.toml` with `uv.lock` by default. A fully resolved `requirements.txt` remains accepted as a backward-compatible fallback. The selected artifact must capture the complete dependency graph; CI validates uv locks with a pinned uv version and a frozen production export.
 
 See the [Python Hosted Agent dependency policy](DEPENDENCY_POLICY.md) for pinning rules, authoring-tool examples, validation commands, ratchet behavior, and exceptions.
 

@@ -451,7 +451,7 @@ The hook runs these operations in order:
 1. Stops active sessions for the existing agent, when present.
 2. Runs an ACR cloud build and pushes
    `hello-world-a365-agent:latest`.
-3. Creates a new hosted-agent version with Activity Protocol v1 and the
+3. Creates a new hosted-agent version with Activity Protocol 2.0.0 and the
    Microsoft 365 public endpoint enabled.
 4. Waits for the agent version to become active.
 5. Grants the agent instance identity the Foundry User role on the project.

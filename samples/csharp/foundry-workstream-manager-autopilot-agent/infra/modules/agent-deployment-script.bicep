@@ -60,7 +60,7 @@ resource psScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
           container_protocol_versions = @(
               @{
                   protocol = "activity_protocol"
-                  version  = "v1"
+                  version  = "2.0.0"
               }
           )
       }
