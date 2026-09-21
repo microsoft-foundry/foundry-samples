@@ -29,7 +29,7 @@ sample/
         └── uv.lock
 ```
 
-CI uses a pinned uv version to verify that the lock matches the project and to export a complete runtime graph without updating the lock. Deployment must consume the lock through Hosted Agent remote dependency resolution or a Dockerfile that installs a pinned uv version and uses `uv sync --frozen`. Consumers use uv directly; a duplicate `requirements.txt` export and `sample.yaml` validation manifest are not required by this dependency policy.
+CI uses a pinned uv version to verify that the lock matches the project and to export a complete runtime graph without updating the lock. Consumers use uv directly; a duplicate `requirements.txt` export is not required.
 
 ### Backward-compatible fallback: requirements.txt
 
@@ -210,4 +210,3 @@ Common failures:
 | `PYREQ010` | A requirement or uv TOML document is syntactically invalid. |
 | `PYREQ011` | A direct URL dependency is present without an approved exception. |
 | `PYREQ012` | Pip or uv could not validate the committed artifact. |
-| `PYREQ013` | A uv-native runtime does not declare a lock-aware remote-build or container deployment path. |

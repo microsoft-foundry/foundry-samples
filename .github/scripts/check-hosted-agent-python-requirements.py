@@ -47,8 +47,7 @@ UV_LOCK = "uv.lock"
 HASH_OPTION = re.compile(r"(?:^|\s)--hash(?:=|\s+)\S+")
 INLINE_COMMENT = re.compile(r"\s+#.*$")
 VCS_PREFIXES = ("git+", "hg+", "svn+", "bzr+")
-FROZEN_UV_SYNC = re.compile(r"\buv\s+sync\b[^;&\n]*\s--frozen(?:\s|$)")
-VALID_CODES = {f"PYREQ{number:03d}" for number in range(1, 14)}
+VALID_CODES = {f"PYREQ{number:03d}" for number in range(1, 13)}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -698,48 +697,6 @@ def validate_uv_resolution(
     return []
 
 
-def validate_uv_deployment_contract(
-    repo: Path,
-    revision: str,
-    files: set[PurePosixPath],
-    service: ServiceRoot,
-    trigger: PurePosixPath,
-) -> list[Finding]:
-    manifest = yaml.safe_load(read_tree_file(repo, revision, service.manifest)) or {}
-    services = manifest.get("services", {}) if isinstance(manifest, Mapping) else {}
-    declaration = (
-        services.get(service.service, {}) if isinstance(services, Mapping) else {}
-    )
-    code_configuration = (
-        declaration.get("codeConfiguration", {})
-        if isinstance(declaration, Mapping)
-        else {}
-    )
-    remote_build = (
-        isinstance(code_configuration, Mapping)
-        and code_configuration.get("dependencyResolution") == "remote_build"
-    )
-    dockerfile = service.path / "Dockerfile"
-    docker_build = False
-    if dockerfile in files:
-        content = read_tree_file(repo, revision, dockerfile).decode("utf-8")
-        docker_build = bool(
-            re.search(r"ghcr\.io/astral-sh/uv:\d+\.\d+\.\d+", content)
-            and FROZEN_UV_SYNC.search(content)
-        )
-    if not remote_build and not docker_build:
-        return [
-            Finding(
-                "PYREQ013",
-                "uv-native deployment must use remote dependency resolution or a Dockerfile with pinned uv and uv sync --frozen",
-                service.path,
-                trigger,
-                service.manifest,
-            )
-        ]
-    return []
-
-
 def load_exceptions(path: Path) -> list[ExceptionRule]:
     if not path.exists():
         return []
@@ -923,21 +880,13 @@ def collect_findings(
                     )
                 )
         else:
-            service = head_services.get(root)
-            if service is not None:
-                contract_findings = validate_uv_deployment_contract(
-                    repo, head, head_files, service, trigger
-                )
-                findings.extend(contract_findings)
-            else:
-                contract_findings = []
             lock_content = read_tree_file(repo, head, uv_source).decode("utf-8")
             project_content = read_tree_file(repo, head, uv_manifest).decode("utf-8")
             uv_findings = parse_uv_lock(
                 lock_content, project_content, root, trigger, uv_source
             )
             findings.extend(uv_findings)
-            if resolve and not contract_findings and not uv_findings:
+            if resolve and not uv_findings:
                 findings.extend(
                     validate_uv_resolution(repo, head, head_files, root, trigger, uv)
                 )

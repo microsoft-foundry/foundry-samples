@@ -47,12 +47,10 @@ Follow the shared Python Hosted Agent dependency policy at
 Use `pyproject.toml` and `uv.lock` by default. A fully resolved
 `requirements.txt` remains accepted as a backward-compatible fallback. The
 selected artifact must pin the complete direct and transitive runtime graph; if
-both forms exist, the uv pair is authoritative. A uv-native sample's deployment must consume the lock through remote dependency
-resolution or a Dockerfile with pinned uv and `uv sync --frozen`. `sample.yaml`
-remains optional metadata for separate build-readiness validation. Update the
-selected artifact whenever a dependency input changes. Run the policy checker,
-including its `--resolve` closure check when network access is available, before
-completing dependency changes.
+both forms exist, the uv pair is authoritative. Update the selected artifact
+whenever a dependency input changes. Run the policy checker, including its
+`--resolve` closure check when network access is available, before completing
+dependency changes.
 
 ## Runtime logging
 
