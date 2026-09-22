@@ -84,6 +84,12 @@ explicit operational opt-out, not a passing validation result.
 | `GH_PAT`, `PLAYWRIGHT_SERVICE_ACCESS_TOKEN` | Optional sample-specific secrets; store as secret variables, never in YAML |
 | `AZURE_AI_RAI_POLICY_ID`, `CONTENT_SAFETY_TEST_PROMPT` | Optional content-safety validation configuration |
 
+With `SKIP_PROVISION=true`, Python and C# Teams jobs require existing, correctly
+configured `workiq-teams-conn` and `workiq-calendar-conn` connections readable by
+the pipeline identity. CI verifies and reuses them without updating or deleting
+them, rewriting only the temporary job-local `azure.yaml`; committed sample
+manifests remain unchanged. Each job still owns and cleans up its own toolbox.
+
 The runner forwards configured variables through its existing prefix allow-list.
 Read the runner's configuration phase when a sample introduces a new variable.
 Missing optional configuration may exclude combinations or skip special probes;
@@ -111,28 +117,6 @@ Each job publishes diagnostics and its result. The summary publishes
 `sample-status` and a build summary; it does not publish private commit statuses.
 Voice Live uses a dedicated smoke client and audio fixture under the hosted-agent
 scripts.
-
-### Shared Teams connection fixtures
-
-With `SKIP_PROVISION=true`, the Python and C# Teams cells reuse
-`workiq-teams-conn` and `workiq-calendar-conn` in the configured Foundry project.
-These must already exist, have the expected WorkIQ targets/authentication, and
-be readable by the pipeline identity. CI verifies their presence before deploy;
-it does not create, update, or delete these shared fixtures. In particular, a
-connection created through a legacy AML workspace cannot be updated through the
-Foundry project merely because it is visible there.
-
-`discover-samples.sh` explicitly lists these fixtures in each Teams record's
-`sharedConnections`. During scaffold, the runner removes only those connection
-service declarations and their `uses` edges from the **temporary job-local**
-`azure.yaml`, while preserving the toolbox's `tools[].connection` bindings. The
-cell still deploys and cleans up its own uniquely named toolbox. Shared names
-are saved in the state artifact for preflight, not connection cleanup.
-
-Committed sample manifests are never rewritten. With `SKIP_PROVISION` disabled,
-connection declarations remain deployable. Other samples are unaffected unless
-explicitly added to this reuse policy; a shared-toolbox matrix override continues
-to use its existing separate preparation path.
 
 ### Migration coverage limits
 
