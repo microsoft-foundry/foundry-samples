@@ -5,6 +5,7 @@ This project is a **Microsoft Foundry hosted agent** — a containerized AI agen
 ## Key files
 
 - `src/langgraph-files-responses/main.py` — exported async LangGraph graph factory
+- `src/langgraph-files-responses/send_attachment.py` — local OpenAI SDK client for image/PDF request attachments; requires the hosting input-preservation fix
 - `src/langgraph-files-responses/langgraph.json` — graph entrypoint configuration
 - `src/langgraph-files-responses/Dockerfile` — container definition
 

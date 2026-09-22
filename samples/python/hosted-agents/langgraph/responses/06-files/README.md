@@ -4,6 +4,10 @@ A [LangGraph](https://langchain-ai.github.io/langgraph/) agent that **manipulate
 
 In hosted mode the platform mounts files uploaded to a hosted agent session into the agent's working directory, so the same local tools work against user-provided files. The bundled `resources/contoso_q1_2026_report.txt` ships inside the container image so the demo flow works without uploading anything.
 
+The sample also includes a [local attachment client](src/langgraph-files-responses/send_attachment.py)
+for sending images and PDFs directly in a Responses request. Request attachments
+go to the model; session files remain available to filesystem tools.
+
 ## How It Works
 
 ### Tools
@@ -154,6 +158,42 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 3. On the **Basics** tab, choose deployment method (**Code** or **Container**) and confirm the agent name.
 4. On **Review + Deploy**, confirm runtime details, pick **CPU and Memory** size, and click **Deploy**.
 5. After deployment, invoke the agent in the Agent Playground and stream live logs from the **Logs** tab.
+
+## Sending an image or PDF as a request attachment
+
+> **Prerequisite:** This path depends on
+> [langchain-azure#1072](https://github.com/langchain-ai/langchain-azure/pull/1072).
+> The currently committed `langchain-azure-ai==1.2.9` lock does not contain that fix.
+> Update the dependency lock to a published version containing the fix before
+> using this path. The session-file walkthrough below works with the existing lock.
+
+Start the agent using the local run instructions above. In another terminal,
+activate the same Python environment and change to `src/langgraph-files-responses`:
+
+```bash
+python send_attachment.py ./chart.png --prompt "Describe this chart using the attached image."
+python send_attachment.py ./report.pdf --prompt "Summarize the attached PDF."
+```
+
+Use your own image or PDF; those two filenames are examples, not bundled files.
+The client uses the official OpenAI SDK already installed by the sample. It sends
+the file inline to `http://localhost:8088/responses`, together with the prompt.
+Use `--port` if the host runs on a different local port. The local agent calls the
+configured Foundry model, so this walkthrough requires the same project credentials,
+Toolbox configuration, and model access as the rest of the sample.
+
+Choose a deployed model that supports the attachment type and keep files within
+its input limits. The agent already uses `use_responses_api=True`; no custom host
+or text extraction is needed. The model receives `input_image` or `input_file`
+content alongside the prompt. Verify that the answer refers to the contents of
+the attachment, rather than only its name. Use the client when your Inspector
+version does not expose an attachment picker.
+
+This does not upload the attachment into a hosted session or make it available
+as a path to `read_file` or the code interpreter. Conversely, uploading a session
+file does not automatically include it in the model request. An `input_file.file_id`
+must belong to a file accessible to the downstream model service and identity;
+do not substitute a session path or session ID for a model file ID.
 
 ## Uploading files to a hosted session
 
