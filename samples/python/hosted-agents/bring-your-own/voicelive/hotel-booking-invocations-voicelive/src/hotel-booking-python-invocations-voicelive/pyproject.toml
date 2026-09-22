@@ -1,0 +1,8 @@
+[project]
+name = "hotel-booking-python-invocations-voicelive"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "azure-ai-agentserver-invocations==1.1.0",
+    "debugpy",
+]

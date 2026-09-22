@@ -1,0 +1,9 @@
+[project]
+name = "agent-framework-agent-foundry-toolbox-mcp-skills-responses"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "agent-framework-foundry",
+    "agent-framework-foundry-hosting>=1.0.0b260813",
+    "debugpy",
+]

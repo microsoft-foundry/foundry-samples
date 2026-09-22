@@ -26,7 +26,8 @@ This sample is configured for **Microsoft Foundry** mode by default
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment
 - `az login` 
 - A Foundry resource with Claude model deployments
 
@@ -74,12 +75,7 @@ azd deploy
 - Install dependencies in the virtual environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+  uv sync --frozen
   ```
 
 ### Run and debug the agent

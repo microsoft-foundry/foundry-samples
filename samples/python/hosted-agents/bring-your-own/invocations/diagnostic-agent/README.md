@@ -42,6 +42,7 @@ This sample is designed for **Bring Your Own** (BYO) infrastructure scenarios wh
 
 - An existing **Azure Foundry project** (account + project already created)
 - An existing **container registry** (if deploying in container mode)
+- **Python 3.12+** and [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment
 - **Azure CLI** with `azure.ai.agents` extension installed:
   ```bash
   azd config set ai.agents.version 0.1.22-preview
@@ -438,10 +439,8 @@ This sample follows the same `azd ai agent` workflow as the other invocations sa
 For the local-only path (no `azd`):
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
+uv sync --frozen
+uv run --no-sync python main.py
 ```
 
 The agent listens on `http://localhost:8088/`. Invoke it:

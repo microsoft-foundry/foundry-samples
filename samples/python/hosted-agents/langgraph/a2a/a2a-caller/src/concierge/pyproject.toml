@@ -1,0 +1,13 @@
+[project]
+name = "a2a-caller"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "langchain-azure-ai[hosting]>=1.2.4",
+    "langchain",
+    "langchain-mcp-adapters",
+    "mcp>=1.24,<2",
+    "httpx",
+    "python-dotenv",
+    "debugpy",
+]

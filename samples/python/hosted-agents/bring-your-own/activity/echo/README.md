@@ -41,7 +41,8 @@ Make sure the following are installed and available:
 |-------------|-----------------|
 | [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) | Provisions infrastructure and deploys the agent. Use **1.25 or later** (earlier versions have a container-registry resolution bug during remote build). Install the agent service target with `azd extension install azure.ai.agents`. |
 | [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) | Authentication (`az login`). |
-| [Python 3.10+](https://www.python.org/downloads/) | The agent runtime (built inside the Docker image; also handy for local edits). |
+| [Python 3.13+](https://www.python.org/downloads/) | The agent runtime (built inside the Docker image; also handy for local edits). |
+| [uv](https://docs.astral.sh/uv/getting-started/installation/) | Creates the locked local Python environment. Install it outside the project virtual environment. |
 | [Docker](https://www.docker.com/products/docker-desktop/) | **Optional.** `azd deploy` uses a remote ACR build, so you don't need Docker unless you want to build the image locally. |
 
 ### Required permissions
@@ -85,7 +86,7 @@ The Explorer panel should now show `echo-activity` as a workspace root (with its
 Press **F5** (or **Run → Start Debugging**). The launch configuration will:
 
 1. Install `agentsplayground` if not already installed (one-time, via winget).
-2. Create a `.venv` (Python 3.13) and install `requirements.txt` if not already done.
+2. Run `uv sync --frozen` to create the locked Python environment.
 3. Start the agent (`main.py`) under the VS Code debugger.
 4. Launch **M365 Agents Playground** automatically once port 8088 is ready.
 
