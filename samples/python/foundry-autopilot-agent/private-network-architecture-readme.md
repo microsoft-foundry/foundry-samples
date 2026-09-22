@@ -393,7 +393,7 @@ sequenceDiagram
 
     User->>Teams: Send message
     Teams->>Endpoint: Deliver activity
-    Endpoint->>Agent: Activity protocol v1
+    Endpoint->>Agent: Activity protocol 2.0.0
     Agent->>Model: Responses API request
     Agent->>Tools: Optional tool calls
     Model-->>Agent: Model response

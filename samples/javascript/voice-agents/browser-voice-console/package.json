@@ -1,0 +1,25 @@
+{
+  "name": "foundry-samples-voice-agents-browser-voice-console",
+  "version": "1.0.0",
+  "description": "JavaScript Microsoft Foundry Voice Agents sample - browser-based voice agent console with realtime conversation and management UI",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@azure/ai-projects": "2.7.0"
+  },
+  "devDependencies": {
+    "@azure/core-auth": "^1.11.0",
+    "@azure/identity": "^4.13.0",
+    "@types/node": "^22.0.0",
+    "typescript": "~6.0.2",
+    "vite": "^7.3.3"
+  }
+}

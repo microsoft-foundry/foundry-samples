@@ -7,9 +7,6 @@ runs the personal-finance harness agent in an interactive console; this project 
 instructions, tools, skills, background agent, confined shell, and CodeAct provider while replacing
 the console host with the native Foundry ``ResponsesHostServer``.
 
-File-write, shell, and trade approvals are temporarily disabled as a workaround for
-https://github.com/microsoft/agent-framework/issues/7267.
-
 It preserves Post 3's four "scaling" capabilities:
 
 1. Skills        — file-based finance skills (valuation, risk-scoring) under ``skills/``, loaded on
@@ -168,9 +165,7 @@ def get_stock_price(
     }
 
 
-# Temporarily bypass the broken Responses approval handshake:
-# https://github.com/microsoft/agent-framework/issues/7267
-@tool(approval_mode="never_require")
+@tool(approval_mode="always_require")
 def place_trade(
     symbol: Annotated[str, "The stock ticker symbol to trade, e.g. MSFT."],
     action: Annotated[Literal["buy", "sell"], "Either 'buy' or 'sell'."],
@@ -286,11 +281,6 @@ def _build_shell() -> LocalShellTool:
             ],
         ),
         timeout=15,
-        # Approval is temporarily disabled because the Responses
-        # approval handshake can leave an approved function call unanswered:
-        # https://github.com/microsoft/agent-framework/issues/7267
-        approval_mode="never_require",
-        acknowledge_unsafe=True,
     )
 
 
@@ -318,8 +308,8 @@ def _build_agent(client: FoundryChatClient, skills_provider: SkillsProvider) -> 
 
     # Turn the chat client into a harness agent with Post 3's four "scaling" capabilities: skills
     # (our own provider), background agents, a confined shell, and CodeAct. Read-only file tools are
-    # auto-approved so reading the portfolio is frictionless. File-write, trade, and shell approvals
-    # are temporarily disabled because of the upstream Responses bug.
+    # auto-approved so reading the portfolio is frictionless. File writes, trades, and shell
+    # commands still require approval.
     return create_harness_agent(
         client=client,
         agent_instructions=FINANCE_INSTRUCTIONS,
@@ -339,10 +329,6 @@ def _build_agent(client: FoundryChatClient, skills_provider: SkillsProvider) -> 
         # session-bound rule; under the host that middleware isn't wired, so opt the read-only tools
         # out of approval directly.
         file_access_disable_readonly_tool_approval=True,
-        # Temporarily bypass file-write approvals because the Responses approval handshake can
-        # leave an approved function call unanswered:
-        # https://github.com/microsoft/agent-framework/issues/7267
-        file_access_disable_write_tool_approval=True,
         context_providers=context_providers,
         mode_provider=AgentModeProvider(default_mode="execute"),
         # The Responses host translates and persists approval requests; the harness session-bound

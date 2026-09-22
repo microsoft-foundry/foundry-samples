@@ -1,0 +1,5 @@
+name: Voice Agent Realtime Text and Tools
+description: Send text to a voice agent, stream its text/audio response, and handle a local function tool call.
+
+build: "npm install --registry=https://registry.npmjs.org/"
+validate: "npx tsc --noEmit"

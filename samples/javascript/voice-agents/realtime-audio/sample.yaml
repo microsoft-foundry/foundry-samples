@@ -1,0 +1,4 @@
+name: Voice Agent Realtime Audio Streaming
+description: Stream raw PCM16 audio to a voice agent over a realtime connection and save the streamed audio response.
+
+build: "npm install --registry=https://registry.npmjs.org/"

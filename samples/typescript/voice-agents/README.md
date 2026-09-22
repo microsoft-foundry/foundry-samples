@@ -5,9 +5,49 @@ languages:
 products:
 - ai-services
 - azure
-description: Placeholder for upcoming Microsoft Foundry Voice Agents TypeScript samples.
+description: Microsoft Foundry Voice Agents samples in TypeScript, covering voice agent configuration, generation, realtime audio/text streaming, and telephony inspection.
 ---
 
 # 🎙️ Voice Agents TypeScript Samples
 
-Placeholder — samples will be added here in a follow-up pull request.
+Samples for Microsoft Foundry **Voice Agents**, a preview feature of the [`@azure/ai-projects`](https://www.npmjs.com/package/@azure/ai-projects) SDK that lets an agent hold a spoken, real-time conversation over a WebSocket connection.
+
+Voice Agents are gated behind an opt-in preview header, sent automatically by these samples via the `foundry-features: VoiceAgents=V1Preview` request option (or the equivalent `{ foundryFeatures: "VoiceAgents=V1Preview" }` shorthand).
+
+These are TypeScript ports of the [JavaScript Voice Agents samples](../../javascript/voice-agents), with the same behavior and structure. For a browser-based voice console, see [`browser-voice-console`](../../javascript/voice-agents/browser-voice-console) in the JavaScript samples - it is already written in TypeScript internally.
+
+## Samples
+
+| Sample | Description |
+| --- | --- |
+| [`configure-voice-agent`](./configure-voice-agent) | Create a self-deployed voice agent definition with a greeting and disabled conversation storage, then retrieve and delete it. |
+| [`generate-voice-agent`](./generate-voice-agent) | Generate a managed voice agent from a natural-language goal and inspect its generated definition. |
+| [`manage-voice-agent`](./manage-voice-agent) | Full agent management lifecycle: create, read, update, list, version history, enable/disable, and delete. |
+| [`realtime-audio`](./realtime-audio) | Stream raw PCM16 audio to a voice agent over a realtime connection and save the streamed audio response. |
+| [`realtime-text-and-tools`](./realtime-text-and-tools) | Send text to a voice agent, stream its text/audio response, and handle a local function tool call. |
+| [`voice-agent-conversations`](./voice-agent-conversations) | Inspect a stored voice agent conversation - its items and model responses - through the Conversation REST API. |
+| [`telephony-inspection`](./telephony-inspection) | Read-only inspection of a voice agent's telephony bindings, transfer targets, and call history. |
+
+## Prerequisites
+
+- Node.js >= 22
+- An Azure subscription with a [Microsoft Foundry](https://ai.azure.com) project that has Voice Agents enabled, and a realtime/cascaded voice model deployment (for example `gpt-realtime`)
+- Sign in with the Azure CLI so [`DefaultAzureCredential`](https://www.npmjs.com/package/@azure/identity) can authenticate: `az login`
+- Your identity needs the **Azure AI User** role (or equivalent) on the Foundry project
+
+## Running a sample
+
+Each sample is self-contained. From a sample's folder:
+
+```bash
+npm install
+cp .env-template .env   # then fill in your values
+npm start
+```
+
+`npm start` runs the sample directly from TypeScript source via [`tsx`](https://www.npmjs.com/package/tsx). Use `npm run build` to type-check and emit compiled JavaScript to `dist/`.
+
+## Learn more
+
+- [`@azure/ai-projects` on npm](https://www.npmjs.com/package/@azure/ai-projects)
+- [Azure SDK for JS – ai-projects voice agent samples](https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/ai/ai-projects/samples-dev/agents)

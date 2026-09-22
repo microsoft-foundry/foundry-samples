@@ -1,0 +1,19 @@
+{
+  "name": "foundry-samples-voice-agents-configure-voice-agent",
+  "version": "1.0.0",
+  "description": "JavaScript Microsoft Foundry Voice Agents sample - configure and retrieve a voice agent definition",
+  "license": "MIT",
+  "type": "module",
+  "main": "app.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "@azure/ai-projects": "2.7.0",
+    "@azure/identity": "^4.13.0",
+    "dotenv": "^17.2.1"
+  }
+}
