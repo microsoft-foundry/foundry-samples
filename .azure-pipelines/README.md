@@ -112,6 +112,28 @@ Each job publishes diagnostics and its result. The summary publishes
 Voice Live uses a dedicated smoke client and audio fixture under the hosted-agent
 scripts.
 
+### Shared Teams connection fixtures
+
+With `SKIP_PROVISION=true`, the Python and C# Teams cells reuse
+`workiq-teams-conn` and `workiq-calendar-conn` in the configured Foundry project.
+These must already exist, have the expected WorkIQ targets/authentication, and
+be readable by the pipeline identity. CI verifies their presence before deploy;
+it does not create, update, or delete these shared fixtures. In particular, a
+connection created through a legacy AML workspace cannot be updated through the
+Foundry project merely because it is visible there.
+
+`discover-samples.sh` explicitly lists these fixtures in each Teams record's
+`sharedConnections`. During scaffold, the runner removes only those connection
+service declarations and their `uses` edges from the **temporary job-local**
+`azure.yaml`, while preserving the toolbox's `tools[].connection` bindings. The
+cell still deploys and cleans up its own uniquely named toolbox. Shared names
+are saved in the state artifact for preflight, not connection cleanup.
+
+Committed sample manifests are never rewritten. With `SKIP_PROVISION` disabled,
+connection declarations remain deployable. Other samples are unaffected unless
+explicitly added to this reuse policy; a shared-toolbox matrix override continues
+to use its existing separate preparation path.
+
 ### Migration coverage limits
 
 The initial port includes 29 behavior contracts and 45 legacy payloads for

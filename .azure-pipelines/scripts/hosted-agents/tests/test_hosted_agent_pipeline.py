@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check phase boundaries without provisioning or invoking Azure resources."""
 
+import json
 import os
 from pathlib import Path
 import re
@@ -245,6 +246,128 @@ class PipelineTests(unittest.TestCase):
         self.assertIn("REMOVED_SERVICES", prepare)
         self.assertIn("SHARED_ENDPOINT", prepare)
         self.assertIn('state=\'[]\'', prepare)
+
+    def test_shared_connection_policy_wiring(self):
+        discovery = (CI / "discover-samples.sh").read_text()
+        self.assertIn("sharedConnections: $shared_connections", discovery)
+        self.assertIn("samples/python/hosted-agents/agent-framework/responses/07-teams-activity", discovery)
+        self.assertIn("samples/csharp/hosted-agents/agent-framework/teams-activity", discovery)
+        self.assertIn("emit SHARED_CONNECTIONS", RUNNER)
+        self.assertIn('"${TOOLBOX_URL:-}" \\\n    "$shared_connections"', RUNNER)
+        # Execute the actual selection block: only warm runs opt into reuse.
+        start = RUNNER.index("  shared_connections='[]'")
+        end = RUNNER.index('  "$REPO_ROOT', start)
+        selection = RUNNER[start:end] + 'printf "%s" "$shared_connections"'
+        for skip in ("true", "false", ""):
+            result = subprocess.run(
+                [BASH, "-c", selection], capture_output=True, text=True, check=True,
+                env={**os.environ, "SKIP_PROVISION": skip,
+                     "SHARED_CONNECTIONS": '["workiq-calendar-conn"]'},
+            )
+            self.assertEqual(json.loads(result.stdout),
+                             ["workiq-calendar-conn"] if skip == "true" else [])
+
+    def test_hydrate_emits_shared_connections_and_defaults_old_records(self):
+        matrix = self.work / "HostedAgentSamplesMatrix"
+        matrix.mkdir()
+        for shared in (None, ["workiq-teams-conn", "workiq-calendar-conn"]):
+            record = {"comboId": "teams-container"}
+            if shared is not None:
+                record["sharedConnections"] = shared
+            (matrix / "entries.json").write_text(json.dumps([record]))
+            result = self.run_phase(
+                "hydrate", keep=("STEP_HYDRATE_COMBO_RECORD",),
+                env={"PIPELINE_WORKSPACE": str(self.work), "COMBO_ID": "teams-container"},
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            expected = json.dumps(shared or [], separators=(",", ":"))
+            self.assertIn("##vso[task.setvariable variable=SHARED_CONNECTIONS]" + expected + "\n", result.stdout)
+
+    def connection_preflight(self, *, declared=(), shared=(), available=(),
+                             endpoint="https://example.test/api/projects/test",
+                             list_status=0, malformed_state=False):
+        tools = self.work / "bin"
+        tools.mkdir(exist_ok=True)
+        # Model the external CLI boundaries; execute the real preflight body.
+        scripts = {
+            "yq": '#!/usr/bin/env bash\nprintf "%s\\n" "$DECLARED_CONNECTIONS"\n',
+            "azd": '''#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\\n' "$*" >> "$AZD_CALLS"
+case "$1 $2 $3" in
+  'env get-value AZURE_AI_PROJECT_ENDPOINT') printf '%s\\n' "$TEST_ENDPOINT" ;;
+  'ai connection list') printf '%s\\n' "$AVAILABLE_CONNECTIONS"; exit "$LIST_STATUS" ;;
+  'env set '*) ;;
+  *) exit 99 ;;
+esac
+''',
+        }
+        for name, content in scripts.items():
+            path = tools / name
+            path.write_text(content)
+            path.chmod(0o755)
+        state = self.work / "state.json"
+        state.write_text("invalid" if malformed_state else json.dumps({
+            "toolboxes": [{"name": "ci-e2e-tb-teams-tools-test"}],
+            "sharedConnections": list(shared),
+        }))
+        calls = self.work / "calls.txt"
+        calls.write_text("")
+        result = self.run_phase(
+            "prepare-deploy", keep=("STEP_VERIFY_FOUNDRY_PROJECT_CONNECTIONS",),
+            env={"PATH": str(tools) + os.pathsep + os.environ["PATH"],
+                 "WORK_DIR": str(self.work), "CI_TOOLBOX_STATE_FILE": str(state),
+                 "DECLARED_CONNECTIONS": json.dumps(list(declared)),
+                 "AVAILABLE_CONNECTIONS": json.dumps([{"name": n} for n in available]),
+                 "TEST_ENDPOINT": endpoint, "LIST_STATUS": str(list_status),
+                 "AZD_CALLS": str(calls)},
+        )
+        return result, calls.read_text()
+
+    def test_connection_preflight_checks_stripped_shared_dependencies(self):
+        names = ("workiq-calendar-conn", "workiq-teams-conn")
+        result, calls = self.connection_preflight(shared=names, available=names)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ai connection list --project-endpoint https://example.test/api/projects/test", calls)
+        self.assertIn("env set AZURE_AI_PROJECT_CONNECTION_NAMES " + ",".join(names), calls)
+        self.assertIn("ran:STEP_PRE_PULL_DOCKER_BASE_IMAGES", result.stdout)
+        self.assertNotIn("delete", calls)
+        self.assertNotIn("create", calls)
+
+    def test_connection_preflight_retains_independent_dependencies(self):
+        result, calls = self.connection_preflight(
+            declared=("independent", "workiq-calendar-conn"),
+            shared=("workiq-calendar-conn",),
+            available=("independent", "workiq-calendar-conn"),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("env set AZURE_AI_PROJECT_CONNECTION_NAMES independent,workiq-calendar-conn\n", calls)
+
+    def test_connection_preflight_missing_shared_dependency_stops_phase(self):
+        result, calls = self.connection_preflight(
+            shared=("workiq-calendar-conn", "workiq-teams-conn"),
+            available=("workiq-teams-conn",),
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Missing Foundry project connections", result.stdout)
+        self.assertIn("workiq-calendar-conn", result.stdout)
+        self.assertNotIn("env set", calls)
+        self.assertNotIn("ran:STEP_PRE_PULL_DOCKER_BASE_IMAGES", result.stdout)
+
+    def test_connection_preflight_empty_dependencies_skip_azure(self):
+        result, calls = self.connection_preflight()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls, "")
+
+    def test_connection_preflight_errors_fail_closed(self):
+        for options in ({"endpoint": ""}, {"list_status": 7}, {"malformed_state": True}):
+            with self.subTest(options=options):
+                result, calls = self.connection_preflight(
+                    shared=("workiq-calendar-conn",), **options,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn("env set", calls)
+                self.assertNotIn("ran:STEP_PRE_PULL_DOCKER_BASE_IMAGES", result.stdout)
 
     def test_log_presentation(self):
         cleanup = next(

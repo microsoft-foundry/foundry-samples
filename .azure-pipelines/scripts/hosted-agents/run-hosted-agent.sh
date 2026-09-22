@@ -47,6 +47,7 @@ emit PROTOCOL_VERSION "$(jq -r '.protocolVersion' <<< "$record")"
 emit IS_TOOLBOX       "$(jq -r '.isToolbox' <<< "$record")"
 emit TOOLBOX_LABEL    "$(jq -r '.toolboxLabel' <<< "$record")"
 emit TOOLBOX_URL      "$(jq -r '.toolboxUrl' <<< "$record")"
+emit SHARED_CONNECTIONS "$(jq -c '.sharedConnections // []' <<< "$record")"
 emit TOOLBOX_QUERY    "$(jq -r '.toolboxQuery' <<< "$record")"
 emit USE_WESTUS2      "$(jq -r '.useWestus2' <<< "$record")"
 emit VOICE_LIVE       "$(jq -r '.voiceLive' <<< "$record")"
@@ -499,13 +500,19 @@ if [ -f azure.yaml ]; then
   # connections before provision/verification/deploy, avoiding repeated
   # ARM writes to shared connections. Other cells isolate their owned
   # toolboxes. Only this temporary azure.yaml is rewritten.
+  # Reuse explicitly configured connection fixtures only in warm-project runs.
+  shared_connections='[]'
+  if [ "${SKIP_PROVISION:-}" = "true" ]; then
+    shared_connections=${SHARED_CONNECTIONS:-'[]'}
+  fi
   "$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/prepare-hosted-agent-ci-toolboxes.sh" \
     azure.yaml \
     "$CI_TOOLBOX_STATE_FILE" \
     "$BUILD_ID" \
     "$JOB_ATTEMPT" \
     "$COMBO_ID" \
-    "${TOOLBOX_URL:-}"
+    "${TOOLBOX_URL:-}" \
+    "$shared_connections"
 fi
 # Fail fast if the RAI policy placeholder survived into
 # azure.yaml (e.g. azd dropped the policies block at init).
@@ -681,16 +688,23 @@ STEP_PROVISION_AZURE_RESOURCES
 set -euo pipefail
 cd "$WORK_DIR"
 
-mapfile -t required_connections < <(
-  yq -r '
-    .services
-    | to_entries[]
-    | select(.value.host == "azure.ai.connection")
-    | .key
-  ' azure.yaml
-)
+# Read both retained declarations and the explicit external dependencies saved
+# before the job-local rewrite. Do not let removal of declarations skip preflight.
+# Capture command output before mapfile so parse/read failures propagate.
+connection_names=$(yq -o=json '
+  [.services | to_entries[] | select(.value.host == "azure.ai.connection") | .key]
+' azure.yaml)
+shared_connections='[]'
+if [ -n "${CI_TOOLBOX_STATE_FILE:-}" ] && [ -f "$CI_TOOLBOX_STATE_FILE" ]; then
+  shared_connections=$(jq -ce '.sharedConnections // [] | if type == "array" and all(.[]; type == "string" and length > 0) then . else error("Invalid sharedConnections state") end' "$CI_TOOLBOX_STATE_FILE")
+fi
+required_names=$(jq -r --argjson shared "$shared_connections" '. + $shared | unique[]' <<< "$connection_names")
+required_connections=()
+if [ -n "$required_names" ]; then
+  mapfile -t required_connections <<< "$required_names"
+fi
 if [ ${#required_connections[@]} -eq 0 ]; then
-  echo "No azure.ai.connection services declared; skipping connection verification."
+  echo "No declared or shared connection dependencies; skipping connection verification."
   exit 0
 fi
 

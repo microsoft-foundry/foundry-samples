@@ -360,6 +360,70 @@ assert_eq \
   "$(yq -o=json '.services.github-oauth-conn' "$work/owned.yaml" | jq -c '.')" \
   "owned toolbox isolation must preserve managed OAuth connection settings"
 
+# Warm-project Teams cells own their toolbox, but reuse explicitly named
+# connection fixtures. Both real manifests must keep the customer create path.
+shared_connections='["workiq-teams-conn","workiq-calendar-conn"]'
+expected_connections='["workiq-calendar-conn","workiq-teams-conn"]'
+for sample in \
+  samples/python/hosted-agents/agent-framework/responses/07-teams-activity \
+  samples/csharp/hosted-agents/agent-framework/teams-activity; do
+  manifest="$repo_root/$sample/azure.yaml"
+  original_hash=$(sha256sum "$manifest")
+  for mode in container code; do
+    cp "$manifest" "$work/teams-$mode.yaml"
+    "$prepare" "$work/teams-$mode.yaml" "$work/teams-$mode-state.json" 12345 1 "$sample-$mode" "" "$shared_connections" >/dev/null
+    assert_eq 0 "$(yq '[.services[] | select(.host == "azure.ai.connection")] | length' "$work/teams-$mode.yaml")" "shared connections must not be deployable"
+    assert_eq "$expected_connections" "$(jq -c '.sharedConnections' "$work/teams-$mode-state.json")" "shared dependencies must survive in preflight state"
+    assert_eq "$expected_connections" "$(yq -o=json '[.services[] | select(.host == "azure.ai.toolbox") | .tools[].connection]' "$work/teams-$mode.yaml" | jq -c 'sort')" "toolbox must resolve existing project connections"
+    assert_eq 0 "$(yq '[.services[] | .uses[]? | select(. == "workiq-teams-conn" or . == "workiq-calendar-conn")] | length' "$work/teams-$mode.yaml")" "connection uses edges must be removed"
+    assert_eq 1 "$(jq '.toolboxes | length' "$work/teams-$mode-state.json")" "Teams toolbox must remain cell-owned"
+    toolbox_name=$(jq -r '.toolboxes[0].name' "$work/teams-$mode-state.json")
+    assert_eq "$toolbox_name" "$(yq -r '.services[] | select(.host == "azure.ai.agent") | .env.TOOLBOX_NAME' "$work/teams-$mode.yaml")" "runtime must use isolated Teams toolbox"
+  done
+  [ "$(jq -r '.toolboxes[0].name' "$work/teams-container-state.json")" != "$(jq -r '.toolboxes[0].name' "$work/teams-code-state.json")" ] || fail "deploy modes must not share a toolbox"
+  cp "$manifest" "$work/teams-fresh.yaml"
+  "$prepare" "$work/teams-fresh.yaml" "$work/teams-fresh-state.json" 12345 1 fresh "" '[]' >/dev/null
+  assert_eq 2 "$(yq '[.services[] | select(.host == "azure.ai.connection")] | length' "$work/teams-fresh.yaml")" "fresh deployment must retain connection declarations"
+  assert_eq '[]' "$(jq -c '.sharedConnections' "$work/teams-fresh-state.json")" "fresh deployment must not claim shared dependencies"
+  assert_eq "$original_hash" "$(sha256sum "$manifest")" "committed Teams manifest must remain unchanged"
+done
+
+# Preserve independently declared connections. Fail closed on policy/config
+# drift, credential expressions, aliases, or consumers outside the toolbox.
+cp "$manifest" "$work/shared-teams.yaml"
+yq -i '.services.independent = {"host": "azure.ai.connection", "uses": ["ai-project"], "authType": "ApiKey"} | .services.empty-toolbox = {"host": "azure.ai.toolbox", "uses": ["ai-project"]}' "$work/shared-teams.yaml"
+"$prepare" "$work/shared-teams.yaml" "$work/shared-teams-state.json" 12345 1 independent "" "$shared_connections" >/dev/null
+assert_eq ApiKey "$(yq -r '.services.independent.authType' "$work/shared-teams.yaml")" "independent connection must remain managed"
+for unsafe in unknown nonconnection alias credential consumer empty-toolbox malformed-toolbox unbound invalid combined; do
+  cp "$manifest" "$work/unsafe.yaml"
+  names="$shared_connections"
+  endpoint=""
+  case "$unsafe" in
+    unknown) names='["missing-conn"]' ;;
+    nonconnection) names='["ai-project"]' ;;
+    alias) yq -i '.services.workiq-calendar-conn.name = "different-name"' "$work/unsafe.yaml" ;;
+    credential) yq -i '(.services[] | select(.host == "azure.ai.agent") | .env.CREDENTIAL) = "$${{connections.workiq-calendar-conn.api_key}}"' "$work/unsafe.yaml" ;;
+    consumer) yq -i '.services.worker = {"host": "appservice", "uses": ["workiq-calendar-conn"]}' "$work/unsafe.yaml" ;;
+    empty-toolbox|malformed-toolbox)
+      yq -i '.services.extra-toolbox = {"host": "azure.ai.toolbox", "uses": ["ai-project"]} | .services.worker = {"host": "appservice", "env": {"CREDENTIAL": "$${{connections.workiq-calendar-conn.api_key}}"}}' "$work/unsafe.yaml"
+      if [ "$unsafe" = malformed-toolbox ]; then
+        yq -i '.services.extra-toolbox.tools = [42]' "$work/unsafe.yaml"
+      fi
+      ;;
+    unbound) yq -i 'del(.services.teams-tools.tools)' "$work/unsafe.yaml" ;;
+    invalid) names='{}' ;;
+    combined) endpoint="$shared_endpoint" ;;
+  esac
+  cp "$work/unsafe.yaml" "$work/unsafe-original.yaml"
+  if "$prepare" "$work/unsafe.yaml" "$work/unsafe-state.json" 12345 1 unsafe "$endpoint" "$names" >"$work/unsafe.log" 2>&1; then
+    fail "unsafe shared connection policy must be rejected: $unsafe"
+  fi
+  cmp "$work/unsafe-original.yaml" "$work/unsafe.yaml" || fail "rejected policy must not modify manifest: $unsafe"
+done
+
+# Shared-toolbox overrides never acquire shared-connection lifecycle state.
+assert_eq '[]' "$(jq -c '.sharedConnections' "$work/shared-state.json")" "shared toolbox override must not own or preflight replaced connections"
+
 # Mock the azd toolbox CRUD surface so cleanup behavior is deterministic and
 # does not require Azure credentials.
 mkdir -p "$work/bin" "$work/times"
@@ -431,6 +495,14 @@ unset MOCK_AZD_DELETE_NOOP_NAME
 assert_eq 1 "$cleanup_exit" "cleanup must fail when deletion cannot be verified"
 assert_eq 1 "$(jq '.results | length' "$work/cell-still-present.json")" "cleanup result must not contain contradictory duplicates"
 assert_eq still_present "$(jq -r '.results[0].outcome' "$work/cell-still-present.json")" "cleanup must report the verified final state"
+
+# Cleanup must consume only the toolbox list, never sharedConnections. The mock
+# rejects every non-toolbox azd command, including any connection deletion.
+teams_name=$(jq -r '.toolboxes[0].name' "$work/teams-container-state.json")
+jq -n --arg name "$teams_name" '{toolboxes:[{name:$name}]}' > "$MOCK_AZD_STORE"
+"$cleanup" cell "$work/teams-container-state.json" https://example.test/project "$work/teams-cleanup.json" >/dev/null
+assert_eq deleted "$(jq -r '.results[0].outcome' "$work/teams-cleanup.json")" "Teams toolbox must still be cleaned up"
+assert_eq "$expected_connections" "$(jq -c '.sharedConnections' "$work/teams-container-state.json")" "shared dependency state must remain unchanged by cleanup"
 
 now=$(date +%s)
 old_name=ci-e2e-tb-old-000000000001

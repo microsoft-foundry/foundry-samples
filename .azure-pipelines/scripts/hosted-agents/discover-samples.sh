@@ -256,7 +256,16 @@ emit_entries() {
         )
       }'
   else
+    # These connections are fixtures in the warm CI project, not cell-owned
+    # resources. The scaffold phase applies this policy only for skip-provision
+    # runs; normal sample/fresh-resource deployments retain their declarations.
+    local shared_connections='[]'
+    case "$sample_dir" in
+      samples/python/hosted-agents/agent-framework/responses/07-teams-activity|samples/csharp/hosted-agents/agent-framework/teams-activity)
+        shared_connections='["workiq-teams-conn","workiq-calendar-conn"]' ;;
+    esac
     echo "$deploy_modes" | jq -c \
+      --argjson shared_connections "$shared_connections" \
       --arg id "$sample_id" --arg path "$sample_dir" --arg name "$agent_name" \
       --arg protocol "$protocol" --arg protocol_version "$protocol_version" \
       --arg use_westus2 "$use_westus2" \
@@ -268,6 +277,7 @@ emit_entries() {
         protocolVersion: $protocol_version,
         isToolbox: "false",
         toolboxLabel: "", toolboxUrl: "", toolboxQuery: "",
+        sharedConnections: $shared_connections,
         useWestus2: $use_westus2,
         voiceLive: $voiceLive,
         deployMode: .,

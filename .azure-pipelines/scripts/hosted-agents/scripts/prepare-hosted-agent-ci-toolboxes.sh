@@ -5,11 +5,11 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 <azure.yaml> <state.json> <run-id> <run-attempt> <combo-id> [shared-toolbox-endpoint]" >&2
+  echo "Usage: $0 <azure.yaml> <state.json> <run-id> <run-attempt> <combo-id> [shared-toolbox-endpoint] [shared-connections-json]" >&2
   exit 2
 }
 
-[ "$#" -eq 5 ] || [ "$#" -eq 6 ] || usage
+[ "$#" -ge 5 ] && [ "$#" -le 7 ] || usage
 
 manifest=$1
 state_file=$2
@@ -17,10 +17,55 @@ run_id=$3
 run_attempt=$4
 combo_id=$5
 shared_endpoint=${6:-}
+shared_connections=${7:-'[]'}
 
 [ -f "$manifest" ] || { echo "Manifest not found: $manifest" >&2; exit 1; }
 command -v yq >/dev/null || { echo "yq is required" >&2; exit 1; }
 command -v jq >/dev/null || { echo "jq is required" >&2; exit 1; }
+
+# Explicitly selected warm-project fixtures are read-only dependencies, even
+# when the cell owns its toolbox. Never infer ownership from SKIP_PROVISION or
+# from connection existence alone. Callers pass [] for fresh-resource runs.
+shared_connections=$(jq -ce '
+  if type == "array" and all(.[]; type == "string" and test("^[A-Za-z0-9_-]+$"))
+  then unique else error("Expected an array of shared connection names") end
+' <<< "$shared_connections")
+if [ "$shared_connections" != '[]' ]; then
+  [ -z "$shared_endpoint" ] || { echo "Cannot combine shared connections with a shared toolbox override" >&2; exit 1; }
+  manifest_json=$(yq -o=json '.' "$manifest")
+  # Only toolbox-upstream services with unambiguous resource names qualify.
+  # Refuse configuration drift instead of silently dropping a new consumer.
+  if ! jq -e --argjson names "$shared_connections" '
+      .services as $services |
+      all($names[]; . as $name |
+        $services[$name].host == "azure.ai.connection" and
+        ($services[$name].name // $name) == $name and
+        any($services[]; .host == "azure.ai.toolbox" and
+          any(.uses[]?; . == $name) and any(.tools[]?; .connection == $name)))
+    ' <<< "$manifest_json" >/dev/null; then
+    echo "Shared connections must name declared toolbox-upstream connection services" >&2
+    exit 1
+  fi
+  unsafe_reference=$(jq --argjson names "$shared_connections" '
+      .services as $services |
+      any($services | to_entries[] | select(.key as $key | $names | index($key) | not) | .value;
+        (if .host == "azure.ai.toolbox" then del(.uses, .tools[]?.connection)
+         elif .host == "azure.ai.agent" and any(.uses[]?; $services[.].host == "azure.ai.toolbox")
+         then del(.uses) else . end) |
+        any(.. | strings; . as $text | any($names[]; . as $name | $text | contains($name))))
+    ' <<< "$manifest_json")
+  if [ "$unsafe_reference" != "false" ]; then
+    echo "Shared connection is referenced outside toolbox bindings; refusing to remove its declaration" >&2
+    exit 1
+  fi
+  removed=$(jq -c 'map({key: ., value: true}) | from_entries' <<< "$shared_connections")
+  REMOVED_SERVICES="$removed" yq -i '
+    .services |= with_entries(select(env(REMOVED_SERVICES)[.key] != true)) |
+    (.services[] | select(has("uses")) | .uses) |=
+      map(select(env(REMOVED_SERVICES)[.] != true))
+  ' "$manifest"
+  echo "Reusing shared project connections (read-only): $(jq -r 'join(", ")' <<< "$shared_connections")"
+fi
 
 # Matrix cells use a pre-existing toolbox instead of the sample's tool surface.
 # Since connections beta.7, leaving the upstream connection services declared
@@ -176,7 +221,8 @@ for original in "${originals[@]}"; do
 done
 
 mkdir -p "$(dirname "$state_file")"
-jq -n --argjson toolboxes "$state" '{toolboxes:$toolboxes}' > "$state_file"
+jq -n --argjson toolboxes "$state" --argjson sharedConnections "$shared_connections" \
+  '{toolboxes:$toolboxes, sharedConnections:$sharedConnections}' > "$state_file"
 
 # Every uses edge must still resolve to a declared service after rewriting.
 # shellcheck disable=SC2016 # $services is a yq variable, not a shell variable.
