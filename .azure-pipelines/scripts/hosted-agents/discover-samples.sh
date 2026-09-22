@@ -256,14 +256,18 @@ emit_entries() {
         )
       }'
   else
-    # These connections are fixtures in the warm CI project, not cell-owned
-    # resources. The scaffold phase applies this policy only for skip-provision
-    # runs; normal sample/fresh-resource deployments retain their declarations.
-    local shared_connections='[]'
-    case "$sample_dir" in
-      samples/python/hosted-agents/agent-framework/responses/07-teams-activity|samples/csharp/hosted-agents/agent-framework/teams-activity)
-        shared_connections='["workiq-teams-conn","workiq-calendar-conn"]' ;;
-    esac
+    # In warm-project CI, a sample-owned toolbox remains cell-owned but its
+    # upstream connections are existing project fixtures. Derive the latter
+    # from the manifest graph rather than carrying a sample-specific allow-list.
+    # The scaffold phase applies reuse only with SKIP_PROVISION=true; fresh
+    # resource deployments retain every connection declaration.
+    local shared_connections
+    shared_connections=$(yq -o=json '
+      .services as $services |
+      [.services | to_entries[] | select(.value.host == "azure.ai.toolbox") |
+        .value.uses[]? | select($services[.].host == "azure.ai.connection")] |
+      unique
+    ' "$yaml_file")
     echo "$deploy_modes" | jq -c \
       --argjson shared_connections "$shared_connections" \
       --arg id "$sample_id" --arg path "$sample_dir" --arg name "$agent_name" \

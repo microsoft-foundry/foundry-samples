@@ -496,6 +496,13 @@ assert_eq 1 "$cleanup_exit" "cleanup must fail when deletion cannot be verified"
 assert_eq 1 "$(jq '.results | length' "$work/cell-still-present.json")" "cleanup result must not contain contradictory duplicates"
 assert_eq still_present "$(jq -r '.results[0].outcome' "$work/cell-still-present.json")" "cleanup must report the verified final state"
 
+# Discovery derives the two Teams connections from their toolbox graph for both
+# languages and deploy modes; no sample-specific mapping exists in the runner.
+discovery=$(cd "$repo_root" && DISCOVERY_MODE=all SAMPLE_FILTER=teams-activity TOOLBOX_ENDPOINT_LIST='' CODE_DEPLOY_ENABLED='' bash .azure-pipelines/scripts/hosted-agents/discover-samples.sh)
+assert_eq 4 "$(jq '.count' <<< "$discovery")" "Teams discovery must emit Python/C# x container/code"
+assert_eq "$expected_connections" "$(jq -c '[.entries[].sharedConnections[]] | unique | sort' <<< "$discovery")" "Teams discovery must derive toolbox-upstream connections"
+assert_eq 4 "$(jq '[.entries[] | select(.sharedConnections | length == 2)] | length' <<< "$discovery")" "every Teams deployment mode must inherit the derived connections"
+
 # Cleanup must consume only the toolbox list, never sharedConnections. The mock
 # rejects every non-toolbox azd command, including any connection deletion.
 teams_name=$(jq -r '.toolboxes[0].name' "$work/teams-container-state.json")

@@ -84,11 +84,12 @@ explicit operational opt-out, not a passing validation result.
 | `GH_PAT`, `PLAYWRIGHT_SERVICE_ACCESS_TOKEN` | Optional sample-specific secrets; store as secret variables, never in YAML |
 | `AZURE_AI_RAI_POLICY_ID`, `CONTENT_SAFETY_TEST_PROMPT` | Optional content-safety validation configuration |
 
-With `SKIP_PROVISION=true`, Python and C# Teams jobs require existing, correctly
-configured `workiq-teams-conn` and `workiq-calendar-conn` connections readable by
-the pipeline identity. CI verifies and reuses them without updating or deleting
-them, rewriting only the temporary job-local `azure.yaml`; committed sample
-manifests remain unchanged. Each job still owns and cleans up its own toolbox.
+With `SKIP_PROVISION=true`, CI derives each sample-owned toolbox's upstream
+connections from its `azure.yaml` and treats them as existing, read-only project
+fixtures. They must be correctly configured and readable by the pipeline identity.
+CI verifies and reuses them without updating or deleting them, rewriting only the
+temporary job-local `azure.yaml`; committed sample manifests remain unchanged.
+Each job still owns and cleans up its own toolbox.
 
 The runner forwards configured variables through its existing prefix allow-list.
 Read the runner's configuration phase when a sample introduces a new variable.

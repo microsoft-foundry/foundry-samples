@@ -250,8 +250,11 @@ class PipelineTests(unittest.TestCase):
     def test_shared_connection_policy_wiring(self):
         discovery = (CI / "discover-samples.sh").read_text()
         self.assertIn("sharedConnections: $shared_connections", discovery)
-        self.assertIn("samples/python/hosted-agents/agent-framework/responses/07-teams-activity", discovery)
-        self.assertIn("samples/csharp/hosted-agents/agent-framework/teams-activity", discovery)
+        self.assertIn('.value.host == "azure.ai.toolbox"', discovery)
+        self.assertIn('$services[.].host == "azure.ai.connection"', discovery)
+        self.assertNotIn("workiq-teams-conn", discovery)
+        self.assertNotIn("workiq-calendar-conn", discovery)
+        self.assertNotIn("responses/07-teams-activity|samples/csharp", discovery)
         self.assertIn("emit SHARED_CONNECTIONS", RUNNER)
         self.assertIn('"${TOOLBOX_URL:-}" \\\n    "$shared_connections"', RUNNER)
         # Execute the actual selection block: only warm runs opt into reuse.
