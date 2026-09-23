@@ -1,5 +1,9 @@
-package com.azure.ai.agents;
+package com.azure.ai.foundry.samples;
 
+import com.azure.ai.agents.AgentsClient;
+import com.azure.ai.agents.AgentsClientBuilder;
+import com.azure.ai.agents.models.AgentVersionDetails;
+import com.azure.ai.agents.models.PromptAgentDefinition;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.openai.client.OpenAIClient;
 import com.openai.models.conversations.Conversation;
@@ -10,14 +14,19 @@ public class ChatWithAgent {
     public static void main(String[] args) {
         // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
         String foundryProjectEndpoint = "your_project_endpoint";
-        String foundryAgentName = "your_agent_name";
+        String foundryAgentName = "your-agent-name";
         
         AgentsClientBuilder builder = new AgentsClientBuilder()
                 .credential(new DefaultAzureCredentialBuilder().build())
                 .endpoint(foundryProjectEndpoint);
 
+        AgentsClient agentsClient = builder.buildAgentsClient();
+        PromptAgentDefinition agentDefinition = new PromptAgentDefinition("gpt-5-mini")
+                .setInstructions("You are a helpful assistant that answers general questions");
+        AgentVersionDetails agent = agentsClient.createAgentVersion(foundryAgentName, agentDefinition);
+
         // Create an OpenAI client bound to the agent endpoint
-        OpenAIClient openai = builder.buildAgentScopedOpenAIClient(foundryAgentName);
+        OpenAIClient openai = builder.buildAgentScopedOpenAIClient(agent.getName());
 
         // Create a conversation for multi-turn chat
         Conversation conversation = openai.conversations().create();

@@ -412,6 +412,52 @@ print_value(resolve(query))
                 'var endpoint = "https://validation.example/api/projects/project";\n',
             )
 
+    def test_live_service_substitutions_generate_unique_name(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sample = root / "samples" / "python" / "generated-name"
+            sample.mkdir(parents=True)
+            (sample / "quickstart.py").write_text(
+                'AGENT_NAME = "your-agent-name"\n',
+                encoding="utf-8",
+            )
+            (sample / "sample.yaml").write_text(
+                "name: generated-name\n"
+                "live_service_validation:\n"
+                "  command: \"grep -q 'validation-' quickstart.py\"\n"
+                "  substitutions:\n"
+                "    - file: quickstart.py\n"
+                "      replacements:\n"
+                "        - placeholder: \"your-agent-name\"\n"
+                "          generate: unique_name\n",
+                encoding="utf-8",
+            )
+            self.write_fake_yq(root)
+            env = {
+                **os.environ,
+                "PATH": f"{root}{os.pathsep}{Path(sys.executable).parent}{os.pathsep}{os.environ['PATH']}",
+                "SKIP_PROVISION": "true",
+                "GITHUB_RUN_ID": "123",
+                "GITHUB_RUN_ATTEMPT": "1",
+            }
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "validate-sample.sh"),
+                    "--mode",
+                    "live-service",
+                    "--sample-dir",
+                    str(sample),
+                ],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn("verdict=pass", completed.stdout)
+            self.assertNotIn("your-agent-name", (sample / "quickstart.py").read_text(encoding="utf-8"))
+
     def test_live_service_substitutions_reject_trailing_parent_directory_paths(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

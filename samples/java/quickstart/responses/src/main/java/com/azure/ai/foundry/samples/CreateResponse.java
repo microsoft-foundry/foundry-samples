@@ -1,5 +1,7 @@
-package com.azure.ai.agents;
+package com.azure.ai.foundry.samples;
 
+import com.azure.ai.agents.AgentsClientBuilder;
+import com.azure.ai.agents.ResponsesClient;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseCreateParams;

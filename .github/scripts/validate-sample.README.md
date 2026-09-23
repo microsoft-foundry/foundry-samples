@@ -99,9 +99,10 @@ The contract is:
   intentionally contain copy/paste instructional placeholders, such as
   `"your_project_endpoint"`, but the validation caller owns the real value. Each
   substitution names a file inside the sample directory and one or more
-  `placeholder` to `env` replacements. The validator requires each environment
-  variable to be non-empty, replaces every exact placeholder occurrence in the
-  workflow checkout before running the live-service command, and returns
+  `placeholder` replacements backed by either a non-empty `env` variable or
+  `generate: unique_name` for a run-unique resource name. The validator replaces
+  every exact placeholder occurrence in the workflow checkout before running the
+  live-service command, and returns
   infrastructure error (`2`) if the target file is outside the sample directory,
   missing, malformed, or does not contain the placeholder. Substitutions are
   validated and applied in memory first and written only after the whole

@@ -57,6 +57,7 @@ MODE="build-readiness"
 LIVE_SERVICE_VALIDATION_DECLARED=""
 SAMPLE_YAML_FAIL_STEP=""
 PYTHON_VENV_DIR=""
+GENERATED_RESOURCE_NAME=""
 
 usage() {
     cat <<'EOF'
@@ -397,6 +398,17 @@ escape_bash_pattern_literal() {
     printf '%s' "$value"
 }
 
+generate_unique_resource_name() {
+    local sanitized path_hash run_id
+    sanitized="$(printf '%s' "$SAMPLE_DIR" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-')"
+    sanitized="$(printf '%s' "$sanitized" | sed -E 's/-+/-/g; s/^-+//; s/-+$//')"
+    [ -n "$sanitized" ] || sanitized="sample"
+    path_hash="$(printf '%s' "$sanitized" | cksum | cut -d' ' -f1)"
+    sanitized="${sanitized:0:12}"
+    run_id="${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-0}"
+    printf 'validation-%s-%s-%s-%s' "$sanitized" "$path_hash" "$run_id" "$RANDOM"
+}
+
 apply_live_service_substitutions() {
     local yaml="$SAMPLE_DIR/sample.yaml"
     if [ "$(yq eval '.live_service_validation | has("substitutions")' "$yaml" 2>/dev/null)" != "true" ]; then
@@ -505,17 +517,40 @@ apply_live_service_substitutions() {
                 error "sample.yaml live_service_validation.substitutions[$i].replacements[$j].placeholder must be a non-empty string"
             placeholder_pattern="$(escape_bash_pattern_literal "$placeholder")"
 
-            env_tag="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j].env | tag" "$yaml" 2>/dev/null)" ||
-                error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j].env: $yaml"
-            [ "$env_tag" = "!!str" ] ||
-                error "sample.yaml live_service_validation.substitutions[$i].replacements[$j].env must be a string"
-            env_name="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j].env" "$yaml" 2>/dev/null)" ||
-                error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j].env: $yaml"
-            [[ "$env_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] ||
-                error "sample.yaml live_service_validation.substitutions[$i].replacements[$j].env is not a valid environment-variable name: $env_name"
-            [ -n "${!env_name:-}" ] ||
-                error "required live-service substitution environment variable is missing or empty: $env_name"
-            env_value="${!env_name}"
+            local has_env has_generate generate_tag generate_kind
+            has_env="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j] | has(\"env\")" "$yaml" 2>/dev/null)" ||
+                error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j]: $yaml"
+            has_generate="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j] | has(\"generate\")" "$yaml" 2>/dev/null)" ||
+                error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j]: $yaml"
+            if [ "$has_env" = "true" ] && [ "$has_generate" = "true" ]; then
+                error "sample.yaml live_service_validation.substitutions[$i].replacements[$j] must declare exactly one of env or generate"
+            fi
+            if [ "$has_generate" = "true" ]; then
+                generate_tag="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j].generate | tag" "$yaml" 2>/dev/null)" ||
+                    error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j].generate: $yaml"
+                [ "$generate_tag" = "!!str" ] ||
+                    error "sample.yaml live_service_validation.substitutions[$i].replacements[$j].generate must be a string"
+                generate_kind="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j].generate" "$yaml" 2>/dev/null)" ||
+                    error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j].generate: $yaml"
+                [ "$generate_kind" = "unique_name" ] ||
+                    error "unsupported live-service substitution generate kind: $generate_kind"
+                [ -n "$GENERATED_RESOURCE_NAME" ] || GENERATED_RESOURCE_NAME="$(generate_unique_resource_name)"
+                env_value="$GENERATED_RESOURCE_NAME"
+            elif [ "$has_env" = "true" ]; then
+                env_tag="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j].env | tag" "$yaml" 2>/dev/null)" ||
+                    error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j].env: $yaml"
+                [ "$env_tag" = "!!str" ] ||
+                    error "sample.yaml live_service_validation.substitutions[$i].replacements[$j].env must be a string"
+                env_name="$(yq eval ".live_service_validation.substitutions[$i].replacements[$j].env" "$yaml" 2>/dev/null)" ||
+                    error "failed to read sample.yaml live_service_validation.substitutions[$i].replacements[$j].env: $yaml"
+                [[ "$env_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] ||
+                    error "sample.yaml live_service_validation.substitutions[$i].replacements[$j].env is not a valid environment-variable name: $env_name"
+                [ -n "${!env_name:-}" ] ||
+                    error "required live-service substitution environment variable is missing or empty: $env_name"
+                env_value="${!env_name}"
+            else
+                error "sample.yaml live_service_validation.substitutions[$i].replacements[$j] must declare env or generate"
+            fi
 
             case "${pending_contents[$slot]}" in
                 *$placeholder_pattern*) ;;

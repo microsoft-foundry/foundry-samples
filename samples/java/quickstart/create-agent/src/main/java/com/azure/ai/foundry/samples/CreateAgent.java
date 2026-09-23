@@ -1,5 +1,7 @@
-package com.azure.ai.agents;
+package com.azure.ai.foundry.samples;
 
+import com.azure.ai.agents.AgentsClient;
+import com.azure.ai.agents.AgentsClientBuilder;
 import com.azure.ai.agents.models.AgentVersionDetails;
 import com.azure.ai.agents.models.PromptAgentDefinition;
 import com.azure.identity.DefaultAzureCredentialBuilder;
@@ -8,7 +10,7 @@ public class CreateAgent {
     public static void main(String[] args) {
         // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
         String foundryProjectEndpoint = "your_project_endpoint";
-        String foundryAgentName = "your_agent_name";
+        String foundryAgentName = "your-agent-name";
 
         // Create agents client to call Foundry API
         AgentsClient agentsClient = new AgentsClientBuilder()
