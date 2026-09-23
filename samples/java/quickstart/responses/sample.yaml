@@ -4,12 +4,12 @@ description: Basic quickstart sample demonstrating Microsoft Foundry responses.
 build: "mvn compile"
 validate: "mvn compile"
 live_service_validation:
-  command: "mvn compile exec:java -Dexec.mainClass=com.azure.ai.agents.CreateResponse"
+  command: "mvn compile exec:java -Dexec.mainClass=com.azure.ai.foundry.samples.CreateResponse"
   required_env:
     - FOUNDRY_PROJECT_ENDPOINT
     - MODEL_DEPLOYMENT
   substitutions:
-    - file: src/main/java/com/azure/ai/agents/CreateResponse.java
+    - file: src/main/java/com/azure/ai/foundry/samples/CreateResponse.java
       replacements:
         - placeholder: "your_project_endpoint"
           env: FOUNDRY_PROJECT_ENDPOINT

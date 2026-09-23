@@ -5,6 +5,7 @@ live_service_validation:
   command: "dotnet run"
   required_env:
     - FOUNDRY_PROJECT_ENDPOINT
+    - MODEL_DEPLOYMENT
   cleanup_resources:
     - type: foundry_agent_versions
   substitutions:
@@ -14,3 +15,5 @@ live_service_validation:
           env: FOUNDRY_PROJECT_ENDPOINT
         - placeholder: "your-agent-name"
           generate: unique_name
+        - placeholder: "gpt-5-mini"
+          env: MODEL_DEPLOYMENT
