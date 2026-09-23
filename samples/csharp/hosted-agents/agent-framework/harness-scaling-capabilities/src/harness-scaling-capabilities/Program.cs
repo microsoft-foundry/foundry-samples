@@ -231,19 +231,14 @@ AIAgent agent = chatClient.AsHarnessAgent(new HarnessAgentOptions
     DisableAgentSkillsProvider = true,
     // Fan-out research is delegated to this background agent.
     BackgroundAgents = [researchAgent],
-    // Keep reads and skill operations frictionless while trades and shell commands still prompt.
-    // The source auto-approves only read-only file tools; the interactive console then surfaces a
-    // prompt the user clicks through for each skill operation. Under the headless Responses host
-    // there is no one to click, so also auto-approve the skill tools (load/read/run skill — loading a
-    // local SKILL.md is not a risky action) to preserve the source's "skills are a normal capability"
-    // intent. place_trade and run_shell keep their own always-require gate, so trades and shell
-    // commands still surface a resumable approval request.
+    // Keep file reads and skill discovery automatic. Script execution, trades, and shell commands
+    // require explicit approval even under the headless Responses host.
     ToolApprovalAgentOptions = new ToolApprovalAgentOptions
     {
         AutoApprovalRules =
         [
             FileAccessProvider.ReadOnlyToolsAutoApprovalRule,
-            AgentSkillsProvider.AllToolsAutoApprovalRule,
+            AgentSkillsProvider.ReadOnlyToolsAutoApprovalRule,
         ],
     },
     // Start in "execute" mode for quick lookups and actions.
