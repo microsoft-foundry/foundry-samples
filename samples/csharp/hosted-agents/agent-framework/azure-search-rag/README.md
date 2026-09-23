@@ -261,12 +261,12 @@ EOF
 
 # Create the index (idempotent: 201 on create, 204 on update)
 az rest --method put --resource https://search.azure.com \
-  --uri "${SEARCH_ENDPOINT}/indexes/${INDEX_NAME}?api-version=2024-07-01" \
+  --url "${SEARCH_ENDPOINT}/indexes/${INDEX_NAME}?api-version=2024-07-01" \
   --headers Content-Type=application/json --body "$INDEX_SCHEMA"
 
 # Seed three Contoso Outdoors documents
 az rest --method post --resource https://search.azure.com \
-  --uri "${SEARCH_ENDPOINT}/indexes/${INDEX_NAME}/docs/index?api-version=2024-07-01" \
+  --url "${SEARCH_ENDPOINT}/indexes/${INDEX_NAME}/docs/index?api-version=2024-07-01" \
   --headers Content-Type=application/json --body '{
     "value": [
       {
@@ -301,7 +301,7 @@ The hosted agent runs under its own managed identity. Grant that identity `Searc
 ```bash
 # Look up the agent MI principal id from the deployed agent version.
 MI=$(az rest --method get --resource https://ai.azure.com \
-  --uri "https://<account>.services.ai.azure.com/api/projects/<project>/agents/azure-search-rag?api-version=v1" \
+  --url "https://<account>.services.ai.azure.com/api/projects/<project>/agents/azure-search-rag?api-version=v1" \
   --query "versions.latest.instance_identity.principal_id" -o tsv)
 
 az role assignment create --assignee-object-id $MI --assignee-principal-type ServicePrincipal \
