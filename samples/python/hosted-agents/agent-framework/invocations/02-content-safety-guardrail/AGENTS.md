@@ -11,10 +11,10 @@ This project is a **Microsoft Foundry hosted agent** — a containerized AI agen
 The **Azure Developer CLI (`azd`)** manages the full lifecycle:
 
 ```bash
-azd ai agent run                           # Run locally on http://localhost:8088
-azd ai agent invoke --local "your message" # Test the local agent
-azd deploy                                 # Deploy to Foundry
-azd ai agent invoke "your message"         # Invoke the deployed agent
+azd ai agent run                                          # Run locally on http://localhost:8088
+azd ai agent invoke --local '{"message": "your message"}' # Test the local agent
+azd deploy                                                # Deploy to Foundry
+azd ai agent invoke '{"message": "your message"}'         # Invoke the deployed agent
 ```
 
 ## Microsoft Foundry Skill

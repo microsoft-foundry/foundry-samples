@@ -40,9 +40,20 @@ Those values match this agent's wire shape in [main.py](src/agent-framework-cont
 | `responseMode` | Always | `non_streaming`, `streaming`, or `both`. Declares the response shapes your agent can return. |
 | `inputContentType` | Defaults to `json` | `json` or `text`. |
 | `outputContentType` | Defaults to `json` | `json` or `text`. |
-| `inputPaths` | When `inputContentType` is `json` | JSONPath expressions locating prompt text in the request body. |
-| `outputPaths` | When `responseMode` includes non-streaming and `outputContentType` is `json` | JSONPath expressions locating text in a buffered response body. |
+| `inputPaths` | When `inputContentType` is `json` | Selector expressions locating prompt text in the request body. |
+| `outputPaths` | When `responseMode` includes non-streaming and `outputContentType` is `json` | Selector expressions locating text in a buffered response body. |
 | `streamSelectors` | When `responseMode` includes streaming and `outputContentType` is `json` | Pairs of `eventType` and `textField` that locate text in streamed events. |
+
+#### Selectors and field names
+
+`inputPaths` and `outputPaths` are **selector expressions**, not a full JSONPath
+implementation. They support `$` for the document root, dotted members, array indexes,
+and `[*]` wildcards — for example `$.messages[*].content`. Constructs outside that
+subset, such as filters or recursive descent, are not supported.
+
+`textField` is **not** a selector: it is the plain **name of a field** on the streamed
+frame, so this sample uses `text` rather than `$.text`. A `$`-prefixed value matches
+nothing, which silently leaves streamed output unscreened.
 
 `responseMode: both` declares a **capability**, not "input and output". At runtime the platform inspects the response's actual `Content-Type` and runs exactly one output gate. If the response shape contradicts what the agent declared, the request fails closed with `HTTP 502` — an agent can't disable its own guardrail by flipping `Content-Type`.
 
@@ -134,8 +145,10 @@ The platform applies the guardrail when it creates the agent version. For the fu
 
 ### Invoke the deployed agent
 
+The Invocations protocol uses a `{"message": "..."}` payload:
+
 ```bash
-azd ai agent invoke "Write a short friendly hello message."
+azd ai agent invoke '{"message": "Write a short friendly hello message."}'
 ```
 
 ## Option 2: VS Code (Foundry Toolkit)
