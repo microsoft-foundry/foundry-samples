@@ -114,7 +114,7 @@ app.Use(next => context =>
 });
 
 
-app.MapPost("/api/messages", async (HttpRequest request, HttpResponse response, IAgentHttpAdapter adapter, IAgent agent, CancellationToken cancellationToken) =>
+app.MapPost("/activity/messages", async (HttpRequest request, HttpResponse response, IAgentHttpAdapter adapter, IAgent agent, CancellationToken cancellationToken) =>
 {
     AgentRequestCorrelation.CaptureCurrentRequest(request);
 

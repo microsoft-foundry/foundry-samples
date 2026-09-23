@@ -125,7 +125,7 @@ curl -N \
   "https://$ACCOUNT_NAME.services.ai.azure.com/api/projects/$PROJECT_NAME/agents/$AGENT_NAME/sessions/$FOUNDRY_AGENT_SESSION_ID:logstream?api-version=2025-11-15-preview"
 ```
 
-The agent also sends ASP.NET Core requests, outgoing HTTP dependencies, exceptions, and `ILogger` entries to Application Insights. Request correlation is preserved when `CloudAdapter` moves an activity to its background queue, so telemetry from `A365AgentApplication` shares the `/api/messages` `operation_Id`. Foundry injects `APPLICATIONINSIGHTS_CONNECTION_STRING` into the hosted container. Set the same environment variable when running locally if you want local telemetry in Application Insights.
+The agent also sends ASP.NET Core requests, outgoing HTTP dependencies, exceptions, and `ILogger` entries to Application Insights. Request correlation is preserved when `CloudAdapter` moves an activity to its background queue, so telemetry from `A365AgentApplication` shares the `/activity/messages` `operation_Id`. Foundry injects `APPLICATIONINSIGHTS_CONNECTION_STRING` into the hosted container. Set the same environment variable when running locally if you want local telemetry in Application Insights.
 
 ---
 

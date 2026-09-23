@@ -1,0 +1,23 @@
+{
+  "name": "foundry-samples-voice-agents-configure-voice-agent",
+  "version": "1.0.0",
+  "description": "TypeScript Microsoft Foundry Voice Agents sample - configure a voice agent with a greeting and disabled conversation storage",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/voice-agents-configure-voice-agent.js",
+  "scripts": {
+    "start": "tsx --no-deprecation src/voice-agents-configure-voice-agent.ts",
+    "build": "npx tsc"
+  },
+  "dependencies": {
+    "@azure/ai-projects": "2.7.0",
+    "@azure/identity": "^4.13.0",
+    "dotenv": "^17.2.1"
+  },
+  "devDependencies": {
+    "@azure-rest/core-client": "^2.9.0",
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.4",
+    "typescript": "^5.9.2"
+  }
+}

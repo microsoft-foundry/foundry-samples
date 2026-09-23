@@ -24,8 +24,11 @@ manifest for that deployment mode.
   environment variables, and default deployment mode
 - `src/agent-framework-harness-data-processing-responses/main.py` - harness
   configuration, seed-data setup, and Responses server entry point
-- `src/agent-framework-harness-data-processing-responses/requirements.txt` - Python
-  dependencies
+- `src/agent-framework-harness-data-processing-responses/pyproject.toml` - Python project
+  metadata and dependencies
+- `src/agent-framework-harness-data-processing-responses/uv.lock` - reproducible
+  dependency lockfile
+- `src/agent-framework-harness-data-processing-responses/uv.toml` - uv configuration
 - `src/agent-framework-harness-data-processing-responses/working/sales.csv` - bundled
   read-only input copied into each session's working directory
 - `src/agent-framework-harness-data-processing-responses/Dockerfile` - Python 3.13

@@ -300,6 +300,7 @@ FakesAssemblies/
 # Node.js Tools for Visual Studio
 .ntvs_analysis.dat
 node_modules/
+dist/
 
 # Visual Studio 6 build log
 *.plg
@@ -479,4 +480,8 @@ logs_new/
 
 # Local azd validation scratch (do not commit)
 .azd-test-*/
+
+# Voice Agents sample runtime output (regenerated on each run)
+output.pcm
+voice-agent-output.pcm
 

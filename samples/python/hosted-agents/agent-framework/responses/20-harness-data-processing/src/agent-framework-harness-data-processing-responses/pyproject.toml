@@ -1,0 +1,11 @@
+[project]
+name = "agent-framework-harness-data-processing-responses"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent built with Microsoft Agent Framework."
+requires-python = ">=3.13"
+dependencies = [
+    "agent-framework-core==1.13.0",
+    "agent-framework-foundry==1.10.3",
+    "agent-framework-foundry-hosting==1.0.0b260813",
+    "debugpy",
+]

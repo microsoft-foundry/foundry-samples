@@ -1,0 +1,5 @@
+[
+  {"name":"evaluation-with-monitoring","location":"koreacentral","monitoring":true,"customDns":false,"projectHost":true},
+  {"name":"evaluation-with-private-monitoring","location":"francecentral","monitoring":true,"customDns":false,"projectHost":true},
+  {"name":"minimal-evaluation-custom-dns","location":"francecentral","monitoring":false,"customDns":true,"projectHost":true}
+]

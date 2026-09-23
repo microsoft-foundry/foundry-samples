@@ -1,0 +1,4 @@
+name: Voice Agent Browser Console
+description: Browser-based Voice Agent console (Vite + TypeScript) for realtime conversation and full agent management, authenticated via a local Azure CLI development bridge.
+
+build: "npm install --registry=https://registry.npmjs.org/ && npm run build --if-present"

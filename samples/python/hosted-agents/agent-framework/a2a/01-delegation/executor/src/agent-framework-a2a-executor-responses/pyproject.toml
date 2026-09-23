@@ -1,0 +1,10 @@
+[project]
+name = "agent-framework-a2a-executor-responses"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent built with Microsoft Agent Framework."
+requires-python = ">=3.13"
+dependencies = [
+    "agent-framework-foundry",
+    "agent-framework-foundry-hosting>=1.0.0b260813",
+    "debugpy",
+]

@@ -8,12 +8,3 @@ A prompt agent backed by a reusable, file-based **skill**. [`azure.yaml`](./azur
 azd up
 azd ai agent invoke "Make me a 3-day travel guide for Lisbon focused on food and viewpoints."
 ```
-
-## GitHub Copilot Harness
-
-Supported. To use the GitHub Copilot harness, add this block to the agent service in [`azure.yaml`](./azure.yaml):
-
-```yaml
-harness:
-  type: github_copilot_preview
-```

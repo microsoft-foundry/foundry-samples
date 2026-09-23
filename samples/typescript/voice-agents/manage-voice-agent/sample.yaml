@@ -1,0 +1,5 @@
+name: Voice Agent Management Lifecycle
+description: Create, read, update, list, version, enable/disable, and delete a voice agent.
+
+build: "npm install --registry=https://registry.npmjs.org/"
+validate: "npx tsc --noEmit"

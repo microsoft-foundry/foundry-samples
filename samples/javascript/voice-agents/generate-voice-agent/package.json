@@ -1,0 +1,19 @@
+{
+  "name": "foundry-samples-voice-agents-generate-voice-agent",
+  "version": "1.0.0",
+  "description": "JavaScript Microsoft Foundry Voice Agents sample - generate a voice agent from a goal",
+  "license": "MIT",
+  "type": "module",
+  "main": "app.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "@azure/ai-projects": "2.7.0",
+    "@azure/identity": "^4.13.0",
+    "dotenv": "^17.2.1"
+  }
+}
