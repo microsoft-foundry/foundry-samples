@@ -186,17 +186,16 @@ class PipelineTests(unittest.TestCase):
         self.assertNotIn('/.ci-skip', discovery)
         self.assertNotIn('/.code-ci-skip', discovery)
 
-    def test_discovery_requires_explicit_nonfork_pr(self):
+    def test_discovery_allows_approved_fork_pr(self):
         discover = next(
             stage for stage in PIPELINE["stages"] if stage.get("stage") == "Discover"
         )
         condition = re.sub(r"\s+", "", discover["condition"])
         self.assertEqual(
             condition,
-            "and(ne(variables['CLOUD_E2E_ENABLED'],'false'),"
-            "or(ne(variables['Build.Reason'],'PullRequest'),"
-            "eq(variables['System.PullRequest.IsFork'],'False')))",
+            "ne(variables['CLOUD_E2E_ENABLED'],'false')",
         )
+        self.assertNotIn("System.PullRequest.IsFork", condition)
         cloud_stage = next(iter(SHARDS.values()))[0]
         self.assertIn("Discover", cloud_stage["dependsOn"])
         self.assertIn("succeeded('Discover')", cloud_stage["condition"])

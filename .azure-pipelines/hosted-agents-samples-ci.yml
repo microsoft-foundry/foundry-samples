@@ -8,8 +8,9 @@
 #
 # Discovery, deploy, invoke and assertion behavior uses repository-local
 # helpers; authentication, matrices, artifacts and annotations are ADO-native.
-# Operators must disable fork builds and restrict/approve the service
-# connection outside YAML before enabling this credentialed pipeline.
+# Repository settings require maintainer approval before fork PR builds run.
+# Restrict/approve the service connection outside YAML before enabling this
+# credentialed pipeline.
 #
 # Infrastructure modes:
 #   - SKIP_PROVISION=true (default): uses an existing Foundry project. Requires
@@ -98,18 +99,11 @@ stages:
   # Runs unless the kill-switch is explicitly set to 'false'. It is deliberately
   # not gated on `eq(..., 'true')`: an unset variable would then skip every
   # stage and report a false pass. Missing configuration fails in the guard
-  # step below instead. PRs also require an explicitly non-fork source; missing
-  # fork metadata fails closed. This guard is not a service-connection approval.
+  # step below instead. Fork PR execution is controlled by the repository's
+  # maintainer-approval setting, not by this stage condition.
   - stage: Discover
     displayName: Discover Samples
-    condition: |
-      and(
-        ne(variables['CLOUD_E2E_ENABLED'], 'false'),
-        or(
-          ne(variables['Build.Reason'], 'PullRequest'),
-          eq(variables['System.PullRequest.IsFork'], 'False')
-        )
-      )
+    condition: ne(variables['CLOUD_E2E_ENABLED'], 'false')
     jobs:
       - job: DiscoverSamples
         displayName: Build sample matrix

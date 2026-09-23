@@ -49,17 +49,17 @@ A repository/pipeline administrator must complete these separately:
 2. Authorize the GitHub connection to read this repository and report build
    results. Authorize each variable group and Azure service connection only for
    the intended pipelines.
-3. Disable fork PR builds for these credentialed pipelines in Azure DevOps.
-   Keep fork secrets and full-access tokens disabled. Use resource approvals and
-   checks to enforce the intended trust boundary before granting cloud access.
+3. Require maintainer approval before fork PR builds run. Keep fork secrets and
+   full-access tokens disabled. Use resource approvals and checks to enforce the
+   intended trust boundary before granting cloud access.
 4. Supply the test-resource configuration below. Use separate disposable test
    resources with permissions for deployment, invocation, evidence retrieval and
    cleanup; never production resources.
 
-The YAML also gates PR runs on `System.PullRequest.IsFork` being explicitly
-`False`. Missing or true values skip the cloud path. This is defense in depth,
-not a substitute for Azure DevOps authorization: a PR can change its YAML.
-Skipped cloud runs are not evidence of a successful live test.
+Repository settings gate fork PR builds on maintainer approval. The YAML does
+not independently reject fork PRs, so resource approvals and checks must
+protect credentials and cloud access: a PR can change its YAML. Fork PRs that
+are not approved do not produce evidence of a successful live test.
 
 Service-connection, variable-group and required-status settings are external to
 this repository. These files do not alter GitHub merge rules or activate a
