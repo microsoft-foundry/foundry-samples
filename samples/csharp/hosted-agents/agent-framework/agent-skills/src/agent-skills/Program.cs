@@ -118,10 +118,12 @@ if (requestedSkills.Length > 0)
         await EnsureSkillsProvisionedAsync(skillsClient, sourceSkillsDir, requestedSkills, bootstrapCts.Token);
     }
 
-    // Download skills from Foundry into a runtime-only folder. This directory is
-    // recreated on every startup so the agent always picks up the latest version of
-    // each skill.
-    string downloadedSkillsDir = Path.Combine(AppContext.BaseDirectory, "downloaded_skills");
+    // Hosted application files may be read-only. Keep downloaded skills in the writable
+    // per-session home while reading packaged source skills from the application directory.
+    string downloadedSkillsRoot = isHosted
+        ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+        : AppContext.BaseDirectory;
+    string downloadedSkillsDir = Path.Combine(downloadedSkillsRoot, "downloaded_skills");
     await DownloadSkillsAsync(skillsClient, requestedSkills, downloadedSkillsDir, bootstrapCts.Token);
 
     // AgentSkillsProvider implements progressive disclosure: skill names and descriptions

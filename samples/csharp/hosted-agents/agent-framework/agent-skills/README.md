@@ -27,7 +27,7 @@ The provisioning uses `ProjectAgentSkills.CreateSkillFromPackageAsync(directoryP
 
 ### Downloading skills at agent startup
 
-[`Program.cs`](src/agent-skills/Program.cs) reads the comma-separated `SKILL_NAMES` env var and, for each skill name, downloads the ZIP archive from Foundry via `ProjectAgentSkills.DownloadSkillAsync(name)`, then unpacks it into a **separate runtime directory** at `downloaded_skills/<name>/` (kept distinct from the static `skills/` source folder).
+[`Program.cs`](src/agent-skills/Program.cs) reads the comma-separated `SKILL_NAMES` env var and, for each skill name, downloads the ZIP archive from Foundry via `ProjectAgentSkills.DownloadSkillAsync(name)`, then unpacks it into a **separate runtime directory** at `downloaded_skills/<name>/` (kept distinct from the static `skills/` source folder). Locally this directory is under the application folder; in Foundry containers it is under the writable per-session home directory.
 
 An `AgentSkillsProvider` is then built over `downloaded_skills/` and attached to the agent as an `AIContextProvider`. The provider follows the [Agent Skills](https://agentskills.io/) progressive-disclosure pattern:
 
