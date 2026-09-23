@@ -4,7 +4,7 @@ A minimal echo agent hosted as a Foundry Hosted Agent using the **Invocations pr
 
 ## How It Works
 
-The agent registers a custom `EchoAIAgent` that implements the Invocations protocol. When a POST request arrives at `/invocations` with a JSON body containing a `"message"` field, the agent echoes the input back as `"Echo: <input>"`. Because no model is involved, this sample requires no Azure OpenAI deployment or Foundry project endpoint — making it ideal for testing the hosting infrastructure in isolation.
+The agent registers a custom `EchoAIAgent` behind the Invocations protocol. When a request arrives at `/invocations`, the handler reads the request body as plain text and returns `Echo: <input>` as plain text. Because no model is involved, this sample requires no Azure OpenAI deployment or Foundry project endpoint, making it ideal for testing the hosting infrastructure in isolation.
 
 See [Program.cs](src/invocations-echo-agent/Program.cs) and [EchoAIAgent.cs](src/invocations-echo-agent/EchoAIAgent.cs) for the full implementation.
 
@@ -45,7 +45,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir echo-agent && cd echo-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/invocations-echo-agent/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/invocations-echo-agent/azure.yaml
 ```
 
 Follow the prompts to configure your project. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one (not required for this LLM-free sample, but useful for deployment).
@@ -73,41 +73,26 @@ The agent host will start on `http://localhost:8088`.
 In a separate terminal, invoke the running agent:
 
 ```bash
-azd ai agent invoke --local '{"message": "Hello, world!"}'
+azd ai agent invoke --local --protocol invocations "Hello, world!"
 ```
 
 In PowerShell:
 
 ```powershell
-azd ai agent invoke --local '{\"message\": \"Hello, world!\"}'
+azd ai agent invoke --local --protocol invocations "Hello, world!"
 ```
 
-Or use curl directly:
+The server responds with `Echo: Hello, world!`. To inspect the unmodified response headers and body:
 
 ```bash
-curl -X POST http://localhost:8088/invocations -i \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Hello, world!"}'
+azd ai agent invoke --local --protocol invocations --output raw "Hello, world!"
 ```
 
-The server responds with a JSON object containing the response text. The `-i` flag includes the HTTP response headers, which include the session ID used for multi-turn conversations:
-
-```
-HTTP/1.1 200
-content-type: application/json
-x-agent-invocation-id: ec04d020-a0e7-441e-ae83-db75635a9f83
-x-agent-session-id: 9370b9d4-cd13-4436-a57f-03b843ac0e17
-x-platform-server: azure-ai-agentserver-core/2.0.0 (dotnet/10.0)
-
-{"response":"Echo: Hello, world!"}
-```
-
-For a multi-turn conversation, take the session ID from the response headers and pass it as an `agent_session_id` URL parameter:
+Consecutive invokes reuse the saved session automatically. Pass `--new-session` when you want a new one:
 
 ```bash
-curl -X POST "http://localhost:8088/invocations?agent_session_id=9370b9d4-cd13-4436-a57f-03b843ac0e17" -i \
-  -H "Content-Type: application/json" \
-  -d '{"message": "How are you?"}'
+azd ai agent invoke --local --protocol invocations "How are you?"
+azd ai agent invoke --local --protocol invocations --new-session "Start over."
 ```
 
 ### Deploy to Foundry
@@ -123,13 +108,7 @@ For the full deployment guide, see [Deploy a hosted agent](https://learn.microso
 ### Invoke the deployed agent
 
 ```bash
-azd ai agent invoke '{"message": "Hello, world!"}'
-```
-
-In PowerShell:
-
-```powershell
-azd ai agent invoke '{\"message\": \"Hello, world!\"}'
+azd ai agent invoke --protocol invocations "Hello, world!"
 ```
 
 Stream logs from the running agent with `azd ai agent monitor`.

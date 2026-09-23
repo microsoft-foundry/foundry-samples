@@ -56,7 +56,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir foundry-memory-rag-agent && cd foundry-memory-rag-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/foundry-memory-rag/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/foundry-memory-rag/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployments. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
@@ -84,24 +84,13 @@ The agent host will start on `http://localhost:8088`.
 Run a few turns to seed memory, then ask the agent to recall:
 
 ```bash
-azd ai agent invoke --local "Remember that I want to run my first 5k in October and I prefer morning workouts."
-azd ai agent invoke --local "I have a sensitive left knee, please avoid high-impact exercises."
-azd ai agent invoke --local "What do you already know about my training goals?"
+azd ai agent invoke --local --user-identity demo-user "Remember that I want to run my first 5k in October and I prefer morning workouts."
+azd ai agent invoke --local --user-identity demo-user "I have a sensitive left knee, please avoid high-impact exercises."
+azd ai agent invoke --local --user-identity demo-user "What do you already know about my training goals?"
 ```
 
-Or use curl directly:
-
-```bash
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "Remember that I want to run my first 5k in October and I prefer morning workouts.", "stream": false}' | jq .
-
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "What do you already know about my training goals?", "stream": false}' | jq .
-```
-
-Memory extraction is asynchronous server-side — expect a few seconds between the teaching turn and the recall turn.
+The identity value selects the user's private memory scope. Use a different value to verify isolation.
+Memory extraction is asynchronous server-side, so expect a few seconds between the teaching turn and the recall turn.
 
 ### Deploy to Foundry
 
@@ -116,7 +105,7 @@ For the full deployment guide, see [Deploy a hosted agent](https://learn.microso
 ### Invoke the deployed agent
 
 ```bash
-azd ai agent invoke "What do you already know about my training goals?"
+azd ai agent invoke --user-identity demo-user "What do you already know about my training goals?"
 ```
 
 Stream logs from the running agent with `azd ai agent monitor`.

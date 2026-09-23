@@ -6,6 +6,10 @@ An agent demonstrating client-side and server-side MCP (Model Context Protocol) 
 
 The agent is configured with MCP tool providers that expose documentation search capabilities. When a user asks a question, the LLM determines which MCP tools to call — such as docs search, code sample search, or docs fetch — the framework routes the tool calls through the appropriate MCP connection (client-side or server-side), and the results are fed back to the model to compose an informed answer.
 
+The server-side path owns `microsoft_docs_search`; the client-side path owns
+`microsoft_code_sample_search` and `microsoft_docs_fetch`. A tool name must be registered through
+only one path because duplicate tool definitions are rejected by the Responses API.
+
 See [Program.cs](src/mcp-tools/Program.cs) for the full implementation.
 
 ## Prerequisites
@@ -46,7 +50,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir mcp-tools-agent && cd mcp-tools-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/mcp-tools/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/mcp-tools/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
@@ -77,18 +81,9 @@ In a separate terminal, invoke the running agent:
 azd ai agent invoke --local "Search Microsoft Learn for how to use dependency injection in ASP.NET Core"
 ```
 
-Or use curl directly:
-
 ```bash
 # Triggers client-side MCP tools (docs search, code samples, docs fetch)
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "Search Microsoft Learn for how to use dependency injection in ASP.NET Core", "stream": false}' | jq .
-
-# Triggers code sample search (client-side only)
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "Find a C# code sample for creating an Azure Blob Storage container", "stream": false}' | jq .
+azd ai agent invoke --local "Find a C# code sample for creating an Azure Blob Storage container"
 ```
 
 ### Deploy to Foundry

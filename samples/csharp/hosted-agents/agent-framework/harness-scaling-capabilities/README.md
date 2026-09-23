@@ -75,7 +75,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir my-agent && cd my-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/harness-scaling-capabilities/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/harness-scaling-capabilities/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an
@@ -100,8 +100,8 @@ The agent host starts on `http://localhost:8088`.
 This is a **harness agent**, so you work with it over several turns. The trajectory below walks every
 capability the sample exposes, in the order the [original Agent Framework sample](https://github.com/microsoft/agent-framework/tree/main/dotnet/samples/02-agents/Harness/BuildYourOwnClaw/Claw_Step03_ScalingCapabilities)
 suggests. `azd ai agent invoke` reuses the session across consecutive local invokes, so the
-frictionless turns chain naturally; the two gated turns (shell and trade) use a direct `curl` so you
-can carry the structured approval item.
+frictionless turns chain naturally. The gated turns use `azd` for the initial request and a direct
+structured Responses request for the approval.
 
 **Frictionless turns** — skills, file reads, mode, CodeAct, and background research all run without
 prompting:
@@ -125,10 +125,31 @@ azd ai agent invoke --local "Research MSFT, NVDA and SPY and summarize the lates
 ```
 
 **Gated turns** — `run_shell` and `place_trade` are approval-required: instead of acting, the agent
-returns an `mcp_approval_request` output item and pauses. `azd ai agent invoke` sends its argument as
-plain text and can't carry a structured approval item, so drive these with a direct POST to
-`/responses`, chaining the same `conversation.id` so the host continues the paused turn (set
-`"approve":false` to reject):
+returns an `mcp_approval_request` output item and pauses. Send a structured approval response with
+the same `conversation.id` so the host continues the paused turn. Set `"approve": false` to reject.
+
+The model may first ask for a natural-language confirmation before it calls the gated tool. If that
+happens, reply `Confirm`; the next response contains the structured `mcp_approval_request`.
+
+> [!IMPORTANT]
+> `azd ai agent invoke -f` currently sends the file contents as text inside the Responses `input`
+> field. It cannot send the structured `mcp_approval_response` shown below. Use `az rest`.
+
+Save this template as `approval-response.json`, then replace the conversation and approval IDs for
+each pending action:
+
+```json
+{
+  "conversation": { "id": "<conversation-id>" },
+  "input": [
+    {
+      "type": "mcp_approval_response",
+      "approval_request_id": "<id>",
+      "approve": true
+    }
+  ]
+}
+```
 
 ```bash
 # Shell (confined to the confirmations vault). The original sample tidies the vault with the natural
@@ -136,25 +157,22 @@ plain text and can't carry a structured approval item, so drive these with a dir
 # and renames the files, using the shell. Because the model may instead just inspect the folder or use
 # the file-write tools, this command names run_shell explicitly to reliably exercise the shell path.
 # It returns an mcp_approval_request per command; note the "id".
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"conversation":{"id":"demo-shell-1"},"input":"Use the run_shell tool to reorganize the confirmations vault into year/month folders and rename each file to YYYY-MM-DD_TICKER_BUY|SELL.txt. Inspect with shell commands first."}'
+azd ai agent invoke --local --conversation-id demo-shell-1 \
+  "Use the run_shell tool to reorganize the confirmations vault into year/month folders and rename each file to YYYY-MM-DD_TICKER_BUY|SELL.txt. Inspect with shell commands first."
 
 # Approve the pending shell command, chaining the same conversation id. Repeat for each command the
 # agent proposes (the exact command differs by OS — bash on Linux/macOS, PowerShell on Windows).
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"conversation":{"id":"demo-shell-1"},"input":[{"type":"mcp_approval_response","approval_request_id":"<id>","approve":true}]}'
+# Set <conversation-id> to demo-shell-1 and replace <id>, then run:
+az rest --method POST \
+  --url http://localhost:8088/responses \
+  --headers "Content-Type=application/json" \
+  --body @approval-response.json
 
 # Trade (a real action). Returns an mcp_approval_request; nothing is traded yet.
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"conversation":{"id":"demo-trade-1"},"input":"Buy 10 shares of MSFT."}'
+azd ai agent invoke --local --conversation-id demo-trade-1 "Buy 10 shares of MSFT."
 
 # Approve it, chaining the same conversation id. Only now is the (simulated) trade placed, exactly once.
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"conversation":{"id":"demo-trade-1"},"input":[{"type":"mcp_approval_response","approval_request_id":"<id>","approve":true}]}'
+# Set <conversation-id> to demo-trade-1 and replace <id>, then use the same Invoke-RestMethod command.
 ```
 
 Confirm the gate: each first request contains an `mcp_approval_request` and **no** result (no
@@ -181,6 +199,18 @@ For the full deployment guide, see [Deploy a hosted agent](https://learn.microso
 
 ```bash
 azd ai agent invoke "Value MSFT for me."
+```
+
+For a protected action, start it with `azd ai agent invoke --new-session --new-conversation`, copy
+the emitted service session ID, conversation ID, and approval request ID, put the last two values in
+`approval-response.json`, then send it to the deployed Responses endpoint:
+
+```bash
+az rest --method POST \
+  --url "<responses-endpoint>" \
+  --resource https://ai.azure.com \
+  --headers "Content-Type=application/json" "x-agent-session-id=<agent-session-id>" \
+  --body @approval-response.json
 ```
 
 ## Option 2: VS Code (Foundry Toolkit)
@@ -271,7 +301,10 @@ For a full toolbox example with connections and a sample `toolbox.yaml`, see the
 - **CodeAct fails to start / virtualization error** — the host lacks hardware virtualization required
   by Hyperlight. See "CodeAct and hosting" above; the other capabilities are unaffected.
 - **Trade or shell command "did nothing"** — that's the approval gate. The first turn returns an
-  `mcp_approval_request`; the action runs only after you send the matching `mcp_approval_response`.
+  `mcp_approval_request`, possibly after a natural-language `Confirm` turn; the action runs only
+  after you send the matching `mcp_approval_response`.
+- **Approval fails after `azd ... -f approval-response.json`** — `azd` sent the JSON as user text.
+  Use the local or deployed REST command above so the host receives a structured approval item.
 - **HTTP 403 / "Identity … does not have permissions"** — the local `DefaultAzureCredential` resolved
   a different identity than the one you signed into with `az login` (common when the machine also has
   a Visual Studio, `azd`, or shared-token-cache login for another account). Confirm the intended

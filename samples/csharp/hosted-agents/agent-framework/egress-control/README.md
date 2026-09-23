@@ -48,9 +48,13 @@ The layered infrastructure in `azure.yaml` provisions the Foundry project first,
 
 ```bash
 mkdir my-dotnet-egress-agent && cd my-dotnet-egress-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/egress-control/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/egress-control/azure.yaml
 azd provision
 ```
+
+With `azure.ai.agents` 1.0.0-beta.16, the provisioned `RAI_POLICY_ID` is not interpolated inside
+`policies.raiPolicyName`. Before `azd deploy`, run `azd env get-value RAI_POLICY_ID` and replace
+`${RAI_POLICY_ID}` in the generated `azure.yaml` with that full ARM resource ID.
 
 ### Run and invoke locally
 
@@ -109,6 +113,11 @@ For complete Allow, Deny, Transform, Rewrite, Audit, and managed-identity policy
 - **`FOUNDRY_PROJECT_ENDPOINT environment variable is not set`**: run through `azd ai agent run`, or set the endpoint in `.env`.
 - **A request unexpectedly fails TLS validation**: use `EGRESS_TEST_VERIFY_TLS=false` only for a TLS-intercepting Full inspection policy.
 - **Both allowed and denied destinations succeed locally**: egress policies apply to the deployed hosted-agent container, not the local process.
+- **Deploy says the RAI policy must be a fully qualified ARM resource ID**: materialize the
+  provisioned `RAI_POLICY_ID` in the generated `azure.yaml` as described above.
+- **Cleanup when using an existing project**: do not run `azd down`, because it can attempt to delete
+  the shared resource group. Delete the test agent with `azd ai agent delete --force`, then delete
+  only the provisioned RAI policy with authenticated `az rest`.
 
 ## Next steps
 

@@ -46,7 +46,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir text-search-rag-agent && cd text-search-rag-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/text-search-rag/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/text-search-rag/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
@@ -77,20 +77,9 @@ In a separate terminal, invoke the running agent:
 azd ai agent invoke --local "What is your return policy?"
 ```
 
-Or use curl directly:
-
 ```bash
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "What is your return policy?", "stream": false}' | jq .
-
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "How long does shipping take?", "stream": false}' | jq .
-
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "How do I clean my tent?", "stream": false}' | jq .
+azd ai agent invoke --local "How long does shipping take?"
+azd ai agent invoke --local "How do I clean my tent?"
 ```
 
 ### Deploy to Foundry

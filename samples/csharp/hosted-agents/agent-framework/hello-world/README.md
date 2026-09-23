@@ -30,7 +30,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir hello-world-agent && cd hello-world-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/hello-world/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/hello-world/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
@@ -57,19 +57,10 @@ In a separate terminal, send a request to the agent:
 
 ```bash
 azd ai agent invoke --local "What is Microsoft Foundry?"
+azd ai agent invoke --local "Can you summarize that?"
 ```
 
-Or use curl directly:
-
-```bash
-curl -X POST http://localhost:8088/responses -H "Content-Type: application/json" -d '{"input": "What is Microsoft Foundry?", "stream": false}'
-```
-
-The server responds with a JSON object containing the response text and a response ID. Continue the conversation by passing that ID as `previous_response_id`:
-
-```bash
-curl -X POST http://localhost:8088/responses -H "Content-Type: application/json" -d '{"input": "Can you summarize that?", "previous_response_id": "REPLACE_WITH_PREVIOUS_RESPONSE_ID", "stream": false}'
-```
+Consecutive invokes reuse the same session automatically.
 
 ### Deploy to Foundry
 
@@ -130,4 +121,3 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 3. On the **Basics** tab, choose deployment method (**Code** or **Container**) and confirm the agent name.
 4. On **Review + Deploy**, confirm runtime details, pick **CPU and Memory** size, and click **Deploy**.
 5. After deployment, invoke the agent in the Agent Playground and stream live logs from the **Logs** tab.
-
