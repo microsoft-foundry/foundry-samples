@@ -4,11 +4,9 @@ This directory contains samples that demonstrate how to use the [Agent Framework
 
 > [!IMPORTANT]
 > **Responses container protocol v2.0.** These samples target the Foundry Responses container
-> protocol **v2.0** (declared in each `azure.yaml`) and reference the
-> `Microsoft.Agents.AI.*` **1.12.0** package line that carries the AgentServer 2.0 migration. That
-> package line is not published yet, so `dotnet restore` will fail until it lands — the version pins
-> are placeholders (`1.12.0-preview.*` / `1.12.0-alpha.*`) and will be finalized when 1.12.0 ships.
-> For the previous protocol v1 definition, use the samples at the last commit on the 1.11.x line.
+> protocol **v2.0**, declared in each `azure.yaml`. Each project pins the Agent Framework package
+> version required by the capability it demonstrates. Use the project file as the authoritative
+> package reference when copying a sample.
 
 ## Samples
 
@@ -32,6 +30,9 @@ This directory contains samples that demonstrate how to use the [Agent Framework
 | 14 | [teams-activity](teams-activity/) | A hosted agent that can be deployed to Foundry and published to Teams, handling messages with file attachments and Teams/calendar questions. |
 | 15 | [a2a/01-delegation](a2a/01-delegation/) | Two hosted agents — a math-expert executor exposed over A2A and a concierge caller that delegates to it through a Foundry Toolbox A2A connection. |
 | 16 | [foundry-toolbox-mcp-skills](foundry-toolbox-mcp-skills/) | An agent that discovers MCP-based skills from a Foundry Toolbox and exposes them to the agent via `AgentSkillsProvider` with progressive disclosure. |
+| 17 | [steering](steering/) | A long-running agent that queues a second input on the same active conversation instead of rejecting it as locked. |
+| 18 | [resilient-workflow](resilient-workflow/) | A model-backed workflow whose Agent Executor calls an intentional crash tool and resumes the pending tool call in a replacement process. |
+| 19 | [steerable-workflow](steerable-workflow/) | A deterministic workflow that queues steering input, cancels an active superstep, and continues from the last committed checkpoint. |
 
 ### Invocations API
 
