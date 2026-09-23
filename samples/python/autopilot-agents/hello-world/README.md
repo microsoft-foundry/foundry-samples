@@ -217,17 +217,23 @@ Edit the agent code, then deploy a new version:
 azd deploy
 ```
 
-Existing sessions can continue running on their previous sandbox. From the
-`hello-world` directory, stop them so the next invocation resumes against the
-latest active version:
+Existing sessions can continue running on their previous sandbox. To confirm
+which version a session runs, resume it on the new code, and verify its
+traces, follow [Autopilot sample operations](../../../AUTOPILOT_OPERATIONS.md)
+from the `hello-world` directory. Use `FOUNDRY_PROJECT_ENDPOINT` as the
+endpoint setting and `hello-world-autopilot` as the agent name. To inspect
+the deployed agent, run `azd ai agent show`.
+
+When you intentionally want to stop all non-terminal sessions, the shared
+helper is still available:
 
 ```powershell
 ..\scripts\stop-agent-sessions.ps1 -AgentName hello-world-autopilot
 ```
 
-Pass `-Environment <environment-name>` to the script if the active environment
-is not the intended target. Stopping preserves each logical session and its
-persisted filesystem state. Do not delete sessions just to pick up new code.
+Pass `-Environment <environment-name>` if the active environment is not the
+intended target. The helper skips `idle`, `deleting`, `deleted`, and `expired`;
+it is not limited to sessions on an old version.
 
 Do not republish for code-only changes. Run `azd ai agent publish` again only
 when the Microsoft 365 app manifest, metadata, or other publication-owned
@@ -259,6 +265,23 @@ before importing the application stack.
   and the Agent 365 exporter sends the enriched telemetry used by Microsoft 365
   administration, Defender, and Purview experiences.
 
+To confirm application spans after an update, run the query in
+[Autopilot sample operations](../../../AUTOPILOT_OPERATIONS.md#find-the-application-spans)
+for samples whose spans come from an SDK or an OpenTelemetry distribution. Use
+`hello-world-autopilot` as the service name, or the actual hosted agent name
+if you changed it. Because this sample sets `service.namespace`, its cloud role
+name ends with that service name rather than matching it exactly. Inspect the
+model-call and Agents SDK spans, not only the platform's invocation row.
+
+Content capture must be a deliberate choice. Configure compatible GenAI
+instrumentation with `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` in
+the service's `environmentVariables`, then deploy and repeat the session
+checks. Do not assume this flag redacts all telemetry: the sample's application
+logger records incoming Teams message text, and Agent 365 or other SDKs can
+have separate content settings. Read
+[Protect message content](../../../AUTOPILOT_OPERATIONS.md#protect-message-content)
+before using real conversations.
+
 ## Troubleshooting
 
 | Symptom | What to check |
@@ -270,7 +293,7 @@ before importing the application stack.
 | Deployment or publication returns 401 or 403 | Sign both CLIs in to the intended tenant and verify the access listed in Step 1. Publication also requires a successfully deployed agent. |
 | The agent is not available in Teams | Confirm blueprint approval, your Microsoft 365 license, and tenant app policies in Steps 7 and 8. Deployment alone does not make the agent available in Teams. |
 | A channel message gets no response | Mention the agent instance in the message; untagged channel messages are not handled. |
-| Updated code is not being used | Stop existing sessions with the command under **Optional: Change the agent's code and behavior**, then send a new message. |
+| Updated code is not being used | Resume the session on the new version by following [Autopilot sample operations](../../../AUTOPILOT_OPERATIONS.md#resume-a-session-on-the-new-version). |
 | Teams works but Foundry traces have no application spans | Confirm the hosted container received `APPLICATIONINSIGHTS_CONNECTION_STRING` and inspect session logs for Microsoft OpenTelemetry exporter errors. |
 
 ## References
