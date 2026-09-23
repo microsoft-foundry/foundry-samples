@@ -38,4 +38,7 @@ async function main(): Promise<void> {
     console.log(response2.output_text);
 }
 
-main().catch(console.error);
+main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});
