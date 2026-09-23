@@ -27,7 +27,7 @@ Install:
    `azure.yaml`.
 4. [PowerShell 7 or later](https://learn.microsoft.com/powershell/scripting/install/installing-powershell).
 
-Install the Foundry agent extension:
+Install the Foundry agent extension (**1.0.0-beta.16 or later**):
 
 ```powershell
 azd ext install azure.ai.agents
@@ -38,6 +38,10 @@ If it is already installed, update it instead:
 ```powershell
 azd ext upgrade azure.ai.agents
 ```
+
+This sample uses `activity.digitalWorkerType: m365` in `azure.yaml`. Current
+extensions reject the retired `activity.useCase` setting; update the sample
+configuration as well as the extension if you started from an older revision.
 
 You also need an Azure subscription and a tenant with Microsoft Agent 365 and
 qualifying Microsoft 365 licensing. Step 4 lets you reuse a Foundry project and
@@ -52,7 +56,7 @@ Arrange the following access before starting cloud operations:
 | --- | --- |
 | Person provisioning resources | **Contributor** on the resource group, or equivalent resource-management permissions. Creating a resource group requires this access at subscription scope. The subscription-scoped Bicep deployment also requires `Microsoft.Resources/deployments/*` at subscription scope, even when reusing a resource group. |
 | Developer deploying the agent and managing sessions | **Foundry Project Manager** at the Foundry project scope. This covers hosted-agent management and role assignments for the platform-created agent identity when needed. |
-| Person publishing the Autopilot | A Microsoft 365 license and Foundry project data-plane access to read the agent version and submit publication. **Foundry Project Manager** covers this workflow. |
+| Person publishing the Autopilot | A Microsoft 365 license and **Foundry Project Manager** on the Foundry resource, or inherited from its resource group or subscription. This includes the project access needed to read the agent version and submit publication. |
 | Administrator approving the blueprint | **AI Administrator** or **Global Administrator**, plus a Microsoft 365 license. |
 | Person creating or using an instance | A Microsoft 365 license and access allowed by the tenant's app policies. |
 
@@ -181,6 +185,9 @@ The command reads the publication metadata from `azure.yaml` and submits the
 app for your tenant's catalog. Successful publication is not administrator
 approval: complete the next step before trying to create an instance.
 
+If no deployed agent is found, follow
+[Publication cannot find the deployed agent](#publication-cannot-find-the-deployed-agent).
+
 ## Step 7: Approve the blueprint
 
 Ask an **AI Administrator** or **Global Administrator** in your tenant to:
@@ -261,6 +268,18 @@ before importing the application stack.
 
 ## Troubleshooting
 
+Start with the current sample and an up-to-date Foundry agent extension
+(`azd ext upgrade azure.ai.agents`), then run:
+
+```powershell
+azd ai agent doctor
+```
+
+This checks the selected environment, authentication, and deployed agent, and
+prints suggested recovery commands. Use `azd ai agent doctor --local-only` to
+check local configuration without contacting Azure. A successful local check
+does not establish that your sign-in or cloud permissions are correct.
+
 | Symptom | What to check |
 | --- | --- |
 | Provisioning cannot resolve a new model deployment | Choose a Responses-compatible OpenAI model with a default version supporting `GlobalStandard` in the selected region, and check model quota. |
@@ -268,10 +287,123 @@ before importing the application stack.
 | Provisioning reports that a saved resource is missing | Check that you selected the right environment, subscription, and parent resources. The workflow does not silently recreate resources previously selected for reuse. |
 | Deployment cannot resolve the project or model | Select the intended `azd` environment, rerun `azd provision`, and confirm it completes successfully before `azd deploy`. |
 | Deployment or publication returns 401 or 403 | Sign both CLIs in to the intended tenant and verify the access listed in Step 1. Publication also requires a successfully deployed agent. |
+| Foundry returns 403 mentioning `Microsoft.CognitiveServices/accounts/AIServices/agents/read` | Ask an administrator to grant your account **Foundry Project Manager** at the Foundry project scope, then allow time for permissions to propagate. Resource-management access such as subscription **Contributor** does not by itself grant Foundry data-plane access. Do not recreate identities or resources to fix this error. |
+| The correct role appears in IAM but Foundry still returns 403 | Confirm the assignment applies to the signed-in user. A role assigned only to the project's managed identity does not authorize your user account. |
+| A new role assignment still returns 403 | Azure RBAC changes can take up to 10 minutes to propagate. Refresh the `azd` sign-in for the intended tenant and retry after propagation before adding more roles. Confirm the error's object ID matches the role assignment's user. |
+| `azd` cannot resolve your access to the configured subscription | Run `azd auth login --tenant-id <tenant-id>` for that subscription's tenant, then rerun `azd ai agent doctor`. Azure CLI and `azd` have separate sign-ins; successful `az login` alone does not authenticate `azd`. |
+| Deployment reports `has no digital_worker_type` | The extension could not reconcile the deployed agent with `activity.digitalWorkerType: m365`. A version may already exist even though deployment failed. Confirm extension/service compatibility and inspect the agent in Foundry before retrying. For a newly created agent with this error, retain the request IDs and contact support rather than blindly deleting it or removing `digitalWorkerType` to bypass the check. |
+| Publication cannot find a deployed agent, or an older helper reports `AGENT_*_NAME` / `AGENT_*_VERSION` values were not found | Follow **Publication cannot find the deployed agent** below. This is not evidence of a stale managed identity. |
+| Microsoft 365 app-package generation or publication returns 502 and reports that it cannot mint a project identity token | Follow **Stale project managed identity** below. A 502 alone does not establish this cause. |
 | The agent is not available in Teams | Confirm blueprint approval, your Microsoft 365 license, and tenant app policies in Steps 7 and 8. Deployment alone does not make the agent available in Teams. |
 | A channel message gets no response | Mention the agent instance in the message; untagged channel messages are not handled. |
 | Updated code is not being used | Stop existing sessions with the command under **Optional: Change the agent's code and behavior**, then send a new message. |
 | Teams works but Foundry traces have no application spans | Confirm the hosted container received `APPLICATIONINSIGHTS_CONNECTION_STRING` and inspect session logs for Microsoft OpenTelemetry exporter errors. |
+
+### Publication cannot find the deployed agent
+
+A missing-agent error can mean missing local deployment outputs, not necessarily
+an empty Foundry project. This includes the retired Python helper's
+`Expected exactly one deployed agent ... found 0` error.
+
+From this sample directory, select the environment used for deployment and
+inspect its project and agent:
+
+```powershell
+azd env list
+azd env select <environment-name>
+azd env get-value AZURE_AI_PROJECT_ID
+azd ai agent doctor
+azd ai agent show hello-world-autopilot
+```
+
+Confirm the project ID matches the project you open in Foundry, then inspect
+its agents list and the original `azd deploy` error. A failed deployment can
+leave an agent version in Foundry without saving local outputs. Resolve any
+authentication or permission errors rather than treating failed queries as
+empty results.
+
+If no agent was created, resolve the deployment error and run `azd deploy` in
+that environment. If a version already exists, investigate the failed deployment
+step before retrying; do not delete it, guess a version, or copy another
+project's outputs to bypass the error. After deployment completes, retry
+`azd ai agent publish`. Missing outputs alone are not evidence of a stale
+project identity.
+
+### Stale project managed identity
+
+App-package generation can fail with HTTP 502 when the service cannot mint a
+token for a stale or deleted **Foundry project's system-assigned managed
+identity**. This is separate from your CLI sign-in, the Foundry account's
+identity, and the agent or blueprint identity. Fix environment and sign-in
+errors first; do not reset identities in response to a generic 401, 403, or 502.
+
+Ask an administrator to inspect the project identity. These read-only commands
+show the project selected by the active `azd` environment. Run each command as
+one line and stop if a command fails:
+
+```powershell
+$projectId = azd env get-value AZURE_AI_PROJECT_ID; if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($projectId)) { throw "Select the intended azd environment and complete Step 4 first." }
+az resource show --ids $projectId --api-version 2025-06-01 --query "{id:id,identity:identity}" --output json
+$principalId = az resource show --ids $projectId --api-version 2025-06-01 --query identity.principalId --output tsv; if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($principalId)) { throw "No project principal could be read. Stop and ask the project administrator to investigate." }
+az ad sp show --id $principalId --query "{id:id,displayName:displayName,servicePrincipalType:servicePrincipalType}" --output json
+```
+
+The administrator should check whether `identity.principalId` still identifies
+an existing service principal in the project's Microsoft Entra tenant and
+whether it has the required resource access. Lack of permission to read the
+directory is not evidence that the identity was deleted. Retain the failed
+request's timestamp, correlation ID, and service error for support; do not share
+access tokens. ARM can still report `SystemAssigned` and an old principal ID
+after the underlying identity is deleted. Reapplying `SystemAssigned` without
+changing that stale state is not a reliable repair.
+
+**Prefer support-assisted recovery.** For a shared or production project, open
+an Azure support request before changing identity state. For an isolated sample,
+another option is to create a new `azd` environment and choose a **new project**
+in Steps 3–4, arrange its permissions, then deploy and publish there. Leave the
+original project intact while evaluating this option. A new environment name
+alone does not isolate an agent in the same project; migration can require new
+publication, approval, and instances and can incur charges.
+
+**Administrator-only, disruptive repair:** if a stale or deleted identity is
+confirmed and support recommends recreating it, coordinate a maintenance window
+with the project owner. Do not use identity reset as routine troubleshooting:
+
+1. Record the old principal ID, full project configuration, identity type,
+   user-assigned identities (if any), and all access dependencies. Record role
+   definitions, scopes, and conditions before changing anything. This read-only
+   command lists the old principal's assignments in the project's subscription;
+   also inventory access in other subscriptions, directory roles, and non-RBAC
+   access separately:
+
+   ```powershell
+   az role assignment list --assignee-object-id $principalId --all --include-inherited --fill-principal-name false --subscription ($projectId.Split('/')[2]) --output json
+   ```
+
+2. Confirm that an administrator can regrant the recorded access to a **new
+   principal ID**. Disabling a system-assigned identity interrupts every
+   operation using it; re-enabling does not recover the old principal or its
+   permissions. Do not proceed without a recovery plan.
+3. Follow the support-approved procedure to disable and re-enable the project's
+   system-assigned identity, preserving other project settings. **Read back the
+   resource after every update, including failed updates**, using the
+   `az resource show` command above. A request setting `identity.type=None` has
+   been observed to return HTTP 400 (`Unsupported configuration`) while still
+   disabling the identity. Do not assume a 400 means the state is unchanged,
+   blindly retry rejected requests, or leave the project with identity `None`.
+   If the API rejects an operation, inspect the actual state and have support
+   guide recovery rather than improvising further PATCH requests.
+4. Verify that the project reports `SystemAssigned`, the new principal exists
+   in the correct tenant, and all required access has been regranted, including
+   **Cognitive Services User** on the Foundry resource. Refresh `$principalId`
+   with the read-only command above; do not reuse the old ID for new assignments.
+
+After the administrator confirms that the new identity is enabled and its
+permissions have propagated, retry `azd ai agent publish`. If token issuance
+still fails, escalate with the captured diagnostics rather than repeatedly
+recreating identities. The sample's provisioning workflow deliberately does
+not perform this repair or manage role assignments. Do not use `azd down` or
+delete the project, agent, or blueprint as a reset.
 
 ## References
 
