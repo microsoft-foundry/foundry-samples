@@ -1,6 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 
 requiredVersions:
+  azd: '>=1.27.1'
   extensions:
     azure.ai.agents: '>=1.0.0-beta.16'
 name: invocations-echo-agent

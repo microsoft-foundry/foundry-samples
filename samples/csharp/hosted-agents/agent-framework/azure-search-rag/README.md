@@ -246,18 +246,23 @@ az role assignment create --assignee-object-id $USER_OID --assignee-principal-ty
 SEARCH_ENDPOINT="https://<search-service>.search.windows.net"
 INDEX_NAME="contoso-outdoors"
 
+INDEX_SCHEMA=$(cat <<EOF
+{
+  "name": "$INDEX_NAME",
+  "fields": [
+    { "name": "id", "type": "Edm.String", "key": true, "filterable": true },
+    { "name": "content", "type": "Edm.String", "searchable": true },
+    { "name": "sourceName", "type": "Edm.String", "filterable": true },
+    { "name": "sourceLink", "type": "Edm.String" }
+  ]
+}
+EOF
+)
+
 # Create the index (idempotent: 201 on create, 204 on update)
 az rest --method put --resource https://search.azure.com \
   --uri "${SEARCH_ENDPOINT}/indexes/${INDEX_NAME}?api-version=2024-07-01" \
-  --headers Content-Type=application/json --body '{
-    "name": "contoso-outdoors",
-    "fields": [
-      { "name": "id", "type": "Edm.String", "key": true, "filterable": true },
-      { "name": "content", "type": "Edm.String", "searchable": true },
-      { "name": "sourceName", "type": "Edm.String", "filterable": true },
-      { "name": "sourceLink", "type": "Edm.String" }
-    ]
-  }'
+  --headers Content-Type=application/json --body "$INDEX_SCHEMA"
 
 # Seed three Contoso Outdoors documents
 az rest --method post --resource https://search.azure.com \

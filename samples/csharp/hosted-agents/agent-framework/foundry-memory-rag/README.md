@@ -12,7 +12,9 @@ The store is created on startup via `EnsureMemoryStoreCreatedAsync` (idempotent)
 > Provisioning of the Foundry project, model deployments, and supporting Azure resources is handled by the [`azd-ai-starter-basic`](https://github.com/Azure-Samples/azd-ai-starter-basic) template, which `azd ai agent init` pulls in automatically. The chat and embedding deployments declared under `resources:` in `azure.yaml` flow into the starter's `AI_PROJECT_DEPLOYMENTS` parameter.
 
 > [!NOTE]
-> This sample uses a single shared memory scope so any caller writes to and reads from the same partition. Production agents should partition memory per end user using the platform-injected isolation headers. See the comment near `stateInitializer` in [Program.cs](src/foundry-memory-rag/Program.cs) for the pattern that becomes available once the `HostedSessionContext` API ships in a future `Microsoft.Agents.AI.Foundry.Hosting` release.
+> Memory is partitioned per invoking user through `HostedFoundryMemoryProviderScopes.PerUser()` in
+> [Program.cs](src/foundry-memory-rag/Program.cs). Foundry supplies the user identity when hosted;
+> for local testing, pass a distinct `--user-identity` for each user as shown below.
 
 See [Program.cs](src/foundry-memory-rag/Program.cs) for the full implementation.
 

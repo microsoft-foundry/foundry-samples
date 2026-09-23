@@ -172,7 +172,7 @@ az rest --method POST \
 azd ai agent invoke --local --conversation-id demo-trade-1 "Buy 10 shares of MSFT."
 
 # Approve it, chaining the same conversation id. Only now is the (simulated) trade placed, exactly once.
-# Set <conversation-id> to demo-trade-1 and replace <id>, then use the same Invoke-RestMethod command.
+# Set <conversation-id> to demo-trade-1 and replace <id>, then use the same az rest command above.
 ```
 
 Confirm the gate: each first request contains an `mcp_approval_request` and **no** result (no
