@@ -18,10 +18,8 @@ builder.Services.AddSingleton<EchoAIAgent>();
 builder.Services.AddInvocationsServer();
 builder.Services.AddScoped<InvocationHandler, EchoInvocationHandler>();
 
-// Map the Invocations protocol endpoints:
-//   POST /invocations              — invoke the agent
-//   GET  /invocations/{id}         — get result (not used by this sample)
-//   POST /invocations/{id}/cancel  — cancel (not used by this sample)
+// Register the Invocations endpoints through AgentHost so the shared port, middleware,
+// health checks, platform headers, and telemetry initialization remain active.
 builder.RegisterProtocol("invocations", endpoints => endpoints.MapInvocationsServer());
 
 var app = builder.Build();

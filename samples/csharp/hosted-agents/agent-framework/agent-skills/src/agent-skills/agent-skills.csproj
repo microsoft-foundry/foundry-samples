@@ -10,20 +10,19 @@
       MAAI001 - Microsoft.Agents.AI experimental APIs (AgentSkillsProvider)
       AAIP001 - Azure.AI.Projects.Agents experimental APIs (ProjectAgentSkills)
       OPENAI001 - OpenAI Responses experimental APIs (Foundry Responses hosting)
-      NU1903 - sample-only vulnerability notice that is not actionable
     -->
-    <NoWarn>$(NoWarn);MAAI001;AAIP001;OPENAI001;NU1903</NoWarn>
+    <NoWarn>$(NoWarn);AAIP001;MAAI001;OPENAI001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Agent Framework core - provides AgentSkillsProvider and ChatClientAgent. -->
-    <PackageReference Include="Microsoft.Agents.AI" Version="1.15.0" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.22.0" />
     <!-- Agent Framework hosting - provides AgentHost, AddFoundryResponses, MapFoundryResponses. -->
-    <PackageReference Include="Microsoft.Agents.AI.Foundry.Hosting" Version="1.15.0-preview.260722.1" />
+    <PackageReference Include="Microsoft.Agents.AI.Foundry.Hosting" Version="1.22.0-preview.260918.1" />
     <!-- Foundry SDK - provides AIProjectClient, AsAIAgent, and ProjectAgentSkills (Azure.AI.Projects.Agents). -->
-    <PackageReference Include="Azure.AI.Projects" Version="2.1.0-beta.4" />
+    <PackageReference Include="Azure.AI.Projects" Version="3.0.0-beta.2" />
     <!-- .env file support for local development. -->
-    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="DotNetEnv" Version="3.2.0" />
   </ItemGroup>
 
   <!-- Ship the source SKILL.md files in the publish output so the optional provisioning step

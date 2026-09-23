@@ -5,28 +5,25 @@
     <RootNamespace>ClawSample</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <!-- NU1903: suppress package vulnerability audit warnings for preview/alpha packages.
-         NU1605: suppress downgrade warnings from preview transitive dependency resolution. -->
-    <NoWarn>$(NoWarn);NU1903;NU1605</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Agent Framework hosting — provides AgentHost, AddFoundryResponses, MapFoundryResponses -->
-    <PackageReference Include="Microsoft.Agents.AI.Foundry.Hosting" Version="1.13.0-preview.260703.1" />
+    <PackageReference Include="Microsoft.Agents.AI.Foundry.Hosting" Version="1.22.0-preview.260918.1" />
     <!-- Harness agent — provides AsHarnessAgent, HarnessAgentOptions, skills, file access, background agents -->
-    <PackageReference Include="Microsoft.Agents.AI.Harness" Version="1.13.0-preview.260703.1" />
+    <PackageReference Include="Microsoft.Agents.AI.Harness" Version="1.22.0" />
     <!-- MCP — Foundry Toolbox skills over MCP (UseMcpSkills) -->
-    <PackageReference Include="Microsoft.Agents.AI.Mcp" Version="1.13.0-alpha.260703.1" />
+    <PackageReference Include="Microsoft.Agents.AI.Mcp" Version="1.22.0-alpha.260918.1" />
     <!-- Confined shell executor for the run_shell tool -->
-    <PackageReference Include="Microsoft.Agents.AI.Tools.Shell" Version="1.13.0-preview.260703.1" />
+    <PackageReference Include="Microsoft.Agents.AI.Tools.Shell" Version="1.22.0-preview.260918.1" />
     <!-- CodeAct on Hyperlight (requires hardware virtualization on the host) -->
-    <PackageReference Include="Microsoft.Agents.AI.Hyperlight" Version="1.13.0-preview.260703.1" />
-    <PackageReference Include="Hyperlight.HyperlightSandbox.Guest.Python" Version="0.5.0" />
+    <PackageReference Include="Microsoft.Agents.AI.Hyperlight" Version="1.22.0-preview.260918.1" />
+    <PackageReference Include="Hyperlight.HyperlightSandbox.Guest.Python" Version="0.6.0" />
     <!-- Foundry SDK — provides AIProjectClient, GetResponsesClient, AsIChatClient -->
-    <PackageReference Include="Azure.AI.Projects" Version="2.1.0-beta.3" />
+    <PackageReference Include="Azure.AI.Projects" Version="3.0.0-beta.2" />
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
     <!-- .env file support for local development -->
-    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="DotNetEnv" Version="3.2.0" />
   </ItemGroup>
 
   <ItemGroup>

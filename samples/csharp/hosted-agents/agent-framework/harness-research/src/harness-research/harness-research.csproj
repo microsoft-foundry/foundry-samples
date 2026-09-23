@@ -9,25 +9,24 @@
     <!--
       MAAI001 - Microsoft.Agents.AI experimental APIs (AsHarnessAgent, HarnessAgentOptions)
       OPENAI001 - OpenAI Responses experimental APIs (Foundry Responses hosting)
-      NU1903 - sample-only vulnerability notice that is not actionable
     -->
-    <NoWarn>$(NoWarn);MAAI001;OPENAI001;NU1903</NoWarn>
+    <NoWarn>$(NoWarn);MAAI001;OPENAI001</NoWarn>
     <UserSecretsId>b1bbd30c-a61e-46b3-89d6-2cc755413e69</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Agent Framework core - provides AIAgent and Microsoft.Extensions.AI types. -->
-    <PackageReference Include="Microsoft.Agents.AI" Version="1.13.0" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.22.0" />
     <!-- Agent Framework harness - provides AsHarnessAgent, HarnessAgentOptions, TodoCompletionLoopEvaluator, FileSystemAgentFileStore. -->
-    <PackageReference Include="Microsoft.Agents.AI.Harness" Version="1.13.0-preview.260703.1" />
+    <PackageReference Include="Microsoft.Agents.AI.Harness" Version="1.22.0" />
     <!-- Agent Framework hosting - provides AgentHost, AddFoundryResponses, MapFoundryResponses. -->
-    <PackageReference Include="Microsoft.Agents.AI.Foundry.Hosting" Version="1.12.0-preview.260629.1" />
+    <PackageReference Include="Microsoft.Agents.AI.Foundry.Hosting" Version="1.22.0-preview.260918.1" />
     <!-- Foundry SDK - provides AIProjectClient, GetProjectOpenAIClient, GetResponsesClient. -->
-    <PackageReference Include="Azure.AI.Projects" Version="2.1.0-beta.4" />
+    <PackageReference Include="Azure.AI.Projects" Version="3.0.0-beta.2" />
     <!-- Azure Identity - DefaultAzureCredential. -->
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
     <!-- .env file support for local development. -->
-    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="DotNetEnv" Version="3.2.0" />
   </ItemGroup>
 
   <ItemGroup>

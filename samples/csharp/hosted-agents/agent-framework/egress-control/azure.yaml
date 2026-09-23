@@ -3,7 +3,7 @@
 requiredVersions:
   azd: '>=1.27.1'
   extensions:
-    azure.ai.agents: '>=1.0.0-beta.9'
+    azure.ai.agents: '>=1.0.0-beta.16'
 name: agent-framework-egress-control-responses-dotnet
 services:
   ai-project:
@@ -33,6 +33,9 @@ services:
     codeConfiguration:
       runtime: dotnet_10
       entryPoint: agent-framework-egress-control-responses-dotnet.dll
+    docker:
+      path: Dockerfile
+      remoteBuild: true
     uses:
       - ai-project
     kind: hosted
@@ -53,7 +56,6 @@ services:
       - type: rai_policy
         raiPolicyName: ${RAI_POLICY_ID}
 infra:
-  provider: microsoft.foundry
   layers:
     - provider: microsoft.foundry
       path: infra/foundry

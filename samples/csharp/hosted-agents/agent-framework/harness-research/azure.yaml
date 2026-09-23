@@ -3,7 +3,7 @@
 requiredVersions:
     azd: '>=1.27.1'
     extensions:
-        azure.ai.agents: '>=1.0.0-beta.9'
+        azure.ai.agents: '>=1.0.0-beta.16'
 name: harness-research
 services:
     ai-project:
@@ -26,6 +26,9 @@ services:
         codeConfiguration:
             entryPoint: harness-research.dll
             runtime: dotnet_10
+        docker:
+            path: Dockerfile
+            remoteBuild: true
         container:
             resources:
                 cpu: "0.5"

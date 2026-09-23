@@ -6,19 +6,16 @@
     <AssemblyName>caller</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <!-- NU1903: suppress package vulnerability audit warnings for preview/alpha packages from the azure-sdk-for-net feed.
-         NU1605: suppress downgrade warnings that arise from preview transitive dependency resolution. -->
-    <NoWarn>$(NoWarn);NU1903;NU1605</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Agent Framework hosting — provides AgentHost, AddFoundryResponses, MapFoundryResponses,
          and the GetToolboxToolsAsync extension on AIProjectClient. -->
-    <PackageReference Include="Microsoft.Agents.AI.Foundry.Hosting" Version="1.15.0-preview.260722.1" />
+    <PackageReference Include="Microsoft.Agents.AI.Foundry.Hosting" Version="1.22.0-preview.260918.1" />
     <!-- Foundry SDK — provides AIProjectClient and AsAIAgent -->
-    <PackageReference Include="Azure.AI.Projects" Version="2.1.0-beta.4" />
+    <PackageReference Include="Azure.AI.Projects" Version="3.0.0-beta.2" />
     <!-- .env file support for local development -->
-    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="DotNetEnv" Version="3.2.0" />
   </ItemGroup>
 
 </Project>

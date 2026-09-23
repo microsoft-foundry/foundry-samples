@@ -2,7 +2,7 @@
 
 requiredVersions:
   extensions:
-    azure.ai.agents: '>=1.0.0-beta.4'
+    azure.ai.agents: '>=1.0.0-beta.16'
 name: invocations-echo-agent
 services:
   ai-project:
@@ -20,6 +20,9 @@ services:
     codeConfiguration:
       runtime: dotnet_10
       entryPoint: invocations-echo-agent.dll
+    docker:
+      path: Dockerfile
+      remoteBuild: true
     uses:
       - ai-project
     kind: hosted

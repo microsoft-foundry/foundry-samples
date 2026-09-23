@@ -27,11 +27,9 @@ if ([string]::IsNullOrWhiteSpace($projectId)) {
     Write-Error "Could not determine project ID. Set AZURE_AI_PROJECT_ID."
     exit 1
 }
+
 $connectionId = "$projectId/connections/browserautomation"
-
 $toolboxName = "browser-automation-tools"
-$token = az account get-access-token --resource "https://ai.azure.com" --query accessToken -o tsv
-
 $toolboxBody = @{
     tools = @(
         @{
@@ -45,22 +43,25 @@ $toolboxBody = @{
     )
 } | ConvertTo-Json -Depth 5 -Compress
 
-$headers = @{
-    "Authorization" = "Bearer $token"
-    "Content-Type"  = "application/json"
-}
-
-# POST creates a new version (works for both new and existing toolboxes)
+$bodyFile = New-TemporaryFile
 try {
-    $response = Invoke-RestMethod -Method POST `
-        -Uri "${projectEndpoint}/toolboxes/${toolboxName}/versions?api-version=v1" `
-        -Headers $headers -Body $toolboxBody
-    $versionId = $response.version
-} catch {
-    Write-Error "Failed to create toolbox version: $_"
-    exit 1
+    $toolboxBody | Out-File $bodyFile -Encoding utf8
+    $response = az rest `
+        --method POST `
+        --url ($projectEndpoint + "/toolboxes/" + $toolboxName + "/versions?api-version=v1") `
+        --resource https://ai.azure.com `
+        --headers "Content-Type=application/json" "Foundry-Features=Toolboxes=V1Preview" `
+        --body "@$bodyFile" `
+        --output json | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to create toolbox version."
+    }
+}
+finally {
+    Remove-Item -LiteralPath $bodyFile -Force
 }
 
+$versionId = $response.version
 if ([string]::IsNullOrWhiteSpace($versionId)) {
     Write-Error "Toolbox creation did not return a version ID."
     exit 1
@@ -68,7 +69,6 @@ if ([string]::IsNullOrWhiteSpace($versionId)) {
 
 Write-Host "  Created version: $versionId"
 
-# Publish the new version as default
 azd ai toolbox publish $toolboxName $versionId
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to publish toolbox version '$versionId'. The agent may not work without a default version."
@@ -77,4 +77,4 @@ if ($LASTEXITCODE -ne 0) {
 
 azd env set TOOLBOX_NAME $toolboxName
 
-Write-Host "✅ Toolbox '$toolboxName' v${versionId} created and published."
+Write-Host "Toolbox '$toolboxName' v${versionId} created and published."

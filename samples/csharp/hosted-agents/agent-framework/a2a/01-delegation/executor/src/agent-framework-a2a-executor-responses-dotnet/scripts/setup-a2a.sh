@@ -8,14 +8,13 @@
 #   See: https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/enable-agent-to-agent-endpoint
 #
 # The matching `RemoteA2A` connection and `a2a_preview` toolbox are declared
-# in the caller's agent.manifest.yaml and created by `azd provision` on the
-# caller — they are NOT created here.
+# in the caller's azure.yaml and created by `azd provision` on the caller.
+# They are not created here.
 #
 # Defaults (filled in from ../.env so you can usually run with no args):
 #   - FOUNDRY_PROJECT_ENDPOINT : read from ../.env
 #   - AGENT_NAME               : "agent-framework-a2a-executor-responses-dotnet"
-#                                (the executor's default name from
-#                                agent.manifest.yaml)
+#                                (the executor's default name from azure.yaml)
 #
 # Override any default by exporting the env var of the same name before
 # running, or by passing the agent name as a positional arg.
@@ -69,14 +68,12 @@ echo
 
 echo "Enabling incoming A2A on agent '$AGENT_NAME'..."
 
-DATA_TOKEN="$(az account get-access-token \
+az rest \
+  --method PATCH \
+  --url "$BASE_URL/agents/$AGENT_NAME?api-version=v1" \
   --resource https://ai.azure.com \
-  --query accessToken -o tsv)"
-
-curl -fsS -X PATCH "$BASE_URL/agents/$AGENT_NAME?api-version=v1" \
-  -H "Authorization: Bearer $DATA_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
+  --headers "Content-Type=application/json" \
+  --body '{
     "agent_card": {
       "description": "A math expert that performs arithmetic operations and explains the steps.",
       "version": "1.0",
@@ -91,7 +88,8 @@ curl -fsS -X PATCH "$BASE_URL/agents/$AGENT_NAME?api-version=v1" \
     "agent_endpoint": {
       "protocols": ["responses", "a2a"]
     }
-  }' > /dev/null
+  }' \
+  --output none
 
 echo "done."
 echo
