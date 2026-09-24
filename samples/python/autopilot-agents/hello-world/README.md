@@ -20,14 +20,14 @@ it before creating an instance. All setup instructions are on this page.
 Install:
 
 1. [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
-   **1.31.2 or later**.
+   **1.32.0 or later**.
 2. [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli)
    **2.80 or later**.
 3. Python 3.11 or later. The hosted runtime is Python 3.13, as declared in
    `azure.yaml`.
 4. [PowerShell 7 or later](https://learn.microsoft.com/powershell/scripting/install/installing-powershell).
 
-Install the Foundry agent extension:
+Install the Foundry agent extension **1.0.0-beta.16 or later**:
 
 ```powershell
 azd ext install azure.ai.agents
@@ -169,7 +169,9 @@ shown in Microsoft 365:
 | `appVersion` | The Microsoft 365 app version; the sample starts at `1.0.0`. |
 
 Replace the sample organization and URLs if they do not apply to your app.
-Keep `publishScope: tenant` for this Autopilot.
+Keep `publishScope: tenant` for this
+Autopilot. The extension derives Autopilot publication from the Digital Worker
+type.
 
 Publish the deployed agent:
 
