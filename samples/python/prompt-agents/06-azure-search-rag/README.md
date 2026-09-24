@@ -17,3 +17,7 @@ azd env set AZURE_SEARCH_INDEX_NAME <your-index-name>
 azd up
 azd ai agent invoke "What does the documentation say about the return policy?"
 ```
+
+## GitHub Copilot Harness
+
+Not supported. The GitHub Copilot harness does not accept Azure AI Search grounding.
