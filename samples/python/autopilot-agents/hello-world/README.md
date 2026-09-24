@@ -36,7 +36,7 @@ azd ext install azure.ai.agents
 If it is already installed, update it instead:
 
 ```powershell
-azd ext update azure.ai.agents
+azd ext upgrade azure.ai.agents
 ```
 
 You also need an Azure subscription and a tenant with Microsoft Agent 365 and
