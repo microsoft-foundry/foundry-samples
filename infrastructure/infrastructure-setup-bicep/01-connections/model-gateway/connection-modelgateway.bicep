@@ -53,8 +53,8 @@ param inferenceAPIVersion string = ''    // Required: API version for model infe
 param deploymentAPIVersion string = ''   // Optional: API version for deployment management
 
 // 3. OPTIONAL - Dynamic Discovery Configuration  
-param listModelsEndpoint string = ''     // Optional: Endpoint for listing available models
-param getModelEndpoint string = ''       // Optional: Endpoint for getting model details
+param listModelsEndpoint string = ''     // Optional: Relative or same-origin absolute HTTPS endpoint for listing available models
+param getModelEndpoint string = ''       // Optional: Relative or same-origin absolute HTTPS endpoint for getting model details
 param deploymentProvider string = ''     // Optional: Provider type (e.g., OpenAI)
 
 // 4. OPTIONAL - Static Model List
