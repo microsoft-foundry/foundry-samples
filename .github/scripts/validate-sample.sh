@@ -410,7 +410,7 @@ generate_unique_resource_name() {
     # Truncate the sanitized base for readability only; a checksum of the
     # full (untruncated) sample path is included below so two samples can't
     # collide just because truncation made their prefixes match.
-    path_hash="$(printf '%s' "$sanitized" | cksum | cut -d' ' -f1)"
+path_hash="$(printf '%s' "$base" | cksum | cut -d' ' -f1)"
     sanitized="${sanitized:0:12}"
     # Include the workflow run id/attempt (falling back to "local" for
     # non-Actions invocations) so a $RANDOM collision between two concurrent
