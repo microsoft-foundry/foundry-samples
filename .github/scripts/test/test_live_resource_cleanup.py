@@ -63,7 +63,7 @@ class LiveResourceCleanupTests(unittest.TestCase):
                 mock.patch.object(
                     cleanup,
                     "list_agent_versions",
-                    side_effect=lambda endpoint, token, name: current[name],
+                    side_effect=lambda endpoint, token, name, **kwargs: current[name],
                 ),
                 mock.patch.object(cleanup, "request_json", side_effect=record_delete),
             ):
@@ -155,6 +155,19 @@ class LiveResourceCleanupTests(unittest.TestCase):
                 "https://example.test/project", "token", "new-agent"
             )
         self.assertEqual(versions, set())
+
+    def test_existing_agent_versions_404_fails_snapshot(self) -> None:
+        missing = cleanup.FoundryApiError("GET", "https://example.test", 404, "not found")
+        with (
+            mock.patch.object(
+                cleanup, "foundry_endpoint", return_value="https://example.test/project"
+            ),
+            mock.patch.object(cleanup, "access_token", return_value="token"),
+            mock.patch.object(cleanup, "agent_exists", return_value=True),
+            mock.patch.object(cleanup, "request_json", side_effect=missing),
+        ):
+            with self.assertRaises(cleanup.FoundryApiError):
+                cleanup.take_snapshot(["existing-agent"])
 
     def test_list_agent_conversations_filters_by_agent_name_with_pagination(self) -> None:
         pages = [

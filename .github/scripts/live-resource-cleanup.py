@@ -111,7 +111,9 @@ def request_json(method: str, url: str, token: str) -> dict[str, Any]:
     return payload
 
 
-def list_agent_versions(endpoint: str, token: str, agent_name: str) -> set[str]:
+def list_agent_versions(
+    endpoint: str, token: str, agent_name: str, *, missing_ok: bool = True
+) -> set[str]:
     versions: set[str] = set()
     after = ""
     while True:
@@ -125,7 +127,7 @@ def list_agent_versions(endpoint: str, token: str, agent_name: str) -> set[str]:
         try:
             payload = request_json("GET", url, token)
         except FoundryApiError as exc:
-            if exc.status == 404:
+            if exc.status == 404 and missing_ok:
                 return set()
             raise
         data = payload.get("data")
@@ -226,7 +228,9 @@ def take_snapshot(agent_names: list[str]) -> dict[str, Any]:
         exists = agent_exists(endpoint, token, name)
         resources[name] = {
             "exists": exists,
-            "versions": sorted(list_agent_versions(endpoint, token, name)) if exists else [],
+            "versions": sorted(list_agent_versions(endpoint, token, name, missing_ok=False))
+            if exists
+            else [],
             "conversations": sorted(list_agent_conversations(endpoint, token, name)),
         }
     return {
@@ -303,7 +307,7 @@ def cleanup(snapshot_path: Path) -> int:
             continue
         if not exists_now:
             continue
-        current_versions = list_agent_versions(endpoint, token, agent_name)
+        current_versions = list_agent_versions(endpoint, token, agent_name, missing_ok=False)
         created_versions = current_versions - set(previous_state["versions"])
         for version in sorted(created_versions, key=version_sort_key, reverse=True):
             url = (
