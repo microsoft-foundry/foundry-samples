@@ -79,9 +79,9 @@
 /samples/csharp/quickstart/chat-with-agent/quickstart-chat-with-agent.cs @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/quickstart/create-agent/quickstart-create-agent.cs @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/quickstart/responses/quickstart-responses.cs @microsoft-foundry/AI-Platform-Docs
-/samples/java/quickstart/chat-with-agent/src/main/java/com/azure/ai/agents/ChatWithAgent.java @microsoft-foundry/AI-Platform-Docs
-/samples/java/quickstart/create-agent/src/main/java/com/azure/ai/agents/CreateAgent.java @microsoft-foundry/AI-Platform-Docs
-/samples/java/quickstart/responses/src/main/java/com/azure/ai/agents/CreateResponse.java @microsoft-foundry/AI-Platform-Docs
+/samples/java/quickstart/chat-with-agent/src/main/java/com/azure/ai/foundry/samples/ChatWithAgent.java @microsoft-foundry/AI-Platform-Docs
+/samples/java/quickstart/create-agent/src/main/java/com/azure/ai/foundry/samples/CreateAgent.java @microsoft-foundry/AI-Platform-Docs
+/samples/java/quickstart/responses/src/main/java/com/azure/ai/foundry/samples/CreateResponse.java @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/foundry-local/audio-transcription-example/app.js @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/foundry-local/embeddings/app.js @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/foundry-local/langchain-integration-example/app.js @microsoft-foundry/AI-Platform-Docs
