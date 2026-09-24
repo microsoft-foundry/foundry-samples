@@ -1,5 +1,5 @@
 name: Hosted Agent — Downstream Azure (Storage + Service Bus)
 description: An Agent Framework hosted agent that operates on Azure Blob Storage and Service Bus using its per-agent Microsoft Entra identity.
 
-build: "pip install -r requirements.txt"
-validate: "python -m compileall -q ."
+build: "uv sync --frozen --no-dev --no-install-project"
+validate: "uv run --no-sync python -m compileall -q ."

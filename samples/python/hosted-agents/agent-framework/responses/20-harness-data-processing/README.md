@@ -26,7 +26,7 @@ For container deployment, the deploying identity needs permission to build or pu
 ## Prerequisites
 
 1. An existing Foundry project with a deployed `gpt-5.4` model, or permission to create them during Option 1.
-2. **Python 3.10 or later.**
+2. **Python 3.13 or later.**
 3. An identity with the **Foundry User** role on the project. Deploying to an existing project requires **Foundry Project Manager**.
 
 ## Option 1: Azure Developer CLI (`azd`)
@@ -110,17 +110,13 @@ Use `--new-conversation --new-session` to reset the conversation and filesystem 
 
 ### Set up the Python virtual environment
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install dependencies in the virtual environment:
+- With Python 3.13 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+   pipx install uv==0.11.7
+   uv sync --frozen --python 3.13
   ```
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
 
 ### Run and debug the agent
 
@@ -134,7 +130,7 @@ Summarize total quantity by region from input/sales.csv. Do not write any files.
 
 ### Or run manually, then open the Inspector
 
-1. From `src/agent-framework-harness-data-processing-responses`, run `python main.py`.
+1. From `src/agent-framework-harness-data-processing-responses`, run `uv run --no-sync python main.py`.
 2. Open the Command Palette and run **Foundry Toolkit: Open Agent Inspector**.
 3. Connect to `http://localhost:8088` and send the prompt above.
 

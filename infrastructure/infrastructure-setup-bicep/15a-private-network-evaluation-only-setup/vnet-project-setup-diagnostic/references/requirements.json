@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "actions": {
+    "ProjectAssets": {
+      "kind": "dataActions",
+      "values": [
+        "Microsoft.CognitiveServices/accounts/AIServices/assets/read",
+        "Microsoft.CognitiveServices/accounts/AIServices/assets/write"
+      ],
+      "limitation": "The catalog assesses selected configured asset grants, not every dataset or service API permission. Actual authorization can depend on the requested operation and policy. No dataset API was invoked."
+    },
+    "Blob": {
+      "kind": "dataActions",
+      "values": [
+        "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read",
+        "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write"
+      ],
+      "limitation": "Dataset/results read and write configuration only; container-specific or conditional grants may need workload context. Blob Data Owner is not universally required."
+    },
+    "Model": {
+      "kind": "dataActions",
+      "values": ["Microsoft.CognitiveServices/accounts/OpenAI/deployments/chat/completions/action"],
+      "limitation": "Chat-completion configuration only; other model protocols and grader operations are not certified. No inference or key validation."
+    },
+    "Trace": {
+      "kind": "actions",
+      "values": [
+        "Microsoft.OperationalInsights/workspaces/query/read",
+        "Microsoft.OperationalInsights/workspaces/query/AppRequests/read",
+        "Microsoft.OperationalInsights/workspaces/query/AppDependencies/read",
+        "Microsoft.OperationalInsights/workspaces/query/AppTraces/read"
+      ],
+      "limitation": "Workspace-permission candidate for the tool's project-MI resource-context assessment, not a universal workspace-scope prerequisite. The catalog checks AppRequests/AppDependencies/AppTraces permissions. Table existence, protection/conditions, runtime access and ingestion are not exercised."
+    },
+    "TraceResource": {
+      "kind": "actions",
+      "values": [
+        "Microsoft.Insights/logs/AppRequests/read",
+        "Microsoft.Insights/logs/AppDependencies/read",
+        "Microsoft.Insights/logs/AppTraces/read"
+      ],
+      "limitation": "Configured project-MI resource-context read grants at the Application Insights component, as selected by this tool. Usable when workspace resource permissions are enabled. Caller and connection credentials are separate. Configuration coverage only; no query, table-protection, service-identity or effective-access assertion."
+    },
+    "PrivilegedTrace": {
+      "kind": "dataActions",
+      "values": ["Microsoft.OperationalInsights/workspaces/tables/data/read"],
+      "limitation": "Candidate protected-table data grant at the assessed component, not proof of access to sensitive trace content. Supported role scopes can include resource or workspace; table protection/ABAC requirements cannot be certified from this generic action. Explicit privileged-coverage uncertainty remains required."
+    }
+  }
+}

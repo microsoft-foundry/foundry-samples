@@ -1,0 +1,4 @@
+name: Generate a Voice Agent from a Goal
+description: Generate a managed voice agent from a natural-language goal, inspect its generated definition, then delete it.
+
+build: "npm install --registry=https://registry.npmjs.org/"

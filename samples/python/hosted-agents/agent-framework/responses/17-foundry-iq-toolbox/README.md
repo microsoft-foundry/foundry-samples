@@ -150,12 +150,10 @@ azd ai agent invoke "What can you tell me about the Earth at night?"
 Prefer to run the steps yourself (or skip the hook)? Provision the knowledge base directly from the project directory, with `az login` done:
 
 ```bash
-pip install requests azure-identity python-dotenv
-
 export AZURE_SEARCH_ENDPOINT="https://<your-search>.search.windows.net"
 export AZURE_OPENAI_ENDPOINT="https://<account>.openai.azure.com"
 export AZURE_AI_MODEL_DEPLOYMENT_NAME="gpt-5.4-mini"
-python provision_kb.py
+uv run --frozen --group provisioning python provision_kb.py
 ```
 
 In PowerShell, use `$env:NAME="value"` instead of `export`. The script prints the knowledge base's **MCP endpoint** and is safe to re-run. Then create the connection, point the toolbox's `server_url` at that endpoint, create the toolbox, and store the toolbox endpoint:

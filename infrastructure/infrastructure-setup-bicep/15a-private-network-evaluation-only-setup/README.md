@@ -205,6 +205,12 @@ To use an existing Azure Storage account, set the azureStorageAccountResourceId 
 > - Azure VPN Gateway
 > - Azure ExpressRoute
 
+### Add a project capability host to an existing deployment
+
+New deployments create a project capability host by default. If your existing network-injected template 15a project has no capability host, follow [Add a project capability host to template 15a](add-project-capability-host.md). The guide deploys only the standalone project capability host module, leaves the existing infrastructure unchanged, and covers host verification and service-managed DataProxy metadata.
+
+This procedure is specific to template 15a, not the full standard agent setup in template 15.
+
 ### Cleanup
 
 To delete all resources created by this template:

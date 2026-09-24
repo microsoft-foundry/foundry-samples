@@ -1,0 +1,4 @@
+name: Voice Agent Conversation Inspection
+description: Inspect a stored voice agent conversation - its items and model responses - through the Conversation REST API.
+
+build: "npm install --registry=https://registry.npmjs.org/"

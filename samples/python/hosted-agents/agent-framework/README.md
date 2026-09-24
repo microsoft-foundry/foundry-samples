@@ -162,11 +162,28 @@ The extension also adds an **Agent Inspector** UI for chatting with a hosted age
 
 1. **Foundry Toolkit VS Code Extension** — [install from the VS Code marketplace](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent?pivots=vscode) and sign in to Azure.
 2. For debugging Python in VS Code, install the **[Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)** extension pack.
+3. Python 3.10 or later. The uv setup option requires Python 3.13 or later.
+4. [pipx](https://pipx.pypa.io/stable/installation/) if you use the uv setup option.
 
 #### Set up the Python virtual environment
 
+Use the setup option that matches the dependency files included with the sample.
+
+**Using `requirements.txt`**
+
 - Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** (or **Python: Select Interpreter** to use an existing one).
 - Install dependencies: `pip install uv && uv pip install -r requirements.txt`
+
+**Using uv**
+
+Install uv outside the project environment, then let uv create and synchronize the locked environment:
+
+```bash
+pipx install uv==0.11.7
+uv sync --frozen --python 3.13
+```
+
+Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
 
 #### Run and debug with F5 (recommended)
 
@@ -174,7 +191,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 
 #### Or run manually, then open the Inspector
 
-Once the agent is running on `http://localhost:8088/` (via [`azd ai agent run`](#using-azd) or [`python main.py`](#using-python)):
+Once the agent is running on `http://localhost:8088/` (via [`azd ai agent run`](#using-azd) or one of the run options under [Using `python`](#using-python)):
 
 1. Open the Command Palette (`Ctrl+Shift+P`) and run **Foundry Toolkit: Open Agent Inspector**.
 2. The Inspector auto-connects to the running agent.
@@ -189,7 +206,8 @@ Once the agent is running on `http://localhost:8088/` (via [`azd ai agent run`](
 1. An existing Foundry project
 2. A deployed model in your Foundry project
 3. Azure CLI installed and authenticated
-4. Python 3.10 or later
+4. Python 3.10 or later. The uv setup option requires Python 3.13 or later.
+5. [pipx](https://pipx.pypa.io/stable/installation/) if you use the uv setup option
 
 #### Running the Agent Host with Python
 
@@ -201,6 +219,10 @@ cd foundry-samples/samples/python/hosted-agents/agent-framework/responses/01-bas
 ```
 
 #### Environment setup
+
+Use the setup option that matches the dependency files included with the sample.
+
+**Using `requirements.txt`**
 
 1. Navigate to the sample's service directory (the `project` path in its `azure.yaml`). Create a virtual environment:
 
@@ -220,9 +242,25 @@ cd foundry-samples/samples/python/hosted-agents/agent-framework/responses/01-bas
    pip install -r requirements.txt
    ```
 
-3. Create a `.env` file with your Foundry configuration following the `.env.example` file in the sample.
+**Using uv**
 
-4. Make sure you are logged in with the Azure CLI:
+1. Install uv outside the project environment:
+
+   ```bash
+   pipx install uv==0.11.7
+   ```
+
+2. Navigate to the sample's service directory (the `project` path in its `azure.yaml`), then create and synchronize the locked environment:
+
+   ```bash
+   uv sync --frozen --python 3.13
+   ```
+
+After setting up the environment:
+
+1. Create a `.env` file with your Foundry configuration following the `.env.example` file in the sample.
+
+2. Make sure you are logged in with the Azure CLI:
 
    ```bash
    az login
@@ -230,8 +268,16 @@ cd foundry-samples/samples/python/hosted-agents/agent-framework/responses/01-bas
 
 #### Running the Agent Host
 
+With the `requirements.txt` environment activated, run:
+
 ```bash
 python main.py
+```
+
+Or with uv, run:
+
+```bash
+uv run --no-sync python main.py
 ```
 
 Right now, the agent host should be running on `http://localhost:8088`
