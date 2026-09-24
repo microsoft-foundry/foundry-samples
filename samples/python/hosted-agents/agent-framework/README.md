@@ -41,6 +41,7 @@ This directory contains samples that demonstrate how to use the [Agent Framework
 | #   | Sample                         | Description                                                                                                   |
 | --- | ------------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | 1   | [Basic](invocations/01-basic/) | A minimal agent demonstrating session state management via `agent_session_id` in URL params/response headers. |
+| 2   | [Content Safety Guardrail](invocations/02-content-safety-guardrail/) | An agent with a Responsible AI content safety guardrail, including the `invocationsModeration` settings that tell the platform where prompt and response text live in an agent-defined payload. |
 
 ### A2A protocol
 

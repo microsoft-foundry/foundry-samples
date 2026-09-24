@@ -1,0 +1,19 @@
+version: 1
+
+sample:
+  owner: amitbhave
+  experiences: [azd, vscode]
+
+tests:
+  # The guardrail's blocking behavior can't be asserted here: it needs a real RAI
+  # policy, and the sample ships a placeholder policy ID that fails open. What is
+  # deterministic — and what regresses if the moderation wiring is wrong — is that
+  # benign traffic still flows through both the input and output gates untouched.
+  - name: invocations-guardrail-allows-benign-traffic
+    turns:
+      - input:
+          message: Reply briefly and include the exact marker INVOCATIONS-GUARDRAIL-OK.
+        assertions:
+          - source: raw
+            type: contains
+            value: INVOCATIONS-GUARDRAIL-OK
