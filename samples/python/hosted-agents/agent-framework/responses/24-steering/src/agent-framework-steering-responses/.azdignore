@@ -1,0 +1,8 @@
+# Files excluded from template copy during azd ai agent init.
+# NOTE: .dockerignore handles Docker build exclusions separately.
+# NOTE: .agentignore (auto-generated) handles code deploy exclusions.
+.azure/
+.env
+.git/
+.venv/
+__pycache__/
