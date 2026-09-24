@@ -1,0 +1,10 @@
+.vs/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.user
+*.suo
+.env
+.env.*
+!.env.example
