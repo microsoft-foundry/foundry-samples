@@ -1,0 +1,4 @@
+name: Voice Agent Realtime Audio
+description: Stream raw PCM16 audio to a voice agent over a realtime connection and save the streamed audio response.
+
+build: "dotnet restore --source https://api.nuget.org/v3/index.json && dotnet build --no-restore --verbosity minimal"
