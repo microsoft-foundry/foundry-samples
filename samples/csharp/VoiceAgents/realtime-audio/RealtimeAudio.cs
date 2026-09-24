@@ -22,15 +22,14 @@ const int TrailingSilenceDurationMs = 1_000;
 string projectEndpoint = Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_ENDPOINT")
     ?? throw new InvalidOperationException("Set FOUNDRY_PROJECT_ENDPOINT before running this sample.");
 string modelName = Environment.GetEnvironmentVariable("FOUNDRY_VOICE_AGENT_MODEL")?.Trim() ?? "gpt-realtime";
-string agentName = Environment.GetEnvironmentVariable("FOUNDRY_VOICE_AGENT_NAME")?.Trim()
-    ?? $"voice-audio-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
+string agentName = GetOptionalEnvironmentVariable("FOUNDRY_VOICE_AGENT_NAME", $"voice-audio-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
 // The input file must contain raw PCM16 24 kHz mono audio with real, audible speech. Silence
 // or non-speech noise will never trigger server-side turn detection. Defaults to the checked-in
 // fixture (a few seconds of real speech) so this sample also runs unattended.
-string audioInputPath = Environment.GetEnvironmentVariable("FOUNDRY_VOICE_AGENT_AUDIO_INPUT_FILE")?.Trim()
-    ?? Path.Combine(AppContext.BaseDirectory, "assets", "input.pcm");
-string audioOutputPath = Environment.GetEnvironmentVariable("FOUNDRY_VOICE_AGENT_AUDIO_OUTPUT_FILE")?.Trim()
-    ?? Path.Combine(AppContext.BaseDirectory, "output.wav");
+string audioInputPath = GetOptionalEnvironmentVariable(
+    "FOUNDRY_VOICE_AGENT_AUDIO_INPUT_FILE", Path.Combine(AppContext.BaseDirectory, "assets", "input.pcm"));
+string audioOutputPath = GetOptionalEnvironmentVariable(
+    "FOUNDRY_VOICE_AGENT_AUDIO_OUTPUT_FILE", Path.Combine(AppContext.BaseDirectory, "output.wav"));
 
 AIProjectClient projectClient = new(new Uri(projectEndpoint), new DefaultAzureCredential());
 AgentAdministrationClient agentsClient = projectClient.AgentAdministrationClient;
@@ -144,6 +143,12 @@ finally
         ClientResult deleteResult = await agentsClient.DeleteAgentAsync(agentName);
         Console.WriteLine($"[REST] DELETE agent -> {(int)deleteResult.GetRawResponse().Status}");
     }
+}
+
+static string GetOptionalEnvironmentVariable(string name, string fallback)
+{
+    string? value = Environment.GetEnvironmentVariable(name)?.Trim();
+    return string.IsNullOrEmpty(value) ? fallback : value;
 }
 
 async Task<bool> EnsureVoiceAgentAsync()

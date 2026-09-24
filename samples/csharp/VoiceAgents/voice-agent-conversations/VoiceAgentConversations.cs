@@ -18,8 +18,7 @@ using System.Text.Json;
 string projectEndpoint = Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_ENDPOINT")
     ?? throw new InvalidOperationException("Set FOUNDRY_PROJECT_ENDPOINT before running this sample.");
 string modelName = Environment.GetEnvironmentVariable("FOUNDRY_VOICE_AGENT_MODEL")?.Trim() ?? "gpt-realtime";
-string agentName = Environment.GetEnvironmentVariable("FOUNDRY_VOICE_AGENT_NAME")?.Trim()
-    ?? $"voice-conversations-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
+string agentName = GetOptionalEnvironmentVariable("FOUNDRY_VOICE_AGENT_NAME", $"voice-conversations-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
 
 AIProjectClient projectClient = new(new Uri(projectEndpoint), new DefaultAzureCredential());
 AgentAdministrationClient agentsClient = projectClient.AgentAdministrationClient;
@@ -134,6 +133,10 @@ async Task<string> RunStoredConversationAsync()
         }
         else if (update is RealtimeServerUpdateResponseDone doneUpdate)
         {
+            if (doneUpdate.Response.Status != RealtimeResponseStatus.Completed)
+            {
+                throw new InvalidOperationException($"Voice response ended with status: {doneUpdate.Response.Status}");
+            }
             conversationId = doneUpdate.Response.ConversationId;
             break;
         }
@@ -142,6 +145,12 @@ async Task<string> RunStoredConversationAsync()
 
     return conversationId
         ?? throw new InvalidOperationException("The session did not report a conversation ID; was storage enabled?");
+}
+
+static string GetOptionalEnvironmentVariable(string name, string fallback)
+{
+    string? value = Environment.GetEnvironmentVariable(name)?.Trim();
+    return string.IsNullOrEmpty(value) ? fallback : value;
 }
 
 async Task<bool> EnsureVoiceAgentAsync()

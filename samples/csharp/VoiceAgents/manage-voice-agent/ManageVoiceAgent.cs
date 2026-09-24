@@ -16,8 +16,7 @@ string projectEndpoint = Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_END
     ?? throw new InvalidOperationException("Set FOUNDRY_PROJECT_ENDPOINT before running this sample.");
 string modelName = Environment.GetEnvironmentVariable("FOUNDRY_VOICE_AGENT_MODEL")
     ?? throw new InvalidOperationException("Set FOUNDRY_VOICE_AGENT_MODEL before running this sample.");
-string agentName = Environment.GetEnvironmentVariable("FOUNDRY_VOICE_AGENT_NAME")?.Trim()
-    ?? $"voice-manage-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
+string agentName = GetOptionalEnvironmentVariable("FOUNDRY_VOICE_AGENT_NAME", $"voice-manage-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
 
 AIProjectClient projectClient = new(new Uri(projectEndpoint), new DefaultAzureCredential());
 AgentAdministrationClient agentsClient = projectClient.AgentAdministrationClient;
@@ -125,4 +124,10 @@ finally
     Console.WriteLine("\nDeleting the agent...");
     ClientResult deleteAgentResult = await agentsClient.DeleteAgentAsync(agentName);
     Console.WriteLine($"[REST] DELETE agent -> {(int)deleteAgentResult.GetRawResponse().Status}");
+}
+
+static string GetOptionalEnvironmentVariable(string name, string fallback)
+{
+    string? value = Environment.GetEnvironmentVariable(name)?.Trim();
+    return string.IsNullOrEmpty(value) ? fallback : value;
 }

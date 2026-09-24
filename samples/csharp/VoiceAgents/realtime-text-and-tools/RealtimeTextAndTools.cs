@@ -23,10 +23,9 @@ const int PcmBytesPerSample = sizeof(short);
 string projectEndpoint = Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_ENDPOINT")
     ?? throw new InvalidOperationException("Set FOUNDRY_PROJECT_ENDPOINT before running this sample.");
 string modelName = Environment.GetEnvironmentVariable("FOUNDRY_VOICE_AGENT_MODEL")?.Trim() ?? "gpt-realtime";
-string agentName = Environment.GetEnvironmentVariable("FOUNDRY_VOICE_AGENT_NAME")?.Trim()
-    ?? $"voice-text-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
-string audioOutputPath = Environment.GetEnvironmentVariable("FOUNDRY_VOICE_AGENT_AUDIO_OUTPUT_FILE")?.Trim()
-    ?? Path.Combine(AppContext.BaseDirectory, "output.wav");
+string agentName = GetOptionalEnvironmentVariable("FOUNDRY_VOICE_AGENT_NAME", $"voice-text-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
+string audioOutputPath = GetOptionalEnvironmentVariable(
+    "FOUNDRY_VOICE_AGENT_AUDIO_OUTPUT_FILE", Path.Combine(AppContext.BaseDirectory, "output.wav"));
 
 AIProjectClient projectClient = new(new Uri(projectEndpoint), new DefaultAzureCredential());
 AgentAdministrationClient agentsClient = projectClient.AgentAdministrationClient;
@@ -79,7 +78,11 @@ try
                 break;
             case RealtimeServerUpdateError errorUpdate:
                 throw new InvalidOperationException($"{errorUpdate.Error.Code ?? "voice_agent_error"}: {errorUpdate.Error.Message}");
-            case RealtimeServerUpdateResponseDone:
+            case RealtimeServerUpdateResponseDone doneUpdate:
+                if (doneUpdate.Response.Status != RealtimeResponseStatus.Completed)
+                {
+                    throw new InvalidOperationException($"Voice response ended with status: {doneUpdate.Response.Status}");
+                }
                 if (pendingToolOutput)
                 {
                     pendingToolOutput = false;
@@ -112,6 +115,12 @@ finally
         ClientResult deleteResult = await agentsClient.DeleteAgentAsync(agentName);
         Console.WriteLine($"[REST] DELETE agent -> {(int)deleteResult.GetRawResponse().Status}");
     }
+}
+
+static string GetOptionalEnvironmentVariable(string name, string fallback)
+{
+    string? value = Environment.GetEnvironmentVariable(name)?.Trim();
+    return string.IsNullOrEmpty(value) ? fallback : value;
 }
 
 async Task<bool> EnsureVoiceAgentAsync()
