@@ -145,6 +145,7 @@ Or in PowerShell:
 2. A deployed model in your Foundry project
 3. Azure CLI installed and authenticated
 4. Python 3.10 or later
+5. [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment if you use the uv setup option
 
 #### Running the Agent Host with Python
 
@@ -169,11 +170,19 @@ cd foundry-samples/samples/python/hosted-agents/langgraph
    source .venv/bin/activate
    ```
 
-2. Ensure `pip` is version 26.1 or newer (check with `pip --version`); older versions fail to resolve the samples' dependencies. Upgrade if needed, then install:
+2. Install the sample dependencies using the dependency file present in the sample's service directory.
+
+   For samples with `requirements.txt`, ensure `pip` is version 26.1 or newer (check with `pip --version`); older versions fail to resolve the samples' dependencies. Upgrade if needed, then install:
 
    ```bash
    python -m pip install --upgrade pip
    pip install -r requirements.txt
+   ```
+
+   For samples with `pyproject.toml`, use [`uv`](https://docs.astral.sh/uv/) to create and synchronize the locked environment:
+
+   ```bash
+   uv sync --frozen
    ```
 
 3. Create a `.env` file with your Foundry configuration following the `.env.example` file in the sample.

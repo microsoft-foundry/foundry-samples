@@ -1,9 +1,0 @@
-azure-ai-agentserver-responses==2.1.0
-azure-identity==1.25.3
-langgraph==1.1.8
-langgraph-prebuilt==1.0.10
-langchain-core==1.3.0
-langchain-azure-ai[opentelemetry]>=1.2.3
-
-# debugpy enables local debugging of this agent with the Foundry Toolkit VS Code extension.
-debugpy

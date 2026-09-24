@@ -53,10 +53,11 @@ Each file includes a unique `*-CANARY-*` token that the model is asked to echo, 
 What the **sample itself** needs, independent of how you run it. The tooling for each run path (`azd` or the VS Code Foundry Toolkit) is listed under its option below.
 
 1. An existing Foundry project with a deployed model (or create them during setup in Option 1).
-2. **Python 3.10 or later.** The `azd ai agent run` flow in Option 1 sets up its environment with **Python 3.13+**; install 3.13 if you plan to use that path.
-3. **Roles (RBAC):** the identity running the sample (and, in production, the Managed Identity running the container) needs the **Foundry User** role (formerly *Azure AI User*) on the Foundry project. This covers creating skills, creating the toolbox, and discovering skills over MCP at runtime.
-4. **Additional Azure resources:** a Foundry Toolbox that serves the two bundled skills. You create it from the bundled [`skills/`](src/agent-framework-agent-foundry-toolbox-mcp-skills-responses/skills/) folder and [`toolbox.yaml`](src/agent-framework-agent-foundry-toolbox-mcp-skills-responses/toolbox.yaml) — see [Building the toolbox from zero](#building-the-toolbox-from-zero) below.
-5. **Environment variables:** `FOUNDRY_PROJECT_ENDPOINT`, `AZURE_AI_MODEL_DEPLOYMENT_NAME`, and `TOOLBOX_ENDPOINT` (the full versioned MCP endpoint of the toolbox). See [`.env.example`](src/agent-framework-agent-foundry-toolbox-mcp-skills-responses/.env.example).
+2. **Python 3.12 or later.** The `azd ai agent run` flow in Option 1 uses Python 3.13.
+3. **[uv](https://docs.astral.sh/uv/getting-started/installation/)** installed outside the project virtual environment.
+4. **Roles (RBAC):** the identity running the sample (and, in production, the Managed Identity running the container) needs the **Foundry User** role (formerly *Azure AI User*) on the Foundry project. This covers creating skills, creating the toolbox, and discovering skills over MCP at runtime.
+5. **Additional Azure resources:** a Foundry Toolbox that serves the two bundled skills. You create it from the bundled [`skills/`](src/agent-framework-agent-foundry-toolbox-mcp-skills-responses/skills/) folder and [`toolbox.yaml`](src/agent-framework-agent-foundry-toolbox-mcp-skills-responses/toolbox.yaml) — see [Building the toolbox from zero](#building-the-toolbox-from-zero) below.
+6. **Environment variables:** `FOUNDRY_PROJECT_ENDPOINT`, `AZURE_AI_MODEL_DEPLOYMENT_NAME`, and `TOOLBOX_ENDPOINT` (the full versioned MCP endpoint of the toolbox). See [`.env.example`](src/agent-framework-agent-foundry-toolbox-mcp-skills-responses/.env.example).
 
 ## Building the toolbox from zero
 
@@ -204,12 +205,7 @@ azd ai agent invoke "What skills do you have available?"
 - Install dependencies in the virtual environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+   uv sync --frozen
   ```
 
 ### Run and debug the agent

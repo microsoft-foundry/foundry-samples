@@ -29,6 +29,7 @@ and Azure OpenAI, hosted via the **invocations** protocol.
 ## Prerequisites
 
 - Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment
 - Azure OpenAI resource with a deployed model (e.g., `gpt-5.4-mini`)
 - Azure CLI login (`az login`) or other `DefaultAzureCredential` source
 
@@ -106,12 +107,7 @@ For the full deployment guide, see [Azure AI Foundry hosted agents](https://aka.
 - Install dependencies in the virtual environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+    uv sync --frozen
   ```
 
 ### Run and debug the agent

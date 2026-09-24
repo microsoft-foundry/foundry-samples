@@ -38,7 +38,8 @@ POST /responses {input, store:true, background:true}
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment
 - Azure CLI installed and authenticated (`az login`)
 
 ### Run the agent locally
@@ -112,12 +113,7 @@ For the full deployment guide, see [Azure AI Foundry hosted agents](https://aka.
 - Install dependencies:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+  uv sync --frozen
   ```
 
 ### Run and debug the agent
