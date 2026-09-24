@@ -21,9 +21,6 @@ The agent is hosted using the [Agent Framework](https://github.com/microsoft/age
 1. An existing Foundry project with a deployed model (or create them during setup in Option 1).
 2. **[.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)** or later.
 3. **Work IQ toolbox:** the agent answers Teams and calendar questions through a Work IQ toolbox. If declared in the sample's `azure.yaml`, `azd provision` (Option 1) creates it.
-4. **Microsoft 365 license:** the invoking user needs the
-   `M365_COPILOT_BUSINESS_CHAT` service plan. Without it, the Work IQ server returns a license-check
-   failure even though the connection, toolbox, and agent are configured correctly.
 
 ## Option 1: Azure Developer CLI (`azd`)
 
@@ -48,7 +45,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir teams-activity-agent && cd teams-activity-agent
-azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/teams-activity/azure.yaml
+azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/teams-activity/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
@@ -75,10 +72,19 @@ In a separate terminal, send a request to the agent:
 
 ```bash
 azd ai agent invoke --local "How many meetings do I have tomorrow?"
-azd ai agent invoke --local "Summarize my schedule and highlight any conflicts."
 ```
 
-Consecutive invokes reuse the same session automatically.
+Or use curl directly:
+
+```bash
+curl -X POST http://localhost:8088/responses -H "Content-Type: application/json" -d '{"input": "How many meetings do I have tomorrow?"}'
+```
+
+The server responds with a JSON object containing the response text and a response ID. Continue the conversation by passing that ID as `previous_response_id`:
+
+```bash
+curl -X POST http://localhost:8088/responses -H "Content-Type: application/json" -d '{"input": "How are you?", "previous_response_id": "REPLACE_WITH_PREVIOUS_RESPONSE_ID"}'
+```
 
 ### Deploy to Foundry
 
@@ -139,13 +145,6 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 3. On the **Basics** tab, choose deployment method (**Code** or **Container**) and confirm the agent name.
 4. On **Review + Deploy**, confirm runtime details, pick **CPU and Memory** size, and click **Deploy**.
 5. After deployment, invoke the agent in the Agent Playground and stream live logs from the **Logs** tab.
-
-## Troubleshooting
-
-- **The agent says the calendar or Teams license check failed** — confirm the signed-in user has the
-  `M365_COPILOT_BUSINESS_CHAT` service plan. The raw tool output names the missing plan.
-- **The toolbox is missing** — run `azd provision` before `azd deploy`; provisioning creates
-  `workiq-teams-conn`, `workiq-calendar-conn`, and `teams-tools`.
 
 ## Publishing the Agent
 
