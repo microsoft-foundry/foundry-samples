@@ -298,6 +298,11 @@ print_value(resolve(query))
             "FOUNDRY_MODEL_DEPLOYMENT: ${{ vars.MODEL_DEPLOYMENT }}",
             workflow,
         )
+        live_service = workflow.split("  live-service:", 1)[1]
+        self.assertIn("if: matrix.validator_language == 'typescript'", live_service)
+        self.assertIn("node-version: '20'", live_service)
+        self.assertIn("if: matrix.validator_language == 'java'", live_service)
+        self.assertIn("java-version: '17'", live_service)
         self.assertNotIn("LIVE_VALIDATION_AGENT_NAME", workflow)
         self.assertIn('SKIP_PROVISION: "true"', workflow)
         self.assertIn('python -m pip install -r "${{ matrix.path }}/requirements.txt"', workflow)
