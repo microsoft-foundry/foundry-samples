@@ -1,21 +1,37 @@
 import { DefaultAzureCredential } from "@azure/identity";
-import { AIProjectClient } from "@azure/ai-projects";
 
 // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
 const FOUNDRY_PROJECT_ENDPOINT = "your_project_endpoint";
-const FOUNDRY_AGENT_NAME = "your_agent_name";
+const FOUNDRY_AGENT_NAME = "your-agent-name";
 
 async function main(): Promise<void> {
-    // Create project client to call Foundry API
-    const project = new AIProjectClient(FOUNDRY_PROJECT_ENDPOINT, new DefaultAzureCredential());
+    const credential = new DefaultAzureCredential();
+    const token = await credential.getToken("https://ai.azure.com/.default");
+    if (!token) {
+        throw new Error("Failed to acquire a Foundry access token");
+    }
 
-    // Create an agent with a model and instructions
-    const agent = await project.agents.createVersion(FOUNDRY_AGENT_NAME, {
-        kind: "prompt",
-        model: "gpt-5-mini", //supports all Foundry direct models
-        instructions: "You are a helpful assistant that answers general questions",
-    });
-    console.log(`Agent created (id: ${agent.id}, name: ${agent.name}, version: ${agent.version})`);
+    const response = await fetch(
+        `${FOUNDRY_PROJECT_ENDPOINT.replace(/\/$/, "")}/agents/${encodeURIComponent(FOUNDRY_AGENT_NAME)}/versions?api-version=v1`,
+        {
+            method: "POST",
+            headers: {
+                "Authorization": ["Bearer", token.token].join(" "),
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                definition: {
+                    kind: "prompt",
+                    model: "gpt-5-mini", // supports all Foundry direct models
+                    instructions: "You are a helpful assistant that answers general questions",
+                },
+            }),
+        },
+    );
+    if (!response.ok) {
+        throw new Error(`Failed to create agent version: ${response.status} ${await response.text()}`);
+    }
+    console.log(`Agent version created for ${FOUNDRY_AGENT_NAME}`);
 }
 
 main().catch(console.error);

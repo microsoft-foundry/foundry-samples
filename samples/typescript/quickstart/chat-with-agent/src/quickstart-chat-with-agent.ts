@@ -5,7 +5,7 @@ import { AIProjectClient } from "@azure/ai-projects";
 const FOUNDRY_PROJECT_ENDPOINT = "your_project_endpoint";
 const FOUNDRY_AGENT_NAME = "your-agent-name";
 
-async function createAgentVersion(projectEndpoint: string, agentName: string): Promise<void> {
+async function main(): Promise<void> {
     const credential = new DefaultAzureCredential();
     const token = await credential.getToken("https://ai.azure.com/.default");
     if (!token) {
@@ -13,7 +13,7 @@ async function createAgentVersion(projectEndpoint: string, agentName: string): P
     }
 
     const response = await fetch(
-        `${projectEndpoint.replace(/\/$/, "")}/agents/${encodeURIComponent(agentName)}/versions?api-version=v1`,
+        `${FOUNDRY_PROJECT_ENDPOINT.replace(/\/$/, "")}/agents/${encodeURIComponent(FOUNDRY_AGENT_NAME)}/versions?api-version=v1`,
         {
             method: "POST",
             headers: {
@@ -23,7 +23,7 @@ async function createAgentVersion(projectEndpoint: string, agentName: string): P
             body: JSON.stringify({
                 definition: {
                     kind: "prompt",
-                    model: "gpt-5-mini", //supports all Foundry direct models
+                    model: "gpt-5-mini", // supports all Foundry direct models
                     instructions: "You are a helpful assistant that answers general questions",
                 },
             }),
@@ -32,14 +32,8 @@ async function createAgentVersion(projectEndpoint: string, agentName: string): P
     if (!response.ok) {
         throw new Error(`Failed to create agent version: ${response.status} ${await response.text()}`);
     }
-}
-
-async function main(): Promise<void> {
-    // Create project and openai clients to call Foundry API
-    const project = new AIProjectClient(FOUNDRY_PROJECT_ENDPOINT, new DefaultAzureCredential());
-
-    // Create the agent (or a new version, if it already exists)
-    await createAgentVersion(FOUNDRY_PROJECT_ENDPOINT, FOUNDRY_AGENT_NAME);
+    // Create a project client to call the Foundry API.
+    const project = new AIProjectClient(FOUNDRY_PROJECT_ENDPOINT, credential);
 
     const openai = project.getOpenAIClient({
         azureConfig: { allowPreview: true, agentName: FOUNDRY_AGENT_NAME },
