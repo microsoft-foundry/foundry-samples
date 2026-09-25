@@ -127,7 +127,7 @@ live_service_validation:
   command: "python quickstart-create-agent.py"
   required_env:
     - FOUNDRY_PROJECT_ENDPOINT
-    - MODEL_DEPLOYMENT
+    - FOUNDRY_MODEL_DEPLOYMENT
   cleanup_resources:
     - type: foundry_agent_versions
   substitutions:
