@@ -34,4 +34,7 @@ async function main(): Promise<void> {
     console.log(`Agent version created for ${FOUNDRY_AGENT_NAME}`);
 }
 
-main().catch(console.error);
+main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

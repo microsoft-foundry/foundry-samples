@@ -12,7 +12,7 @@ async function main(): Promise<void> {
         throw new Error("Failed to acquire a Foundry access token");
     }
 
-    const response = await fetch(
+    const versionResponse = await fetch(
         `${FOUNDRY_PROJECT_ENDPOINT.replace(/\/$/, "")}/agents/${encodeURIComponent(FOUNDRY_AGENT_NAME)}/versions?api-version=v1`,
         {
             method: "POST",
@@ -29,8 +29,8 @@ async function main(): Promise<void> {
             }),
         },
     );
-    if (!response.ok) {
-        throw new Error(`Failed to create agent version: ${response.status} ${await response.text()}`);
+    if (!versionResponse.ok) {
+        throw new Error(`Failed to create agent version: ${versionResponse.status} ${await versionResponse.text()}`);
     }
     // Create a project client to call the Foundry API.
     const project = new AIProjectClient(FOUNDRY_PROJECT_ENDPOINT, credential);
