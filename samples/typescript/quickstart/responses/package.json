@@ -10,8 +10,8 @@
     "build": "npx tsc"
   },
   "dependencies": {
-    "@azure/ai-projects": "2.5.0",
-    "@azure/identity": "^4.11.1",
+    "@azure/ai-projects": "2.7.0",
+    "@azure/identity": "^4.13.0",
     "dotenv": "^17.2.1"
   },
   "devDependencies": {
