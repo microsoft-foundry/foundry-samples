@@ -1,8 +1,21 @@
 name: Quickstart Create Agent
 description: Basic quickstart sample demonstrating Microsoft Foundry agent creation.
 
-# SKIP: Source uses unreleased @azure/ai-projects APIs (getOpenAIClient renamed
-# to getAzureOpenAIClient, createVersion/deleteVersion not yet on AgentsClient).
-# Re-enable when @azure/ai-projects is updated with these APIs.
-build: "echo 'SKIP: requires unreleased @azure/ai-projects API'"
-validate: "echo 'SKIP: requires unreleased @azure/ai-projects API'"
+build: "npm install --registry=https://registry.npmjs.org/"
+validate: "npx tsc --noEmit"
+live_service_validation:
+  command: "npm run start"
+  required_env:
+    - FOUNDRY_PROJECT_ENDPOINT
+    - MODEL_DEPLOYMENT
+  cleanup_resources:
+    - type: foundry_agent_versions
+  substitutions:
+    - file: src/quickstart-create-agent.ts
+      replacements:
+        - placeholder: "your_project_endpoint"
+          env: FOUNDRY_PROJECT_ENDPOINT
+        - placeholder: "your-agent-name"
+          generate: unique_name
+        - placeholder: "gpt-5-mini"
+          env: MODEL_DEPLOYMENT
