@@ -37,37 +37,6 @@ live_service_validation:
     - FOUNDRY_MODEL_DEPLOYMENT
 ```
 
-For completeness, here is the full `sample.yaml` as it looks for a real quickstart sample:
-
-```yaml
-name: Quickstart Create Agent
-description: Basic quickstart sample demonstrating Microsoft Foundry agent creation.
-
-build: "pip install -r requirements.txt"
-validate: "python -m py_compile *.py"
-live_service_validation:
-  command: "python quickstart-create-agent.py"
-  required_env:
-    - FOUNDRY_PROJECT_ENDPOINT
-    - MODEL_DEPLOYMENT
-  cleanup_resources:
-    - type: foundry_agent_versions
-  substitutions:
-    - file: quickstart-create-agent.py
-      replacements:
-        - placeholder: "your_project_endpoint"
-          env: FOUNDRY_PROJECT_ENDPOINT
-        - placeholder: "gpt-5-mini"
-          env: MODEL_DEPLOYMENT
-        - placeholder: "your-agent-name"
-          generate: unique_name
-```
-
-### How Full Runs Process This:
-- **Build Readiness:** Always runs build/compilation checks on PR touches and daily cadence.
-- **Live-Service Run:** The sample-owned `live_service_validation.command` is run only during the daily validation pilot (and when invoked locally, as shown below); it is not executed by the PR workflow.
-- **Environment variables:** Use the `FOUNDRY_PROJECT_ENDPOINT` / `FOUNDRY_MODEL_DEPLOYMENT` names in `required_env` — the daily cadence provides these. (The older `AZURE_AI_PROJECT_ENDPOINT` / `MODEL_DEPLOYMENT` names are still provided too, for backward compatibility, but new samples should use the `FOUNDRY_` names.)
-
 ### Handling Hardcoded "Provide Your Own" Placeholders
 
 Some quickstart samples intentionally keep copy/paste instructional placeholders in
@@ -143,6 +112,40 @@ live_service_validation:
   hit that case, check with the sample-validation maintainers before adding
   one — a new `type` would need matching support in
   `.github/scripts/live-resource-cleanup.py`.
+
+### Full example
+
+  For completeness, here is the full `sample.yaml` as it looks for a real quickstart sample:
+
+```yaml
+name: Quickstart Create Agent
+description: Basic quickstart sample demonstrating Microsoft Foundry agent creation.
+
+build: "pip install -r requirements.txt"
+validate: "python -m py_compile *.py"
+live_service_validation:
+  command: "python quickstart-create-agent.py"
+  required_env:
+    - FOUNDRY_PROJECT_ENDPOINT
+    - MODEL_DEPLOYMENT
+  cleanup_resources:
+    - type: foundry_agent_versions
+  substitutions:
+    - file: quickstart-create-agent.py
+      replacements:
+        - placeholder: "your_project_endpoint"
+          env: FOUNDRY_PROJECT_ENDPOINT
+        - placeholder: "gpt-5-mini"
+          env: MODEL_DEPLOYMENT
+        - placeholder: "your-agent-name"
+          generate: unique_name
+```
+
+### How Full Runs Process This:
+- **Build Readiness:** Always runs build/compilation checks on PR touches and daily cadence.
+- **Live-Service Run:** The sample-owned `live_service_validation.command` is run only during the daily validation pilot (and when invoked locally, as shown below); it is not executed by the PR workflow.
+- **Environment variables:** Use the `FOUNDRY_PROJECT_ENDPOINT` / `FOUNDRY_MODEL_DEPLOYMENT` names in `required_env` — the daily cadence provides these. (The older `AZURE_AI_PROJECT_ENDPOINT` / `MODEL_DEPLOYMENT` names are still provided too, for backward compatibility, but new samples should use the `FOUNDRY_` names.)
+- **Cleanup resources:** Generate a unique name to use when creating an agent. Remove this newly created agent and all its conversations after running the job.
 
 ---
 
