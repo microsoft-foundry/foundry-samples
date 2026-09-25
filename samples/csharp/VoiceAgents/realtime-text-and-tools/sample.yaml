@@ -1,0 +1,4 @@
+name: Voice Agent Realtime Text and Tools
+description: Send text to a voice agent, stream its text/audio response, and handle a local function tool call.
+
+build: "dotnet restore --source https://api.nuget.org/v3/index.json && dotnet build --no-restore --verbosity minimal"
