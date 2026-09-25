@@ -1,0 +1,13 @@
+.azure/
+.agentignore
+.git/
+.gitignore
+.github/
+.venv/
+.vscode/
+__pycache__/
+*.py[cod]
+AGENTS.md
+CLAUDE.md
+README.md
+azure.yaml
