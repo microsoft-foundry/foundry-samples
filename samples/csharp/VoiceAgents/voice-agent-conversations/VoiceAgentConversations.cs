@@ -29,9 +29,8 @@ try
     string conversationId = await RunStoredConversationAsync();
     BetaVoiceAgentsConversations conversationsClient = agentsClient.GetBetaVoiceAgentEndpointConversations();
 
-    Console.WriteLine($"\nFetching conversation {conversationId}...");
-    ClientResult<VoiceConversation> conversationResult =
-        await conversationsClient.GetAgentConversationAsync(agentName, conversationId);
+    Console.WriteLine($"\nWaiting for conversation {conversationId} to finish persisting...");
+    ClientResult<VoiceConversation> conversationResult = await WaitForConversationToSettleAsync(conversationsClient, conversationId);
     VoiceConversation conversation = conversationResult;
     Console.WriteLine($"[REST] GET conversation -> {(int)conversationResult.GetRawResponse().Status}");
     Console.WriteLine(
@@ -151,6 +150,29 @@ static string GetOptionalEnvironmentVariable(string name, string fallback)
 {
     string? value = Environment.GetEnvironmentVariable(name)?.Trim();
     return string.IsNullOrEmpty(value) ? fallback : value;
+}
+
+async Task<ClientResult<VoiceConversation>> WaitForConversationToSettleAsync(BetaVoiceAgentsConversations conversationsClient, string conversationId)
+{
+    // response.done only means the realtime turn finished; the service finalizes conversation
+    // storage asynchronously afterward, so reads/deletes issued too early can see a transient
+    // "in_progress" status with incomplete items. Poll until that settles.
+    for (int attempt = 0; attempt < 30; attempt++)
+    {
+        ClientResult<VoiceConversation> result = await conversationsClient.GetAgentConversationAsync(agentName, conversationId);
+        VoiceConversation current = result;
+        if (current.Status == VoiceConversationStatus.Failed)
+        {
+            throw new InvalidOperationException($"Conversation {conversationId} failed to persist.");
+        }
+        if (current.Status != VoiceConversationStatus.InProgress)
+        {
+            return result;
+        }
+        await Task.Delay(TimeSpan.FromMilliseconds(500));
+    }
+
+    throw new TimeoutException($"Conversation {conversationId} did not finish persisting in time.");
 }
 
 async Task<bool> EnsureVoiceAgentAsync()

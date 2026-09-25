@@ -21,6 +21,12 @@ string agentName = GetOptionalEnvironmentVariable("FOUNDRY_VOICE_AGENT_NAME", $"
 AIProjectClient projectClient = new(new Uri(projectEndpoint), new DefaultAzureCredential());
 AgentAdministrationClient agentsClient = projectClient.AgentAdministrationClient;
 
+bool created = !await AgentExistsAsync();
+if (!created)
+{
+    Console.WriteLine($"Reusing existing agent \"{agentName}\"; it will not be deleted when this sample finishes.");
+}
+
 Console.WriteLine("Creating a voice agent...");
 VoiceAgentDefinition firstDefinition = new()
 {
@@ -121,9 +127,29 @@ try
 }
 finally
 {
-    Console.WriteLine("\nDeleting the agent...");
-    ClientResult deleteAgentResult = await agentsClient.DeleteAgentAsync(agentName);
-    Console.WriteLine($"[REST] DELETE agent -> {(int)deleteAgentResult.GetRawResponse().Status}");
+    if (created)
+    {
+        Console.WriteLine("\nDeleting the agent...");
+        ClientResult deleteAgentResult = await agentsClient.DeleteAgentAsync(agentName);
+        Console.WriteLine($"[REST] DELETE agent -> {(int)deleteAgentResult.GetRawResponse().Status}");
+    }
+    else
+    {
+        Console.WriteLine($"\nSkipping agent deletion; \"{agentName}\" existed before this run.");
+    }
+}
+
+async Task<bool> AgentExistsAsync()
+{
+    try
+    {
+        await agentsClient.GetAgentAsync(agentName);
+        return true;
+    }
+    catch (ClientResultException ex) when (ex.Status == 404)
+    {
+        return false;
+    }
 }
 
 static string GetOptionalEnvironmentVariable(string name, string fallback)
