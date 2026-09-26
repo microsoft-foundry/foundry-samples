@@ -215,8 +215,8 @@ catch (Exception ex)
 // "scaling" capabilities: skills (our own provider), background agents, a confined shell, and
 // (when available) CodeAct.
 List<AIContextProvider> contextProviders = codeAct is not null
-    ? [skillsProvider, codeAct]
-    : [skillsProvider];
+    ? [skillsProvider, codeAct, new ShellEnvironmentProvider(shell)]
+    : [skillsProvider, new ShellEnvironmentProvider(shell)];
 
 AIAgent agent = chatClient.AsHarnessAgent(new HarnessAgentOptions
 {
@@ -231,26 +231,19 @@ AIAgent agent = chatClient.AsHarnessAgent(new HarnessAgentOptions
     DisableAgentSkillsProvider = true,
     // Fan-out research is delegated to this background agent.
     BackgroundAgents = [researchAgent],
-    // The confined shell, exposed as the approval-gated run_shell tool.
-    ShellExecutor = shell,
-    // Keep reads and skill operations frictionless while trades and shell commands still prompt.
-    // The source auto-approves only read-only file tools; the interactive console then surfaces a
-    // prompt the user clicks through for each skill operation. Under the headless Responses host
-    // there is no one to click, so also auto-approve the skill tools (load/read/run skill — loading a
-    // local SKILL.md is not a risky action) to preserve the source's "skills are a normal capability"
-    // intent. place_trade and run_shell keep their own always-require gate, so trades and shell
-    // commands still surface a resumable approval request.
+    // Keep file reads and skill discovery automatic. Script execution, trades, and shell commands
+    // require explicit approval even under the headless Responses host.
     ToolApprovalAgentOptions = new ToolApprovalAgentOptions
     {
         AutoApprovalRules =
         [
             FileAccessProvider.ReadOnlyToolsAutoApprovalRule,
-            AgentSkillsProvider.AllToolsAutoApprovalRule,
+            AgentSkillsProvider.ReadOnlyToolsAutoApprovalRule,
         ],
     },
     // Start in "execute" mode for quick lookups and actions.
     AgentModeProviderOptions = new AgentModeProviderOptions { DefaultMode = "execute" },
-    // Our skills provider plus CodeAct.
+    // Our skills provider, optional CodeAct provider, and shell environment details.
     AIContextProviders = contextProviders,
     ChatOptions = new ChatOptions
     {
@@ -259,6 +252,8 @@ AIAgent agent = chatClient.AsHarnessAgent(new HarnessAgentOptions
         [
             StockTools.CreateGetStockPriceTool(),
             TradingTools.CreatePlaceTradeTool(),
+            // Shell execution remains approval-gated even though read-only file and skill tools auto-approve.
+            shell.AsAIFunction(requireApproval: true),
         ],
         Reasoning = new() { Effort = ReasoningEffort.Medium },
     },
@@ -271,7 +266,13 @@ AIAgent agent = chatClient.AsHarnessAgent(new HarnessAgentOptions
 // Responses host owns conversation history and translates/persists the harness approval requests
 // (place_trade, run_shell, file writes) into resumable Responses approval items.
 var builder = AgentHost.CreateBuilder(args);
-builder.Services.AddFoundryResponses(agent);
+// Harness keeps history in AgentSession.StateBag. Its per-service-call wrapper sets a local-history
+// ConversationId, which the 1.22 host mistakes for service-stored output and rejects by default.
+// This opt-in bypasses that check, but leaves the model client's storage setting unchanged, so it
+// may create a second stored record. Approval-response binding remains enabled.
+builder.Services.AddFoundryResponses(
+    agent,
+    configure: options => options.AllowStoredOutputEnabled = true);
 builder.RegisterProtocol("responses", endpoints => endpoints.MapFoundryResponses());
 
 var app = builder.Build();

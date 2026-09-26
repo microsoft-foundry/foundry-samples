@@ -9,24 +9,23 @@
     <!--
       MEAI001 / MAAI001 - Microsoft.Agents.AI experimental APIs (AgentSkillsProviderBuilder, UseMcpSkills)
       OPENAI001         - OpenAI Responses experimental APIs (Foundry Responses hosting)
-      NU1903 / NU1605   - sample-only vulnerability/downgrade notices that are not actionable
     -->
-    <NoWarn>$(NoWarn);MEAI001;MAAI001;OPENAI001;NU1903;NU1605</NoWarn>
+    <NoWarn>$(NoWarn);MEAI001;MAAI001;OPENAI001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Agent Framework core - provides AgentSkillsProviderBuilder and ChatClientAgent. -->
-    <PackageReference Include="Microsoft.Agents.AI" Version="1.15.0" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.22.0" />
     <!-- Agent Framework hosting - provides AgentHost, AddFoundryResponses, MapFoundryResponses. -->
-    <PackageReference Include="Microsoft.Agents.AI.Foundry.Hosting" Version="1.15.0-preview.260722.1" />
+    <PackageReference Include="Microsoft.Agents.AI.Foundry.Hosting" Version="1.22.0-preview.260918.1" />
     <!-- Agent Framework MCP integration - provides AgentSkillsProviderBuilder.UseMcpSkills(). -->
-    <PackageReference Include="Microsoft.Agents.AI.Mcp" Version="1.15.0-alpha.260722.1" />
+    <PackageReference Include="Microsoft.Agents.AI.Mcp" Version="1.22.0-alpha.260918.1" />
     <!-- Foundry SDK - provides AIProjectClient and AsAIAgent. -->
-    <PackageReference Include="Azure.AI.Projects" Version="2.1.0-beta.4" />
+    <PackageReference Include="Azure.AI.Projects" Version="3.0.0-beta.2" />
     <!-- MCP client used to talk to the Foundry Toolbox MCP endpoint. -->
-    <PackageReference Include="ModelContextProtocol" Version="1.2.0" />
+    <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
     <!-- .env file support for local development. -->
-    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="DotNetEnv" Version="3.2.0" />
   </ItemGroup>
 
 </Project>

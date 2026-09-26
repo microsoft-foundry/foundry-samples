@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.27.1'
+  extensions:
+    # invocationsModeration requires azure.ai.agents 1.0.0-beta.12 or later.
+    azure.ai.agents: '>=1.0.0-beta.12'
+name: agent-framework-content-safety-guardrail-invocations
+services:
+  ai-project:
+    host: azure.ai.project
+    deployments:
+      - name: gpt-5.4-mini
+        model:
+          format: OpenAI
+          name: gpt-5.4-mini
+          version: '2026-03-17'
+        sku:
+          name: GlobalStandard
+          capacity: 10
+  agent-framework-content-safety-guardrail-invocations:
+    host: azure.ai.agent
+    metadata:
+      tags:
+        - Agent Framework
+        - AI Agent Hosting
+        - Azure AI AgentServer
+        - Invocations Protocol
+        - Streaming
+        - Content Safety
+        - Guardrails
+    project: src/agent-framework-content-safety-guardrail-invocations
+    language: python
+    codeConfiguration:
+      runtime: python_3_13
+      entryPoint: main.py
+    uses:
+      - ai-project
+    kind: hosted
+    name: agent-framework-content-safety-guardrail-invocations
+    displayName: Content safety guardrail (Agent Framework, Invocations)
+    description: An Agent Framework agent hosted by Foundry on the Invocations protocol with a Responsible AI content safety guardrail. Because the invocations protocol carries an agent-defined request and response shape, the agent also declares where its prompt and response text live so the platform can screen them.
+    protocols:
+      - protocol: invocations
+        version: 2.0.0
+    env:
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1Gi
+    policies:
+      - type: rai_policy
+        raiPolicyName: /subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.CognitiveServices/accounts/<account>/raiPolicies/<policy-name>
+        # Tells the platform where this agent's text lives. Without it the policy is
+        # attached but nothing on the invocations path is screened.
+        invocationsModeration:
+          # This agent answers both buffered and streamed requests.
+          responseMode: both
+          inputContentType: json
+          outputContentType: json
+          # Request body: {"message": "...", "stream": false}
+          inputPaths:
+            - $.message
+          # Buffered response body: {"response": "..."}
+          outputPaths:
+            - $.response
+          # Streamed response frames: {"type": "message.delta", "text": "..."}
+          # textField is a field name on the frame, not a path expression.
+          streamSelectors:
+            - eventType: message.delta
+              textField: text
+infra:
+  provider: microsoft.foundry

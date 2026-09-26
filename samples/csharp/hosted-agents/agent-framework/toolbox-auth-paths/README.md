@@ -67,7 +67,7 @@ The agent reads its toolbox from your Foundry project at startup, so the `auth-p
 `azd provision` reads [`azure.yaml`](azure.yaml) and creates the connection and toolbox for you:
 
 ```bash
-azd ai agent init          # prompts once for the gh_pat secret parameter
+azd ai agent init --deploy-mode container  # prompts once for the gh_pat secret parameter
 azd provision              # creates github-mcp-conn (CustomKeys) + auth-paths-tools toolbox
 ```
 
@@ -115,7 +115,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir toolbox-auth-paths-agent && cd toolbox-auth-paths-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/toolbox-auth-paths/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/toolbox-auth-paths/azure.yaml
 ```
 
 `azd ai agent init` prompts once for the `gh_pat` secret parameter. Follow the prompts to configure your Foundry project and model deployment.
@@ -146,12 +146,6 @@ azd ai agent invoke --local "Search the microsoft/agent-framework repo for open 
 ```
 
 A GitHub answer means the key-based **CustomKeys** path (path 1) resolved its PAT correctly. A `401`/`403` means the connection credential did not resolve.
-
-Or use curl directly against `http://localhost:8088/responses`:
-
-```bash
-curl -X POST http://localhost:8088/responses -H "Content-Type: application/json" -d '{"input": "What tools do you have available?", "stream": false}'
-```
 
 ### Deploy to Foundry
 

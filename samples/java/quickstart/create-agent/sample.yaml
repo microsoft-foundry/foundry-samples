@@ -3,3 +3,19 @@ description: Basic quickstart sample demonstrating Microsoft Foundry agent creat
 
 build: "mvn compile"
 validate: "mvn compile"
+live_service_validation:
+  command: "mvn compile exec:java -Dexec.mainClass=com.azure.ai.foundry.samples.CreateAgent"
+  required_env:
+    - FOUNDRY_PROJECT_ENDPOINT
+    - MODEL_DEPLOYMENT
+  cleanup_resources:
+    - type: foundry_agent_versions
+  substitutions:
+    - file: src/main/java/com/azure/ai/foundry/samples/CreateAgent.java
+      replacements:
+        - placeholder: "your_project_endpoint"
+          env: FOUNDRY_PROJECT_ENDPOINT
+        - placeholder: "gpt-5-mini"
+          env: MODEL_DEPLOYMENT
+        - placeholder: "your-agent-name"
+          generate: unique_name

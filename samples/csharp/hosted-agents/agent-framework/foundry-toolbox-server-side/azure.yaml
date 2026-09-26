@@ -3,7 +3,7 @@
 requiredVersions:
   azd: '>=1.27.1'
   extensions:
-    azure.ai.agents: '>=1.0.0-beta.9'
+    azure.ai.agents: '>=1.0.0-beta.16'
 name: foundry-toolbox-server-side-dotnet-agent-framework
 services:
   ai-project:
@@ -42,6 +42,9 @@ services:
     codeConfiguration:
       runtime: dotnet_10
       entryPoint: foundry-toolbox-server-side.dll
+    docker:
+      path: Dockerfile
+      remoteBuild: true
     uses:
       - ai-project
       - agent-tools

@@ -57,7 +57,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir foundry-toolbox-mcp-skills && cd foundry-toolbox-mcp-skills
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/foundry-toolbox-mcp-skills/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/foundry-toolbox-mcp-skills/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
@@ -84,13 +84,11 @@ In a separate terminal, invoke the running agent:
 
 ```bash
 azd ai agent invoke --local "What skills do you have available?"
+azd ai agent invoke --local "Use the available skill and greet me."
 ```
 
-Or use curl directly:
-
-```bash
-curl -X POST http://localhost:8088/responses -H "Content-Type: application/json" -d '{"input": "What skills do you have available?", "stream": false}'
-```
+Read-only skill discovery and loading are auto-approved. Skill scripts, if a toolbox skill exposes
+them, still require explicit approval.
 
 ### Deploy to Foundry
 
@@ -106,6 +104,7 @@ For the full deployment guide, see [Deploy a hosted agent](https://learn.microso
 
 ```bash
 azd ai agent invoke "What skills do you have available?"
+azd ai agent invoke "Use the available skill and greet me."
 ```
 
 Stream logs from the running agent with `azd ai agent monitor`.

@@ -91,7 +91,15 @@ AIAgent agent = new AIProjectClient(new Uri(projectEndpoint), credential)
             Instructions = "You are a helpful assistant.",
         },
         AIContextProviders = [skillsProvider],
-    });
+    })
+    .AsBuilder()
+    .UseToolApproval(new ToolApprovalAgentOptions
+    {
+        // Skill discovery, instruction loading, and resource reads are read-only. Keep those
+        // operations transparent while preserving approval for any skill script execution.
+        AutoApprovalRules = [AgentSkillsProvider.ReadOnlyToolsAutoApprovalRule],
+    })
+    .Build();
 
 var builder = AgentHost.CreateBuilder(args);
 builder.Services.AddFoundryResponses(agent);

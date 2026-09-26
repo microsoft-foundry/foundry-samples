@@ -9,11 +9,12 @@ A walkthrough for the [Agent-to-Agent (A2A) protocol](https://a2a-protocol.org/l
 
 The caller sees the executor purely as an A2A skill discovered from the executor's [agent card](https://a2a-protocol.org/latest/#agent-card). The `RemoteA2A` connection uses `authType: UserEntraToken`, so the toolbox forwards the **calling user's** Microsoft Entra token to the executor's agent card endpoint.
 
-```
-caller (hosted agent)
-  └─ Toolbox (registered server-side via AddFoundryToolboxes)
-       └─ a2a_preview tool
-            └─ RemoteA2A connection ──► executor's A2A endpoint
+```mermaid
+flowchart LR
+    caller["Caller hosted agent"] --> toolbox["Foundry Toolbox<br/>registered with AddFoundryToolboxes"]
+    toolbox --> tool["a2a_preview tool"]
+    tool --> connection["RemoteA2A connection"]
+    connection --> executor["Executor A2A endpoint"]
 ```
 
 ## Layout
@@ -51,7 +52,7 @@ The two agents are set up in separate `azd` projects. Four steps:
 ```bash
 mkdir hosted-agent-a2a-executor-dotnet && cd hosted-agent-a2a-executor-dotnet
 
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/a2a/01-delegation/executor/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/a2a/01-delegation/executor/azure.yaml
 
 azd provision    # writes .env (FOUNDRY_PROJECT_ENDPOINT, AZURE_AI_MODEL_DEPLOYMENT_NAME)
 azd deploy
@@ -76,7 +77,7 @@ On success the script prints the executor's A2A endpoint URL — **copy it**, yo
 ```bash
 mkdir ../hosted-agent-a2a-caller-dotnet && cd ../hosted-agent-a2a-caller-dotnet
 
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/a2a/01-delegation/caller/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/a2a/01-delegation/caller/azure.yaml
 # Paste the A2A endpoint URL from step 2 when prompted for `a2a_executor_endpoint`.
 
 azd provision    # creates the RemoteA2A connection + a2a_preview toolbox from the manifest

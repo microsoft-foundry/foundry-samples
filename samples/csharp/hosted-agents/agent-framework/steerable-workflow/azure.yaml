@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.27.1'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.9'
+name: steerable-workflow
+services:
+  ai-project:
+    host: azure.ai.project
+  steerable-workflow:
+    host: azure.ai.agent
+    metadata:
+      tags:
+        - AI Agent Hosting
+        - Azure AI AgentServer
+        - Responses Protocol
+        - Agent Framework
+        - Resilient Background
+        - Steering
+        - Workflows
+    project: src/steerable-workflow
+    language: csharp
+    codeConfiguration:
+      runtime: dotnet_10
+      entryPoint: steerable-workflow.dll
+    docker:
+      path: Dockerfile
+      remoteBuild: true
+    uses:
+      - ai-project
+    kind: hosted
+    name: steerable-workflow
+    displayName: Steerable Workflow
+    description: A deterministic Agent Framework workflow that queues steering input, cancels an active superstep, and continues from the last committed checkpoint.
+    protocols:
+      - protocol: responses
+        version: 2.0.0
+    env:
+      LONG_RUNNING_DELAY_SECONDS: ${LONG_RUNNING_DELAY_SECONDS=30}
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1Gi
+infra:
+  provider: microsoft.foundry

@@ -78,7 +78,13 @@ foreach (string name in requestedSkills)
     }
 }
 
-var credential = new DefaultAzureCredential();
+var isHosted = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("FOUNDRY_HOSTING_ENVIRONMENT"));
+var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+{
+    // Managed identity is available in Foundry containers, but probing the IMDS endpoint locally can
+    // consume the entire skill-bootstrap timeout before the credential reaches the Azure CLI login.
+    ExcludeManagedIdentityCredential = !isHosted,
+});
 var projectClient = new AIProjectClient(projectEndpoint, credential);
 
 AgentSkillsProvider? skillsProvider = null;
@@ -87,7 +93,9 @@ if (requestedSkills.Length > 0)
     // Hard ceiling on the skill-bootstrap network round-trips so a slow or hung Foundry
     // Skills API call can't keep /readiness from returning 200 past the hosted-agent
     // runtime's session-readiness timeout.
-    using var bootstrapCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+    // Hosted skill-package downloads can take longer than local calls during a cold session. Keep
+    // the ceiling below the platform readiness limit while allowing normal in-region startup jitter.
+    using var bootstrapCts = new CancellationTokenSource(TimeSpan.FromSeconds(110));
 
     // Skills CRUD currently requires the Foundry-Features: Skills=V1Preview opt-in header.
     // The Azure.AI.Projects SDK does not auto-inject this on the Skills sub-client, so we
@@ -110,10 +118,12 @@ if (requestedSkills.Length > 0)
         await EnsureSkillsProvisionedAsync(skillsClient, sourceSkillsDir, requestedSkills, bootstrapCts.Token);
     }
 
-    // Download skills from Foundry into a runtime-only folder. This directory is
-    // recreated on every startup so the agent always picks up the latest version of
-    // each skill.
-    string downloadedSkillsDir = Path.Combine(AppContext.BaseDirectory, "downloaded_skills");
+    // Hosted application files may be read-only. Keep downloaded skills in the writable
+    // per-session home while reading packaged source skills from the application directory.
+    string downloadedSkillsRoot = isHosted
+        ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+        : AppContext.BaseDirectory;
+    string downloadedSkillsDir = Path.Combine(downloadedSkillsRoot, "downloaded_skills");
     await DownloadSkillsAsync(skillsClient, requestedSkills, downloadedSkillsDir, bootstrapCts.Token);
 
     // AgentSkillsProvider implements progressive disclosure: skill names and descriptions
@@ -122,17 +132,26 @@ if (requestedSkills.Length > 0)
     skillsProvider = new AgentSkillsProvider(downloadedSkillsDir);
 }
 
-ChatClientAgent agent = projectClient.AsAIAgent(new ChatClientAgentOptions
-{
-    Name = "agent-skills",
-    Description = "Customer-support agent that loads tone and escalation policy from Foundry Skills.",
-    ChatOptions = new ChatOptions
+AIAgent agent = projectClient
+    .AsAIAgent(new ChatClientAgentOptions
     {
-        ModelId = deployment,
-        Instructions = "You are a customer-support assistant for Contoso Outdoors.",
-    },
-    AIContextProviders = skillsProvider is null ? [] : [skillsProvider],
-});
+        Name = "agent-skills",
+        Description = "Customer-support agent that loads tone and escalation policy from Foundry Skills.",
+        ChatOptions = new ChatOptions
+        {
+            ModelId = deployment,
+            Instructions = "You are a customer-support assistant for Contoso Outdoors.",
+        },
+        AIContextProviders = skillsProvider is null ? [] : [skillsProvider],
+    })
+    .AsBuilder()
+    .UseToolApproval(new ToolApprovalAgentOptions
+    {
+        // These sample skills contain instructions only. Auto-approve their read-only discovery and
+        // load operations so progressive disclosure stays transparent to the user.
+        AutoApprovalRules = [AgentSkillsProvider.ReadOnlyToolsAutoApprovalRule],
+    })
+    .Build();
 
 var builder = AgentHost.CreateBuilder(args);
 builder.Services.AddFoundryResponses(agent);

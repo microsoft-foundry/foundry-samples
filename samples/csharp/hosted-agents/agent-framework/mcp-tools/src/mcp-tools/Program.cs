@@ -57,8 +57,14 @@ AITool serverTool = new HostedMcpServerTool(
 Console.WriteLine("Server-side MCP tool: microsoft_docs_search (via HostedMcpServerTool)");
 
 // ── Combine both tool types into a single agent ──────────────────────────────
-// The agent has access to tools from both MCP patterns simultaneously.
-List<AITool> allTools = [.. clientTools.Cast<AITool>(), serverTool];
+// Keep microsoft_docs_search provider-hosted because registering the same tool name through
+// both paths makes the Responses request invalid. The remaining tools still demonstrate
+// client-side invocation while search demonstrates provider-side invocation.
+List<AITool> allTools =
+[
+    .. clientTools.Where(tool => tool.Name != "microsoft_docs_search").Cast<AITool>(),
+    serverTool
+];
 
 AIAgent agent = new AIProjectClient(projectEndpoint, new DefaultAzureCredential())
     .AsAIAgent(

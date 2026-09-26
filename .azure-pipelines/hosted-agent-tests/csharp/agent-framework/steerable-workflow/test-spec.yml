@@ -1,0 +1,14 @@
+version: 1
+
+sample:
+  owner: rbarreto
+  experiences: [azd, vscode]
+
+tests:
+  - name: steerable-workflow-response
+    turns:
+      - input: echo:STEERABLE-WORKFLOW-OK-731
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: 'ECHO-COMPLETE:STEERABLE-WORKFLOW-OK-731'
