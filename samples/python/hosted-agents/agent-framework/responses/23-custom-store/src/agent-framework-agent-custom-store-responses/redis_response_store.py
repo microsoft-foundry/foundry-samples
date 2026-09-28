@@ -306,7 +306,9 @@ class RedisResponseStore(ResponseProviderProtocol):
         resolved: list[str] = []
         for response_id in response_ids:
             envelope = await client.hgetall(self._response_key(partition, response_id))
-if not envelope or envelope.get("deleted") == "1" or envelope.get("conversation_id") != conversation_id:
+            if not envelope or envelope.get("deleted") == "1":
+                continue
+            if conversation_id is not None and envelope.get("conversation_id") != conversation_id:
                 continue
             resolved.extend(json.loads(envelope["history_item_ids"]))
             resolved.extend(json.loads(envelope["input_item_ids"]))
