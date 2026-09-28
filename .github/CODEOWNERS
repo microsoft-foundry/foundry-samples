@@ -20,11 +20,11 @@
 /samples/python/finetuning/schemaraft-dst/ @mikeslinmsft
 
 # Voice Agents samples — individually owned until a team slug exists.
-/samples/csharp/VoiceAgents/      @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li
-/samples/java/voice-agents/       @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li
-/samples/javascript/voice-agents/ @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li
-/samples/python/voice-agents/     @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li
-/samples/typescript/voice-agents/ @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li
+/samples/csharp/VoiceAgents/      @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li @PatrickFarley
+/samples/java/voice-agents/       @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li @PatrickFarley
+/samples/javascript/voice-agents/ @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li @PatrickFarley
+/samples/python/voice-agents/     @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li @PatrickFarley
+/samples/typescript/voice-agents/ @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li @PatrickFarley
 
 #### Partner / external collaborator sample areas #######################################################
 # Partners are outside collaborators (not org members). Each entry is the source of truth for that
