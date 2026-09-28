@@ -3,7 +3,7 @@
 requiredVersions:
   azd: '>=1.27.1'
   extensions:
-    azure.ai.agents: '>=1.0.0-beta.9'
+    azure.ai.agents: '>=1.0.0-beta.16'
 name: agent-framework-a2a-caller-responses-dotnet
 services:
   ai-project:
@@ -54,6 +54,9 @@ services:
     codeConfiguration:
       runtime: dotnet_10
       entryPoint: caller.dll
+    docker:
+      path: Dockerfile
+      remoteBuild: true
     uses:
       - ai-project
       - math-expert-a2a

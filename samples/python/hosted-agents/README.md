@@ -136,6 +136,7 @@ Full control over the HTTP request/response cycle. You define the payload schema
 | Sample                                                                 | What it shows                                                                           |
 | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | **[Basic Invocations Agent](./agent-framework/invocations/01-basic/)** | Minimal invocations agent — shows the invocations handler pattern with Agent Framework. |
+| **[Content safety guardrail (Invocations)](./agent-framework/invocations/02-content-safety-guardrail/)** | Attach a content safety guardrail to an invocations agent, declaring where prompt and response text live with `invocationsModeration`. |
 
 ---
 

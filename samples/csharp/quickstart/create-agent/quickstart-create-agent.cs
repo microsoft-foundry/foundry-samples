@@ -5,7 +5,7 @@ using Azure.AI.Extensions.OpenAI;
 
 // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
 var foundryProjectEndpoint = "your_project_endpoint";
-var foundryAgentName = "your_agent_name";
+var foundryAgentName = "your-agent-name";
 
 // Create project client to call Foundry API
 AIProjectClient projectClient = new(

@@ -46,7 +46,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir workflows-agent && cd workflows-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/workflows/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/workflows/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
@@ -77,15 +77,9 @@ In a separate terminal, invoke the running agent:
 azd ai agent invoke --local "The quick brown fox jumps over the lazy dog"
 ```
 
-Or use curl directly:
-
-```bash
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "The quick brown fox jumps over the lazy dog", "stream": false}' | jq .
-```
-
-Expected output: three lines showing the text in French, Spanish, then back in English.
+Expected output: the French, Spanish, and final English translations in that order. The friendly
+`azd` renderer concatenates the workflow's separate message items, so the translations may appear
+without line breaks even though all three stages ran.
 
 ### Deploy to Foundry
 

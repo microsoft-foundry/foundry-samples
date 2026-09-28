@@ -47,7 +47,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir my-agent && cd my-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/harness-data-processing/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/harness-data-processing/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
@@ -80,20 +80,39 @@ azd ai agent invoke --local "List the available data files, read them, and give 
 
 Reads are auto-approved. To see the approval flow, follow up with a write request (e.g. "Now write a summary.md with that summary") — the agent surfaces an approval request that you approve before the file is written.
 
-`azd ai agent invoke` sends plain-text input, so use the local Responses endpoint (or the Agent
-Inspector) for the structured approval response. Keep the same conversation ID for the request and
-its approval:
+> [!IMPORTANT]
+> `azd ai agent invoke -f` currently treats a file as text inside the Responses `input` field; it
+> does not send a complete structured Responses body. Use `az rest` for the
+> `mcp_approval_response`.
+
+Keep the same conversation ID for the request and its approval:
 
 ```bash
 # Request a write. The response contains an mcp_approval_request; note its id.
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"conversation":{"id":"data-write-demo-1"},"input":"Read sales.csv, summarize it in one paragraph, and write the result to summary.md."}'
+azd ai agent invoke --local --conversation-id data-write-demo-1 \
+  "Read sales.csv, summarize it in one paragraph, and write the result to summary.md."
+```
 
-# Approve the pending write with the same conversation ID.
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"conversation":{"id":"data-write-demo-1"},"input":[{"type":"mcp_approval_response","approval_request_id":"<id>","approve":true}]}'
+Save the following as `approve-data-write.json`, replacing `<id>` with the returned approval request ID:
+
+```json
+{
+  "conversation": { "id": "data-write-demo-1" },
+  "input": [
+    {
+      "type": "mcp_approval_response",
+      "approval_request_id": "<id>",
+      "approve": true
+    }
+  ]
+}
+```
+
+```bash
+az rest --method POST \
+  --url http://localhost:8088/responses \
+  --headers "Content-Type=application/json" \
+  --body @approve-data-write.json
 ```
 
 The approval response resumes the paused turn, writes `summary.md` once, and returns the completed
@@ -113,6 +132,22 @@ For the full deployment guide, see [Deploy a hosted agent](https://learn.microso
 
 ```bash
 azd ai agent invoke "List the available data files, read them, and give me a one-paragraph summary."
+```
+
+For a protected write on the deployed agent:
+
+1. Start a new conversation with `azd ai agent invoke --new-conversation "<write request>"`.
+2. Copy the service-issued `Session:` and `Conversation:` values. Put the conversation value and the
+   emitted `mcp_approval_request.id` into `approve-data-write.json`.
+3. Send the structured response to the deployed Responses endpoint shown by
+   `azd ai agent show --output json`:
+
+```bash
+az rest --method POST \
+  --url "<responses-endpoint>" \
+  --resource https://ai.azure.com \
+  --headers "Content-Type=application/json" "x-agent-session-id=<agent-session-id>" \
+  --body @approve-data-write.json
 ```
 
 ## Option 2: VS Code (Foundry Toolkit)
@@ -141,7 +176,8 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 File access is gated by tool approval:
 
 - **Reads** (`file_access_ls`, `file_access_read`) are auto-approved by `FileAccessProvider.ReadOnlyToolsAutoApprovalRule` and run without prompting.
-- **Writes / deletes** (`file_access_write`, ...) surface an approval request. Over the Responses protocol this is a resumable `mcp_approval_request`: approve it (with an `mcp_approval_response`) and the operation proceeds; deny it and the operation is skipped.
+- **Writes / deletes** (`file_access_write`, ...) surface an approval request. Resume them with a
+  structured `mcp_approval_response` in the same conversation.
 
 ## Customization
 
@@ -153,6 +189,8 @@ File access is gated by tool approval:
 
 - **`500` / session isolation error locally** — ensure `LocalDevSessionIsolationKeyProvider` is registered (it is, in `Program.cs`); it supplies the fallback user id when the platform `x-agent-user-id` header is absent.
 - **Write never happens** — writes require approval; make sure you send an approval response to the `mcp_approval_request` the agent returns.
+- **Approval fails with `No tool output found for function call` after `azd ... -f`** — the file was
+  sent as user text rather than as a structured Responses body. Use the REST commands above.
 
 ## Next steps
 

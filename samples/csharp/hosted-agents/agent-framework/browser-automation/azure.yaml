@@ -3,7 +3,7 @@
 requiredVersions:
   azd: '>=1.27.1'
   extensions:
-    azure.ai.agents: '>=1.0.0-beta.9'
+    azure.ai.agents: '>=1.0.0-beta.16'
 name: bat-csharp-maf
 services:
   ai-project:

@@ -29,15 +29,11 @@ var memoryStoreName = Environment.GetEnvironmentVariable("AZURE_AI_MEMORY_STORE_
 
 var projectClient = new AIProjectClient(projectEndpoint, new DefaultAzureCredential());
 
-// Per-user memory scoping is the production pattern. This sample uses a single shared scope
-// because per-user identity from the platform isolation headers is not yet exposed by the
-// released hosting package. Once the HostedSessionContext API ships, replace the constant
-// below with: session?.GetHostedContext()?.UserId ?? throw new InvalidOperationException(...)
-// See microsoft/agent-framework PR #5702 for the contributor reference implementation.
+// Scope memory to the platform-provided user identity so different users never share memories.
 var memoryProvider = new FoundryMemoryProvider(
     projectClient,
     memoryStoreName,
-    stateInitializer: _ => new(new FoundryMemoryProviderScope("foundry-memory-rag-user")));
+    stateInitializer: HostedFoundryMemoryProviderScopes.PerUser());
 
 // Create the memory store on startup if it does not already exist. Idempotent.
 await memoryProvider.EnsureMemoryStoreCreatedAsync(deployment, embeddingDeployment, "Memory store for the personal-coach RAG sample.");

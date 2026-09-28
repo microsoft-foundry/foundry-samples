@@ -8,13 +8,13 @@
     its `agent_endpoint.protocols`.
 
     The matching `RemoteA2A` connection and `a2a_preview` toolbox are declared
-    in the caller's agent.manifest.yaml and created by `azd provision` on the
-    caller — they are NOT created here.
+    in the caller's azure.yaml and created by `azd provision` on the caller.
+    They are not created here.
 
     All parameters are optional. Defaults come from:
       - ../.env (FOUNDRY_PROJECT_ENDPOINT)
-      - "agent-framework-a2a-executor-responses-dotnet" (AgentName — the
-        executor's default name from agent.manifest.yaml)
+      - "agent-framework-a2a-executor-responses-dotnet" (AgentName, the
+        executor's default name from azure.yaml)
 
     See:
       - https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/enable-agent-to-agent-endpoint
@@ -58,26 +58,23 @@ if (-not $ProjectEndpoint) {
 if (-not $AgentName) { $AgentName = "agent-framework-a2a-executor-responses-dotnet" }
 
 $baseUrl = $ProjectEndpoint.TrimEnd('/')
-$targetA2AUrl  = "$baseUrl/agents/$AgentName/endpoint/protocols/a2a/"
+$targetA2AUrl = "$baseUrl/agents/$AgentName/endpoint/protocols/a2a/"
 $displayA2AUrl = $targetA2AUrl.TrimEnd('/')
 
 Write-Host "Project endpoint: $baseUrl"
 Write-Host "Agent name:       $AgentName"
 Write-Host "Target A2A URL:   $displayA2AUrl"
 Write-Host ""
-
 Write-Host "Enabling incoming A2A on agent '$AgentName'..."
-
-$dataToken = (az account get-access-token --resource https://ai.azure.com --query accessToken -o tsv)
 
 $enableBody = @{
     agent_card = @{
         description = "A math expert that performs arithmetic operations and explains the steps."
-        version     = "1.0"
-        skills      = @(
+        version = "1.0"
+        skills = @(
             @{
-                id          = "arithmetic"
-                name        = "Arithmetic and math expert"
+                id = "arithmetic"
+                name = "Arithmetic and math expert"
                 description = "Performs arithmetic operations (addition, subtraction, multiplication, division, exponentiation) and returns concise numeric answers."
             }
         )
@@ -87,11 +84,23 @@ $enableBody = @{
     }
 } | ConvertTo-Json -Depth 6
 
-Invoke-RestMethod -Method Patch `
-    -Uri "$baseUrl/agents/$AgentName`?api-version=v1" `
-    -Headers @{ Authorization = "Bearer $dataToken" } `
-    -ContentType "application/json" `
-    -Body $enableBody | Out-Null
+$bodyFile = New-TemporaryFile
+try {
+    $enableBody | Out-File $bodyFile -Encoding utf8
+    az rest `
+        --method PATCH `
+        --url ($baseUrl + "/agents/" + $AgentName + "?api-version=v1") `
+        --resource https://ai.azure.com `
+        --headers "Content-Type=application/json" `
+        --body "@$bodyFile" `
+        --output none
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to enable incoming A2A on agent '$AgentName'."
+    }
+}
+finally {
+    Remove-Item -LiteralPath $bodyFile -Force
+}
 
 Write-Host "done."
 Write-Host ""

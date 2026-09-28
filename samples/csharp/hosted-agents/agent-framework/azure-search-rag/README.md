@@ -58,7 +58,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir azure-search-rag-agent && cd azure-search-rag-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/azure-search-rag/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/azure-search-rag/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, model deployment, or Azure AI Search service, `azd provision` creates them all for you.
@@ -108,20 +108,9 @@ In a separate terminal, invoke the running agent:
 azd ai agent invoke --local "What is your return policy?"
 ```
 
-Or use curl directly:
-
 ```bash
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "What is your return policy?", "stream": false}' | jq .
-
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "How long does shipping take?", "stream": false}' | jq .
-
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "How do I clean my tent?", "stream": false}' | jq .
+azd ai agent invoke --local "How long does shipping take?"
+azd ai agent invoke --local "How do I clean my tent?"
 ```
 
 ### Deploy to Foundry
@@ -251,28 +240,34 @@ az role assignment create --assignee-object-id $USER_OID --assignee-principal-ty
   --role "Search Index Data Contributor" --scope $SEARCH_ID
 ```
 
-### Bash one-shot using `curl` + `az` token
+### Bash one-shot using authenticated `az rest`
 
 ```bash
 SEARCH_ENDPOINT="https://<search-service>.search.windows.net"
 INDEX_NAME="contoso-outdoors"
-TOKEN=$(az account get-access-token --resource https://search.azure.com --query accessToken -o tsv)
+
+INDEX_SCHEMA=$(cat <<EOF
+{
+  "name": "$INDEX_NAME",
+  "fields": [
+    { "name": "id", "type": "Edm.String", "key": true, "filterable": true },
+    { "name": "content", "type": "Edm.String", "searchable": true },
+    { "name": "sourceName", "type": "Edm.String", "filterable": true },
+    { "name": "sourceLink", "type": "Edm.String" }
+  ]
+}
+EOF
+)
 
 # Create the index (idempotent: 201 on create, 204 on update)
-curl -sS -X PUT "${SEARCH_ENDPOINT}/indexes/${INDEX_NAME}?api-version=2024-07-01" \
-  -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" -d '{
-    "name": "'"${INDEX_NAME}"'",
-    "fields": [
-      { "name": "id", "type": "Edm.String", "key": true, "filterable": true },
-      { "name": "content", "type": "Edm.String", "searchable": true },
-      { "name": "sourceName", "type": "Edm.String", "filterable": true },
-      { "name": "sourceLink", "type": "Edm.String" }
-    ]
-  }'
+az rest --method put --resource https://search.azure.com \
+  --url "${SEARCH_ENDPOINT}/indexes/${INDEX_NAME}?api-version=2024-07-01" \
+  --headers Content-Type=application/json --body "$INDEX_SCHEMA"
 
 # Seed three Contoso Outdoors documents
-curl -sS -X POST "${SEARCH_ENDPOINT}/indexes/${INDEX_NAME}/docs/index?api-version=2024-07-01" \
-  -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" -d '{
+az rest --method post --resource https://search.azure.com \
+  --url "${SEARCH_ENDPOINT}/indexes/${INDEX_NAME}/docs/index?api-version=2024-07-01" \
+  --headers Content-Type=application/json --body '{
     "value": [
       {
         "@search.action": "mergeOrUpload",
@@ -305,10 +300,9 @@ The hosted agent runs under its own managed identity. Grant that identity `Searc
 
 ```bash
 # Look up the agent MI principal id from the deployed agent version.
-TOK=$(az account get-access-token --resource https://ai.azure.com --query accessToken -o tsv)
-MI=$(curl -sS -H "Authorization: Bearer $TOK" \
-  "https://<account>.services.ai.azure.com/api/projects/<project>/agents/azure-search-rag?api-version=v1" \
-  | jq -r '.versions.latest.instance_identity.principal_id')
+MI=$(az rest --method get --resource https://ai.azure.com \
+  --url "https://<account>.services.ai.azure.com/api/projects/<project>/agents/azure-search-rag?api-version=v1" \
+  --query "versions.latest.instance_identity.principal_id" -o tsv)
 
 az role assignment create --assignee-object-id $MI --assignee-principal-type ServicePrincipal \
   --role "Search Index Data Reader" --scope $SEARCH_ID

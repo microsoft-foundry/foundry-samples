@@ -99,14 +99,9 @@ var instructions =
     - Always explain what you learned and what you are going to do next between tool calls, so the user can follow along with your thought process.
     """;
 
-// Create the agent using AsHarnessAgent. FileAccessStore points the FileAccessProvider at the
-// sample's working/ folder (copied to the output directory) so it works regardless of cwd.
-// Tool approval is required for file operations; a read-only auto-approval rule skips prompts
-// for reads while writes/deletes still require explicit approval. Unused providers are disabled.
-AIAgent agent =
-    // Build an IChatClient via GetProjectResponsesClientForModel (the path FoundryChatClient uses
-    // internally) so the Foundry Responses hosting layer owns response storage and deployment routing.
-    new AIProjectClient(
+// Build the model client before the harness. Harness persists chat history after every service call
+// so approval continuations retain the exact function-call chain across turns.
+IChatClient chatClient = new AIProjectClient(
         new Uri(endpoint),
         // WARNING: DefaultAzureCredential is convenient for development but requires careful consideration in production.
         // In production, consider using a specific credential (e.g., ManagedIdentityCredential) to avoid
@@ -115,37 +110,48 @@ AIAgent agent =
         new AIProjectClientOptions { RetryPolicy = new ClientRetryPolicy(3) })
     .GetProjectOpenAIClient()
     .GetProjectResponsesClientForModel(deploymentName)
-    .AsIChatClient()
-    .AsHarnessAgent(new HarnessAgentOptions
+    .AsIChatClient();
+
+// Create the agent using AsHarnessAgent. FileAccessStore points the FileAccessProvider at the
+// sample's working/ folder (copied to the output directory) so it works regardless of cwd.
+// Tool approval is required for file operations; a read-only auto-approval rule skips prompts
+// for reads while writes/deletes still require explicit approval. Unused providers are disabled.
+AIAgent agent = chatClient.AsHarnessAgent(new HarnessAgentOptions
+{
+    MaxContextWindowTokens = MaxContextWindowTokens,
+    MaxOutputTokens = MaxOutputTokens,
+    Name = "DataAnalyst",
+    Description = "A data analyst assistant that reads, analyzes, and processes data files.",
+    FileAccessStore = new FileSystemAgentFileStore(workingDir),
+    ToolApprovalAgentOptions = new ToolApprovalAgentOptions
     {
-        MaxContextWindowTokens = MaxContextWindowTokens,
+        // The HarnessAgent's FileAccessProvider requires approval for all file access operations.
+        // This read-only auto-approval rule skips prompts for reads; writes/deletes still require approval.
+        AutoApprovalRules = [FileAccessProvider.ReadOnlyToolsAutoApprovalRule]
+    },
+    DisableTodoProvider = true,
+    DisableAgentModeProvider = true,
+    DisableFileMemory = true,
+    DisableWebSearch = true,
+    ChatOptions = new ChatOptions
+    {
+        ModelId = deploymentName,                       // Bind the Foundry deployment to the request, matching the pattern used by all hosted samples.
+        Instructions = instructions,
         MaxOutputTokens = MaxOutputTokens,
-        Name = "DataAnalyst",
-        Description = "A data analyst assistant that reads, analyzes, and processes data files.",
-        FileAccessStore = new FileSystemAgentFileStore(workingDir),
-        ToolApprovalAgentOptions = new ToolApprovalAgentOptions
-        {
-            // The HarnessAgent's FileAccessProvider requires approval for all file access operations.
-            // This read-only auto-approval rule skips prompts for reads; writes/deletes still require approval.
-            AutoApprovalRules = [FileAccessProvider.ReadOnlyToolsAutoApprovalRule]
-        },
-        DisableTodoProvider = true,
-        DisableAgentModeProvider = true,
-        DisableFileMemory = true,
-        DisableWebSearch = true,
-        ChatOptions = new ChatOptions
-        {
-            ModelId = deploymentName,                       // Bind the Foundry deployment to the request, matching the pattern used by all hosted samples.
-            Instructions = instructions,
-            MaxOutputTokens = MaxOutputTokens,
-        },
-    });
+    },
+});
 
 // Host the harness agent behind the Foundry Responses protocol so it can be run by
 // `azd ai agent run` and inspected via F5 in the Agent Inspector. AgentHost.CreateBuilder
 // wires up automatic port, health, and telemetry configuration.
 var builder = AgentHost.CreateBuilder(args);
-builder.Services.AddFoundryResponses(agent);
+// Harness keeps history in AgentSession.StateBag. Its per-service-call wrapper sets a local-history
+// ConversationId, which the 1.22 host mistakes for service-stored output and rejects by default.
+// This opt-in bypasses that check, but leaves the model client's storage setting unchanged, so it
+// may create a second stored record. Approval-response binding remains enabled.
+builder.Services.AddFoundryResponses(
+    agent,
+    configure: options => options.AllowStoredOutputEnabled = true);
 // Harness agents carry per-session state, so the hosting layer requires a session isolation key.
 // Register a local-dev fallback so requests without the platform's x-agent-user-id header (dotnet
 // run / azd ai agent run / Inspector) still resolve a user id instead of failing with a 500.

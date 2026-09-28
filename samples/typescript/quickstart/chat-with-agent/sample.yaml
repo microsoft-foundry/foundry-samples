@@ -3,3 +3,19 @@ description: Basic quickstart sample demonstrating Microsoft Foundry chat with A
 
 build: "npm install --registry=https://registry.npmjs.org/"
 validate: "npx tsc --noEmit"
+live_service_validation:
+  command: "npm run start"
+  required_env:
+    - FOUNDRY_PROJECT_ENDPOINT
+    - MODEL_DEPLOYMENT
+  cleanup_resources:
+    - type: foundry_agent_versions
+  substitutions:
+    - file: src/quickstart-chat-with-agent.ts
+      replacements:
+        - placeholder: "your_project_endpoint"
+          env: FOUNDRY_PROJECT_ENDPOINT
+        - placeholder: "your-agent-name"
+          generate: unique_name
+        - placeholder: "gpt-5-mini"
+          env: MODEL_DEPLOYMENT

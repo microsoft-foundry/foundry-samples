@@ -298,6 +298,12 @@ print_value(resolve(query))
             "FOUNDRY_MODEL_DEPLOYMENT: ${{ vars.MODEL_DEPLOYMENT }}",
             workflow,
         )
+        live_service = workflow.split("  live-service:", 1)[1]
+        self.assertIn("if: matrix.validator_language == 'typescript'", live_service)
+        self.assertIn("node-version: '20'", live_service)
+        self.assertIn("if: matrix.validator_language == 'java'", live_service)
+        self.assertIn("java-version: '17'", live_service)
+        self.assertNotIn("LIVE_VALIDATION_AGENT_NAME", workflow)
         self.assertIn('SKIP_PROVISION: "true"', workflow)
         self.assertIn('python -m pip install -r "${{ matrix.path }}/requirements.txt"', workflow)
 
@@ -411,6 +417,175 @@ print_value(resolve(query))
                 (sample / "Program.cs").read_text(encoding="utf-8"),
                 'var endpoint = "https://validation.example/api/projects/project";\n',
             )
+
+    def test_live_service_substitutions_generate_unique_name_needs_no_env(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sample = root / "samples" / "python" / "generated-name"
+            sample.mkdir(parents=True)
+            (sample / "quickstart.py").write_text(
+                'AGENT_NAME = "your-agent-name"\n'
+                'AGENT_NAME_AGAIN = "your-agent-name"\n',
+                encoding="utf-8",
+            )
+            (sample / "check.py").write_text(
+                "import re\n"
+                "from pathlib import Path\n"
+                "text = Path('quickstart.py').read_text(encoding='utf-8')\n"
+                "names = re.findall(r'AGENT_NAME[A-Z_]* = \"([^\"]+)\"', text)\n"
+                "assert len(names) == 2, names\n"
+                "assert names[0] == names[1], names\n"
+                "assert 'your-agent-name' not in names, names\n",
+                encoding="utf-8",
+            )
+            (sample / "sample.yaml").write_text(
+                "name: generated-name\n"
+                "live_service_validation:\n"
+                "  command: \"python check.py\"\n"
+                "  substitutions:\n"
+                "    - file: quickstart.py\n"
+                "      replacements:\n"
+                "        - placeholder: \"your-agent-name\"\n"
+                "          generate: unique_name\n",
+                encoding="utf-8",
+            )
+            self.write_fake_yq(root)
+            env = {
+                **os.environ,
+                "PATH": f"{root}{os.pathsep}{Path(sys.executable).parent}{os.pathsep}{os.environ['PATH']}",
+                "SKIP_PROVISION": "true",
+            }
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "validate-sample.sh"),
+                    "--mode",
+                    "live-service",
+                    "--sample-dir",
+                    str(sample),
+                ],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn("verdict=pass", completed.stdout)
+
+    def test_cleanup_resources_requires_a_generate_unique_name_substitution(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sample = root / "samples" / "python" / "unpaired-cleanup"
+            sample.mkdir(parents=True)
+            (sample / "quickstart.py").write_text("print('hi')\n", encoding="utf-8")
+            (sample / "sample.yaml").write_text(
+                "name: unpaired-cleanup\n"
+                "live_service_validation:\n"
+                "  command: \"python quickstart.py\"\n"
+                "  cleanup_resources:\n"
+                "    - type: foundry_agent_versions\n",
+                encoding="utf-8",
+            )
+            self.write_fake_yq(root)
+            env = {
+                **os.environ,
+                "PATH": f"{root}{os.pathsep}{Path(sys.executable).parent}{os.pathsep}{os.environ['PATH']}",
+                "SKIP_PROVISION": "true",
+            }
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "validate-sample.sh"),
+                    "--mode",
+                    "live-service",
+                    "--sample-dir",
+                    str(sample),
+                ],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+            self.assertEqual(completed.returncode, 2, completed.stdout + completed.stderr)
+            self.assertIn("generate: unique_name", completed.stderr)
+
+    def test_cleanup_resources_passes_the_generated_name_to_the_cleanup_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sample = root / "samples" / "python" / "paired-cleanup"
+            sample.mkdir(parents=True)
+            (sample / "quickstart.py").write_text(
+                'AGENT_NAME = "your-agent-name"\n', encoding="utf-8"
+            )
+            (sample / "sample.yaml").write_text(
+                "name: paired-cleanup\n"
+                "live_service_validation:\n"
+                "  command: \"python quickstart.py\"\n"
+                "  cleanup_resources:\n"
+                "    - type: foundry_agent_versions\n"
+                "  substitutions:\n"
+                "    - file: quickstart.py\n"
+                "      replacements:\n"
+                "        - placeholder: \"your-agent-name\"\n"
+                "          generate: unique_name\n",
+                encoding="utf-8",
+            )
+            self.write_fake_yq(root)
+            recorder = root / "recorded-args.txt"
+            fake_az = root / "az"
+            fake_az.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            fake_az.chmod(0o755)
+            fake_python3 = root / "python3"
+            fake_python3.write_text(
+                "#!/bin/sh\n"
+                # Only stub calls targeting live-resource-cleanup.py; anything else
+                # (notably the fake yq's own python3 shebang) must reach the real
+                # interpreter or nothing in this test would be able to parse YAML.
+                'case "$1" in\n'
+                "    */live-resource-cleanup.py)\n"
+                f"        echo \"$*\" >> {recorder}\n"
+                '        if [ "$2" = "snapshot" ]; then\n'
+                '            prev=""\n'
+                '            for arg in "$@"; do\n'
+                '                if [ "$prev" = "--output" ]; then\n'
+                '                    printf \'{}\' > "$arg"\n'
+                "                fi\n"
+                '                prev="$arg"\n'
+                "            done\n"
+                "        fi\n"
+                "        exit 0\n"
+                "        ;;\n"
+                "esac\n"
+                f"exec {sys.executable} \"$@\"\n",
+                encoding="utf-8",
+            )
+            fake_python3.chmod(0o755)
+            env = {
+                **os.environ,
+                "PATH": f"{root}{os.pathsep}{Path(sys.executable).parent}{os.pathsep}{os.environ['PATH']}",
+                "SKIP_PROVISION": "true",
+            }
+            completed = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "scripts" / "validate-sample.sh"),
+                    "--mode",
+                    "live-service",
+                    "--sample-dir",
+                    str(sample),
+                ],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn("verdict=pass", completed.stdout)
+            quickstart = (sample / "quickstart.py").read_text(encoding="utf-8")
+            substituted_name = quickstart.split('"')[1]
+            self.assertNotEqual(substituted_name, "your-agent-name")
+            recorded = recorder.read_text(encoding="utf-8")
+            self.assertIn(f"--foundry-agent {substituted_name}", recorded)
 
     def test_live_service_substitutions_reject_trailing_parent_directory_paths(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

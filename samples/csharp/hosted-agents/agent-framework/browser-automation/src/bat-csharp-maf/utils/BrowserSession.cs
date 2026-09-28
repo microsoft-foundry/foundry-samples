@@ -93,7 +93,7 @@ public class BrowserSession
 
         return $"Session '{SessionId}' closed.\ndetach: {detachResult}";
     }
-    
+
     private static string FindCli()
     {
         var pathDirs = Environment.GetEnvironmentVariable("PATH")?.Split(Path.PathSeparator) ?? [];

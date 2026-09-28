@@ -6,7 +6,6 @@ set -e
 # Called by postprovision.sh after connection setup.
 # Always creates a new version to pick up any connection changes, then publishes it.
 
-# Load all env values once and look up by key.
 _AZD_ENV_CACHE=$(azd env get-values 2>/dev/null || true)
 
 _azd_get() {
@@ -30,12 +29,9 @@ if [ -z "$PROJECT_ID" ]; then
     echo "Error: Could not determine project ID. Set AZURE_AI_PROJECT_ID." >&2
     exit 1
 fi
+
 CONNECTION_ID="${PROJECT_ID}/connections/browserautomation"
-
 TOOLBOX_NAME="browser-automation-tools"
-TOKEN=$(az account get-access-token --resource "https://ai.azure.com" --query accessToken -o tsv)
-
-# Build toolbox body
 TOOLBOX_BODY=$(printf '{
   "tools": [{
     "type": "browser_automation_preview",
@@ -45,12 +41,13 @@ TOOLBOX_BODY=$(printf '{
   }]
 }' "$CONNECTION_ID")
 
-# POST creates a new version (works for both new and existing toolboxes)
-RESPONSE=$(curl -fsS -X POST \
-    "${PROJECT_ENDPOINT}/toolboxes/${TOOLBOX_NAME}/versions?api-version=v1" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "$TOOLBOX_BODY")
+RESPONSE=$(az rest \
+    --method POST \
+    --url "${PROJECT_ENDPOINT}/toolboxes/${TOOLBOX_NAME}/versions?api-version=v1" \
+    --resource https://ai.azure.com \
+    --headers "Content-Type=application/json" "Foundry-Features=Toolboxes=V1Preview" \
+    --body "$TOOLBOX_BODY" \
+    --output json)
 
 VERSION_ID=$(printf '%s' "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('version',''))" 2>/dev/null || echo "")
 if [ -z "$VERSION_ID" ]; then
@@ -60,9 +57,7 @@ fi
 
 echo "  Created version: $VERSION_ID"
 
-# Publish the new version as default
 azd ai toolbox publish "$TOOLBOX_NAME" "$VERSION_ID"
-
 azd env set TOOLBOX_NAME "$TOOLBOX_NAME"
 
-echo "✅ Toolbox '$TOOLBOX_NAME' v${VERSION_ID} created and published."
+echo "Toolbox '$TOOLBOX_NAME' v${VERSION_ID} created and published."

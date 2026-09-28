@@ -10,7 +10,12 @@ Give the agent a research topic. It plans the work, then executes — searching 
 
 The Responses protocol owns conversation history, while the hosted session identifies the filesystem context. The `azd` CLI saves and reuses both automatically. Use `--new-conversation --new-session` to start over. The harness keeps its own working state for the current run but does not reload prior turns — the hosting layer replays those — so history stays consistent across turns.
 
-When hosted, the agent's file memory lives under `$HOME` (`agent-files`). In Foundry, `$HOME` belongs to the hosted session and persists across turns and idle periods, so stored reports are durable for the life of the session and are visible through the Session Files API; deleting the session removes that filesystem. Local runs use the app directory.
+When hosted, the agent's file memory lives under `$HOME` (`agent-files`). In Foundry, `$HOME`
+belongs to the hosted session and persists across turns and idle periods, so stored reports are
+durable for the life of the session. `FileMemoryProvider` stores provider-managed records with opaque
+filenames, so use the agent to retrieve a named report rather than expecting that report name to
+appear directly in `azd ai agent files list`. Deleting the session removes the filesystem. Local
+runs use the app directory.
 
 ### Session isolation
 
@@ -50,7 +55,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir my-agent && cd my-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/harness-research/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/harness-research/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
@@ -142,6 +147,9 @@ To drive it end to end, send an initial research request, then reply approving e
   request can exceed 40K input tokens before later loop iterations begin, so a 10K TPM deployment
   cannot run the documented flow; retry backoff and lower output-token limits do not reduce that
   input-token floor.
+- **The friendly `azd` output does not show source URLs** — ask the agent to list the source URLs in
+  a follow-up turn. Citation annotations and separate workflow messages are not always rendered by
+  the friendly CLI output.
 
 ## Next steps
 

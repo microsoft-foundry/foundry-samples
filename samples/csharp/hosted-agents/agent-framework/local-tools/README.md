@@ -46,7 +46,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir local-tools-agent && cd local-tools-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/local-tools/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/local-tools/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
@@ -75,14 +75,6 @@ In a separate terminal, invoke the running agent:
 
 ```bash
 azd ai agent invoke --local "Find hotels in Seattle for Dec 20-25 under $200/night"
-```
-
-Or use curl directly:
-
-```bash
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "Find hotels in Seattle for Dec 20-25 under $200/night", "stream": false}' | jq .
 ```
 
 ### Deploy to Foundry

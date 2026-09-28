@@ -53,7 +53,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir foundry-toolbox-agent && cd foundry-toolbox-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/foundry-toolbox-server-side/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/foundry-toolbox-server-side/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
@@ -84,12 +84,9 @@ In a separate terminal, ask the agent about its toolbox tools:
 azd ai agent invoke --local "What tools do you have?"
 ```
 
-Or use curl directly:
-
 ```bash
-curl -X POST http://localhost:8088/responses -H "Content-Type: application/json" -d '{"input": "What tools do you have?", "stream": false}'
-curl -X POST http://localhost:8088/responses -H "Content-Type: application/json" -d '{"input": "Find the latest API version for Microsoft.CognitiveServices accounts in the azure-rest-api-specs repo.", "stream": false}'
-curl -X POST http://localhost:8088/responses -H "Content-Type: application/json" -d '{"input": "Use the code interpreter to compute the 30th Fibonacci number.", "stream": false}'
+azd ai agent invoke --local "Find the latest API version for Microsoft.CognitiveServices accounts in the azure-rest-api-specs repo."
+azd ai agent invoke --local "Use the code interpreter to compute the 30th Fibonacci number."
 ```
 
 ### Deploy to Foundry

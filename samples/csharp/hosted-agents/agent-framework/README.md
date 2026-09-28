@@ -4,9 +4,10 @@ This directory contains samples that demonstrate how to use the [Agent Framework
 
 > [!IMPORTANT]
 > **Responses container protocol v2.0.** These samples target the Foundry Responses container
-> protocol **v2.0**, declared in each `azure.yaml`. Each project pins the Agent Framework package
-> version required by the capability it demonstrates. Use the project file as the authoritative
-> package reference when copying a sample.
+> protocol **v2.0**, declared in each `azure.yaml`. The updated projects use the published
+> `Microsoft.Agents.AI.*` **1.22.0** package line, with Foundry hosting pinned to
+> `1.22.0-preview.260918.1` and MCP integration pinned to `1.22.0-alpha.260918.1`.
+> Use each project file as the authoritative package reference when copying a sample.
 
 ## Samples
 
@@ -33,6 +34,11 @@ This directory contains samples that demonstrate how to use the [Agent Framework
 | 17 | [steering](steering/) | A long-running agent that queues a second input on the same active conversation instead of rejecting it as locked. |
 | 18 | [resilient-workflow](resilient-workflow/) | A model-backed workflow whose Agent Executor calls an intentional crash tool and resumes the pending tool call in a replacement process. |
 | 19 | [steerable-workflow](steerable-workflow/) | A deterministic workflow that queues steering input, cancels an active superstep, and continues from the last committed checkpoint. |
+| 20 | [egress-control](egress-control/) | A network-isolated agent that demonstrates allowlisted outbound access through Foundry egress controls. |
+| 21 | [browser-automation](browser-automation/) | A container-only browser automation agent that uses the Playwright CLI and a Foundry Toolbox. |
+| 22 | [harness-research](harness-research/) | A research harness agent with planning, web search, todo tracking, and session state. |
+| 23 | [harness-data-processing](harness-data-processing/) | A data-processing harness agent with scoped file access and approval-gated writes. |
+| 24 | [harness-scaling-capabilities](harness-scaling-capabilities/) | A harness agent that combines skills, background agents, confined shell access, and optional Hyperlight CodeAct. |
 
 ### Invocations API
 
@@ -56,7 +62,7 @@ You can run any sample in this folder using one of three approaches. Pick the on
 
 1. **Azure Developer CLI (`azd`)**
 
-    - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.25 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
+    - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.27.1 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
     - Authenticated: `azd auth login`
 
 2. **Azure Subscription**
@@ -69,7 +75,7 @@ You can run any sample in this folder using one of three approaches. Pick the on
 mkdir hosted-agent-framework-agent && cd hosted-agent-framework-agent
 
 # Initialize from the manifest
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/hello-world/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/hello-world/azure.yaml
 ```
 
 Follow the instructions from `azd ai agent init` to complete the agent initialization. If you don't have an existing Foundry project and a model deployment, `azd ai agent init` will guide you through creating them.
@@ -125,18 +131,6 @@ Open another terminal, **navigate to the project directory**, and run the follow
 
 ```bash
 azd ai agent invoke --local "Hello!"
-```
-
-Or you can in another terminal, without navigating to the project directory, run the following command to invoke the agent:
-
-```bash
-curl -X POST http://localhost:8088/responses -H "Content-Type: application/json" -d '{"input": "Hello!"}'
-```
-
-Or in PowerShell:
-
-```powershell
-(Invoke-WebRequest -Uri http://localhost:8088/responses -Method POST -ContentType "application/json" -Body '{"input": "Hello!"}').Content
 ```
 
 <details>
@@ -226,13 +220,7 @@ Right now, the agent host should be running on `http://localhost:8088`
 On another terminal, run the following command to invoke the agent:
 
 ```bash
-curl -X POST http://localhost:8088/responses -H "Content-Type: application/json" -d '{"input": "Hello!"}'
-```
-
-Or in PowerShell:
-
-```powershell
-(Invoke-WebRequest -Uri http://localhost:8088/responses -Method POST -ContentType "application/json" -Body '{"input": "Hello!"}').Content
+azd ai agent invoke --local "Hello!"
 ```
 
 ## Deploying the Agent to Foundry
@@ -250,7 +238,7 @@ Once you've tested locally, deploy to Microsoft Foundry. You can use either `azd
 
 If you already have a Foundry project and the necessary Azure resources provisioned, you can skip the setup steps and proceed directly to deploying the agent.
 
-After running `azd ai agent init -m <azure.yaml>` and following the prompts to configure your agent, you will have a project ready for deployment.
+After running `azd ai agent init --deploy-mode container -m <azure.yaml>` and following the prompts to configure your agent, you will have a project ready for deployment.
 
 #### Setting Up a New Foundry Project
 
@@ -272,6 +260,19 @@ azd deploy
 
 This will package your agent and deploy it to the Foundry environment, making it accessible through the Foundry project endpoint. Once it's deployed, you can also access the agent through the Foundry UI.
 
+#### Invoking the deployed agent
+
+```bash
+azd ai agent invoke "Hello!"
+```
+
+For Responses work that must continue after the CLI disconnects, start a stored background response and follow it separately:
+
+```bash
+azd ai agent invoke --long-running --no-wait "Run the long task"
+azd ai agent invocations follow
+```
+
 For the full deployment guide, see [Azure AI Foundry hosted agents](https://aka.ms/azdaiagent/docs).
 
 ### Deploying with the Foundry Toolkit VS Code Extension
@@ -281,7 +282,7 @@ You can also deploy directly from the editor (see [Using the Foundry Toolkit VS 
 1. Open the Command Palette (`Ctrl+Shift+P`) and run **Foundry Toolkit: Deploy Hosted Agent**. The extension opens a tab-based **Deploy Hosted Agent** wizard and reads `agent.yaml` to auto-populate what it can.
 2. If prompted, complete **Foundry Project Setup** to pick the subscription and Foundry project (or create a new one) to deploy to.
 3. On the **Basics** tab, configure the core deployment settings:
-   - **Deployment Method**: **Code** (upload as a ZIP) or **Container** (Docker image via ACR).
+   - **Deployment Method**: **Code** (upload as a ZIP) or **Container** (Docker image via ACR). The browser automation sample is container-only because its image installs Playwright CLI.
    - For **Code**, pick a packaging option: **Remote** or **Local**.
    - For **Container**, pick a registry option: default ACR, your own ACR, or a prebuilt ACR image.
    - **Hosted Agent Name**: confirm the name to register with the hosting service.

@@ -27,7 +27,7 @@ The provisioning uses `ProjectAgentSkills.CreateSkillFromPackageAsync(directoryP
 
 ### Downloading skills at agent startup
 
-[`Program.cs`](src/agent-skills/Program.cs) reads the comma-separated `SKILL_NAMES` env var and, for each skill name, downloads the ZIP archive from Foundry via `ProjectAgentSkills.DownloadSkillAsync(name)`, then unpacks it into a **separate runtime directory** at `downloaded_skills/<name>/` (kept distinct from the static `skills/` source folder).
+[`Program.cs`](src/agent-skills/Program.cs) reads the comma-separated `SKILL_NAMES` env var and, for each skill name, downloads the ZIP archive from Foundry via `ProjectAgentSkills.DownloadSkillAsync(name)`, then unpacks it into a **separate runtime directory** at `downloaded_skills/<name>/` (kept distinct from the static `skills/` source folder). Locally this directory is under the application folder; in Foundry containers it is under the writable per-session home directory.
 
 An `AgentSkillsProvider` is then built over `downloaded_skills/` and attached to the agent as an `AIContextProvider`. The provider follows the [Agent Skills](https://agentskills.io/) progressive-disclosure pattern:
 
@@ -48,7 +48,9 @@ See [Program.cs](src/agent-skills/Program.cs) for the full implementation.
 
 1. An existing Foundry project with a deployed model (or create them during setup in Option 1 — `azd provision` can create them for you).
 2. **[.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)** or later.
-3. **Roles (RBAC):** your identity (or the Managed Identity running the container in production) needs **Azure AI User** on the Foundry project scope. This single role covers both authoring skills and downloading them.
+3. **Roles (RBAC):** your identity and the deployed agent's managed identity need **Foundry User**
+   (formerly **Azure AI User**) on the Foundry project scope. This role covers authoring and
+   downloading skills.
 
 ### Environment variables
 
@@ -85,7 +87,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir agent-skills && cd agent-skills
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/agent-skills/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/agent-skills/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
@@ -130,14 +132,6 @@ In a separate terminal, invoke the running agent:
 azd ai agent invoke --local "Hi, I am Alex. Can I return my tent within 30 days?"
 ```
 
-Or use curl directly:
-
-```bash
-curl -sS -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "Hi, I am Alex. Can I return my tent within 30 days?", "stream": false}' | jq .
-```
-
 | Prompt mentions | Skill that should drive the response |
 |---|---|
 | Routine return / shipping / care question | Model loads `support-style` (canary `STYLE-CANARY-3318`) — no escalation. |
@@ -157,6 +151,19 @@ azd deploy
 For the full deployment guide, see [Deploy a hosted agent](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/deploy-hosted-agent).
 
 > The `skills/` source folder is **not** consumed by the deployed agent at runtime — only the skills already present in Foundry are downloaded. The provisioning step (or your own pipeline) must have uploaded the named skills to the same Foundry project before the agent starts.
+
+`azd deploy` does not assign project data-plane roles to the new agent identity. Get the
+`instance_identity.principal_id` from `azd ai agent show --output json`, grant that principal
+**Foundry User** on the project ARM resource ID, and allow two to three minutes for role propagation
+before the first invocation:
+
+```bash
+az role assignment create \
+  --assignee-object-id <instance-identity-principal-id> \
+  --assignee-principal-type ServicePrincipal \
+  --role "Foundry User" \
+  --scope <foundry-project-arm-resource-id>
+```
 
 ### Invoke the deployed agent
 
@@ -211,6 +218,19 @@ Set `SKILL_NAMES` (and `PROVISION_SAMPLE_SKILLS=true` on a first run) in `.env`,
 5. After deployment, invoke the agent in the Agent Playground and stream live logs from the **Logs** tab.
 
 ## Troubleshooting
+
+### Local startup times out while probing managed identity
+
+Authenticate with `az login` and use this sample version. The sample excludes
+`ManagedIdentityCredential` locally so `DefaultAzureCredential` reaches the Azure CLI login instead
+of waiting on the unavailable IMDS endpoint at `169.254.169.254`. Managed identity remains enabled
+inside the Foundry hosted container.
+
+### Hosted session does not become ready while downloading a skill
+
+Confirm that the agent version's `instance_identity.principal_id` has **Foundry User** on the
+project, wait for role propagation, then create a new hosted session. A session that already failed
+readiness must be deleted with `azd ai agent sessions delete <session-id>` before retrying.
 
 ### Images built on Apple Silicon or other ARM64 machines do not work on our service
 

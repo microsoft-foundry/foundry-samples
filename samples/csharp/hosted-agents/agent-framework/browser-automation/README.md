@@ -15,17 +15,18 @@ When a user asks for browser work, the agent:
 5. Uses `run_playwright_cli` to invoke Playwright CLI commands against the remote browser.
 6. Calls `close_browser_session` to detach Playwright CLI state and end the remote browser when done.
 
-```text
-User
-  -> Foundry hosted agent
-      -> Agent Framework (AddFoundryToolboxes)
-          -> Foundry Toolbox MCP create_session
-              -> Azure Playwright Service remote Chromium
-      -> Middleware pipeline
-          -> Function invocation: intercepts create_session, stores URLs server-side
-          -> Streaming: injects live_view_url into SSE response
-      -> Local tools (run_playwright_cli, close_browser_session, get_live_view_url)
-          -> Playwright CLI -> remote browser CDP session
+```mermaid
+flowchart TD
+    user["User"] --> agent["Foundry hosted agent"]
+    agent --> framework["Agent Framework<br/>AddFoundryToolboxes"]
+    framework --> toolbox["Foundry Toolbox MCP<br/>create_session"]
+    toolbox --> browser["Azure Playwright Service<br/>remote Chromium"]
+    agent --> middleware["Middleware pipeline"]
+    middleware --> invoke["Function middleware<br/>stores browser URLs server-side"]
+    middleware --> stream["Streaming middleware<br/>injects live_view_url"]
+    agent --> tools["Local browser tools"]
+    tools --> cli["Playwright CLI"]
+    cli --> browser
 ```
 
 ### Agent Hosting
@@ -57,7 +58,11 @@ See [Program.cs](src/browser-automation-csharp-maf-sample-foundry/Program.cs) fo
 - Docker, if you want to build the container locally.
 - .NET 10 SDK for local development.
 
-> **Note:** You do not need a pre-existing Azure Playwright workspace or manual RBAC assignment. The deployment hooks create the workspace and assign roles automatically during `azd provision` and `azd deploy`. See [Deployment hooks](#deployment-hooks) below.
+> **Note:** You do not need a pre-existing Azure Playwright workspace if your identity can create
+> `Microsoft.LoadTestService/playwrightWorkspaces` resources in the target resource group. In a
+> restricted project, set `PLAYWRIGHT_SERVICE_RESOURCE_ID` to an existing workspace instead. The
+> deployment hooks create the connection and toolbox, then assign runtime roles during
+> `azd provision` and `azd deploy`. See [Deployment hooks](#deployment-hooks) below.
 
 For hosted-agent setup, see [Deploy hosted agents with azd](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent?pivots=azd).
 
@@ -117,7 +122,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir browser-automation-agent && cd browser-automation-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/browser-automation/azure.yaml
+azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/browser-automation/azure.yaml
 ```
 
 > [!NOTE]
@@ -149,23 +154,10 @@ In a separate terminal, send a browser-automation request:
 
 ```bash
 azd ai agent invoke --local --new-session "Open https://example.com and report the page title."
+azd ai agent invoke --local "Now take a screenshot of the page."
 ```
 
-Or use curl directly:
-
-```bash
-curl -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "Open https://example.com and report the page title."}'
-```
-
-The server returns a response ID you can use to continue the same conversation and reuse the browser session in later requests:
-
-```bash
-curl -X POST http://localhost:8088/responses \
-  -H "Content-Type: application/json" \
-  -d '{"input": "Now take a screenshot of the page.", "previous_response_id": "REPLACE_WITH_PREVIOUS_RESPONSE_ID"}'
-```
+The second invoke reuses the saved session and browser context.
 
 ### Deploy to Foundry
 
@@ -226,7 +218,7 @@ Complete the toolbox setup in [Provision Azure resources](#provision-azure-resou
 
 1. Open the Command Palette (`Ctrl+Shift+P`) and run **Foundry Toolkit: Deploy Hosted Agent**. The extension opens a **Deploy Hosted Agent** wizard and reads `agent.yaml` to auto-populate settings.
 2. If prompted, complete **Foundry Project Setup** to select subscription and project.
-3. On the **Basics** tab, choose deployment method (**Code** or **Container**) and confirm the agent name.
+3. On the **Basics** tab, choose **Container** deployment and confirm the agent name. Code deployment does not install the Playwright CLI runtime dependency.
 4. On **Review + Deploy**, confirm runtime details, pick **CPU and Memory** size, and click **Deploy**.
 5. After deployment, invoke the agent in the Agent Playground and stream live logs from the **Logs** tab.
 
@@ -284,6 +276,9 @@ azd env set PLAYWRIGHT_AUTH_TYPE "ProjectManagedIdentity"
 | `PLAYWRIGHT_SERVICE_RESOURCE_ID` | No | ARM resource ID of an existing workspace. Omit to create a new one. |
 | `PLAYWRIGHT_REGION` | When creating new | Region for the new workspace (e.g., `eastus`). Defaults to `eastus` if not set. |
 | `PLAYWRIGHT_AUTH_TYPE` | No | `ProjectManagedIdentity` (default) or `AgenticIdentityToken`. `ApiKey` is interactive-only. |
+
+Creating a workspace requires `Microsoft.LoadTestService/playwrightWorkspaces/write` in the target
+resource group. If you do not have that permission, an existing workspace ID is required.
 
 ### Option 1: Let hooks provision everything (recommended)
 
