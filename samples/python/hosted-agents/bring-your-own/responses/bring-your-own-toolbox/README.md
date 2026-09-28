@@ -16,7 +16,7 @@ A **Bring Your Own** hosted agent using the **Responses protocol** with **Azure 
 
 To use your own tools, choose the tool type and authentication mode from the table below, then follow the linked guide to configure that tool in your toolbox.
 
-To run this sample as provided, create a toolbox named **`my-toolbox`** with **Web Search** and the public **Microsoft Learn MCP** server by following either the `azd` or VS Code steps below.
+The [`azure.yaml`](azure.yaml) declares **`my-toolbox`** with **Web Search** and the public **Microsoft Learn MCP** server. `azd up` creates the project, toolbox, and agent in dependency order.
 
 ### Toolbox tool types
 
@@ -64,7 +64,7 @@ The hosted agent can be developed and deployed to Microsoft Foundry using the [A
 Before running this sample, ensure you have:
 
 1. **Azure Developer CLI (`azd`)**
-   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.27.1 or later) and the unified Foundry CLI extension bundle: `azd ext install microsoft.foundry` (if you previously installed `azure.ai.agents` or `azure.ai.toolboxes`, run `azd ext uninstall <name>` first).
+   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.32.0 or later) and the unified Foundry CLI extension bundle: `azd ext install microsoft.foundry` (if you previously installed `azure.ai.agents` or `azure.ai.toolboxes`, run `azd ext uninstall <name>` first).
    - Authenticated: `azd auth login`
 
 2. **Azure CLI**
@@ -73,10 +73,10 @@ Before running this sample, ensure you have:
 3. **Python 3.10 or later**
    - Verify your version: `python --version`
 
-4. **A Foundry Toolbox**
-   - Create a toolbox in your Foundry project (see [Create the toolbox with `azd ai`](#create-the-toolbox-with-azd-ai) below).
+4. **Provisioned remote dependencies**
+   - Run `azd up` from the initialized project directory before local development. `azd ai agent run` starts the agent locally but does not create the remote toolbox.
 
-### Create the toolbox with `azd ai`
+### Configure the toolbox
 
 > [!TIP]
 > If you use GitHub Copilot for Azure to scaffold a hosted agent that consumes this toolbox, the following skill references describe the same endpoint contract (env var, headers, MCP protocol, citation patterns, and troubleshooting) that the agent must implement:
@@ -84,22 +84,10 @@ Before running this sample, ensure you have:
 > - [Foundry Toolbox — Concept, API Shape & Schema](https://github.com/microsoft/GitHub-Copilot-for-Azure/blob/main/plugins/azure-skills/skills/microsoft-foundry/foundry-agent/toolbox/toolbox.md) — toolbox creation and lifecycle, supported tool and authentication types, composition rules, versioning, MCP endpoint formats, testing, and troubleshooting.
 > - [Use a Toolbox from Your Agent Code](https://github.com/microsoft/GitHub-Copilot-for-Azure/blob/main/plugins/azure-skills/skills/microsoft-foundry/foundry-agent/create/references/use-toolbox-in-hosted-agent.md) — framework-specific integration paths, `TOOLBOX_ENDPOINT`, local and deployed validation, BYO MCP authentication, OAuth consent, approvals, citations, and troubleshooting.
 
-To use a tool type that is not included in this sample, follow its setup guide in the [Toolbox tool types](#toolbox-tool-types) table above and update the bundled [`toolbox.yaml`](src/toolbox-python-responses/toolbox.yaml).
-
-To run this sample as provided, create `my-toolbox` from the bundled configuration. The agent reads its MCP endpoint from the `TOOLBOX_ENDPOINT` environment variable:
-
-```bash
-azd ai toolbox create my-toolbox --from-file ./src/toolbox-python-responses/toolbox.yaml
-```
-
-The first version becomes the default automatically. Manage with `azd ai toolbox list`, `azd ai toolbox show my-toolbox`, `azd ai toolbox version list my-toolbox`, and `azd ai toolbox delete my-toolbox --force`.
-
-To stage incremental changes safely, use `azd ai toolbox connection add/remove` and `azd ai toolbox skill add/list/remove` &mdash; each creates a new toolbox version that carries forward existing connections and skills but **doesn't** change the default. Promote a version with `azd ai toolbox publish my-toolbox <version>` when you're ready to make it active.
-
-`azd ai toolbox create` prints the toolbox's versioned MCP endpoint. Copy that endpoint and set it as `TOOLBOX_ENDPOINT`: run `azd env set TOOLBOX_ENDPOINT "<endpoint>"` for deployed agents, or put it in `.env` for local runs. The endpoint looks like `https://<account>.services.ai.azure.com/api/projects/<project>/toolboxes/my-toolbox/versions/1/mcp?api-version=v1`.
+To use another tool type, follow its [setup guide](#toolbox-tool-types) and edit the `my-toolbox` service in [`azure.yaml`](azure.yaml). The agent service depends on the toolbox and maps the versioned `TOOLBOX_MY_TOOLBOX_MCP_ENDPOINT` produced by this deployment to `TOOLBOX_ENDPOINT`. Run `azd deploy --all` after editing tools: the agent uses the newly created toolbox version without publishing it as the default or switching older agents.
 
 > [!NOTE]
-> To attach tools that need credentials (MCP servers with API keys or OAuth, Azure AI Search, Bing Custom Search, and more), create a project connection with `azd ai connection create` and reference it from `toolbox.yaml`.
+> To attach tools that need credentials, declare a separate `azure.ai.connection` service in `azure.yaml`, reference it from the toolbox tool with `connection`, and add it to the toolbox's `uses`.
 
 ### Environment Variables
 
@@ -109,7 +97,7 @@ See [`.env.example`](src/toolbox-python-responses/.env.example) or `.env` for th
 |----------|----------|-------------|
 | `FOUNDRY_PROJECT_ENDPOINT` | Yes | Foundry project endpoint. Auto-injected in hosted containers; set automatically by `azd ai agent run` locally. |
 | `AZURE_AI_MODEL_DEPLOYMENT_NAME` | Yes | Model deployment name — must match your Foundry project deployment. Declared in `azure.yaml`. |
-| `TOOLBOX_ENDPOINT` | Yes | Full toolbox MCP endpoint URL. Copy the versioned endpoint from the `azd ai toolbox create` output. |
+| `TOOLBOX_ENDPOINT` | Yes | Versioned toolbox MCP endpoint. The agent service maps it from `TOOLBOX_MY_TOOLBOX_MCP_ENDPOINT` on deployment. For standalone local Python/VS Code runs, set it in `.env` using the endpoint from the provisioned project. |
 | `TOOLBOX_NAME` | Optional | Toolbox name. If `TOOLBOX_ENDPOINT` isn't set, the agent builds the latest-version endpoint from this and `FOUNDRY_PROJECT_ENDPOINT`. |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | Recommended | Enables telemetry. Auto-injected in hosted containers; set manually for local dev. |
 
@@ -121,7 +109,7 @@ https://<account>.services.ai.azure.com/api/projects/<project>/toolboxes/<toolbo
 # Pinned to a specific version:
 https://<account>.services.ai.azure.com/api/projects/<project>/toolboxes/<toolbox-name>/versions/<version>/mcp?api-version=v1
 ```
-Set `TOOLBOX_ENDPOINT` in `.env` for local dev, or via `azd env set TOOLBOX_ENDPOINT "<url>"` for deployed agents.
+The deployed agent gets this endpoint from `azure.yaml`; a standalone local process needs it in `.env`. `azd ai agent run` reads the initialized project's environment but does not provision missing resources.
 
 ### Running the Sample
 
@@ -155,17 +143,9 @@ The agent starts on `http://localhost:8088`.
   pip install -r requirements.txt
   ```
 
-**Create the toolbox**
+**Prepare remote dependencies**
 
-The toolbox must exist in your Foundry project before you run the agent. This sample expects a toolbox named **`my-toolbox`**. Create it with the VS Code Foundry Toolkit extension:
-
-1. In the **Foundry Toolkit** view (signed in), open **Tool Catalog** → **Catalog** tab → **Toolboxes** → **Create Your Toolbox**.
-
-    Or, if you're reading this README in VS Code, directly click [[Create in VS Code]](vscode://ms-windows-ai-studio.windows-ai-studio/open_tools).
-2. In the **Included** panel, click **+ Add ▾** → **Add tools**. Add **Web Search**, then add Microsoft Learn MCP server in the catalog. To use different tools, follow the tool's **Guide** in the [Toolbox tool types](#toolbox-tool-types) table above.
-3. Follow the configuration dialog to add each tool.
-4. Back on **Build a Custom Toolbox**, name the toolbox **`my-toolbox`**, then click **Publish**.
-5. Copy the published versioned MCP endpoint into `TOOLBOX_ENDPOINT` in the sample's `.env` file.
+Run `azd up` from the initialized project directory first. For F5/standalone Python runs, configure `.env` with the resulting project's `FOUNDRY_PROJECT_ENDPOINT` and `TOOLBOX_ENDPOINT` (available via `azd env get-value TOOLBOX_MY_TOOLBOX_MCP_ENDPOINT`). The VS Code deploy wizard deploys the agent but does not create the toolbox declared in `azure.yaml`; use `azd deploy --all` to update both.
 
 **Run and debug the agent**
 
@@ -270,37 +250,14 @@ git config --global core.autocrlf false
 ```bash
 # 1. Create a new directory and initialize the agent project
 mkdir my-agent && cd my-agent
-PROJECT_ID="/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>/projects/<project>"
-azd ai agent init \
-  -m /path/to/samples/python/hosted-agents/bring-your-own/responses/bring-your-own-toolbox/azure.yaml \
-  --project-id $PROJECT_ID \
-  --no-prompt \
-  -e my-env
+azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/responses/bring-your-own-toolbox/azure.yaml
+azd up
 
-# 2. Set required environment variables
-azd env set enableHostedAgentVNext "true" -e my-env
-azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME "gpt-4o" -e my-env  # must match the deployment name in azure.yaml
-
-# 3. Provision infrastructure and deploy the container
-azd up -e my-env
-
-# 4. Invoke the deployed agent (run from the scaffolded project directory)
+# 2. Invoke the deployed agent (run from the initialized project directory)
 azd ai agent invoke "Search the web for Azure AI Foundry news" --timeout 120
 ```
 
-#### Post-Init Checklist
-
-After `azd ai agent init`, perform these steps before `azd up` will work:
-
-| # | Action | Why |
-|---|--------|-----|
-| 1 | `azd env set enableHostedAgentVNext "true"` | Without this, container health probes fail |
-| 2 | Edit `src/<agent>/agent.yaml`: replace all `${{VAR}}` with `${VAR}` | Init scaffolds broken double-brace syntax that is NOT resolved at deploy time |
-| 3 | Verify `azure.yaml` uses **flat format** (`kind: hosted` at root) | The nested `template:` format silently fails during deploy |
-| 4 | `azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME "<deployment-name>"` | Must match the deployment `name` in `azure.yaml`; platform injection is unreliable without this (container crashes on startup) |
-| 5 | Verify `main.py` checks `FOUNDRY_PROJECT_ENDPOINT` first | Platform injects this var, NOT `AZURE_AI_PROJECT_ENDPOINT` |
-| 6 | **If using existing project with AppInsights already connected:** `azd env set ENABLE_MONITORING "false"` | Provision fails with duplicate App Insights connection error |
-| 7 | **If model region ≠ RG region:** edit generated `infra/main.parameters.json` — change `aiDeploymentsLocation` value from `${AZURE_LOCATION}` to `${AZURE_AI_DEPLOYMENTS_LOCATION}`, then `azd env set AZURE_AI_DEPLOYMENTS_LOCATION "<region>"` | Init templates map model deployment location to `AZURE_LOCATION` which is wrong when model is in a different region |
+To change the toolbox tools and deploy a new agent version together, run `azd deploy --all` from the initialized project directory. The agent receives the versioned toolbox endpoint from the same deployment.
 
 To stream logs from the running agent:
 
@@ -333,7 +290,7 @@ For the full deployment guide, see [Azure AI Foundry hosted agents](https://aka.
 
 ### Images built on Apple Silicon or other ARM64 machines do not work on our service
 
-**Deploy with `azd deploy`**, which uses ACR remote build and always produces images with the correct architecture.
+**Deploy with `azd deploy --all`**, which uses ACR remote build and always produces images with the correct architecture.
 
 If you choose to **build locally**, and your machine is **not `linux/amd64`** (for example, an Apple Silicon Mac), the image will **not be compatible with our service**, causing runtime failures.
 
