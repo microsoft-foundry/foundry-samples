@@ -124,10 +124,11 @@ class RedisCheckpointStore(CheckpointStorage):
 
     async def save(self, checkpoint: WorkflowCheckpoint) -> CheckpointID:
         client = await self._database.connect()
-        async with self._database.write_lock:
+        checkpoint_key = self._checkpoint_key(checkpoint.checkpoint_id)
+        async with self._database.write_lock(checkpoint_key):
             pipe = client.pipeline(transaction=True)
             pipe.hset(
-                self._checkpoint_key(checkpoint.checkpoint_id),
+                checkpoint_key,
                 mapping={
                     "workflow_name": checkpoint.workflow_name,
                     "timestamp": checkpoint.timestamp,
@@ -165,7 +166,7 @@ class RedisCheckpointStore(CheckpointStorage):
     async def delete(self, checkpoint_id: CheckpointID) -> bool:
         client = await self._database.connect()
         checkpoint_key = self._checkpoint_key(checkpoint_id)
-        async with self._database.write_lock:
+        async with self._database.write_lock(checkpoint_key):
             workflow_name = await client.hget(checkpoint_key, "workflow_name")
             pipe = client.pipeline(transaction=True)
             pipe.delete(checkpoint_key)

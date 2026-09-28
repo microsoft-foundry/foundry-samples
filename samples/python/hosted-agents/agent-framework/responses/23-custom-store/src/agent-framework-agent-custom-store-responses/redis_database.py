@@ -15,6 +15,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import os
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 import redis.asyncio as redis
 from redis_entraid.cred_provider import create_from_default_azure_credential
@@ -22,6 +24,7 @@ from redis_entraid.cred_provider import create_from_default_azure_credential
 DEFAULT_REDIS_URL = "redis://localhost:6379/0"
 DEFAULT_LOCAL_USER_ID = "local-developer"
 DEFAULT_REDIS_PORT = 10000
+DEFAULT_LOCK_TIMEOUT_SECONDS = 30
 KEY_PREFIX = "custom-store"
 # Microsoft Entra ID scope for the Azure Cache for Redis / Azure Managed Redis
 # data plane. DefaultAzureCredential exchanges the agent's managed identity for
@@ -60,12 +63,18 @@ class RedisDatabase:
         self._port = port
         self._client: redis.Redis | None = None
         self._init_lock = asyncio.Lock()
-        self._write_lock = asyncio.Lock()
 
-    @property
-    def write_lock(self) -> asyncio.Lock:
-        """Serialize read-modify-write flows across concurrent requests."""
-        return self._write_lock
+    @asynccontextmanager
+    async def write_lock(self, resource_key: str) -> AsyncGenerator[None]:
+        """Serialize mutations of one resource across agent instances."""
+        client = await self.connect()
+        lock = client.lock(
+            f"{resource_key}:lock",
+            timeout=DEFAULT_LOCK_TIMEOUT_SECONDS,
+            blocking_timeout=DEFAULT_LOCK_TIMEOUT_SECONDS,
+        )
+        async with lock:
+            yield
 
     def key(self, *parts: str) -> str:
         """Build a namespaced key from the shared prefix and the given parts."""

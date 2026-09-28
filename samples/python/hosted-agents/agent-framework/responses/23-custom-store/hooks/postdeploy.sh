@@ -1,15 +1,12 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: MIT
 #
 # Grants the deployed hosted agent identity access to Azure Managed Redis.
 
-set -euo pipefail
+set -eu
 
 main() {
-  local azd_values project_endpoint agent_name redis_database_id
-  local foundry_token principal_id management_token assignment_uri
-
   azd_values="$(azd env get-values)"
   project_endpoint="$(printf '%s\n' "${azd_values}" |
     sed -n 's/^\(AZURE_AI_PROJECT_ENDPOINT\|FOUNDRY_PROJECT_ENDPOINT\)="\(.*\)"$/\2/p' |
@@ -20,8 +17,8 @@ main() {
   redis_database_id="$(printf '%s\n' "${azd_values}" |
     sed -n 's/^REDIS_DATABASE_RESOURCE_ID="\(.*\)"$/\1/p')"
 
-  if [[ -z "${project_endpoint}" || -z "${agent_name}" ||
-    -z "${redis_database_id}" ]]; then
+  if [ -z "${project_endpoint}" ] || [ -z "${agent_name}" ] ||
+    [ -z "${redis_database_id}" ]; then
     echo "ERROR: Required project, agent, or Redis deployment values are missing." >&2
     exit 1
   fi

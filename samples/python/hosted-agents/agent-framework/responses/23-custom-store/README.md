@@ -72,10 +72,11 @@ so checkpoints for one workflow run can be listed and pruned as a collection.
 The storage implementation uses
 [redis_database.py](src/agent-framework-agent-custom-store-responses/redis_database.py)
 to manage one shared asynchronous Redis client, apply a common prefix to every
-key, and serialize read-modify-write operations with a write lock. During local
-development, the client connects to the Docker Redis instance without
-authentication. When deployed, it connects to Azure Managed Redis over TLS and
-uses `DefaultAzureCredential` to authenticate with the agent's managed identity.
+key, and serialize conflicting read-modify-write operations across agent
+instances with resource-scoped Redis locks. During local development, the client
+connects to the Docker Redis instance without authentication. When deployed, it
+connects to Azure Managed Redis over TLS and uses `DefaultAzureCredential` to
+authenticate with the agent's managed identity.
 
 [redis_response_store.py](src/agent-framework-agent-custom-store-responses/redis_response_store.py)
 implements the Responses storage contract, while
@@ -105,7 +106,7 @@ Three local tools provide deterministic validation scenarios:
 
 ## Prerequisites
 
-1. Python 3.10 or later. The `azd ai agent run` path uses Python 3.13.
+1. Python 3.11 or later. The `azd ai agent run` path uses Python 3.13.
 2. A Foundry project with a deployed chat model, or permission to create both
    through `azd provision`.
 3. The Foundry User role on the Foundry project for the local or hosted identity.

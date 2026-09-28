@@ -123,7 +123,7 @@ class RedisResponseStore(ResponseProviderProtocol):
 
         client = await self._database.connect()
         response_key = self._response_key(partition, response_id)
-        async with self._database.write_lock:
+        async with self._database.write_lock(response_key):
             existing = await client.hgetall(response_key)
             if existing and existing.get("deleted") != "1":
                 raise ResponseAlreadyExistsError(response_id)
@@ -183,7 +183,7 @@ class RedisResponseStore(ResponseProviderProtocol):
 
         client = await self._database.connect()
         response_key = self._response_key(partition, response_id)
-        async with self._database.write_lock:
+        async with self._database.write_lock(response_key):
             envelope = await client.hgetall(response_key)
             if not envelope or envelope.get("deleted") == "1":
                 raise KeyError(f"response '{response_id}' not found")
@@ -221,7 +221,7 @@ class RedisResponseStore(ResponseProviderProtocol):
         partition = self._partition(context)
         client = await self._database.connect()
         response_key = self._response_key(partition, response_id)
-        async with self._database.write_lock:
+        async with self._database.write_lock(response_key):
             envelope = await client.hgetall(response_key)
             if not envelope or envelope.get("deleted") == "1":
                 raise KeyError(f"response '{response_id}' not found")
