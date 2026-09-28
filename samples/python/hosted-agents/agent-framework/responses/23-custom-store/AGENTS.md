@@ -15,9 +15,7 @@ session store, the workflow checkpoint store, and the function approval store.
   deployed environment variables, and the layered infrastructure (Foundry layer
   plus a Bicep layer that provisions Azure Managed Redis).
 * `docker-compose.yml` runs a local Redis for `python main.py` development.
-* `infra/redis/main.bicep` provisions Azure Managed Redis, grants the Foundry
-  project managed identity a data access policy, and exports its `REDIS_HOST`
-  and `REDIS_PORT` outputs consumed by `azure.yaml`.
+* `infra/redis/main.bicep` provisions Azure Managed Redis and exports its `REDIS_HOST` and `REDIS_PORT` outputs consumed by `azure.yaml`; the `hooks/` postdeploy scripts grant the deployed agent identity Redis data access.
 * `src/agent-framework-agent-custom-store-responses/main.py` creates the agent
   and supplies the response store plus the three store providers to
   `ResponsesHostServer`.
