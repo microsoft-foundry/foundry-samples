@@ -65,8 +65,8 @@ try
     }
 
     Console.WriteLine("\nModel responses (from GetAgentConversationResponses):");
-    List<VoiceResponse> responses = new();
-    await foreach (VoiceResponse response in conversationsClient.GetAgentConversationResponsesAsync(agentName, conversationId))
+    List<VoiceResult> responses = new();
+    await foreach (VoiceResult response in conversationsClient.GetAgentConversationResponsesAsync(agentName, conversationId))
     {
         responses.Add(response);
         Console.WriteLine($"  - {response.Id} ({response.Output.Count} output item(s))");
