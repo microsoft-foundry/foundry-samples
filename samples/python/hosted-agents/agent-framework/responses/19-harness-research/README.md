@@ -114,11 +114,10 @@ Use `--new-conversation --new-session` when you want a clean research task.
 
 ### Set up the Python virtual environment
 
-- With Python 3.13 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
+- Create and synchronize the locked environment:
 
   ```bash
-   pipx install uv==0.11.7
-   uv sync --frozen --python 3.13
+  uv sync --frozen
   ```
 - Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
 
