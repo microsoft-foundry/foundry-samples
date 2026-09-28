@@ -3,7 +3,7 @@
 requiredVersions:
   azd: '>=1.31.2'
   extensions:
-    azure.ai.agents: '>=1.0.0-beta.13'
+    azure.ai.agents: '>=1.0.0-beta.16'
 name: hello-world-autopilot
 hooks:
   preprovision:
@@ -33,7 +33,7 @@ services:
       - protocol: activity
         version: 2.0.0
     activity:
-      useCase: digital_worker
+      digitalWorkerType: m365
       publish:
         publishScope: tenant
         canRespondWithoutMention: true
