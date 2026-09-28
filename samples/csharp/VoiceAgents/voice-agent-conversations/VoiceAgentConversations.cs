@@ -65,8 +65,8 @@ try
     }
 
     Console.WriteLine("\nModel responses (from GetAgentConversationResponses):");
-    List<VoiceResult> responses = new();
-    await foreach (VoiceResult response in conversationsClient.GetAgentConversationResponsesAsync(agentName, conversationId))
+    List<VoiceResponse> responses = new();
+    await foreach (VoiceResponse response in conversationsClient.GetAgentConversationResponsesAsync(agentName, conversationId))
     {
         responses.Add(response);
         Console.WriteLine($"  - {response.Id} ({response.Output.Count} output item(s))");
@@ -122,7 +122,17 @@ async Task<string> RunStoredConversationAsync()
     string? conversationId = null;
     await foreach (RealtimeServerUpdate update in session.ReceiveUpdatesAsync())
     {
-        if (update is RealtimeServerUpdateResponseOutputTextDelta textDelta)
+        if (update is RealtimeServerUpdateSessionCreated createdUpdate)
+        {
+            // The Foundry conversation_id extension is not a typed property of the realtime event.
+            BinaryData json = ModelReaderWriter.Write(createdUpdate, ModelReaderWriterOptions.Json);
+            using JsonDocument document = JsonDocument.Parse(json);
+            if (document.RootElement.TryGetProperty("conversation_id", out JsonElement idElement))
+            {
+                conversationId = idElement.GetString();
+            }
+        }
+        else if (update is RealtimeServerUpdateResponseOutputTextDelta textDelta)
         {
             Console.Write(textDelta.Delta);
         }
@@ -136,7 +146,6 @@ async Task<string> RunStoredConversationAsync()
             {
                 throw new InvalidOperationException($"Voice response ended with status: {doneUpdate.Response.Status}");
             }
-            conversationId = doneUpdate.Response.ConversationId;
             break;
         }
     }
