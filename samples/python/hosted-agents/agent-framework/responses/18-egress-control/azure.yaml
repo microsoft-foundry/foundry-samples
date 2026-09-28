@@ -58,7 +58,6 @@ services:
       - type: rai_policy
         raiPolicyName: ${RAI_POLICY_ID}
 infra:
-  provider: microsoft.foundry
   layers:
     - provider: microsoft.foundry
       path: infra/foundry
