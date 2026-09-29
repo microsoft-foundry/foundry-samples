@@ -1,9 +1,10 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 
 requiredVersions:
-  azd: '>=1.27.1'
+  azd: '>=1.32.0'
   extensions:
-    azure.ai.agents: '>=1.0.0-beta.9'
+    azure.ai.agents: '>=1.0.0-beta.17'
+    azure.ai.toolboxes: '>=1.0.0-beta.8'
 name: toolbox-python-invocations
 services:
   ai-project:
@@ -17,6 +18,20 @@ services:
         sku:
           name: GlobalStandard
           capacity: 10
+  my-toolbox:
+    host: azure.ai.toolbox
+    uses:
+      - ai-project
+    description: Web search and Microsoft Learn behind one endpoint
+    tools:
+      - type: web_search
+        name: web_search
+        description: Search the public web for current information.
+      - type: mcp
+        name: mslearn
+        server_label: mslearn
+        server_url: https://learn.microsoft.com/api/mcp
+        require_approval: never
   toolbox-python-invocations:
     host: azure.ai.agent
     metadata:
@@ -35,6 +50,7 @@ services:
       path: Dockerfile
     uses:
       - ai-project
+      - my-toolbox
     kind: hosted
     name: toolbox-python-invocations
     displayName: Toolbox (Python, Invocations)
@@ -44,7 +60,7 @@ services:
         version: 2.0.0
     env:
       AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
-      TOOLBOX_ENDPOINT: ${TOOLBOX_ENDPOINT}
+      TOOLBOX_ENDPOINT: ${TOOLBOX_MY_TOOLBOX_MCP_ENDPOINT}
     container:
       resources:
         cpu: '0.5'
