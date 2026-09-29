@@ -104,6 +104,9 @@ class RedisResponseStore(ResponseProviderProtocol):
     def _conversation_key(self, partition: str, conversation_id: str) -> str:
         return self._database.partition_key("conv", partition, conversation_id)
 
+    def _sequence_key(self, partition: str) -> str:
+        return self._database.partition_key("seq", partition)
+
     async def create_response(
         self,
         response: ResponseObject,
@@ -128,7 +131,7 @@ class RedisResponseStore(ResponseProviderProtocol):
             if existing and existing.get("deleted") != "1":
                 raise ResponseAlreadyExistsError(response_id)
 
-            sequence = await client.incr(self._database.key("seq")) if conversation_id else 0
+            sequence = await client.incr(self._sequence_key(partition)) if conversation_id else 0
             mapping = {
                 "generation": uuid.uuid4().hex,
                 "response": _serialize(response),
@@ -192,7 +195,7 @@ class RedisResponseStore(ResponseProviderProtocol):
                 *json.loads(envelope["history_item_ids"]),
                 *json.loads(envelope["input_item_ids"]),
             ]
-            sequence = await client.incr(self._database.key("seq")) if conversation_id else 0
+            sequence = await client.incr(self._sequence_key(partition)) if conversation_id else 0
             pipe = client.pipeline(transaction=True)
             pipe.hset(
                 response_key,
@@ -288,7 +291,7 @@ class RedisResponseStore(ResponseProviderProtocol):
         context: PlatformContext | None = None,
     ) -> list[str]:
         """Resolve chronological item identifiers for response continuation."""
-        if limit <= 0:
+        if limit == 0 or limit < -1:
             return []
         partition = self._partition(context)
         client = await self._database.connect()
@@ -313,7 +316,8 @@ class RedisResponseStore(ResponseProviderProtocol):
             resolved.extend(json.loads(envelope["history_item_ids"]))
             resolved.extend(json.loads(envelope["input_item_ids"]))
             resolved.extend(json.loads(envelope["output_item_ids"]))
-        return resolved[-limit:]
+        unique_resolved = list(dict.fromkeys(resolved))
+        return unique_resolved if limit == -1 else unique_resolved[-limit:]
 
     def _write_items(
         self,
