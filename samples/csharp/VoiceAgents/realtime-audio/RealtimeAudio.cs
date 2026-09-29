@@ -10,6 +10,7 @@ using Azure.AI.Projects.Agents;
 using Azure.Identity;
 using OpenAI.Realtime;
 using System.ClientModel;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 const int PcmSampleRate = 24_000;
@@ -73,7 +74,15 @@ try
     // Sending audio and receiving events run concurrently: turn detection can recognize speech
     // and start streaming a response before every input chunk (in particular, the trailing
     // silence below) has finished sending.
-    await Task.WhenAll(SendInputAudioAsync(), ConsumeUpdatesAsync());
+    using CancellationTokenSource cancellation = new();
+    Task sendTask = SendInputAudioAsync(cancellation.Token);
+    Task receiveTask = ConsumeUpdatesAsync(cancellation.Token);
+    Task firstCompleted = await Task.WhenAny(sendTask, receiveTask);
+    if (!firstCompleted.IsCompletedSuccessfully)
+    {
+        await cancellation.CancelAsync();
+    }
+    await Task.WhenAll(sendTask, receiveTask);
 
     Console.WriteLine($"\nOutput transcript: {outputTranscript}");
     Console.WriteLine($"Input audio:  {FormatAudioSize(inputAudioBytes)}");
@@ -86,15 +95,15 @@ try
         Console.WriteLine($"Saved response audio to: {audioOutputPath}");
     }
 
-    async Task SendInputAudioAsync()
+    async Task SendInputAudioAsync(CancellationToken cancellationToken)
     {
         // Paced at roughly real-time (one chunk duration per chunk sent), like a live microphone
         // capture, so server-side turn detection sees speech arrive at a realistic cadence.
-        await foreach (byte[] chunk in ReadPcmChunksAsync(audioInputPath, InputChunkSize))
+        await foreach (byte[] chunk in ReadPcmChunksAsync(audioInputPath, InputChunkSize, cancellationToken))
         {
-            await session.SendInputAudioAsync(BinaryData.FromBytes(chunk));
+            await session.SendInputAudioAsync(BinaryData.FromBytes(chunk), cancellationToken);
             inputAudioBytes += chunk.Length;
-            await Task.Delay(InputChunkDurationMs);
+            await Task.Delay(InputChunkDurationMs, cancellationToken);
         }
 
         // Turn detection needs a period of silence after real speech to recognize the turn has
@@ -102,15 +111,15 @@ try
         byte[] silenceChunk = new byte[InputChunkSize];
         for (int elapsedMs = 0; elapsedMs < TrailingSilenceDurationMs; elapsedMs += InputChunkDurationMs)
         {
-            await session.SendInputAudioAsync(BinaryData.FromBytes(silenceChunk));
+            await session.SendInputAudioAsync(BinaryData.FromBytes(silenceChunk), cancellationToken);
             inputAudioBytes += silenceChunk.Length;
-            await Task.Delay(InputChunkDurationMs);
+            await Task.Delay(InputChunkDurationMs, cancellationToken);
         }
     }
 
-    async Task ConsumeUpdatesAsync()
+    async Task ConsumeUpdatesAsync(CancellationToken cancellationToken)
     {
-        await foreach (RealtimeServerUpdate update in session.ReceiveUpdatesAsync())
+        await foreach (RealtimeServerUpdate update in session.ReceiveUpdatesAsync(cancellationToken))
         {
             Console.WriteLine($"[event] {update.Kind}");
             switch (update)
@@ -182,12 +191,12 @@ static string FormatAudioSize(long bytes)
     return $"{bytes} bytes ({bytes / 1024.0:F1} KB), {seconds:F2}s @ {PcmSampleRate} Hz / 16-bit / {PcmChannels}ch PCM";
 }
 
-static async IAsyncEnumerable<byte[]> ReadPcmChunksAsync(string path, int chunkSize)
+static async IAsyncEnumerable<byte[]> ReadPcmChunksAsync(string path, int chunkSize, [EnumeratorCancellation] CancellationToken cancellationToken)
 {
     await using FileStream stream = File.OpenRead(path);
     byte[] buffer = new byte[chunkSize];
     int bytesRead;
-    while ((bytesRead = await stream.ReadAsync(buffer)) > 0)
+    while ((bytesRead = await stream.ReadAsync(buffer, cancellationToken)) > 0)
     {
         yield return bytesRead == chunkSize ? buffer : buffer[..bytesRead];
     }

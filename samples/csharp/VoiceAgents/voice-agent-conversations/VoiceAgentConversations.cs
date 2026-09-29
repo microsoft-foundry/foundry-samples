@@ -146,13 +146,18 @@ async Task<string> RunStoredConversationAsync()
             {
                 throw new InvalidOperationException($"Voice response ended with status: {doneUpdate.Response.Status}");
             }
+            if (doneUpdate.Response.ConversationId is { Length: > 0 } responseConversationId)
+            {
+                conversationId = responseConversationId;
+            }
             break;
         }
     }
     Console.WriteLine();
 
-    return conversationId
-        ?? throw new InvalidOperationException("The session did not report a conversation ID; was storage enabled?");
+    return conversationId is { Length: > 0 }
+        ? conversationId
+        : throw new InvalidOperationException("The session did not report a conversation ID; was storage enabled?");
 }
 
 static string GetOptionalEnvironmentVariable(string name, string fallback)
