@@ -3,7 +3,7 @@ import { AIProjectClient } from "@azure/ai-projects";
 
 // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
 const FOUNDRY_PROJECT_ENDPOINT = "your_project_endpoint";
-const FOUNDRY_AGENT_NAME = "your-agent-name";
+const FOUNDRY_AGENT_NAME = "your_agent_name";
 
 async function main(): Promise<void> {
   // Create AI Project client
@@ -17,34 +17,23 @@ async function main(): Promise<void> {
     instructions: "You are a helpful assistant that answers general questions",
   });
 
-  try {
-    // Create conversation with initial user message
-    const conversation = await openai.conversations.create({
-      items: [
-        { type: "message", role: "user", content: "What is the size of France in square miles?" },
-      ],
-    });
+  // Create conversation with initial user message
+  const conversation = await openai.conversations.create({
+    items: [
+      { type: "message", role: "user", content: "What is the size of France in square miles?" },
+    ],
+  });
 
-    try {
-      // Generate response using the agent
-      const response = await openai.responses.create(
-        {
-          conversation: conversation.id,
-        },
-        {
-          body: { agent_reference: { name: agent.name, type: "agent_reference" } },
-        },
-      );
-      console.log(`Response output: ${response.output_text}`);
-    } finally {
-      await openai.conversations.delete(conversation.id);
-    }
-  } finally {
-    await project.agents.deleteVersion(agent.name, agent.version);
-  }
+  // Generate response using the agent
+  const response = await openai.responses.create(
+    {
+      conversation: conversation.id,
+    },
+    {
+      body: { agent_reference: { name: agent.name, type: "agent_reference" } },
+    },
+  );
+  console.log(`Response output: ${response.output_text}`);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main().catch(console.error);

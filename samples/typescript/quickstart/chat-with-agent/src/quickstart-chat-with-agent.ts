@@ -13,6 +13,11 @@ async function main(): Promise<void> {
         model: "gpt-5-mini", // supports all Foundry direct models
         instructions: "You are a helpful assistant that answers general questions",
     });
+    if (!agent.name || !agent.version) {
+        throw new Error("The created agent did not include a name and version.");
+    }
+    const agentName = agent.name;
+    const agentVersion = agent.version;
     const openai = project.getOpenAIClient();
 
     try {
@@ -27,7 +32,7 @@ async function main(): Promise<void> {
                     input: "What is the size of France in square miles?",
                 },
                 {
-                    body: { agent_reference: { name: agent.name, type: "agent_reference" } },
+                    body: { agent_reference: { name: agentName, type: "agent_reference" } },
                 },
             );
             console.log(response.output_text);
@@ -39,7 +44,7 @@ async function main(): Promise<void> {
                     input: "And what is the capital city?",
                 },
                 {
-                    body: { agent_reference: { name: agent.name, type: "agent_reference" } },
+                    body: { agent_reference: { name: agentName, type: "agent_reference" } },
                 },
             );
             console.log(response2.output_text);
@@ -47,7 +52,7 @@ async function main(): Promise<void> {
             await openai.conversations.delete(conversation.id);
         }
     } finally {
-        await project.agents.deleteVersion(agent.name, agent.version);
+        await project.agents.deleteVersion(agentName, agentVersion);
     }
 }
 
