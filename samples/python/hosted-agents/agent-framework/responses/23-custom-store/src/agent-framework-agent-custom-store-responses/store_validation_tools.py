@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Never
+from typing import Annotated, Any, Never
 from uuid import uuid4
 
 from agent_framework import (
@@ -24,11 +24,17 @@ CHECKPOINT_WORKFLOW_NAME = "custom-store-validation"
 
 
 class _CheckpointMarkerExecutor(Executor):
-    """Yield a marker so a real workflow checkpoint contains deterministic state."""
+    """Persist and yield a marker so checkpoint validation is deterministic."""
+
+    _marker: str | None = None
 
     @handler
     async def record_marker(self, marker: str, ctx: WorkflowContext[Never, str]) -> None:
+        self._marker = marker
         await ctx.yield_output(marker)
+
+    async def on_checkpoint_save(self) -> dict[str, Any]:
+        return {"marker": self._marker}
 
 
 def create_store_validation_tools(database: RedisDatabase) -> list[FunctionTool]:
@@ -62,13 +68,15 @@ def create_store_validation_tools(database: RedisDatabase) -> list[FunctionTool]
         checkpoints = [await checkpoint_store.load(checkpoint_id) for checkpoint_id in checkpoint_ids]
         if any(checkpoint.workflow_name != CHECKPOINT_WORKFLOW_NAME for checkpoint in checkpoints):
             raise RuntimeError("The checkpoint validation workflow loaded unexpected data.")
-        stored_values = [
-            message.data
+        stored_markers = [
+            executor_state.get("marker")
             for checkpoint in checkpoints
-            for messages in checkpoint.messages.values()
-            for message in messages
+            for executor_states in [checkpoint.state.get("_executor_state")]
+            if isinstance(executor_states, dict)
+            for executor_state in [executor_states.get("record-marker")]
+            if isinstance(executor_state, dict)
         ]
-        if marker not in stored_values:
+        if marker not in stored_markers:
             raise RuntimeError("The checkpoint validation workflow did not reload the persisted marker.")
 
         return f"CHECKPOINT_STORE_OK {marker}"
