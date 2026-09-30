@@ -9,25 +9,18 @@ from __future__ import annotations
 
 import logging
 import os
+from functools import partial
 
-from aiohttp.web import Application, Request, Response, run_app
+from aiohttp import ClientError
+from azure.ai.agentserver.activity import ActivityAgentServerHost
+from azure.ai.agentserver.core import configure_observability
 from azure.ai.projects.aio import AIProjectClient
 from azure.identity.aio import DefaultAzureCredential
-from microsoft_agents.authentication.msal import MsalConnectionManager
-from microsoft_agents.hosting.aiohttp import (
-    CloudAdapter,
-    start_agent_process,
-)
 from microsoft_agents.hosting.core import (
     AgentApplication,
-    MemoryStorage,
     RouteRank,
     TurnContext,
     TurnState,
-)
-from microsoft_agents.hosting.core.authorization import (
-    AgentAuthConfiguration,
-    AuthTypes,
 )
 
 from .activity_routing import (
@@ -36,21 +29,23 @@ from .activity_routing import (
     teams_group_chat_message,
     teams_tagged_channel_message,
 )
-from .observability import configure_hosting_observability
-from .traceback_suppression import install_traceback_suppression
 
 logger = logging.getLogger(__name__)
 
 
-def build_agent(connection_manager: MsalConnectionManager) -> AgentApplication[TurnState]:
-    """Create the agent application and register its surface-specific routes."""
-    adapter = CloudAdapter(connection_manager=connection_manager)
-    configure_hosting_observability(adapter.middleware_set)
-    agent = AgentApplication[TurnState](
-        storage=MemoryStorage(),
-        adapter=adapter,
-        connection_manager=connection_manager,
-    )
+def register_handlers(agent: AgentApplication[TurnState]) -> None:
+    """Register the supported Teams surfaces on the host's agent application."""
+
+    async def send_reply(context: TurnContext, text: str) -> None:
+        try:
+            await context.send_activity(text)
+        except (ClientError, TimeoutError):
+            logger.exception("Failed to send reply")
+
+    @agent.error
+    async def on_error(context: TurnContext, error: Exception) -> None:
+        logger.error("Unhandled turn error", exc_info=error)
+        await send_reply(context, "Sorry, something went wrong handling your message.")
 
     async def respond(context: TurnContext, surface: str) -> None:
         logger.info(
@@ -68,7 +63,7 @@ def build_agent(connection_manager: MsalConnectionManager) -> AgentApplication[T
                 model=os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"],
                 input=context.activity.text,
             )
-            await context.send_activity(response.output_text)
+            await send_reply(context, response.output_text)
 
     async def on_teams_direct_message(
         context: TurnContext, _state: TurnState
@@ -104,39 +99,22 @@ def build_agent(connection_manager: MsalConnectionManager) -> AgentApplication[T
         rank=RouteRank.LAST,
     )
 
-    return agent
 
-
-def build_app() -> Application:
-    """Wire the agent into an aiohttp app that serves ``/activity/messages``."""
-    tenant_id = os.environ["FOUNDRY_AGENT_TENANT_ID"]
-    connection = AgentAuthConfiguration(
-        auth_type=AuthTypes.identity_proxy_manager,
-        client_id=os.environ["FOUNDRY_AGENT_BLUEPRINT_CLIENT_ID"],
-        tenant_id=tenant_id,
-        authority=f"https://login.microsoftonline.com/{tenant_id}",
-        scopes=["5a807f24-c9de-44ee-a3a7-329e88a00ffc/.default"],
-        connection_name="SERVICE_CONNECTION",
+def build_app() -> ActivityAgentServerHost:
+    """Build the Foundry host and register Teams handlers."""
+    host = ActivityAgentServerHost(
+        digital_worker=True,
+        # The pinned distro otherwise loads the unused OpenAI Agents SDK.
+        configure_observability=partial(
+            configure_observability,
+            instrumentation_options={"openai_agents": {"enabled": False}},
+        ),
     )
-    connection_manager = MsalConnectionManager(
-        connections_configurations={"SERVICE_CONNECTION": connection},
-        connections_map=[{"SERVICEURL": "*", "CONNECTION": "SERVICE_CONNECTION"}],
-    )
-    agent = build_agent(connection_manager)
-    install_traceback_suppression(agent.adapter)
-
-    async def messages(request: Request) -> Response:
-        return await start_agent_process(request, agent, agent.adapter)
-
-    async def health(_request: Request) -> Response:
-        return Response(text="Agent running!")
-
-    app = Application()
-    app.router.add_post("/activity/messages", messages)
-    app.router.add_get("/readiness", health)
-    return app
+    register_handlers(host.agent_app)
+    return host
 
 
 def main() -> None:
+    host = build_app()
     logger.info("Starting agent...")
-    run_app(build_app(), host="0.0.0.0", port=8088)
+    host.run()

@@ -239,27 +239,49 @@ one-time publish overrides.
 
 ## Understand how the agent works
 
-`agent/app.py` hosts the M365 Agents SDK application at
-`POST /activity/messages` and sends supported Teams messages to the configured
+`agent/app.py` uses the preview
+[Foundry AgentServer Activity SDK](https://learn.microsoft.com/python/api/overview/azure/ai-agentserver-activity-readme?view=azure-python-preview)
+to host the M365 Agents SDK application. `ActivityAgentServerHost` builds the
+M365 adapter and connection configuration, serves `POST /activity/messages`
+and `GET /readiness`, and manages the web server and graceful shutdown.
+`digital_worker=True` selects the Autopilot blueprint identity model.
+AgentServer uses durable Foundry storage when hosted and in-memory storage
+locally. Each model request uses only the current message, without chat history.
+
+The existing Teams handlers and selectors send supported messages to the configured
 model deployment through the Responses API. Foundry manages hosting and
 injects the project endpoint and agent identity configuration into the runtime.
 `azure.yaml` passes `AZURE_AI_MODEL_DEPLOYMENT_NAME` from the active `azd`
 environment.
 
+The sample handles reply delivery failures locally and registers an
+application error handler. HTTP client errors and timeouts when sending a reply
+are logged with their tracebacks, without attempting another reply on the failing
+connection. Other application errors are logged and produce a generic error
+notice when delivery is available. No sample code globally suppresses tracebacks.
+
 ## Observability
 
-The agent initializes the
+AgentServer initializes logging and the
 [Microsoft OpenTelemetry Distro](https://learn.microsoft.com/microsoft-agent-365/developer/microsoft-opentelemetry?tabs=python)
-before importing the application stack.
+when the host is constructed. The sample relies on SDK telemetry without custom
+observability middleware or separate exporter initialization.
 
 - **Foundry traces:** Foundry injects `APPLICATIONINSIGHTS_CONNECTION_STRING`
-  into the hosted container. The distro detects it and exports application,
-  Microsoft Agents SDK, HTTP, Azure SDK, and model-call telemetry to Azure
-  Monitor. This is the telemetry used by the Foundry traces experience.
-- **Agent 365:** Activity baggage middleware adds agent, tenant, user, channel,
-  session, and conversation context. Output middleware records response spans,
-  and the Agent 365 exporter sends the enriched telemetry used by Microsoft 365
-  administration, Defender, and Purview experiences.
+  into the hosted container. AgentServer configures Azure Monitor export and
+  provides request spans and correlation for the Foundry traces experience.
+- **Agent 365:** `azure.yaml` enables `FOUNDRY_AGENT365_TRACING_ENABLED`.
+  Together with Foundry's injected `FOUNDRY_HOSTING_ENVIRONMENT`, this selects
+  AgentServer's built-in hosted service-to-service exporter configuration.
+- **SDK defaults:** Resource metadata now comes from AgentServer instead of the
+  sample's custom service name/namespace. Azure SDK and low-level HTTP client
+  instrumentation use the SDK's disabled-by-default settings; this is not an
+  exact reproduction of the previous telemetry stream.
+- **Content capture:** `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false`
+  preserves the previous opt-out of the distro's sensitive-data instrumentation
+  option, rather than adopting AgentServer's enabled default. This is not a
+  blanket redaction control: the existing message log still records message
+  content. Do not send sensitive test data.
 
 ## Troubleshooting
 
