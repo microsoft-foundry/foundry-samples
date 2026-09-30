@@ -141,13 +141,12 @@ class RedisResponseStore(ResponseProviderProtocol):
                 "conversation_id": conversation_id or "",
                 "deleted": "0",
             }
+            await self._persist_items(client, partition, item_values, history_ids)
             pipe = client.pipeline(transaction=True)
             # Drop any tombstone fields before rewriting the envelope.
             pipe.delete(response_key)
             pipe.hset(response_key, mapping=mapping)
             pipe.expire(response_key, self._ttl_seconds)
-            self._write_items(pipe, partition, item_values)
-            self._refresh_items(pipe, partition, history_ids)
             if conversation_id:
                 conversation_key = self._conversation_key(partition, conversation_id)
                 # NX preserves the original ordering score across re-creation.
@@ -196,6 +195,9 @@ class RedisResponseStore(ResponseProviderProtocol):
                 *json.loads(envelope["input_item_ids"]),
             ]
             sequence = await client.incr(self._sequence_key(partition)) if conversation_id else 0
+            await self._persist_items(
+                client, partition, output_values, retained_item_ids
+            )
             pipe = client.pipeline(transaction=True)
             pipe.hset(
                 response_key,
@@ -206,8 +208,6 @@ class RedisResponseStore(ResponseProviderProtocol):
                 },
             )
             pipe.expire(response_key, self._ttl_seconds)
-            self._write_items(pipe, partition, output_values)
-            self._refresh_items(pipe, partition, retained_item_ids)
             if conversation_id:
                 conversation_key = self._conversation_key(partition, conversation_id)
                 pipe.zadd(conversation_key, {response_id: sequence}, nx=True)
@@ -318,6 +318,21 @@ class RedisResponseStore(ResponseProviderProtocol):
             resolved.extend(json.loads(envelope["output_item_ids"]))
         unique_resolved = list(dict.fromkeys(resolved))
         return unique_resolved if limit == -1 else unique_resolved[-limit:]
+
+    async def _persist_items(
+        self,
+        client: Any,
+        partition: str,
+        item_values: list[tuple[str, str]],
+        retained_item_ids: list[str],
+    ) -> None:
+        """Persist referenced items before an envelope makes them readable."""
+        if not item_values and not retained_item_ids:
+            return
+        pipe = client.pipeline(transaction=True)
+        self._write_items(pipe, partition, item_values)
+        self._refresh_items(pipe, partition, retained_item_ids)
+        await pipe.execute()
 
     def _write_items(
         self,

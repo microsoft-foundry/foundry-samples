@@ -141,7 +141,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir my-custom-store-agent && cd my-custom-store-agent
-azd ai agent init . -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/23-custom-store/azure.yaml
+azd ai agent init . -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/25-custom-store/azure.yaml
 ```
 
 Follow the prompts to select or create a Foundry project and model deployment.
