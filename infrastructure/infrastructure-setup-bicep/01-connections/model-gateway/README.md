@@ -11,6 +11,7 @@ This folder contains Azure Bicep templates for creating ModelGateway connections
 ## 📚 Documentation
 
 - **[Setup Guide](./modelgateway-setup-guide-for-agents.md)** - Complete configuration guide for ModelGateway connections
+- **[Connection Objects](./ModelGateway-Connection-Objects.md)** - ModelGateway metadata schema and examples
 - **[Troubleshooting Guide](./troubleshooting-guide.md)** - Common issues and solutions.
 
 ## Prerequisites
@@ -76,6 +77,20 @@ az deployment group create \
   --resource-group <your-resource-group> \
   --template-file connection-modelgateway.bicep \
   --parameters @samples/parameters-dynamic.json \
+  --parameters apiKey=<your-api-key>
+```
+
+### Absolute Dynamic Discovery Endpoints
+
+Use absolute discovery endpoints when inference and discovery use sibling paths on the same HTTPS origin. This approach can connect one Foundry project to models in another Foundry project. For example, the connection target can end in `/openai/v1` while discovery uses `/openai/deployments`.
+
+```bash
+# 1. Edit samples/parameters-dynamic-absolute.json with your resource IDs and URLs
+# 2. Deploy with your API key
+az deployment group create \
+  --resource-group <your-resource-group> \
+  --template-file connection-modelgateway.bicep \
+  --parameters @samples/parameters-dynamic-absolute.json \
   --parameters apiKey=<your-api-key>
 ```
 
@@ -158,6 +173,7 @@ The template includes built-in validation:
 - `samples/parameters-foundryopenai.json`: For Foundry AzureOpenAI connection
 - `samples/parameters-foundryanthropic.json`: For Foundry Anthropic connection
 - `samples/parameters-dynamic.json`: For dynamic discovery connections with API key authentication
+- `samples/parameters-dynamic-absolute.json`: For same-origin absolute dynamic discovery endpoints
 - `samples/parameters-static.json`: For static model list connections with placeholder models
 - `samples/parameters-custom-auth-config.json`: For custom authentication and headers configuration
 - `samples/parameters-oauth2.json`: For OAuth2 authentication connections
@@ -170,7 +186,7 @@ The `connection-modelgateway.bicep` template supports all ModelGateway connectio
 
 1. **Basic Configuration**: Required deploymentInPath and inferenceAPIVersion
 2. **Deployment API Version**: Optional deploymentAPIVersion for deployment management  
-3. **Dynamic Discovery**: Automatic model discovery using API endpoints (listModelsEndpoint, getModelEndpoint, deploymentProvider)
+3. **Dynamic Discovery**: Automatic model discovery using relative or same-origin absolute HTTPS endpoints (listModelsEndpoint, getModelEndpoint, deploymentProvider)
 4. **Static Model List**: Predefined list of available models in staticModels array
 5. **Custom Headers**: Custom HTTP headers as key-value pairs in customHeaders object
 6. **Custom Auth Config**: Flexible authentication configuration with authConfig object

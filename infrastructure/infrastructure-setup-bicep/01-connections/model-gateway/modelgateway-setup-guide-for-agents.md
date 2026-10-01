@@ -269,6 +269,23 @@ If you choose dynamic discovery, make these endpoints available on your gateway:
 }
 ```
 
+**Absolute endpoints for sibling discovery paths**:
+
+Use absolute endpoints when the inference target and discovery API are on the same HTTPS origin but cannot be represented by appending relative paths. The discovery path does not need to share the target path prefix.
+
+```json
+{
+  "target": "https://contoso.services.ai.azure.com/openai/v1",
+  "modelDiscovery": {
+    "listModelsEndpoint": "https://contoso.services.ai.azure.com/openai/deployments?api-version=2022-12-01",
+    "getModelEndpoint": "https://contoso.services.ai.azure.com/openai/deployments/{deploymentName}?api-version=2022-12-01",
+    "deploymentProvider": "AzureOpenAI"
+  }
+}
+```
+
+Both absolute endpoints must use HTTPS and match the target's hostname and effective port. Different hosts, schemes, or ports; user information; fragments; path traversal; and encoded path separators are rejected. If an endpoint includes `api-version`, it takes precedence over `deploymentAPIVersion`.
+
 **Supported DeploymentProvider Values:**
 - `"AzureOpenAI"`: **Recommended** - For Azure OpenAI ARM resource response format with detailed model information
 - `"OpenAI"`: For OpenAI-compatible response format
@@ -330,7 +347,7 @@ Note any API versions query param (api-version) your endpoints require:
 Based on your choice in Step 3:
 
 **For Static Models**: Prepare your model list
-**For Dynamic Discovery**: Note your discovery endpoint paths
+**For Dynamic Discovery**: Note your relative endpoint paths or same-origin absolute HTTPS endpoint URIs
 
 #### 🔍 5. Authentication
 
@@ -369,6 +386,7 @@ Before creating your ModelGateway connection in Azure AI Foundry, follow these s
 ### 1. **Choose your parameter file** based on your gateway type:
    - `samples/parameters-static.json` - For gateways with predefined static models
    - `samples/parameters-dynamic.json` - For gateways with dynamic model discovery
+  - `samples/parameters-dynamic-absolute.json` - For dynamic discovery on a sibling path of the target's HTTPS origin
    - `samples/parameters-oauth2.json` - For OAuth2 authentication (requires `clientId`, `tokenUrl`, `scopes`)
    - `samples/parameters-custom-auth-config.json` - For custom authentication headers
    - `samples/parameters-foundryopenai.json` - For Azure OpenAI Foundry connections
