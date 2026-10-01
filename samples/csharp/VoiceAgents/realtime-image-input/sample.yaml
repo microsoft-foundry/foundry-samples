@@ -1,5 +1,5 @@
 name: Voice Agents Realtime Image Input (C#)
 description: Send one text-and-image turn to an existing Microsoft Foundry voice agent.
 
-build: "dotnet build --verbosity minimal"
+build: "dotnet restore --source https://api.nuget.org/v3/index.json && dotnet build --no-restore --verbosity minimal"
 test: "dotnet run --no-build -- --self-test"

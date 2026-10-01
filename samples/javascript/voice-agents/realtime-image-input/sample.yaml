@@ -1,6 +1,6 @@
 name: Voice Agents Realtime Image Input (JavaScript)
 description: Send one text-and-image turn to an existing Microsoft Foundry voice agent.
 
-build: "npm install --no-audit --no-fund"
+build: "npm install --registry=https://registry.npmjs.org/"
 validate: "node --check app.js"
 test: "npm test"

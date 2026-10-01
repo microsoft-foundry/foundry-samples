@@ -20,6 +20,7 @@ from azure.ai.projects.models import (
     RealtimeServerEventError,
     RealtimeServerEventResponseAudioTranscriptDone,
     RealtimeServerEventResponseDone,
+    RealtimeServerEventResponseTextDone,
 )
 from azure.identity import DefaultAzureCredential
 from dotenv import load_dotenv
@@ -83,6 +84,8 @@ def receive_response(connection) -> None:
         event = connection.recv(timeout=45)
         if isinstance(event, RealtimeServerEventResponseAudioTranscriptDone):
             print(f"Agent: {event.transcript}")
+        elif isinstance(event, RealtimeServerEventResponseTextDone):
+            print(f"Agent: {event.text}")
         elif isinstance(event, RealtimeServerEventError):
             raise RuntimeError(event.error.message)
         elif isinstance(event, RealtimeServerEventResponseDone):

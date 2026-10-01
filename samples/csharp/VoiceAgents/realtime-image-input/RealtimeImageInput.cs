@@ -53,6 +53,8 @@ await foreach (RealtimeServerUpdate update in session.ReceiveUpdatesAsync())
             return;
     }
 }
+throw new InvalidOperationException(
+    "The connection closed before response.done.");
 
 static BinaryData BuildImageCommand(string imagePath, string prompt)
 {

@@ -9,6 +9,7 @@ import com.azure.ai.agents.BetaVoiceAgentWebSocketSessionClient;
 import com.azure.ai.agents.models.RealtimeErrorEvent;
 import com.azure.ai.agents.models.RealtimeResponseAudioTranscriptDoneEvent;
 import com.azure.ai.agents.models.RealtimeResponseDoneEvent;
+import com.azure.ai.agents.models.RealtimeResponseTextDoneEvent;
 import com.azure.ai.agents.models.RealtimeServerEvent;
 import com.azure.core.util.BinaryData;
 import com.azure.core.util.Configuration;
@@ -66,6 +67,9 @@ public class VoiceAgentLiveImageConversationSample {
                     System.out.println("Agent: "
                         + ((RealtimeResponseAudioTranscriptDoneEvent) serverEvent)
                             .getTranscript());
+                } else if (serverEvent instanceof RealtimeResponseTextDoneEvent) {
+                    System.out.println("Agent: "
+                        + ((RealtimeResponseTextDoneEvent) serverEvent).getText());
                 } else if (serverEvent instanceof RealtimeErrorEvent) {
                     throw new IllegalStateException(
                         ((RealtimeErrorEvent) serverEvent).getError().message());
