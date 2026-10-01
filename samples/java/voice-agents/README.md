@@ -39,7 +39,7 @@ Bash:
 export FOUNDRY_PROJECT_ENDPOINT="<your-project-endpoint>"
 ```
 
-Most samples also accept these optional variables:
+Samples also use the following variables. Requirements and defaults vary by sample:
 
 | Variable | Description | Default |
 | --- | --- | --- |
