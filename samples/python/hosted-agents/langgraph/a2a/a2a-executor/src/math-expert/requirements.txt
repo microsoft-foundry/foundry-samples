@@ -1,6 +1,0 @@
-langchain-azure-ai[hosting]>=1.2.4
-langchain
-python-dotenv
-
-# debugpy enables local debugging of this agent with the Foundry Toolkit VS Code extension.
-debugpy

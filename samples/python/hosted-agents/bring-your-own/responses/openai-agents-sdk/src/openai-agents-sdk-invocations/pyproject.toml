@@ -1,0 +1,10 @@
+[project]
+name = "openai-agents-sdk-invocations"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "azure-ai-agentserver-responses==2.1.0",
+    "azure-identity==1.25.3",
+    "openai-agents>=0.1.0",
+    "debugpy",
+]

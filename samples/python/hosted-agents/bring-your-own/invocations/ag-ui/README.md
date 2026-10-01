@@ -24,7 +24,8 @@ A minimal getting-started agent implementing the [AG-UI protocol](https://docs.a
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment
 - A Foundry project with a deployed model
 
 ### Run the agent locally
@@ -105,12 +106,7 @@ azd ai agent monitor
 - Install dependencies in the virtual environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+  uv sync --frozen
   ```
 
 ### Run and debug the agent

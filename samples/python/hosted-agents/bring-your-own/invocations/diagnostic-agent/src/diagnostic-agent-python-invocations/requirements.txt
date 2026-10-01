@@ -1,7 +1,0 @@
-azure-ai-agentserver-invocations==1.1.0
-
-# azure-identity backs the opt-in startup self-ping loop (authenticated keep-alive).
-azure-identity
-
-# debugpy enables local debugging of this agent with the Foundry Toolkit VS Code extension.
-debugpy
