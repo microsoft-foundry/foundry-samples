@@ -228,6 +228,9 @@ resource "azapi_resource" "storage_outbound_rule" {
 }
 
 # Managed Network Outbound Rule for the Agent365 (A365) tracing endpoint (behind Azure Front Door).
+# Only "PrivateEndpoint" outbound rules are supported when managed network isolation mode is "AllowInternetOutbound".
+# Uncomment this rule only when using "AllowOnlyApprovedOutbound" isolation mode.
+/*
 resource "azapi_resource" "a365_frontdoor_outbound_rule" {
   count     = var.enable_networking ? 1 : 0
   type      = "Microsoft.CognitiveServices/accounts/managedNetworks/outboundRules@2025-10-01-preview"
@@ -254,6 +257,7 @@ resource "azapi_resource" "a365_frontdoor_outbound_rule" {
     azapi_resource.ampls_outbound_rule
   ]
 }
+*/
 
 # AI Foundry Project
 resource "azapi_resource" "ai_foundry_project" {
@@ -355,7 +359,7 @@ resource "time_sleep" "wait_outbound_rules" {
     azapi_resource.cosmos_outbound_rule,
     azapi_resource.aisearch_outbound_rule,
     azapi_resource.ampls_outbound_rule,
-    azapi_resource.a365_frontdoor_outbound_rule
+    #azapi_resource.a365_frontdoor_outbound_rule #Enable only for when managed network isolation mode is AllowOnlyApprovedOutbound. 
   ]
 }
 
