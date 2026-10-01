@@ -1,0 +1,91 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.32.0'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.17'
+    azure.ai.toolboxes: '>=1.0.0-beta.8'
+name: toolbox-autopilot
+services:
+  ai-project:
+    host: azure.ai.project
+    deployments:
+      - name: gpt-5.4-mini
+        model:
+          format: OpenAI
+          name: gpt-5.4-mini
+          version: '2026-03-17'
+        sku:
+          name: GlobalStandard
+          capacity: 10
+  autopilot-tools:
+    host: azure.ai.toolbox
+    uses:
+      - ai-project
+    description: Built-in and MCP tools used by the Toolbox Autopilot
+    tools:
+      - type: web_search
+        name: web_search
+        description: Search the public web for current information.
+        require_approval: never
+      - type: code_interpreter
+        name: code_interpreter
+        description: Run Python to calculate and analyze data.
+        require_approval: never
+      - type: mcp
+        server_label: api_specs
+        server_url: https://gitmcp.io/Azure/azure-rest-api-specs
+        description: Search the Azure REST API specifications repository.
+        require_approval: never
+  toolbox-autopilot:
+    host: azure.ai.agent
+    metadata:
+      tags:
+        - Autopilot
+        - Activity Protocol
+        - Microsoft 365
+        - Foundry Toolbox
+        - Python
+    project: .
+    language: python
+    codeConfiguration:
+      runtime: python_3_13
+      entryPoint: main.py
+    uses:
+      - ai-project
+      - autopilot-tools
+    kind: hosted
+    name: toolbox-autopilot
+    displayName: Toolbox Autopilot
+    description: >
+      Microsoft 365 Autopilot that uses a Foundry Toolbox for web search,
+      code execution, and Azure REST API specification lookup.
+    protocols:
+      - protocol: activity
+        version: 2.0.0
+    activity:
+      digitalWorkerType: m365
+      publish:
+        publishScope: tenant
+        canRespondWithoutMention: true
+        appVersion: 1.0.0
+        agentDisplayName: Toolbox Autopilot
+        shortDescription: A Microsoft 365 Autopilot with managed tools.
+        fullDescription: >
+          A Microsoft Foundry agent that can use web search, code interpreter,
+          and Azure REST API specification tools from a managed toolbox.
+        developerName: Microsoft
+        developerWebsiteUrl: https://www.microsoft.com
+        privacyUrl: https://privacy.microsoft.com
+        termsOfUseUrl: https://www.microsoft.com/legal/terms-of-use
+    env:
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+      TOOLBOX_ENDPOINT: ${TOOLBOX_AUTOPILOT_TOOLS_MCP_ENDPOINT}
+      FOUNDRY_AGENT365_TRACING_ENABLED: "true"
+      OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "false"
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1Gi
+infra:
+  provider: microsoft.foundry
