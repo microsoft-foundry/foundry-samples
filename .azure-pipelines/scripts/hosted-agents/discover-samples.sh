@@ -256,7 +256,20 @@ emit_entries() {
         )
       }'
   else
+    # In warm-project CI, a sample-owned toolbox remains cell-owned but its
+    # upstream connections are existing project fixtures. Derive the latter
+    # from the manifest graph rather than carrying a sample-specific allow-list.
+    # The scaffold phase applies reuse only with SKIP_PROVISION=true; fresh
+    # resource deployments retain every connection declaration.
+    local shared_connections
+    shared_connections=$(yq -o=json '
+      .services as $services |
+      [.services | to_entries[] | select(.value.host == "azure.ai.toolbox") |
+        .value.uses[]? | select($services[.].host == "azure.ai.connection")] |
+      unique
+    ' "$yaml_file")
     echo "$deploy_modes" | jq -c \
+      --argjson shared_connections "$shared_connections" \
       --arg id "$sample_id" --arg path "$sample_dir" --arg name "$agent_name" \
       --arg protocol "$protocol" --arg protocol_version "$protocol_version" \
       --arg use_westus2 "$use_westus2" \
@@ -268,6 +281,7 @@ emit_entries() {
         protocolVersion: $protocol_version,
         isToolbox: "false",
         toolboxLabel: "", toolboxUrl: "", toolboxQuery: "",
+        sharedConnections: $shared_connections,
         useWestus2: $use_westus2,
         voiceLive: $voiceLive,
         deployMode: .,
