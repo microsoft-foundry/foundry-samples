@@ -1,0 +1,4 @@
+name: Voice Agent Telephony Inspection
+description: Read-only inspection of a voice agent's telephony bindings, transfer targets, and call history.
+
+build: "dotnet restore --source https://api.nuget.org/v3/index.json && dotnet build --no-restore --verbosity minimal"

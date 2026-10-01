@@ -1,0 +1,4 @@
+name: Configure a Voice Agent
+description: Create a self-deployed voice agent definition with a greeting and disabled conversation storage, then retrieve and delete it.
+
+build: "dotnet restore --source https://api.nuget.org/v3/index.json && dotnet build --no-restore --verbosity minimal"
