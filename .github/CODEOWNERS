@@ -19,12 +19,12 @@
 # Fine-tuning samples — individually owned by their authors until a team slug exists.
 /samples/python/finetuning/schemaraft-dst/ @mikeslinmsft
 
-# Voice Agents samples — individually owned until a team slug exists.
-/samples/csharp/VoiceAgents/      @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li
-/samples/java/voice-agents/       @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li
-/samples/javascript/voice-agents/ @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li
-/samples/python/voice-agents/     @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li
-/samples/typescript/voice-agents/ @goergenj @xitzhang @rhurey @dargilco @glharper @howieleung @kingernupur @nick863 @trangevi @bobogogo1990 @ganeshyb @glecaros @jpalvarezl @kaylieee @guotuofeng @yulin-li
+# Voice Agents samples — owned by the voice-agents-sample team.
+/samples/csharp/VoiceAgents/      @microsoft-foundry/voice-agents-sample
+/samples/java/voice-agents/       @microsoft-foundry/voice-agents-sample
+/samples/javascript/voice-agents/ @microsoft-foundry/voice-agents-sample
+/samples/python/voice-agents/     @microsoft-foundry/voice-agents-sample
+/samples/typescript/voice-agents/ @microsoft-foundry/voice-agents-sample
 
 #### Partner / external collaborator sample areas #######################################################
 # Partners are outside collaborators (not org members). Each entry is the source of truth for that

@@ -1,0 +1,4 @@
+name: Generate a Voice Agent
+description: Generate a managed voice agent from a natural-language goal and inspect its generated definition.
+
+build: "dotnet restore --source https://api.nuget.org/v3/index.json && dotnet build --no-restore --verbosity minimal"

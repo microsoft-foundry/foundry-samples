@@ -1,0 +1,4 @@
+name: Manage a Voice Agent
+description: Full agent management lifecycle - create, read, update, list, version history, enable/disable, and delete.
+
+build: "dotnet restore --source https://api.nuget.org/v3/index.json && dotnet build --no-restore --verbosity minimal"
