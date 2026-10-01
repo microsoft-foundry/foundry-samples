@@ -101,7 +101,12 @@ public class NoteTakingHandler : ResponseHandler
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var userMessage = await context.GetInputTextAsync(cancellationToken: cancellationToken) ?? "";
-        var sessionId = request.AgentSessionId ?? "default";
+        // Hosted sessions may omit agent_session_id from the body; the platform
+        // supplies the session ID through FOUNDRY_AGENT_SESSION_ID instead.
+        var sessionId = FirstNonEmpty(
+            request.AgentSessionId,
+            Environment.GetEnvironmentVariable("FOUNDRY_AGENT_SESSION_ID"),
+            "default");
 
         var options = new CreateResponseOptions { Instructions = SystemPrompt };
         options.Tools.Add(s_saveNoteTool);
@@ -141,6 +146,9 @@ public class NoteTakingHandler : ResponseHandler
 
         yield return $"(Tool-call loop exceeded {MaxToolRounds} rounds without producing a final response.)";
     }
+
+    private static string FirstNonEmpty(params string?[] values) =>
+        values.First(value => !string.IsNullOrWhiteSpace(value))!;
 
     private static string ExecuteToolCall(string functionName, BinaryData arguments, string sessionId)
     {

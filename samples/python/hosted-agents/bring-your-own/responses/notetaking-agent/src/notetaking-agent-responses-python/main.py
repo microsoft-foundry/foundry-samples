@@ -155,7 +155,13 @@ async def handle_create(
     yield stream.emit_in_progress()
 
     user_input = await context.get_input_text() or ""
-    session_id = request.get("agent_session_id") or "default"
+    # Hosted sessions may omit agent_session_id from the body; the platform
+    # supplies the session ID through FOUNDRY_AGENT_SESSION_ID instead.
+    session_id = (
+        request.get("agent_session_id")
+        or os.environ.get("FOUNDRY_AGENT_SESSION_ID")
+        or "default"
+    )
 
     # Emit output item structure before streaming content
     message_item = stream.add_output_item_message()
