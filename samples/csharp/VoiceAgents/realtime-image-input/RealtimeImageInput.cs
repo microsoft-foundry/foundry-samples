@@ -125,12 +125,14 @@ static async Task SendImageTurnAsync(
     ProjectsRealtimeSessionClient session,
     BinaryData command)
 {
-    await session.SendCommandAsync(command, new RequestOptions());
-    await session.StartResponseAsync();
+    await SendImageTurnCoreAsync(
+        value => session.SendCommandAsync(value, new RequestOptions()),
+        () => session.StartResponseAsync(),
+        command);
 }
 // </image_turn>
 
-static async Task SendImageTurnForTestAsync(
+static async Task SendImageTurnCoreAsync(
     Func<BinaryData, Task> sendItem,
     Func<Task> requestResponse,
     BinaryData command)
@@ -146,7 +148,7 @@ static async Task SelfTestAsync()
         "  ");
     int itemCount = 0;
     int responseCount = 0;
-    await SendImageTurnForTestAsync(
+    await SendImageTurnCoreAsync(
         value =>
         {
             itemCount++;

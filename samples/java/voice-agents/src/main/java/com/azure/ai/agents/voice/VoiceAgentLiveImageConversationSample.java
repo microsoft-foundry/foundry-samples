@@ -167,12 +167,11 @@ public class VoiceAgentLiveImageConversationSample {
     private static void sendImageTurn(
         BetaVoiceAgentWebSocketSessionClient session,
         BinaryData event) {
-        session.sendEvent(event);
-        session.createResponse();
+        sendImageTurnCore(session::sendEvent, session::createResponse, event);
     }
     // </image_turn>
 
-    private static void sendImageTurnForTest(
+    private static void sendImageTurnCore(
         Consumer<BinaryData> sendItem,
         Runnable requestResponse,
         BinaryData event) {
@@ -187,7 +186,7 @@ public class VoiceAgentLiveImageConversationSample {
             "  ");
         AtomicInteger itemCount = new AtomicInteger();
         AtomicInteger responseCount = new AtomicInteger();
-        sendImageTurnForTest(
+        sendImageTurnCore(
             value -> {
                 assertCondition(value == event);
                 itemCount.incrementAndGet();
