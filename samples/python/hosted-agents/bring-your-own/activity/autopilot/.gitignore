@@ -1,0 +1,5 @@
+.azure/
+.venv/
+.vscode/
+__pycache__/
+*.py[cod]

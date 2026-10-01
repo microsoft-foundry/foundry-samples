@@ -1,0 +1,17 @@
+# Activity-protocol host + its core dependency, pinned to the published beta
+# releases on PyPI. Bump these when a newer beta is needed.
+azure-ai-agentserver-activity==1.0.0b3
+
+# Microsoft 365 Agents SDK
+microsoft-agents-hosting-core
+microsoft-agents-authentication-msal
+microsoft-agents-activity
+
+# The M365 SDK connector imports aiohttp but does not declare it; pin explicitly.
+aiohttp>=3.9.0
+
+# Utilities
+python-dotenv>=1.0.0
+
+# debugpy enables local debugging of this agent with the Foundry Toolkit VS Code extension.
+debugpy
