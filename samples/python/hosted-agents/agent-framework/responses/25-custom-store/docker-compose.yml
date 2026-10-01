@@ -1,0 +1,11 @@
+# Local Redis for developing the custom-store agent with `python main.py`.
+# Start with: docker compose up -d
+# The agent reads REDIS_URL=redis://localhost:6379/0 from .env by default.
+name: agent-framework-agent-custom-store-responses
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    # Keep data in memory only; this is a throwaway local development store.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
