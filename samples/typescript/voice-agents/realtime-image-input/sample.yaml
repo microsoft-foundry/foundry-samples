@@ -1,0 +1,6 @@
+name: Voice Agents Realtime Image Input (TypeScript)
+description: Send one text-and-image turn to an existing Microsoft Foundry voice agent.
+
+build: "npm install --registry=https://registry.npmjs.org/"
+validate: "npm run build"
+test: "npm test"

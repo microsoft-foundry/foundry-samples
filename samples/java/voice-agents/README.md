@@ -39,7 +39,7 @@ Bash:
 export FOUNDRY_PROJECT_ENDPOINT="<your-project-endpoint>"
 ```
 
-Most samples also accept these optional variables:
+Samples also use the following variables. Requirements and defaults vary by sample:
 
 | Variable | Description | Default |
 | --- | --- | --- |
@@ -47,6 +47,8 @@ Most samples also accept these optional variables:
 | `FOUNDRY_VOICE_MODEL` | Voice model or deployment name | `gpt-realtime` |
 | `FOUNDRY_VOICE_MODEL_TYPE` | Voice model type | `managed` |
 | `FOUNDRY_KEEP_VOICE_AGENT` | Keep an agent created by a live async sample | `false` |
+| `FOUNDRY_VOICE_AGENT_IMAGE_PATH` | Image used by `VoiceAgentLiveImageConversationSample` | Required for that sample |
+| `FOUNDRY_VOICE_AGENT_IMAGE_PROMPT` | Question sent with the image | `Describe this image briefly.` |
 
 The conversation-reading samples additionally require `FOUNDRY_VOICE_CONVERSATION_ID`.
 
@@ -72,6 +74,7 @@ Replace `VoiceAgentBasicSample` with any runnable class below.
 | `VoiceAgentLiveTextConversationSample` | Synchronous multi-turn realtime text conversation with audio replies |
 | `VoiceAgentLiveTextConversationAsyncSample` | Asynchronous multi-turn realtime text conversation with audio replies |
 | `VoiceAgentLiveAudioConversationAsyncSample` | Live microphone and speaker conversation |
+| `VoiceAgentLiveImageConversationSample` | Send one text-and-image turn to an existing voice agent |
 | `VoiceAgentLiveFunctionToolSample` | Client-side function calls in a live conversation |
 | `VoiceAgentReadConversationSample` | Persisted conversation responses and transcripts |
 | `VoiceAgentReadConversationAudioSample` | Persisted whole-call and item-level audio |

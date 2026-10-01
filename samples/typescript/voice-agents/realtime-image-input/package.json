@@ -1,0 +1,23 @@
+{
+  "name": "foundry-samples-voice-agents-realtime-image-input",
+  "version": "1.0.0",
+  "description": "TypeScript Microsoft Foundry Voice Agents sample - send text and image input",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/voice-agents-realtime-image-input.js",
+  "scripts": {
+    "start": "tsx --no-deprecation src/voice-agents-realtime-image-input.ts",
+    "build": "npx tsc",
+    "test": "tsx --no-deprecation src/voice-agents-realtime-image-input.ts --self-test"
+  },
+  "dependencies": {
+    "@azure/ai-projects": "2.7.0",
+    "@azure/identity": "^4.13.0",
+    "dotenv": "^17.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.4",
+    "typescript": "^5.9.2"
+  }
+}

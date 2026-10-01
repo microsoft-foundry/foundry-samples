@@ -48,8 +48,8 @@ services:
         termsOfUseUrl: https://www.microsoft.com/legal/terms-of-use
     env:
       AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
-      ENABLE_OBSERVABILITY: "true"
-      ENABLE_A365_OBSERVABILITY_EXPORTER: "true"
+      FOUNDRY_AGENT365_TRACING_ENABLED: "true"
+      OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "false"
     container:
       resources:
         cpu: '0.5'

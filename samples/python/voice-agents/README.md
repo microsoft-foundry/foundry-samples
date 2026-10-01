@@ -86,6 +86,7 @@ surface (create, version, list, delete) used for prompt, workflow, hosted, and e
 | [`voice_agent_realtime_text_conversation.py`](voice_agent_realtime_text_conversation.py) | Interactive, typed, multi-turn realtime conversation (sync). Replies stream back as audio + transcript and play through speakers if PyAudio is installed. |
 | [`voice_agent_realtime_text_conversation_async.py`](voice_agent_realtime_text_conversation_async.py) | The same typed conversation using the async client. |
 | [`voice_agent_realtime_audio_conversation_async.py`](voice_agent_realtime_audio_conversation_async.py) | Hands-free, bidirectional mic ⇄ speaker conversation with server-side turn detection and barge-in (async only). |
+| [`voice_agent_realtime_image_conversation.py`](voice_agent_realtime_image_conversation.py) | Send one text-and-image turn to an existing voice agent and validate the response lifecycle. |
 | [`voice_agent_realtime_function_tool.py`](voice_agent_realtime_function_tool.py) | Handle a client-executed `function` tool call during a live realtime session. |
 
 ### Reading persisted conversations

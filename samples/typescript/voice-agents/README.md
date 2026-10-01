@@ -24,6 +24,7 @@ These are TypeScript ports of the [JavaScript Voice Agents samples](../../javasc
 | [`generate-voice-agent`](./generate-voice-agent) | Generate a managed voice agent from a natural-language goal and inspect its generated definition. |
 | [`manage-voice-agent`](./manage-voice-agent) | Full agent management lifecycle: create, read, update, list, version history, enable/disable, and delete. |
 | [`realtime-audio`](./realtime-audio) | Stream raw PCM16 audio to a voice agent over a realtime connection and save the streamed audio response. |
+| [`realtime-image-input`](./realtime-image-input) | Send one text-and-image turn to an existing voice agent and validate the response lifecycle. |
 | [`realtime-text-and-tools`](./realtime-text-and-tools) | Send text to a voice agent, stream its text/audio response, and handle a local function tool call. |
 | [`voice-agent-conversations`](./voice-agent-conversations) | Inspect a stored voice agent conversation - its items and model responses - through the Conversation REST API. |
 | [`telephony-inspection`](./telephony-inspection) | Read-only inspection of a voice agent's telephony bindings, transfer targets, and call history. |

@@ -13,6 +13,9 @@ and observability.
 - **Activity ingress:** hosted Activity protocol traffic is forwarded to
   `POST /activity/messages`. Do not use the older Bot Framework
   `/api/messages` route; the hosted sandbox will return 404.
+- **AgentServer host:** `ActivityAgentServerHost` builds the M365 stack with
+  `digital_worker=True` and default storage. Register Teams handlers on
+  `host.agent_app`; do not recreate the HTTP routes or connection configuration.
 - **Guided provisioning:** `azd provision` runs an interactive preprovision hook
   to select existing resources or create missing ones with Bicep. It saves
   `AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION`, `AZURE_AI_PROJECT_ID`,
@@ -22,10 +25,13 @@ and observability.
   Required resource access is an administrator prerequisite.
 - Microsoft 365 publication is an explicit, separate action performed with
   `azd ai agent publish` using sample-specific metadata from `azure.yaml`.
-- Microsoft OpenTelemetry is initialized before the application imports. It
-  exports to Azure Monitor when Foundry injects
-  `APPLICATIONINSIGHTS_CONNECTION_STRING`, and exports Agent 365 telemetry
-  using the hosted-agent identity.
+- AgentServer owns OpenTelemetry initialization and exporter configuration.
+  Keep `FOUNDRY_AGENT365_TRACING_ENABLED=true` for hosted Agent 365 export and
+  `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false` to preserve the
+  sensitive-data instrumentation opt-out. Do not add custom telemetry middleware
+  or initialize exporters separately; surface telemetry gaps to the SDK team
+  rather than compensating in the sample. Disable only the unused OpenAI Agents
+  SDK instrumentation.
 
 ## Key files
 
@@ -36,9 +42,6 @@ and observability.
 - `main.py` - direct code deployment entry point
 - `agent/app.py` - Teams handlers, Foundry model call, and server setup
 - `agent/activity_routing.py` - selectors for supported Teams conversations
-- `agent/observability.py` - Microsoft OpenTelemetry configuration for Azure
-  Monitor and Agent 365
-- `agent/traceback_suppression.py` - suppression for expected connector failures
 - `../README.md` - sample index and shared utility links
 - `../scripts/stop-agent-sessions.ps1` - stops active hosted-agent sessions after
   deploying updated code
