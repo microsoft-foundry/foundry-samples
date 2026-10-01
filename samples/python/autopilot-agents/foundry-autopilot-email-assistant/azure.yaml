@@ -1,0 +1,99 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.14'
+name: autopilot-email-assistant
+hooks:
+  preprovision:
+    shell: pwsh
+    run: ./scripts/validate-model-configuration.ps1
+  postdeploy:
+    shell: pwsh
+    interactive: true
+    run: ./scripts/configure-agent-resource-access.ps1 -ServiceName autopilot-email-assistant
+services:
+  ai-project:
+    host: azure.ai.project
+  autopilot-email-assistant:
+    host: azure.ai.agent
+    metadata:
+      tags:
+        - AI Agent Hosting
+        - Activity Protocol
+        - Bring Your Own
+        - Python
+    project: src/foundry_m365_autopilot
+    language: python
+    uses:
+      - ai-project
+    kind: hosted
+    name: autopilot-email-assistant
+    displayName: Foundry Autopilot Email Assistant
+    description: >
+      A Microsoft 365 Digital Worker Email Assistant that provides Agent User
+      mailbox actions, delegated mailbox reads, Manager-authorized forwarded
+      email monitoring, and proactive Teams notifications.
+    protocols:
+      - protocol: activity
+        version: 2.0.0
+    agentEndpoint:
+      protocols:
+        - activity
+      authorizationSchemes:
+        # M365 Digital Workers are tenant-scoped. Keep this explicit because
+        # omitting the scheme lets the service fall back to BotServiceRbac.
+        - type: BotServiceTenant
+
+    environmentVariables:
+      # Values are resolved from the active azd environment during deploy and
+      # become definition.environment_variables in the hosted-agent request.
+      - name: CONNECTIONS__SERVICE_CONNECTION__SETTINGS__AUTHORITY
+        value: https://login.microsoftonline.com/${AZURE_TENANT_ID}
+      - name: CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID
+        value: ${AZURE_TENANT_ID}
+      - name: AzureOpenAIResponsesEndpoint
+        value: ${azureOpenAIResponsesEndpoint}
+      - name: ModelDeployment
+        value: ${modelDeploymentName}
+      - name: MAIL_MONITOR_STORAGE_ACCOUNT_URL
+        value: ${mailMonitorStorageAccountUrl}
+      - name: MAIL_MONITOR_STORAGE_CONTAINER
+        value: ${mailMonitorStorageContainer}
+    activity:
+      digitalWorkerType: m365
+      publish:
+        publishScope: tenant
+        canRespondWithoutMention: true
+        appVersion: 1.0.1
+        agentDisplayName: Foundry Autopilot Email Assistant
+        shortDescription: Microsoft 365 Digital Worker Email Assistant
+        fullDescription: A Foundry hosted Digital Worker Email Assistant that demonstrates Mail MCP, delegated mailbox reads, forwarded-email monitoring, Blob-backed policy state, and Teams notifications.
+        developerName: Azure Developer
+        developerWebsiteUrl: https://azure.microsoft.com
+        privacyUrl: https://privacy.microsoft.com
+        termsOfUseUrl: https://www.microsoft.com/legal/terms-of-use
+        optionalPermissionScopes:
+          # Microsoft Graph delegated permission used with Exchange Full Access
+          # to read an explicitly addressed delegated mailbox.
+          - resourceAppId: 00000003-0000-0000-c000-000000000000
+            scopes:
+              - Mail.Read.Shared
+              # Read the current Agent User profile and its Entra manager
+              # relationship. Graph's manager API requires User.Read.All even
+              # when resolving only the signed-in Agent User's manager.
+              - User.Read
+              - User.Read.All
+          - resourceAppId: ea9ffc3e-8a23-4a7d-836d-234d7c7565c1
+            scopes:
+              - McpServers.Mail.All
+              - McpServers.Teams.All
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1.0Gi
+    docker:
+      path: foundry-infra/Dockerfile
+      remoteBuild: true
+infra:
+  provider: microsoft.foundry
