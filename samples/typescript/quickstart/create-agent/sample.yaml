@@ -4,7 +4,7 @@ description: Basic quickstart sample demonstrating Microsoft Foundry agent creat
 build: "npm install --registry=https://registry.npmjs.org/"
 validate: "npx tsc --noEmit"
 live_service_validation:
-  command: "npm run start"
+  command: "npm ci --registry=https://registry.npmjs.org/ && npm run start"
   required_env:
     - FOUNDRY_PROJECT_ENDPOINT
     - MODEL_DEPLOYMENT
