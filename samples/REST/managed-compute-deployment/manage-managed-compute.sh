@@ -308,7 +308,11 @@ poll_operation() {
     arm_request GET "$poll_url"
     require_http_status 200 201 202 204
     retry_after="$(response_header Retry-After)"
-    state="$(jq -r '.status // .properties.provisioningState // .properties.status // empty' "$BODY_FILE")"
+    if [[ "$HTTP_STATUS" == "204" || ! -s "$BODY_FILE" ]]; then
+      state=""
+    else
+      state="$(jq -r '.status // .properties.provisioningState // .properties.status // empty' "$BODY_FILE")"
+    fi
 
     case "$state" in
       Succeeded)

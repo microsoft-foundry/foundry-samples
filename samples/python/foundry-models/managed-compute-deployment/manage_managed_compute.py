@@ -15,6 +15,7 @@ from typing import Any, Optional
 from azure.core.exceptions import ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+from azure.mgmt.cognitiveservices.models import PatchResourceSku, Sku
 
 API_VERSION = "2026-07-15-preview"
 DEFAULT_DEPLOYMENT_NAME_PREFIX = "gemma-4-31b-it-a100"
@@ -400,7 +401,9 @@ def scale_deployment(
         resource_group_name=args.resource_group,
         account_name=args.account_name,
         deployment_name=args.deployment_name,
-        properties={"sku": {"name": SKU_NAME, "capacity": args.capacity}},
+        properties=PatchResourceSku(
+            sku=Sku(name=SKU_NAME, capacity=args.capacity),
+        ),
     ).result()
     deployment = get_deployment(client, args)
     verify_scaled_deployment(deployment, args.capacity, immutable_before)

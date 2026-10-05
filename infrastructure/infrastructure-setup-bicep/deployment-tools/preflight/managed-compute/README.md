@@ -8,7 +8,7 @@ quota and currently reported platform capacity.
 The check doesn't reserve quota or capacity. Availability can change after it
 runs, so the deployment operation remains authoritative.
 
-Azure reads retry up to three times only for recognized transient transport,
+Azure requests are retried up to three times only for recognized transient transport,
 HTTP 429, and HTTP 5xx failures. Authentication, authorization, matching, and
 other request errors fail immediately.
 
