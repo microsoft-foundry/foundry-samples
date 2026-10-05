@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
+
+NOT_FOUND_PATTERN = re.compile(r"not[\s_-]*found|\b404\b", re.IGNORECASE)
 
 
 class PreflightError(RuntimeError):
     """Raised when a response cannot be matched unambiguously."""
+
+
+def is_not_found_error(message: str) -> bool:
+    """Return whether an Azure error represents HTTP/resource not found."""
+
+    return bool(NOT_FOUND_PATTERN.search(message))
 
 
 def _records(response: dict[str, Any], response_name: str) -> list[dict[str, Any]]:

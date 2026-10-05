@@ -381,6 +381,67 @@ verify_deployment_file() {
   fi
 }
 
+deployment_immutable_snapshot() {
+  jq -c '{
+    model: .properties.model,
+    deploymentTemplate: .properties.deploymentTemplate,
+    acceleratorType: .properties.acceleratorType,
+    versionUpgradeOption: .properties.versionUpgradeOption,
+    computeId: .properties.computeId,
+    priority: .properties.priority
+  }' <<<"$1"
+}
+
+verify_scale_source() {
+  local deployment_json="$1"
+
+  if ! jq -e \
+    --arg model "$MODEL_ID" \
+    --arg deployment_template "$DEPLOYMENT_TEMPLATE_ID" \
+    --arg accelerator "$ACCELERATOR_TYPE" \
+    --arg version_upgrade_option "$VERSION_UPGRADE_OPTION" \
+    --arg sku "$SKU_NAME" \
+    --argjson check_model "$MODEL_ID_EXPLICIT" \
+    --argjson check_template "$DEPLOYMENT_TEMPLATE_ID_EXPLICIT" \
+    --argjson check_accelerator "$ACCELERATOR_TYPE_EXPLICIT" \
+    --argjson check_upgrade "$VERSION_UPGRADE_OPTION_EXPLICIT" \
+    '
+      .properties.provisioningState == "Succeeded"
+      and .sku.name == $sku
+      and (($check_model == false) or .properties.model == $model)
+      and (($check_template == false) or .properties.deploymentTemplate == $deployment_template)
+      and (($check_accelerator == false) or .properties.acceleratorType == $accelerator)
+      and (($check_upgrade == false) or .properties.versionUpgradeOption == $version_upgrade_option)
+    ' >/dev/null <<<"$deployment_json"; then
+    fail "The deployment isn't healthy or doesn't match the explicitly supplied scale expectations."
+  fi
+}
+
+verify_scaled_deployment() {
+  local deployment_json="$1"
+  local immutable_snapshot="$2"
+
+  if ! jq -e \
+    --arg sku "$SKU_NAME" \
+    --argjson capacity "$CAPACITY" \
+    --argjson immutable "$immutable_snapshot" \
+    '
+      .properties.provisioningState == "Succeeded"
+      and .sku.name == $sku
+      and .sku.capacity == $capacity
+      and {
+        model: .properties.model,
+        deploymentTemplate: .properties.deploymentTemplate,
+        acceleratorType: .properties.acceleratorType,
+        versionUpgradeOption: .properties.versionUpgradeOption,
+        computeId: .properties.computeId,
+        priority: .properties.priority
+      } == $immutable
+    ' >/dev/null <<<"$deployment_json"; then
+    fail "The scaled deployment has the wrong capacity, isn't healthy, or changed an immutable field."
+  fi
+}
+
 get_and_verify_deployment() {
   arm_request GET "$RESOURCE_URL"
   require_http_status 200
@@ -447,6 +508,15 @@ case "$ACTION" in
     ;;
 esac
 
+MODEL_ID_EXPLICIT=false
+DEPLOYMENT_TEMPLATE_ID_EXPLICIT=false
+ACCELERATOR_TYPE_EXPLICIT=false
+VERSION_UPGRADE_OPTION_EXPLICIT=false
+[[ -n "${MODEL_ID:-}" ]] && MODEL_ID_EXPLICIT=true
+[[ -n "${DEPLOYMENT_TEMPLATE_ID:-}" ]] && DEPLOYMENT_TEMPLATE_ID_EXPLICIT=true
+[[ -n "${ACCELERATOR_TYPE:-}" ]] && ACCELERATOR_TYPE_EXPLICIT=true
+[[ -n "${VERSION_UPGRADE_OPTION:-}" ]] && VERSION_UPGRADE_OPTION_EXPLICIT=true
+
 SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID:-}"
 RESOURCE_GROUP="${RESOURCE_GROUP:-}"
 FOUNDRY_ACCOUNT_NAME="${FOUNDRY_ACCOUNT_NAME:-}"
@@ -485,16 +555,19 @@ while (($# > 0)); do
     --model-id)
       (($# >= 2)) || fail "Missing value for --model-id."
       MODEL_ID="$2"
+      MODEL_ID_EXPLICIT=true
       shift 2
       ;;
     --deployment-template)
       (($# >= 2)) || fail "Missing value for --deployment-template."
       DEPLOYMENT_TEMPLATE_ID="$2"
+      DEPLOYMENT_TEMPLATE_ID_EXPLICIT=true
       shift 2
       ;;
     --accelerator-type)
       (($# >= 2)) || fail "Missing value for --accelerator-type."
       ACCELERATOR_TYPE="$2"
+      ACCELERATOR_TYPE_EXPLICIT=true
       shift 2
       ;;
     --capacity)
@@ -505,6 +578,7 @@ while (($# > 0)); do
     --version-upgrade-option)
       (($# >= 2)) || fail "Missing value for --version-upgrade-option."
       VERSION_UPGRADE_OPTION="$2"
+      VERSION_UPGRADE_OPTION_EXPLICIT=true
       shift 2
       ;;
     --poll-interval)
@@ -573,11 +647,20 @@ case "$ACTION" in
     list_deployments
     ;;
   scale)
+    arm_request GET "$RESOURCE_URL"
+    require_http_status 200
+    current_deployment="$(cat "$BODY_FILE")"
+    verify_scale_source "$current_deployment"
+    immutable_snapshot="$(deployment_immutable_snapshot "$current_deployment")"
     scale_body="$(render_scale_body)"
     arm_request PATCH "$RESOURCE_URL" "$scale_body"
     require_http_status 200 202
     poll_response_if_needed location
-    get_and_verify_deployment
+    arm_request GET "$RESOURCE_URL"
+    require_http_status 200
+    scaled_deployment="$(cat "$BODY_FILE")"
+    verify_scaled_deployment "$scaled_deployment" "$immutable_snapshot"
+    jq . <<<"$scaled_deployment"
     ;;
   delete)
     arm_request DELETE "$RESOURCE_URL"

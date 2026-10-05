@@ -74,6 +74,22 @@ function Get-TestCapacityResponse {
     }
 }
 
+foreach ($message in @(
+    'ERROR: Not Found',
+    'Code: NotFound',
+    'ResourceNotFound',
+    'Request failed with HTTP 404'
+)) {
+    Assert-Equal `
+        (Test-ManagedComputeNotFoundError -Message $message) `
+        $true `
+        "Expected not-found match for '$message'"
+}
+Assert-Equal `
+    (Test-ManagedComputeNotFoundError -Message 'Request failed with HTTP 403') `
+    $false `
+    'HTTP 403 should not match not-found detection'
+
 $createResult = Get-ManagedComputePreflightResult `
     -UsageResponse (Get-TestUsageResponse) `
     -CapacityResponse (Get-TestCapacityResponse) `

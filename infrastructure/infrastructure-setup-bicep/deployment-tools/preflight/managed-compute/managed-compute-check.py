@@ -13,7 +13,11 @@ from collections.abc import Sequence
 from typing import Any, Optional
 from urllib.parse import quote
 
-from managed_compute_preflight import PreflightError, get_preflight_result
+from managed_compute_preflight import (
+    PreflightError,
+    get_preflight_result,
+    is_not_found_error,
+)
 
 API_VERSION = "2026-07-15-preview"
 MANAGEMENT_ENDPOINT = "https://management.azure.com"
@@ -398,7 +402,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             ]
         )
     except AzureCliError as exc:
-        if args.deployment_id and "not found" in str(exc).casefold():
+        if args.deployment_id and is_not_found_error(str(exc)):
             if args.require_deployment_region_capacity:
                 raise PreflightError(
                     "Azure could not return capacity for the deployment's "

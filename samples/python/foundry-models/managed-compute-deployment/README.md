@@ -167,6 +167,10 @@ with a `PatchResourceSku`-compatible body containing only `sku.name` and
 again, and verifies its final state. Each additional model instance for this
 template adds one A100 accelerator and requires matching managed-compute quota.
 
+Existing immutable values are preserved. Model, deployment template,
+accelerator, and upgrade-policy expectations are checked only when you
+explicitly supply those options for scale.
+
 The model, deployment template, and accelerator are immutable after creation.
 For any immutable change, use blue/green replacement: create a new deployment
 name, verify it, switch consumers, and delete the old deployment.

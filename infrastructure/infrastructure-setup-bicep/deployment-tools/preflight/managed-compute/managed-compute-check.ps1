@@ -269,7 +269,7 @@ try {
         )
     }
     catch {
-        if ($DeploymentId -and $_.Exception.Message -match '(?i)not found') {
+        if ($DeploymentId -and (Test-ManagedComputeNotFoundError -Message $_.Exception.Message)) {
             if ($RequireDeploymentRegionCapacity) {
                 throw "Azure could not return capacity for the deployment's hosting region and RequireDeploymentRegionCapacity was specified."
             }

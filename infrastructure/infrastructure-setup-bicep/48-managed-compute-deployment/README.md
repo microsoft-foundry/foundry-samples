@@ -105,7 +105,12 @@ Set customer-owned values:
 export RESOURCE_GROUP="your-resource-group"
 export FOUNDRY_ACCOUNT_NAME="your-foundry-account"
 export ARM_DEPLOYMENT_NAME="gemma-managed-compute"
-export DEPLOYMENT_NAME_SEED="$(pwsh -NoProfile -Command '[guid]::NewGuid().ToString()')"
+
+# Python 3.9+
+export DEPLOYMENT_NAME_SEED="$(python3 -c 'import uuid; print(uuid.uuid4())')"
+
+# PowerShell 7 alternative
+# export DEPLOYMENT_NAME_SEED="$(pwsh -NoProfile -Command '[guid]::NewGuid().ToString()')"
 ```
 
 Creation is a long-running operation and commonly takes 10-15 minutes or

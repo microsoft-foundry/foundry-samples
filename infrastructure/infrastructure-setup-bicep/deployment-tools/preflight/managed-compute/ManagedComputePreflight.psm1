@@ -1,5 +1,15 @@
 Set-StrictMode -Version Latest
 
+function Test-ManagedComputeNotFoundError {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Message
+    )
+
+    return $Message -match '(?i)not[\s_-]*found|\b404\b'
+}
+
 function Get-ManagedComputePropertyValue {
     param(
         [Parameter(Mandatory)]
@@ -281,6 +291,7 @@ function Get-ManagedComputePreflightResult {
 }
 
 Export-ModuleMember -Function `
+    Test-ManagedComputeNotFoundError, `
     Resolve-ManagedComputeQuotaRecord, `
     Resolve-ManagedComputeCapacityRecord, `
     Resolve-ManagedComputeDeploymentSize, `

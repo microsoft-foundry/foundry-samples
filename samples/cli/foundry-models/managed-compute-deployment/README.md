@@ -168,6 +168,11 @@ performs the same final verification as create. Capacity is the only value that
 changes. Each additional model instance for this template adds one A100
 accelerator and requires matching managed-compute quota.
 
+Before update, the script verifies that the deployment is healthy and uses the
+managed-compute SKU. Existing immutable values are preserved. Model, deployment
+template, accelerator, and upgrade-policy expectations are checked only when
+you explicitly supply those options for scale.
+
 The model, deployment template, and accelerator are immutable after creation.
 For any immutable change, use blue/green replacement: create a new deployment
 name, verify it, switch consumers, and delete the old deployment.

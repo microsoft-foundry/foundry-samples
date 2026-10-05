@@ -19,6 +19,7 @@ MODULE_SPEC.loader.exec_module(managed_compute_preflight)
 
 PreflightError = managed_compute_preflight.PreflightError
 get_preflight_result = managed_compute_preflight.get_preflight_result
+is_not_found_error = managed_compute_preflight.is_not_found_error
 resolve_capacity_record = managed_compute_preflight.resolve_capacity_record
 
 
@@ -235,6 +236,17 @@ class ManagedComputePreflightTests(unittest.TestCase):
         self.assertEqual(result["capacityOfferScope"], "DataZone")
         self.assertEqual(result["quotaOfferScope"], "Datazone-US")
         self.assertTrue(result["sufficient"])
+
+    def test_not_found_error_forms(self):
+        for message in (
+            "ERROR: Not Found",
+            "Code: NotFound",
+            "ResourceNotFound",
+            "Request failed with HTTP 404",
+        ):
+            with self.subTest(message=message):
+                self.assertTrue(is_not_found_error(message))
+        self.assertFalse(is_not_found_error("Request failed with HTTP 403"))
 
 
 if __name__ == "__main__":
