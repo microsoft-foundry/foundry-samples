@@ -14,7 +14,7 @@ bicep_root="${2%/}"
   exit 1
 }
 
-skipped_directories_file="$(mktemp)"
+skipped_directories_file="$(mktemp "${TMPDIR:-/tmp}/bicep-live-skip.XXXXXX")"
 trap 'rm -f "$skipped_directories_file"' EXIT
 while IFS= read -r raw_line || [[ -n "$raw_line" ]]; do
   line="$(printf '%s' "$raw_line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"

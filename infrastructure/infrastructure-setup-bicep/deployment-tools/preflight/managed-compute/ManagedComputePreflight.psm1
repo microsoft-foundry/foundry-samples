@@ -39,14 +39,40 @@ function Resolve-ManagedComputeQuotaRecord {
         [string]$OfferScope
     )
 
+    $valueProperty = $UsageResponse.PSObject.Properties['value']
+    if ($null -eq $valueProperty) {
+        throw "Usage response doesn't contain a value array."
+    }
+
     $suffix = ".$AcceleratorType"
-    $matchingRecords = @(
-        $UsageResponse.value | Where-Object {
-            $_.offerScope -ieq $OfferScope -and
-            $_.unit -eq 'AcceleratorCount' -and
-            $_.name.value.EndsWith($suffix, [System.StringComparison]::OrdinalIgnoreCase)
+    $matchingRecords = @()
+    foreach ($record in @($valueProperty.Value)) {
+        if ($null -eq $record) {
+            throw "Usage response contains a null record."
         }
-    )
+        $name = Get-ManagedComputePropertyValue -InputObject $record -PropertyName 'name'
+        $metricName = if ($null -ne $name) {
+            Get-ManagedComputePropertyValue -InputObject $name -PropertyName 'value'
+        }
+        else {
+            $null
+        }
+        if ($metricName -isnot [string] -or [string]::IsNullOrWhiteSpace($metricName)) {
+            throw "Usage response contains a record without a string name.value."
+        }
+
+        $returnedOfferScope = Get-ManagedComputePropertyValue `
+            -InputObject $record `
+            -PropertyName 'offerScope'
+        $unit = Get-ManagedComputePropertyValue -InputObject $record -PropertyName 'unit'
+        if (
+            $returnedOfferScope -ieq $OfferScope -and
+            $unit -eq 'AcceleratorCount' -and
+            $metricName.EndsWith($suffix, [System.StringComparison]::OrdinalIgnoreCase)
+        ) {
+            $matchingRecords += $record
+        }
+    }
 
     if ($matchingRecords.Count -eq 0) {
         throw "No quota record matched accelerator '$AcceleratorType' and offer scope '$OfferScope'."
@@ -74,40 +100,98 @@ function Resolve-ManagedComputeCapacityRecord {
         [string]$ScopeId = ''
     )
 
-    $values = @($CapacityResponse.value)
-    $acceleratorMatches = @(
-        $values | Where-Object {
-            $returnedAccelerator = Get-ManagedComputePropertyValue `
-                -InputObject $_.properties `
-                -PropertyName 'acceleratorType'
-            $returnedAccelerator -and $returnedAccelerator -ieq $AcceleratorType
-        }
-    )
-
-    if ($acceleratorMatches.Count -eq 0) {
-        $acceleratorMatches = $values
+    $valueProperty = $CapacityResponse.PSObject.Properties['value']
+    if ($null -eq $valueProperty) {
+        throw "Capacity response doesn't contain a value array."
     }
-    if ($acceleratorMatches.Count -eq 0) {
+
+    $values = @($valueProperty.Value)
+    if ($values.Count -eq 0) {
         throw "No capacity records were returned for accelerator '$AcceleratorType'."
     }
 
-    $scopeMatches = @(
-        $acceleratorMatches | Where-Object {
-            $returnedScope = Get-ManagedComputePropertyValue `
-                -InputObject $_.properties `
-                -PropertyName 'offerScope'
-            $returnedScope -and $returnedScope -ieq $OfferScope
+    $acceleratorMatches = @()
+    $typedRecords = @()
+    $distinctReturnedTypes = @()
+    foreach ($record in $values) {
+        if ($null -eq $record) {
+            continue
         }
-    )
+        $properties = Get-ManagedComputePropertyValue `
+            -InputObject $record `
+            -PropertyName 'properties'
+        if ($null -eq $properties) {
+            continue
+        }
+        $returnedAccelerator = Get-ManagedComputePropertyValue `
+            -InputObject $properties `
+            -PropertyName 'acceleratorType'
+        if ($null -eq $returnedAccelerator -or [string]::IsNullOrWhiteSpace([string]$returnedAccelerator)) {
+            continue
+        }
 
-    if ($scopeMatches.Count -eq 0) {
-        $recordsWithoutScope = @(
-            $acceleratorMatches | Where-Object {
-                -not (Get-ManagedComputePropertyValue `
-                    -InputObject $_.properties `
-                    -PropertyName 'offerScope')
+        $returnedAccelerator = [string]$returnedAccelerator
+        $typedRecords += $record
+        if ($distinctReturnedTypes -notcontains $returnedAccelerator) {
+            $distinctReturnedTypes += $returnedAccelerator
+        }
+        if ($returnedAccelerator -ieq $AcceleratorType) {
+            $acceleratorMatches += $record
+        }
+    }
+
+    if ($acceleratorMatches.Count -eq 0) {
+        if ($distinctReturnedTypes.Count -gt 1) {
+            $returnedTypes = ($distinctReturnedTypes | Sort-Object) -join ', '
+            throw "No capacity record matched accelerator '$AcceleratorType'. Returned accelerator types: $returnedTypes."
+        }
+        $acceleratorMatches = @(
+            if ($typedRecords.Count -gt 0) {
+                $typedRecords
+            }
+            else {
+                $values
             }
         )
+    }
+
+    $scopeMatches = @()
+    foreach ($record in $acceleratorMatches) {
+        if ($null -eq $record) {
+            continue
+        }
+        $properties = Get-ManagedComputePropertyValue `
+            -InputObject $record `
+            -PropertyName 'properties'
+        if ($null -eq $properties) {
+            continue
+        }
+        $returnedScope = Get-ManagedComputePropertyValue `
+            -InputObject $properties `
+            -PropertyName 'offerScope'
+        if ($returnedScope -and $returnedScope -ieq $OfferScope) {
+            $scopeMatches += $record
+        }
+    }
+
+    if ($scopeMatches.Count -eq 0) {
+        $recordsWithoutScope = @()
+        foreach ($record in $acceleratorMatches) {
+            if ($null -eq $record) {
+                continue
+            }
+            $properties = Get-ManagedComputePropertyValue `
+                -InputObject $record `
+                -PropertyName 'properties'
+            if (
+                $null -ne $properties -and
+                -not (Get-ManagedComputePropertyValue `
+                    -InputObject $properties `
+                    -PropertyName 'offerScope')
+            ) {
+                $recordsWithoutScope += $record
+            }
+        }
         if ($acceleratorMatches.Count -eq 1 -and $recordsWithoutScope.Count -eq 1) {
             $scopeMatches = $recordsWithoutScope
         }
@@ -117,23 +201,34 @@ function Resolve-ManagedComputeCapacityRecord {
     }
 
     if ($ScopeId) {
-        $scopeMatches = @(
-            $scopeMatches | Where-Object {
-                $returnedScopeId = Get-ManagedComputePropertyValue `
-                    -InputObject $_.properties `
-                    -PropertyName 'scopeId'
-                $returnedScopeId -and $returnedScopeId -ieq $ScopeId
+        $scopeIdMatches = @()
+        foreach ($record in $scopeMatches) {
+            $properties = Get-ManagedComputePropertyValue `
+                -InputObject $record `
+                -PropertyName 'properties'
+            $returnedScopeId = Get-ManagedComputePropertyValue `
+                -InputObject $properties `
+                -PropertyName 'scopeId'
+            if ($returnedScopeId -and $returnedScopeId -ieq $ScopeId) {
+                $scopeIdMatches += $record
             }
-        )
+        }
+        $scopeMatches = $scopeIdMatches
     }
     elseif ($OfferScope -ieq 'Global') {
-        $globalMatches = @(
-            $scopeMatches | Where-Object {
+        $globalMatches = @()
+        foreach ($record in $scopeMatches) {
+            $properties = Get-ManagedComputePropertyValue `
+                -InputObject $record `
+                -PropertyName 'properties'
+            if (
                 -not (Get-ManagedComputePropertyValue `
-                    -InputObject $_.properties `
+                    -InputObject $properties `
                     -PropertyName 'scopeId')
+            ) {
+                $globalMatches += $record
             }
-        )
+        }
         if ($globalMatches.Count -gt 0) {
             $scopeMatches = $globalMatches
         }
@@ -143,7 +238,11 @@ function Resolve-ManagedComputeCapacityRecord {
         throw "No capacity record matched offer scope '$OfferScope' and scope ID '$ScopeId'."
     }
     if ($scopeMatches.Count -gt 1) {
-        $names = ($scopeMatches | ForEach-Object { $_.name }) -join ', '
+        $names = (
+            $scopeMatches | ForEach-Object {
+                Get-ManagedComputePropertyValue -InputObject $_ -PropertyName 'name'
+            }
+        ) -join ', '
         throw "Multiple capacity records matched accelerator '$AcceleratorType' and scope '$OfferScope': $names."
     }
 

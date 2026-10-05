@@ -79,15 +79,33 @@ class BicepPipelineTests(unittest.TestCase):
     def test_live_deployment_filter_keeps_non_skipped_templates(self):
         bash = shutil.which("bash")
         self.assertIsNotNone(bash, "Bash is required for live-deployment filtering")
+        real_mktemp = shutil.which("mktemp")
+        self.assertIsNotNone(
+            real_mktemp, "mktemp is required for live-deployment filtering"
+        )
         skipped = f"{SAMPLE_ROOT}/48-managed-compute-deployment/main.bicep"
         included = f"{SAMPLE_ROOT}/00-basic/main.bicep"
-        result = subprocess.run(
-            [bash, str(LIVE_FILTER), str(LIVE_SKIPLIST), SAMPLE_ROOT],
-            cwd=ROOT,
-            input=f"{skipped}\n{included}\n",
-            capture_output=True,
-            text=True,
-        )
+        with tempfile.TemporaryDirectory() as directory:
+            fake_mktemp = Path(directory) / "mktemp"
+            fake_mktemp.write_text(
+                "#!/usr/bin/env bash\n"
+                '(($# > 0)) || { echo "mktemp template required" >&2; exit 64; }\n'
+                'exec "$REAL_MKTEMP" "$@"\n',
+                encoding="utf-8",
+            )
+            fake_mktemp.chmod(0o755)
+            result = subprocess.run(
+                [bash, str(LIVE_FILTER), str(LIVE_SKIPLIST), SAMPLE_ROOT],
+                cwd=ROOT,
+                input=f"{skipped}\n{included}\n",
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "PATH": f"{directory}{os.pathsep}{os.environ['PATH']}",
+                    "REAL_MKTEMP": real_mktemp,
+                },
+            )
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertEqual(f"{included}\n", result.stdout)
         self.assertIn("Skipping ephemeral live deployment", result.stderr)

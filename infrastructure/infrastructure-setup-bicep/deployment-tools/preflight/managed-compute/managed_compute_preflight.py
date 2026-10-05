@@ -70,18 +70,42 @@ def resolve_capacity_record(
     """Return the one capacity record matching accelerator and offer scope."""
 
     values = _records(capacity_response, "Capacity")
+    typed_records: list[tuple[dict[str, Any], str]] = []
+    for record in values:
+        properties = record.get("properties")
+        if not isinstance(properties, dict):
+            continue
+        returned_accelerator = properties.get("acceleratorType")
+        if returned_accelerator is None or not str(returned_accelerator).strip():
+            continue
+        typed_records.append((record, str(returned_accelerator)))
+
     accelerator_matches = [
         record
-        for record in values
-        if isinstance(record.get("properties"), dict)
-        and str(record["properties"].get("acceleratorType", "")).casefold()
-        == accelerator_type.casefold()
+        for record, returned_accelerator in typed_records
+        if returned_accelerator.casefold() == accelerator_type.casefold()
     ]
     if not accelerator_matches:
-        accelerator_matches = values
-    if not accelerator_matches:
-        raise PreflightError(
-            f"No capacity records were returned for accelerator '{accelerator_type}'."
+        if not values:
+            raise PreflightError(
+                f"No capacity records were returned for accelerator '{accelerator_type}'."
+            )
+        distinct_returned_types: dict[str, str] = {}
+        for _, returned_accelerator in typed_records:
+            distinct_returned_types.setdefault(
+                returned_accelerator.casefold(),
+                returned_accelerator,
+            )
+        if len(distinct_returned_types) > 1:
+            returned_types = ", ".join(
+                sorted(distinct_returned_types.values(), key=str.casefold)
+            )
+            raise PreflightError(
+                f"No capacity record matched accelerator '{accelerator_type}'. "
+                f"Returned accelerator types: {returned_types}."
+            )
+        accelerator_matches = (
+            [record for record, _ in typed_records] if typed_records else values
         )
 
     scope_matches = [

@@ -180,6 +180,15 @@ class ManagedComputePreflightTests(unittest.TestCase):
         with self.assertRaises(PreflightError):
             resolve_capacity_record(response, "A100_80GB", "Global")
 
+    def test_mixed_accelerator_fallback_fails_with_returned_types(self):
+        response = capacity_response("Azure.A100")
+        response["value"].append(capacity_response("H100_80GB")["value"][0])
+        with self.assertRaisesRegex(
+            PreflightError,
+            r"Returned accelerator types: Azure\.A100, H100_80GB",
+        ):
+            resolve_capacity_record(response, "A100_80GB", "Global")
+
     def test_legacy_single_record_without_scope_is_accepted(self):
         response = capacity_response()
         response["value"][0]["properties"].pop("offerScope")

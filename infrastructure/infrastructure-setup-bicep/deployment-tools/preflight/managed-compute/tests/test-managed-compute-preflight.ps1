@@ -90,6 +90,26 @@ Assert-Equal `
     $false `
     'HTTP 403 should not match not-found detection'
 
+$malformedUsage = Get-TestUsageResponse
+$malformedUsage.value[0].name.PSObject.Properties.Remove('value')
+$malformedUsageFailed = $false
+$malformedUsageMessage = ''
+try {
+    Resolve-ManagedComputeQuotaRecord `
+        -UsageResponse $malformedUsage `
+        -AcceleratorType 'A100_80GB' `
+        -OfferScope 'Global' | Out-Null
+}
+catch {
+    $malformedUsageFailed = $true
+    $malformedUsageMessage = $_.Exception.Message
+}
+Assert-Equal $malformedUsageFailed $true 'Malformed usage records should fail'
+Assert-Equal `
+    ($malformedUsageMessage -like '*string name.value*') `
+    $true `
+    'Malformed usage records should produce an actionable error'
+
 $createResult = Get-ManagedComputePreflightResult `
     -UsageResponse (Get-TestUsageResponse) `
     -CapacityResponse (Get-TestCapacityResponse) `
@@ -199,6 +219,30 @@ catch {
     $ambiguousFailed = $true
 }
 Assert-Equal $ambiguousFailed $true 'Ambiguous capacity records should fail'
+
+$mixedAcceleratorCapacity = [pscustomobject]@{
+    value = @(
+        (Get-TestCapacityResponse -AcceleratorType 'Azure.A100').value[0],
+        (Get-TestCapacityResponse -AcceleratorType 'H100_80GB').value[0]
+    )
+}
+$mixedAcceleratorFailed = $false
+$mixedAcceleratorMessage = ''
+try {
+    Resolve-ManagedComputeCapacityRecord `
+        -CapacityResponse $mixedAcceleratorCapacity `
+        -AcceleratorType 'A100_80GB' `
+        -OfferScope 'Global' | Out-Null
+}
+catch {
+    $mixedAcceleratorFailed = $true
+    $mixedAcceleratorMessage = $_.Exception.Message
+}
+Assert-Equal $mixedAcceleratorFailed $true 'Mixed accelerator fallback should fail'
+Assert-Equal `
+    ($mixedAcceleratorMessage -like '*Azure.A100*' -and $mixedAcceleratorMessage -like '*H100_80GB*') `
+    $true `
+    'Mixed accelerator errors should list the returned accelerator types'
 
 $legacyCapacity = Get-TestCapacityResponse
 $legacyCapacity.value[0].properties.PSObject.Properties.Remove('offerScope')

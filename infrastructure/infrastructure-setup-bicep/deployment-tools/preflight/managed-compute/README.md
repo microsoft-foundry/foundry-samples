@@ -131,6 +131,11 @@ The helper fails instead of guessing when quota, capacity, scope, or
 deployment-size matching returns zero or multiple records. It doesn't infer
 accelerators per instance from a deployment-template name.
 
+Azure can return one canonical accelerator type, such as `Azure.A100`, for a
+requested accelerator alias. When no exact accelerator match exists, the
+helper accepts only one distinct returned accelerator type; mixed returned
+types fail with an error that lists them.
+
 For Data Zone checks, capacity uses `OfferScope=DataZone` with a `ScopeId`, while
 quota can use a combined value such as `Datazone-US`. The command derives that
 quota scope when possible or accepts `--quota-offer-scope` in Python or
@@ -152,7 +157,8 @@ codes.
 
 The offline tests cover create and scale calculations, single- and
 multi-accelerator templates, insufficient quota, insufficient capacity,
-scale-down, missing deployment-size rows, and ambiguous capacity records:
+scale-down, malformed responses, missing deployment-size rows, and ambiguous
+capacity or accelerator records:
 
 ```powershell
 pwsh infrastructure/infrastructure-setup-bicep/deployment-tools/preflight/managed-compute/tests/test-managed-compute-preflight.ps1
