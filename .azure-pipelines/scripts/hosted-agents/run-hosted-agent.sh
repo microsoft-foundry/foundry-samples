@@ -547,7 +547,7 @@ optional() { if unset_macro "${1:-}"; then printf ''; else printf '%s' "${1:-}";
 # passthrough is a prefix allow-list over the task environment
 # (variable-group values land there). Add a prefix here if a new
 # variable falls outside the set.
-PASSTHROUGH_PREFIXES="AZURE_ FOUNDRY_ TOOLBOX_ MODEL_ OPENAI_ BING_ SEARCH_ STORAGE_ SERVICEBUS_ CONTENT_SAFETY_ PLAYWRIGHT_ SKIP_ CLOUD_E2E_"
+PASSTHROUGH_PREFIXES="AZURE_ FOUNDRY_ TOOLBOX_ MODEL_ OPENAI_ BING_ SEARCH_ STORAGE_ SERVICEBUS_ REDIS_ CONTENT_SAFETY_ PLAYWRIGHT_ SKIP_ CLOUD_E2E_"
 # Injected by the agent / az CLI, not configuration, plus the
 # names already set above. AZURE_DEV_COLLECT_TELEMETRY is azd's
 # own opt-out knob, read from the process environment — it does
@@ -1221,9 +1221,21 @@ fi
 turn=0
 overall_exit=0
 quota_retries=0
+previous_response_id=""
 while IFS= read -r turn_record || [ -n "$turn_record" ]; do
   [ -z "$turn_record" ] && continue
   turn=$(jq -r '.global_turn' <<< "$turn_record")
+  test_turn=$(jq -r '.turn // .global_turn' <<< "$turn_record")
+  test_turn_count=$(jq -r '.test_turn_count // 1' <<< "$turn_record")
+  if [ "$test_turn" -eq 1 ]; then
+    previous_response_id=""
+  fi
+  if [ "$PROTOCOL" = "responses" ] && [ "$test_turn_count" -gt 1 ]; then
+    turn_record=$(jq -c --arg previous "$previous_response_id" '
+      . + {persist_response: true}
+      | if $previous == "" then . else .previous_response_id = $previous end
+    ' <<< "$turn_record")
+  fi
   line=$(jq -r '.serialized_input' <<< "$turn_record")
   echo "─── Turn $turn ───"
   echo "Prompt: $line"
@@ -1371,6 +1383,16 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
     fi
     break
   done
+
+  if [ "$PROTOCOL" = "responses" ] && [ "$test_turn_count" -gt 1 ] && [ $turn_exit -eq 0 ]; then
+    next_response_id=$(jq -r '.response_id // empty' "$result_file")
+    if [ -z "$next_response_id" ]; then
+      echo "##vso[task.logissue type=error]Turn $turn did not return a response id for multi-turn continuation"
+      turn_exit=1
+    else
+      previous_response_id="$next_response_id"
+    fi
+  fi
 
   # Persist only the final retry attempt as assertion evidence.
   cp "/tmp/invoke-out-${turn}.txt" "$EVIDENCE_DIR/turn-$turn-invoke.txt"

@@ -132,12 +132,20 @@ def invoke_turn(
     )
     approval_sequence = approval_policy.get("mcp", []) if approval_auto else []
     approval_sequence_length = len(approval_sequence)
+    persist_response = turn_record.get("persist_response") is True
+    previous_response_id = turn_record.get("previous_response_id")
+    if previous_response_id is not None and (
+        not isinstance(previous_response_id, str) or not previous_response_id
+    ):
+        raise ValueError("previous_response_id must be a non-empty string")
     request: dict[str, Any] = {
         "input": line,
         "stream": False,
-        "store": approval_auto,
+        "store": approval_auto or persist_response,
         "agent_session_id": env["CI_AGENT_SESSION_ID"],
     }
+    if previous_response_id is not None:
+        request["previous_response_id"] = previous_response_id
     _write_json(request_file, request)
 
     approval_terminal_error = False
@@ -150,6 +158,7 @@ def invoke_turn(
     http_code = ""
     transport_exit = 0
     response_error = ""
+    response_id = ""
 
     while True:
         step_prefix = (
@@ -181,6 +190,12 @@ def invoke_turn(
                 "Responses request did not complete successfully: "
                 f"status={response_status!r}"
             )
+            break
+        current_response_id = response.get("id")
+        if isinstance(current_response_id, str) and current_response_id:
+            response_id = current_response_id
+        elif persist_response:
+            response_error = "Stored Responses request completed without a response id"
             break
 
         step_text = _assistant_text(response)
@@ -227,8 +242,7 @@ def invoke_turn(
             print(f"::error::{approval_error}")
             break
 
-        previous_response_id = response.get("id")
-        if not isinstance(previous_response_id, str) or not previous_response_id:
+        if not response_id:
             approval_terminal_error = True
             approval_error = "cannot continue MCP approval: response has no id"
             decision.update(status="error", error=approval_error)
@@ -243,7 +257,7 @@ def invoke_turn(
         approval_step += 1
         request = {
             "input": decision["approval_responses"],
-            "previous_response_id": previous_response_id,
+            "previous_response_id": response_id,
             "stream": False,
             "store": True,
             "agent_session_id": env["CI_AGENT_SESSION_ID"],
@@ -298,6 +312,7 @@ def invoke_turn(
         "approval_auto": approval_auto,
         "approval_step": approval_step,
         "response_error": response_error,
+        "response_id": response_id or None,
     }
     _write_json(result_file, result)
     return result

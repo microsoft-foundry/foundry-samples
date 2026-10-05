@@ -307,6 +307,7 @@ class PlanningTests(unittest.TestCase):
         self.assertEqual(
             plan["tests"][0]["turns"][0]["serialized_input"], '{"query":"one"}'
         )
+        self.assertEqual(plan["tests"][0]["turns"][0]["test_turn_count"], 1)
 
     def test_nonmatching_condition_is_not_applicable(self):
         plan = module.build_plan(self.document(), "web-search")
@@ -536,9 +537,11 @@ class ResponsesInvocationTests(unittest.TestCase):
             json.dumps(turn_record or {"input": "do the work"}), encoding="utf-8"
         )
         queued = list(responses)
+        requests = []
 
         def transport(request_file, headers_file, raw_file, environment):
             self.assertEqual(environment["CI_AGENT_SESSION_ID"], "session")
+            requests.append(json.loads(request_file.read_text(encoding="utf-8")))
             response = queued.pop(0)
             headers_file.write_text("HTTP/2 200\n", encoding="utf-8")
             raw_file.write_text(json.dumps(response), encoding="utf-8")
@@ -555,10 +558,10 @@ class ResponsesInvocationTests(unittest.TestCase):
             temp_dir=root,
         )
         self.assertFalse(queued)
-        return root, result
+        return root, result, requests
 
     def test_completed_response_succeeds(self):
-        root, result = self.invoke(
+        root, result, requests = self.invoke(
             [
                 self.response(
                     "response-1",
@@ -575,6 +578,20 @@ class ResponsesInvocationTests(unittest.TestCase):
         self.assertEqual(
             (root / "invoke-response-77.txt").read_text(encoding="utf-8"), "done\n"
         )
+        self.assertFalse(requests[0]["store"])
+
+    def test_multiturn_response_uses_previous_response_id(self):
+        _, result, requests = self.invoke(
+            [self.response("response-2")],
+            {
+                "input": "do the work",
+                "persist_response": True,
+                "previous_response_id": "response-1",
+            },
+        )
+        self.assertTrue(requests[0]["store"])
+        self.assertEqual(requests[0]["previous_response_id"], "response-1")
+        self.assertEqual(result["response_id"], "response-2")
 
     def test_failed_final_continuation_cannot_be_hidden_by_earlier_text(self):
         request = {
@@ -590,7 +607,7 @@ class ResponsesInvocationTests(unittest.TestCase):
             },
             request,
         ]
-        root, result = self.invoke(
+        root, result, _ = self.invoke(
             [
                 self.response("response-1", output=initial_output),
                 self.response(

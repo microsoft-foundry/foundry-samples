@@ -206,7 +206,9 @@ Unknown fields and duplicate YAML keys are rejected at every scope.
 ## Tests, turns, and inputs
 
 - Tests are evaluated in file order.
-- Turns execute in order and use the cell-owned hosted session.
+- Turns execute in order and use the cell-owned hosted session. Multi-turn
+  Responses tests store each accepted turn and chain the next one with
+  `previous_response_id`; each test starts a new chain.
 - String input is literal; no shell, environment, or template expansion occurs.
 - A mapping or sequence is validated recursively and serialized as compact JSON.
 - A nonmatching `when.toolbox_label` is `not_applicable`, not passed.
@@ -406,8 +408,9 @@ For a declared sequence:
 - the runner never sends `approve: false`;
 - approval sequences are rejected for Invocations tests.
 
-Opted-in turns use hosted Responses `store: true` only so `previous_response_id`
-can resolve. This is distinct from a sample's upstream model-client `store` option.
+Multi-turn and approval-enabled turns use hosted Responses `store: true` only so
+`previous_response_id` can resolve. This is distinct from a sample's upstream
+model-client `store` option.
 Requests, responses, and headers are retained by attempt and approval step.
 `assistant_text` evidence aggregates assistant-visible text across responses;
 `raw` evidence is the final Responses body. Turn status records approval decisions and sequence completion and summarizes the
