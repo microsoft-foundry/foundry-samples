@@ -43,6 +43,9 @@ main() {
   assignment_uri="https://management.azure.com${redis_database_id}/accessPolicyAssignments/${assignment_name}?api-version=2025-07-01"
 
   curl --fail --silent --show-error \
+    --retry 5 \
+    --retry-delay 5 \
+    --retry-max-time 120 \
     --request PUT \
     --header "Authorization: Bearer ${management_token}" \
     --header 'Content-Type: application/json' \

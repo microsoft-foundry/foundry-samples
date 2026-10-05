@@ -91,6 +91,8 @@ function Set-RedisAgentAccess {
         -Uri $AssignmentUri `
         -Headers @{ Authorization = "Bearer $ManagementToken" } `
         -ContentType 'application/json' `
+        -MaximumRetryCount 5 `
+        -RetryIntervalSec 5 `
         -Body $Body | Out-Null
 
     Write-Host "Granted Azure Managed Redis access to agent identity $PrincipalId." `
