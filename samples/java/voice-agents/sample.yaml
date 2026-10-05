@@ -3,3 +3,4 @@ description: Java samples for creating, configuring, and using Microsoft Foundry
 
 build: "mvn compile"
 validate: "mvn compile"
+test: "mvn -q exec:java -Dexec.mainClass=com.azure.ai.agents.voice.VoiceAgentLiveImageConversationSample -Dexec.args=--self-test"

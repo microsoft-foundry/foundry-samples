@@ -1,0 +1,20 @@
+{
+  "name": "foundry-samples-voice-agents-realtime-image-input",
+  "version": "1.0.0",
+  "description": "JavaScript Microsoft Foundry Voice Agents sample - send text and image input",
+  "license": "MIT",
+  "type": "module",
+  "main": "app.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "test": "node app.js --self-test"
+  },
+  "dependencies": {
+    "@azure/ai-projects": "2.7.0",
+    "@azure/identity": "^4.13.0",
+    "dotenv": "^17.2.1"
+  }
+}

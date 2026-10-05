@@ -300,12 +300,23 @@ print_value(resolve(query))
         )
         live_service = workflow.split("  live-service:", 1)[1]
         self.assertIn("if: matrix.validator_language == 'typescript'", live_service)
-        self.assertIn("node-version: '20'", live_service)
+        self.assertIn("node-version: '22'", live_service)
         self.assertIn("if: matrix.validator_language == 'java'", live_service)
         self.assertIn("java-version: '17'", live_service)
         self.assertNotIn("LIVE_VALIDATION_AGENT_NAME", workflow)
         self.assertIn('SKIP_PROVISION: "true"', workflow)
         self.assertIn('python -m pip install -r "${{ matrix.path }}/requirements.txt"', workflow)
+
+    def test_validation_workflows_use_node_22(self) -> None:
+        for name, expected_count in (
+            ("validate.yml", 2),
+            ("validation-pilot.yml", 2),
+            ("scripts-selftest.yml", 1),
+        ):
+            with self.subTest(workflow=name):
+                workflow = (ROOT / "workflows" / name).read_text(encoding="utf-8")
+                self.assertEqual(workflow.count("node-version:"), expected_count)
+                self.assertEqual(workflow.count("node-version: '22'"), expected_count)
 
     def test_live_service_substitutions_replace_instructional_placeholders(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
