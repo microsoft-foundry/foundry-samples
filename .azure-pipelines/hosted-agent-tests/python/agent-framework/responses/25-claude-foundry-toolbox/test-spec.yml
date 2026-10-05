@@ -1,0 +1,35 @@
+version: 1
+
+# Behavior contract for the Claude + Foundry Toolbox (Responses) sample. The agent
+# runs an Anthropic Claude model through `AnthropicFoundryClient` and discovers/
+# invokes tools from an existing, already-configured toolbox over MCP via
+# `FoundryToolbox` — this sample does not provision a toolbox itself. It is written
+# against the generic `web-search` toolbox fanned into the cloud E2E matrix, so the
+# test is pinned to that label; against other generic toolboxes (code-interpreter,
+# mcp-skills, ...) it is `not_applicable` rather than failing.
+#
+# The turn asks a stable, historical factual question (rather than a "latest news"
+# style prompt) so the expected answer never changes, while still requiring a real
+# web search tool call to produce a cited source URL in the response.
+sample:
+  owner: zhuoqunli
+  experiences: [azd, vscode]
+
+tests:
+  - name: web-search-cites-source
+    when:
+      toolbox_label: web-search
+    turns:
+      - input: "What year did Neil Armstrong become the first person to walk on the Moon? Search the web and cite a source URL."
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: "1969"
+          - source: assistant_text
+            type: regex
+            value: 'https?://'
+          - source: assistant_text
+            type: regex
+            value: '(?i)traceback|unhandled exception'
+            min_matches: 0
+            max_matches: 0
