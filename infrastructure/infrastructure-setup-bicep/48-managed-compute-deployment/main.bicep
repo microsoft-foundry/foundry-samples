@@ -6,7 +6,7 @@ targetScope = 'resourceGroup'
 param foundryAccountName string
 
 @description('Seed used to derive a stable six-character alphanumeric deployment-name suffix.')
-param deploymentNameSeed string = newGuid()
+param deploymentNameSeed string
 
 @description('Microsoft Foundry catalog model asset ID.')
 param modelId string = 'azureml://registries/azure-huggingface/models/google--gemma-4-31b-it/versions/5'

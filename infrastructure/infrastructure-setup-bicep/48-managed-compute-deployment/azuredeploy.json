@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "16991284933953699012"
+      "templateHash": "7602541075832947571"
     }
   },
   "parameters": {
@@ -19,7 +19,6 @@
     },
     "deploymentNameSeed": {
       "type": "string",
-      "defaultValue": "[newGuid()]",
       "metadata": {
         "description": "Seed used to derive a stable six-character alphanumeric deployment-name suffix."
       }

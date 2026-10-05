@@ -34,11 +34,11 @@ Manager and the Cognitive Services resource provider perform the authoritative
 validation when the template is submitted.
 
 This repository doesn't currently provide an Azure Verified Module for managed
-compute. The template is a standalone resource example. It also intentionally
-uses `newGuid()` for the default deployment-name seed, which can produce a
-Bicep warning about nondeterministic resource identifiers. Supply and reuse an
-explicit `deploymentNameSeed` when redeploying or changing capacity so Bicep and
-ARM target the existing deployment.
+compute. The template is a standalone resource example. The
+`deploymentNameSeed` parameter is required so redeployments don't silently
+create another billable child resource. Generate it once, then reuse it when
+redeploying or changing capacity so Bicep and ARM target the existing
+deployment.
 
 > [!WARNING]
 > Managed compute is billed hourly per accelerator for as long as the deployment
@@ -65,7 +65,7 @@ All six methods deploy the same resource and defaults.
 | Parameter | Default |
 | --- | --- |
 | `foundryAccountName` | Required existing account name |
-| `deploymentNameSeed` | Generated GUID used to derive a six-character alphanumeric suffix |
+| `deploymentNameSeed` | Required user-generated GUID used to derive a six-character alphanumeric suffix |
 | `modelId` | `azureml://registries/azure-huggingface/models/google--gemma-4-31b-it/versions/5` |
 | `deploymentTemplateId` | `azureml://registries/azure-huggingface/deploymenttemplates/google--gemma-4-31b-it--16k-nvidia-a100/labels/latest` |
 | `acceleratorType` | `A100_80GB` |
@@ -82,7 +82,7 @@ model instances, not a generic VM count. Therefore, capacity one requires one
 The resulting deployment name is
 `gemma-4-31b-it-a100-<suffix>`. Bicep derives the six-character alphanumeric
 suffix from `uniqueString(deploymentNameSeed)`. Save and reuse the seed for later
-capacity updates. The default seed comes from `newGuid()`.
+capacity updates and redeployments.
 
 ## Prerequisites
 
