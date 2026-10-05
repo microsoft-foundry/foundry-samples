@@ -34,6 +34,8 @@ services:
     env:
       CLAUDE_CODE_USE_FOUNDRY: '1'
       ANTHROPIC_MODEL: claude-opus-4-7
+      TOOLBOX_ENDPOINT: ${TOOLBOX_ENDPOINT}
+      TOOLBOX_ALLOWED_TOOLS: ${TOOLBOX_ALLOWED_TOOLS}
     container:
       resources:
         cpu: '0.5'

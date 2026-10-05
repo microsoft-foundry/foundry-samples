@@ -21,6 +21,28 @@ This sample is configured for **Microsoft Foundry** mode by default
 | `CLAUDE_CODE_USE_FOUNDRY` | Yes (default `1`) | Enables Foundry integration path in Claude Agent SDK |
 | `ANTHROPIC_MODEL` | Built-in default | Explicit startup model set to `claude-opus-4-7`  |
 | `ANTHROPIC_FOUNDRY_BASE_URL` | Auto-generated | Automatically constructed from `FOUNDRY_PROJECT_ENDPOINT` as `https://<resource>.services.ai.azure.com/anthropic` |
+| `TOOLBOX_ENDPOINT` | Optional | Full Foundry toolbox MCP endpoint URL. When set (together with `TOOLBOX_ALLOWED_TOOLS`), the agent validates and exposes the allowlisted toolbox tools to Claude. |
+| `TOOLBOX_NAME` | Optional | Toolbox name. If `TOOLBOX_ENDPOINT` isn't set, the agent builds the latest-version endpoint from this and `FOUNDRY_PROJECT_ENDPOINT`. |
+| `TOOLBOX_ALLOWED_TOOLS` | Required if either toolbox variable above is set | Comma-separated, explicit allowlist of toolbox tool names to expose (e.g. `web_search`). |
+
+## Optional: Consuming an Existing Foundry Toolbox
+
+This sample can optionally connect to an **already-provisioned Foundry Toolbox** so Claude can call toolbox tools (for example `web_search`) during the conversation. This sample only *consumes* a toolbox — it does not create or configure one. Provision the toolbox separately (e.g. with `azd ai toolbox create`) before setting any of the variables below.
+
+If neither `TOOLBOX_ENDPOINT` nor `TOOLBOX_NAME` is set, this sample behaves exactly as it did before — no toolbox integration is attempted, and the module-level `TOOLBOX_ALLOWED_TOOLS` check is skipped entirely.
+
+### Fail-loud contract
+
+Once `TOOLBOX_ENDPOINT` or `TOOLBOX_NAME` is set, toolbox integration becomes **required** for that invocation to succeed:
+
+- `TOOLBOX_ALLOWED_TOOLS` must also be set, or the process fails to start (`EnvironmentError` at import time).
+- Each invocation runs a fresh MCP `tools/list` discovery call against the toolbox. If the toolbox is unreachable, returns an error, or returns no tools, the invocation fails immediately with an explicit `{"error": ...}` SSE event (and a server-side log entry) — it never silently falls back to running without toolbox tools.
+- Every name in `TOOLBOX_ALLOWED_TOOLS` must be present in that invocation's discovery result, or the invocation fails with the unknown/missing name(s) listed. Discovery can only confirm a configured name exists; it never expands access to tools you didn't list. A write/mutating tool the toolbox happens to expose, but that you didn't add to `TOOLBOX_ALLOWED_TOOLS`, is never passed to `allowed_tools` and so is never callable by the model.
+- `permission_mode="dontAsk"` is used (fail-closed: only pre-approved `allowed_tools` can run); the blanket `bypassPermissions` mode is never used.
+
+### Authentication and request-scoping
+
+Each invocation builds its own headers dict (never a shared/mutated global): a Microsoft Entra ID bearer token (`DefaultAzureCredential`, scope `https://ai.azure.com/.default`) plus `Foundry-Features: Toolboxes=V1Preview` and the inbound request's `x-agent-foundry-call-id` (propagated via `get_request_context().platform_headers()`), forwarded on **both** the discovery call and the native `mcp_servers` HTTP config used by the Claude Agent SDK. The token is minted once per invocation and reused for both; the SDK's MCP HTTP transport has no mid-stream refresh hook, so if a single invocation genuinely outlives the token's lifetime, the subsequent MCP call fails with `401` and surfaces as an invocation error rather than being silently retried.
 
 ## Option 1: Azure Developer CLI (`azd`)
 
