@@ -12,6 +12,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 PIPELINE = ROOT / ".azure-pipelines/private-bicep-pr-ci.yml"
+LIVE_FILTER = ROOT / ".azure-pipelines/scripts/bicep/filter-live-deployment-files.sh"
+LIVE_SKIPLIST = ROOT / ".azure-pipelines/scripts/bicep/live-deployment-skiplist"
 SAMPLE_ROOT = "infrastructure/infrastructure-setup-bicep"
 
 
@@ -21,8 +23,13 @@ class BicepPipelineTests(unittest.TestCase):
 
     def test_cloud_stages_require_non_fork_discovery(self):
         stages = self.pipeline["stages"]
-        self.assertIn("eq(variables['System.PullRequest.IsFork'], 'False')", stages[0]["condition"])
-        self.assertIn("ne(variables['Build.Reason'], 'PullRequest')", stages[0]["condition"])
+        self.assertIn(
+            "eq(variables['System.PullRequest.IsFork'], 'False')",
+            stages[0]["condition"],
+        )
+        self.assertIn(
+            "ne(variables['Build.Reason'], 'PullRequest')", stages[0]["condition"]
+        )
         self.assertEqual("StaticValidation", stages[1]["dependsOn"])
         self.assertEqual("AzureConnectionValidation", stages[2]["dependsOn"])
         for stage in stages[1:]:
@@ -37,13 +44,53 @@ class BicepPipelineTests(unittest.TestCase):
                 "samples/python/hosted-agents/bring-your-own/invocations/diagnostic-agent/**",
                 included,
             )
-        diagnostic = ROOT / ".azure-pipelines/scripts/bicep/run-data-plane-diagnostics.sh"
+        diagnostic = (
+            ROOT / ".azure-pipelines/scripts/bicep/run-data-plane-diagnostics.sh"
+        )
         self.assertTrue(diagnostic.is_file())
-        sample = ROOT / "samples/python/hosted-agents/bring-your-own/invocations/diagnostic-agent"
+        sample = (
+            ROOT
+            / "samples/python/hosted-agents/bring-your-own/invocations/diagnostic-agent"
+        )
         self.assertTrue((sample / "azure.yaml").is_file())
-        self.assertTrue((sample / "src/diagnostic-agent-python-invocations/main.py").is_file())
-        self.assertNotIn("internal/tools/", PIPELINE.read_text(encoding="utf-8"))
+        self.assertTrue(
+            (sample / "src/diagnostic-agent-python-invocations/main.py").is_file()
+        )
+        pipeline_text = PIPELINE.read_text(encoding="utf-8")
+        self.assertNotIn("internal/tools/", pipeline_text)
         self.assertNotIn("internal/tools/", diagnostic.read_text(encoding="utf-8"))
+        self.assertTrue(LIVE_FILTER.is_file())
+        self.assertTrue(LIVE_SKIPLIST.is_file())
+        self.assertIn(LIVE_FILTER.relative_to(ROOT).as_posix(), pipeline_text)
+        self.assertIn(LIVE_SKIPLIST.relative_to(ROOT).as_posix(), pipeline_text)
+
+    def test_live_deployment_skiplist_entries_are_valid(self):
+        entries = [
+            line.strip()
+            for line in LIVE_SKIPLIST.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+        self.assertEqual(len(entries), len(set(entries)))
+        for entry in entries:
+            self.assertTrue(entry.startswith(f"{SAMPLE_ROOT}/"))
+            self.assertFalse(entry.endswith("/"))
+            self.assertTrue((ROOT / entry).is_dir())
+
+    def test_live_deployment_filter_keeps_non_skipped_templates(self):
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "Bash is required for live-deployment filtering")
+        skipped = f"{SAMPLE_ROOT}/48-managed-compute-deployment/main.bicep"
+        included = f"{SAMPLE_ROOT}/00-basic/main.bicep"
+        result = subprocess.run(
+            [bash, str(LIVE_FILTER), str(LIVE_SKIPLIST), SAMPLE_ROOT],
+            cwd=ROOT,
+            input=f"{skipped}\n{included}\n",
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(f"{included}\n", result.stdout)
+        self.assertIn("Skipping ephemeral live deployment", result.stderr)
 
     def test_push_and_helper_changes_select_templates_without_azure(self):
         bash = shutil.which("bash")
@@ -58,8 +105,18 @@ class BicepPipelineTests(unittest.TestCase):
 
             def git(*args):
                 return subprocess.run(
-                    ["git", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", *args],
-                    cwd=repo, check=True, capture_output=True, text=True,
+                    [
+                        "git",
+                        "-c",
+                        "commit.gpgsign=false",
+                        "-c",
+                        "core.hooksPath=/dev/null",
+                        *args,
+                    ],
+                    cwd=repo,
+                    check=True,
+                    capture_output=True,
+                    text=True,
                 )
 
             git("init", "-q")
@@ -73,7 +130,10 @@ class BicepPipelineTests(unittest.TestCase):
             git("commit", "-qm", "base")
             for changed, expected in (
                 (f"{SAMPLE_ROOT}/01-example/main.bicep", "01-example"),
-                (".azure-pipelines/scripts/bicep/run-data-plane-diagnostics.sh", "00-basic"),
+                (
+                    ".azure-pipelines/scripts/bicep/run-data-plane-diagnostics.sh",
+                    "00-basic",
+                ),
                 (PIPELINE.relative_to(ROOT).as_posix(), "00-basic"),
             ):
                 with self.subTest(changed=changed):
@@ -83,13 +143,19 @@ class BicepPipelineTests(unittest.TestCase):
                     git("add", changed)
                     git("commit", "-qm", "change")
                     result = subprocess.run(
-                        [bash, "-c", stub + script], cwd=repo,
+                        [bash, "-c", stub + script],
+                        cwd=repo,
                         env={**os.environ, "SYSTEM_PULLREQUEST_TARGETBRANCH": ""},
-                        capture_output=True, text=True,
+                        capture_output=True,
+                        text=True,
                     )
-                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                    self.assertEqual(
+                        0, result.returncode, result.stdout + result.stderr
+                    )
                     calls = (repo / "calls.txt").read_text(encoding="utf-8")
-                    self.assertIn(f"bicep build --file {SAMPLE_ROOT}/{expected}/main.bicep", calls)
+                    self.assertIn(
+                        f"bicep build --file {SAMPLE_ROOT}/{expected}/main.bicep", calls
+                    )
                     (repo / "calls.txt").unlink()
 
 

@@ -148,6 +148,17 @@ deploys temporary resource groups. Pipeline/diagnostic-only changes select
 `00-basic` as a smoke template. A primary-region deployment failure remains a
 failure even if fallback-region diagnostics succeed.
 
+The central
+[`scripts/bicep/live-deployment-skiplist`](scripts/bicep/live-deployment-skiplist)
+excludes only the ephemeral live-deployment stage for templates that cannot be
+safely deployed into a fresh generic resource group, such as child-only
+templates requiring a pre-existing parent or billable quota not configured in
+the validation subscription. Static Bicep compilation still runs and remains
+required. Use one exact repository-relative sample directory per line, without
+globs or trailing slashes, and document the reason in a preceding comment.
+Missing, malformed, duplicate, or nonexistent entries fail offline regression
+validation.
+
 Diagnostics use the existing public
 [diagnostic-agent sample](../samples/python/hosted-agents/bring-your-own/invocations/diagnostic-agent).
 When no Foundry project is deployed, or the runner cannot reach a private-only
