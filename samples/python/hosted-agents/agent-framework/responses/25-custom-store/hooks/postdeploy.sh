@@ -39,7 +39,8 @@ main() {
     --resource 'https://management.azure.com/' \
     --query accessToken \
     --output tsv)"
-  assignment_uri="https://management.azure.com${redis_database_id}/accessPolicyAssignments/hostedAgent?api-version=2025-07-01"
+  assignment_name="agent-${principal_id}"
+  assignment_uri="https://management.azure.com${redis_database_id}/accessPolicyAssignments/${assignment_name}?api-version=2025-07-01"
 
   curl --fail --silent --show-error \
     --request PUT \

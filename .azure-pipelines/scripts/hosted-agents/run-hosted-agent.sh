@@ -547,7 +547,7 @@ optional() { if unset_macro "${1:-}"; then printf ''; else printf '%s' "${1:-}";
 # passthrough is a prefix allow-list over the task environment
 # (variable-group values land there). Add a prefix here if a new
 # variable falls outside the set.
-PASSTHROUGH_PREFIXES="AZURE_ FOUNDRY_ TOOLBOX_ MODEL_ OPENAI_ BING_ SEARCH_ STORAGE_ SERVICEBUS_ CONTENT_SAFETY_ PLAYWRIGHT_ SKIP_ CLOUD_E2E_"
+PASSTHROUGH_PREFIXES="AZURE_ FOUNDRY_ TOOLBOX_ MODEL_ OPENAI_ BING_ SEARCH_ STORAGE_ SERVICEBUS_ REDIS_ CONTENT_SAFETY_ PLAYWRIGHT_ SKIP_ CLOUD_E2E_"
 # Injected by the agent / az CLI, not configuration, plus the
 # names already set above. AZURE_DEV_COLLECT_TELEMETRY is azd's
 # own opt-out knob, read from the process environment — it does
