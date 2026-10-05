@@ -1,0 +1,111 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.47.16.16243",
+      "templateHash": "16991284933953699012"
+    }
+  },
+  "parameters": {
+    "foundryAccountName": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 64,
+      "metadata": {
+        "description": "Name of the existing Microsoft Foundry account. The account must use kind AIServices."
+      }
+    },
+    "deploymentNameSeed": {
+      "type": "string",
+      "defaultValue": "[newGuid()]",
+      "metadata": {
+        "description": "Seed used to derive a stable six-character alphanumeric deployment-name suffix."
+      }
+    },
+    "modelId": {
+      "type": "string",
+      "defaultValue": "azureml://registries/azure-huggingface/models/google--gemma-4-31b-it/versions/5",
+      "metadata": {
+        "description": "Microsoft Foundry catalog model asset ID."
+      }
+    },
+    "deploymentTemplateId": {
+      "type": "string",
+      "defaultValue": "azureml://registries/azure-huggingface/deploymenttemplates/google--gemma-4-31b-it--16k-nvidia-a100/labels/latest",
+      "metadata": {
+        "description": "Microsoft Foundry catalog deployment-template asset ID."
+      }
+    },
+    "acceleratorType": {
+      "type": "string",
+      "defaultValue": "A100_80GB",
+      "allowedValues": [
+        "A100_80GB"
+      ],
+      "metadata": {
+        "description": "Managed-compute accelerator family for the selected example template."
+      }
+    },
+    "capacity": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "metadata": {
+        "description": "Number of model instances. The selected example template uses one accelerator per instance."
+      }
+    },
+    "versionUpgradeOption": {
+      "type": "string",
+      "defaultValue": "OnceNewDefaultVersionAvailable",
+      "allowedValues": [
+        "NoAutoUpgrade",
+        "OnceCurrentVersionExpired",
+        "OnceNewDefaultVersionAvailable"
+      ],
+      "metadata": {
+        "description": "Deployment-template version upgrade policy."
+      }
+    }
+  },
+  "variables": {
+    "deploymentSuffix": "[take(uniqueString(parameters('deploymentNameSeed')), 6)]",
+    "managedComputeDeploymentName": "[format('gemma-4-31b-it-a100-{0}', variables('deploymentSuffix'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.CognitiveServices/accounts/managedComputeDeployments",
+      "apiVersion": "2026-07-15-preview",
+      "name": "[format('{0}/{1}', parameters('foundryAccountName'), variables('managedComputeDeploymentName'))]",
+      "sku": {
+        "name": "GlobalManagedCompute",
+        "capacity": "[parameters('capacity')]"
+      },
+      "properties": {
+        "model": "[parameters('modelId')]",
+        "deploymentTemplate": "[parameters('deploymentTemplateId')]",
+        "acceleratorType": "[parameters('acceleratorType')]",
+        "versionUpgradeOption": "[parameters('versionUpgradeOption')]"
+      }
+    }
+  ],
+  "outputs": {
+    "deploymentResourceId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/managedComputeDeployments', parameters('foundryAccountName'), variables('managedComputeDeploymentName'))]"
+    },
+    "deploymentName": {
+      "type": "string",
+      "value": "[variables('managedComputeDeploymentName')]"
+    },
+    "acceleratorType": {
+      "type": "string",
+      "value": "[parameters('acceleratorType')]"
+    },
+    "capacity": {
+      "type": "int",
+      "value": "[parameters('capacity')]"
+    }
+  }
+}

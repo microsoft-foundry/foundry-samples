@@ -1,0 +1,5 @@
+name: Deploy OSS models to Microsoft Foundry managed compute
+description: Create, inspect, list, scale, and delete an example OSS model deployment with the Python management SDK.
+
+build: "pip install -r requirements.txt"
+validate: "python -m py_compile manage_managed_compute.py"
