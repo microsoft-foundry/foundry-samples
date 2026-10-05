@@ -41,9 +41,8 @@ app = InvocationAgentServerHost()
 TOOLBOX_SERVER_LABEL = "foundry-toolbox"
 _TOOLBOX_API_VERSION = "v1"
 _TOOLBOX_SCOPE = "https://ai.azure.com/.default"
-# Header documented by the Foundry Toolboxes (preview) protocol reference;
-# override via env var only if a future protocol version changes the value.
-_TOOLBOX_FEATURES = os.environ.get("FOUNDRY_AGENT_TOOLBOX_FEATURES", "Toolboxes=V1Preview")
+# Header documented by the Foundry Toolboxes (preview) protocol reference.
+_TOOLBOX_FEATURES = "Toolboxes=V1Preview"
 
 # `get_bearer_token_provider` itself is safe to share across requests/threads:
 # calling it is what produces a fresh token (it caches/refreshes internally),
