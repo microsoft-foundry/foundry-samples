@@ -245,7 +245,7 @@ arm_request() {
     --output "$BODY_FILE"
     --write-out "%{http_code}"
     --header "Accept: application/json"
-    --header "Authorization: Bearer $token"
+    --header @-
   )
   if [[ -n "$request_body" ]]; then
     curl_args+=(
@@ -254,7 +254,10 @@ arm_request() {
     )
   fi
 
-  if HTTP_STATUS="$(curl "${curl_args[@]}" "$url")"; then
+  if HTTP_STATUS="$(
+    printf 'Authorization: Bearer %s\n' "$token" |
+      curl "${curl_args[@]}" "$url"
+  )"; then
     :
   else
     local curl_status=$?

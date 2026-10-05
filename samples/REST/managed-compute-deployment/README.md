@@ -69,7 +69,7 @@ delete.
   the account's region. Managed-compute quota is separate from Azure VM quota.
 - **Cognitive Services Contributor**, **Foundry Owner**, or **Foundry Account
   Owner** on the Foundry account for control-plane operations.
-- Bash 3.2 or later, `curl` 7.29 or later with HTTPS support, and `jq` 1.6 or
+- Bash 3.2 or later, `curl` 7.55 or later with HTTPS support, and `jq` 1.6 or
   later.
 - Azure CLI 2.30 or later only when the script acquires a token for you.
 - Python 3.9 or PowerShell 7 for the quota and capacity preflight check.
@@ -87,7 +87,9 @@ az account get-access-token \
 or provide a caller-acquired management-plane token through the
 `AZURE_ACCESS_TOKEN` environment variable. The script acquires a fresh Azure CLI
 token for every request, including long-running-operation polls, and never
-prints or persists a token. Don't pass tokens as command-line arguments.
+prints or persists a token. It sends the authorization header to `curl` through
+standard input rather than a process argument. Don't pass tokens as command-line
+arguments.
 
 ## Check quota and capacity
 
