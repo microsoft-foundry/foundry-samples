@@ -93,9 +93,10 @@ def _recording_query(bucket: list):
 
 
 class _FakeHTTPResponse:
-    def __init__(self, status_code: int = 200, json_body: Optional[dict] = None):
+    def __init__(self, status_code: int = 200, json_body: Optional[dict] = None, headers: Optional[dict] = None):
         self.status_code = status_code
         self._json_body = json_body or {}
+        self.headers = headers or {}
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -106,10 +107,17 @@ class _FakeHTTPResponse:
 
 
 class _FakeAsyncClient:
-    """Drop-in for `httpx.AsyncClient`, used only as an async context manager."""
+    """Drop-in for `httpx.AsyncClient`, used only as an async context manager.
+
+    `responses`, when set, is consumed in order (one entry per `post()` call,
+    in the sequence: `initialize`, `notifications/initialized`, then one
+    `tools/list` page per entry) so tests can exercise the MCP handshake and
+    pagination. When empty/unset, every call gets `default_response`.
+    """
 
     calls: list = []
     default_response: Any = _FakeHTTPResponse(200, {"result": {"tools": []}})
+    responses: list = []
 
     def __init__(self, *args, **kwargs):
         self.kwargs = kwargs
@@ -122,6 +130,8 @@ class _FakeAsyncClient:
 
     async def post(self, url, headers=None, json=None):
         _FakeAsyncClient.calls.append({"url": url, "headers": headers, "json": json})
+        if _FakeAsyncClient.responses:
+            return _FakeAsyncClient.responses.pop(0)
         return _FakeAsyncClient.default_response
 
 
@@ -201,6 +211,7 @@ class ToolboxAbsentTests(unittest.TestCase):
                 main, "query", _recording_query(calls)
             ):
                 _FakeAsyncClient.calls = []
+                _FakeAsyncClient.responses = []
                 events = asyncio.run(_invoke(main))
 
             self.assertEqual(_FakeAsyncClient.calls, [])  # no discovery call made
@@ -240,6 +251,7 @@ class DiscoveryFailureTests(unittest.TestCase):
                 main, "_get_toolbox_token_provider", lambda: (lambda: "FAKE_TOKEN_VALUE")
             ):
                 _FakeAsyncClient.calls = []
+                _FakeAsyncClient.responses = []
                 _FakeAsyncClient.default_response = _FakeHTTPResponse(500)
                 events = asyncio.run(_invoke(main))
 
@@ -268,6 +280,7 @@ class UnknownAllowlistEntryTests(unittest.TestCase):
                 main, "_get_toolbox_token_provider", lambda: (lambda: "FAKE_TOKEN_VALUE")
             ):
                 _FakeAsyncClient.calls = []
+                _FakeAsyncClient.responses = []
                 _FakeAsyncClient.default_response = _FakeHTTPResponse(
                     200, {"result": {"tools": [{"name": "web_search"}]}}
                 )
@@ -296,6 +309,7 @@ class WriteToolNotExposedTests(unittest.TestCase):
                 main, "_get_toolbox_token_provider", lambda: (lambda: "FAKE_TOKEN_VALUE")
             ):
                 _FakeAsyncClient.calls = []
+                _FakeAsyncClient.responses = []
                 _FakeAsyncClient.default_response = _FakeHTTPResponse(
                     200,
                     {"result": {"tools": [{"name": "web_search"}, {"name": "delete_file"}]}},
@@ -326,12 +340,16 @@ class CallIdPropagationTests(unittest.TestCase):
                 main, "_get_toolbox_token_provider", lambda: (lambda: "FAKE_TOKEN_VALUE")
             ):
                 _FakeAsyncClient.calls = []
+                _FakeAsyncClient.responses = []
                 _FakeAsyncClient.default_response = _FakeHTTPResponse(
                     200, {"result": {"tools": [{"name": "web_search"}]}}
                 )
                 asyncio.run(_invoke(main))
 
-            self.assertEqual(len(_FakeAsyncClient.calls), 1)
+            # initialize, notifications/initialized, tools/list -- the call
+            # ID and feature header must be present from the very first
+            # (initialize) call, not only on tools/list.
+            self.assertEqual(len(_FakeAsyncClient.calls), 3)
             self.assertEqual(
                 _FakeAsyncClient.calls[0]["headers"]["x-agent-foundry-call-id"], "call-abc-123"
             )
@@ -342,6 +360,85 @@ class CallIdPropagationTests(unittest.TestCase):
                 _FakeAsyncClient.calls[0]["headers"]["Foundry-Features"], "Toolboxes=V1Preview"
             )
             self.assertEqual(mcp_headers["Foundry-Features"], "Toolboxes=V1Preview")
+
+
+class McpHandshakeTests(unittest.TestCase):
+    """MCP lifecycle: `initialize` + `notifications/initialized` must precede
+    `tools/list`, and any assigned `mcp-session-id` must be carried on
+    subsequent calls."""
+
+    def test_initialize_and_initialized_precede_tools_list(self):
+        with _toolbox_env(
+            TOOLBOX_ENDPOINT="https://toolbox.example.com/mcp",
+            TOOLBOX_ALLOWED_TOOLS="web_search",
+        ):
+            main = _import_main()
+            calls: list = []
+            with mock.patch.object(httpx, "AsyncClient", _FakeAsyncClient), mock.patch.object(
+                main, "query", _recording_query(calls)
+            ), mock.patch.object(
+                main, "_get_toolbox_token_provider", lambda: (lambda: "FAKE_TOKEN_VALUE")
+            ):
+                _FakeAsyncClient.calls = []
+                _FakeAsyncClient.responses = [
+                    _FakeHTTPResponse(200, {"result": {}}, headers={"mcp-session-id": "sess-1"}),
+                    _FakeHTTPResponse(200, {}),
+                    _FakeHTTPResponse(200, {"result": {"tools": [{"name": "web_search"}]}}),
+                ]
+                asyncio.run(_invoke(main))
+
+            methods = [c["json"]["method"] for c in _FakeAsyncClient.calls]
+            self.assertEqual(methods, ["initialize", "notifications/initialized", "tools/list"])
+            # The session id assigned during initialize must be forwarded on
+            # every subsequent call.
+            self.assertEqual(_FakeAsyncClient.calls[1]["headers"]["mcp-session-id"], "sess-1")
+            self.assertEqual(_FakeAsyncClient.calls[2]["headers"]["mcp-session-id"], "sess-1")
+            self.assertNotIn("mcp-session-id", _FakeAsyncClient.calls[0]["headers"])
+
+
+class ToolsListPaginationTests(unittest.TestCase):
+    """`tools/list` is cursor-paginated: every page must be requested before
+    validating the allowlist, or a tool on a later page is wrongly reported
+    unknown."""
+
+    def test_all_pages_are_collected_before_allowlist_validation(self):
+        with _toolbox_env(
+            TOOLBOX_ENDPOINT="https://toolbox.example.com/mcp",
+            TOOLBOX_ALLOWED_TOOLS="second_page_tool",
+        ):
+            main = _import_main()
+            calls: list = []
+            with mock.patch.object(httpx, "AsyncClient", _FakeAsyncClient), mock.patch.object(
+                main, "query", _recording_query(calls)
+            ), mock.patch.object(
+                main, "_get_toolbox_token_provider", lambda: (lambda: "FAKE_TOKEN_VALUE")
+            ):
+                _FakeAsyncClient.calls = []
+                _FakeAsyncClient.responses = [
+                    _FakeHTTPResponse(200, {"result": {}}),  # initialize
+                    _FakeHTTPResponse(200, {}),  # notifications/initialized
+                    _FakeHTTPResponse(
+                        200,
+                        {
+                            "result": {
+                                "tools": [{"name": "web_search"}],
+                                "nextCursor": "page-2",
+                            }
+                        },
+                    ),
+                    _FakeHTTPResponse(
+                        200, {"result": {"tools": [{"name": "second_page_tool"}]}}
+                    ),
+                ]
+                asyncio.run(_invoke(main))
+
+            tools_list_calls = [c for c in _FakeAsyncClient.calls if c["json"]["method"] == "tools/list"]
+            self.assertEqual(len(tools_list_calls), 2)
+            self.assertEqual(tools_list_calls[1]["json"]["params"], {"cursor": "page-2"})
+            # The tool from the second page was validated and allowed.
+            self.assertEqual(len(calls), 1)
+            allowed = calls[0]["options"].allowed_tools
+            self.assertEqual(allowed, [f"mcp__{main.TOOLBOX_SERVER_LABEL}__second_page_tool"])
 
 
 class AuthScopeAndQueryPreservationTests(unittest.TestCase):

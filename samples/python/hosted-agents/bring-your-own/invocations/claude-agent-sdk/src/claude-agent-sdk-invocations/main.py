@@ -134,24 +134,89 @@ def _toolbox_headers() -> dict[str, str]:
     return headers
 
 
+_MCP_PROTOCOL_VERSION = "2024-11-05"
+
+
+async def _mcp_initialize(client: httpx.AsyncClient, endpoint: str, headers: dict[str, str]) -> dict[str, str]:
+    """Perform the MCP lifecycle handshake and return headers carrying any
+    assigned `mcp-session-id`.
+
+    MCP operations must follow `initialize` + `notifications/initialized`; a
+    strict toolbox endpoint rejects `tools/list` sent beforehand. Mirrors the
+    repository's existing Toolbox client
+    (`bring-your-own/invocations/toolbox/.../main.py`), which performs this
+    same handshake before listing tools.
+    """
+    response = await client.post(
+        endpoint,
+        headers=headers,
+        json={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": _MCP_PROTOCOL_VERSION,
+                "capabilities": {},
+                "clientInfo": {"name": "claude-agent-sdk-invocations", "version": "1.0.0"},
+            },
+        },
+    )
+    response.raise_for_status()
+    body = response.json()
+    if "error" in body:
+        raise RuntimeError(f"Toolbox initialize failed: {body['error']}")
+
+    session_headers = dict(headers)
+    session_id = response.headers.get("mcp-session-id")
+    if session_id:
+        session_headers["mcp-session-id"] = session_id
+
+    # Fire-and-forget notification per the MCP lifecycle: no id, no response body.
+    notify = await client.post(
+        endpoint,
+        headers=session_headers,
+        json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+    )
+    notify.raise_for_status()
+    return session_headers
+
+
 async def _discover_toolbox_tools(endpoint: str, headers: dict[str, str]) -> list[str]:
-    """Request-local MCP `tools/list` call used only to validate the allowlist.
+    """Request-local MCP tool discovery call used only to validate the allowlist.
 
     Never cached across requests: discovery must reflect the toolbox's current
     state so a stale cached name list can't be used to approve a tool that no
-    longer exists (or hide one that now does).
+    longer exists (or hide one that now does). `tools/list` is
+    cursor-paginated, so every page is requested until the server stops
+    returning `nextCursor` -- otherwise an explicitly allowed tool on a later
+    page would be reported as unknown.
     """
-    payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
-
     async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(endpoint, headers=headers, json=payload)
-        response.raise_for_status()
-        body = response.json()
+        session_headers = await _mcp_initialize(client, endpoint, headers)
 
-    if "error" in body:
-        raise RuntimeError(f"Toolbox tools/list failed: {body['error']}")
+        tool_names: list[str] = []
+        cursor: Optional[str] = None
+        request_id = 1
+        while True:
+            request_id += 1
+            params: dict[str, str] = {"cursor": cursor} if cursor else {}
+            response = await client.post(
+                endpoint,
+                headers=session_headers,
+                json={"jsonrpc": "2.0", "id": request_id, "method": "tools/list", "params": params},
+            )
+            response.raise_for_status()
+            body = response.json()
+            if "error" in body:
+                raise RuntimeError(f"Toolbox tools/list failed: {body['error']}")
 
-    tool_names = [tool["name"] for tool in body.get("result", {}).get("tools", []) if "name" in tool]
+            result = body.get("result", {})
+            tool_names.extend(tool["name"] for tool in result.get("tools", []) if "name" in tool)
+
+            cursor = result.get("nextCursor")
+            if not cursor:
+                break
+
     if not tool_names:
         raise RuntimeError(f"Toolbox at {endpoint} returned no tools.")
     return tool_names
