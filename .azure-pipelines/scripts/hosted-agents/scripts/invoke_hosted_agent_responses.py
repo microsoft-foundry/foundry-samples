@@ -192,9 +192,12 @@ def invoke_turn(
             )
             break
         current_response_id = response.get("id")
-        if isinstance(current_response_id, str) and current_response_id:
-            response_id = current_response_id
-        elif persist_response:
+        response_id = (
+            current_response_id
+            if isinstance(current_response_id, str) and current_response_id
+            else ""
+        )
+        if persist_response and not response_id:
             response_error = "Stored Responses request completed without a response id"
             break
 

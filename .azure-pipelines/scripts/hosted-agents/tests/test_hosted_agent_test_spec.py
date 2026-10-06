@@ -632,6 +632,38 @@ class ResponsesInvocationTests(unittest.TestCase):
             "Starting work\n",
         )
 
+    def test_later_approval_response_cannot_reuse_stale_id(self):
+        requests = [
+            {
+                "type": "mcp_approval_request",
+                "id": f"approval-{index}",
+                "server_label": "agent_framework",
+                "name": name,
+            }
+            for index, name in enumerate(("first_tool", "second_tool"), start=1)
+        ]
+        _, result, observed_requests = self.invoke(
+            [
+                self.response("response-1", output=[requests[0]]),
+                self.response(None, output=[requests[1]]),
+            ],
+            {
+                "input": "do the work",
+                "approvals": {
+                    "mcp": [
+                        {"server_label": "agent_framework", "name": "first_tool"},
+                        {"server_label": "agent_framework", "name": "second_tool"},
+                    ]
+                },
+            },
+        )
+        self.assertEqual(result["turn_exit"], 1)
+        self.assertEqual(
+            result["approval_error"],
+            "cannot continue MCP approval: response has no id",
+        )
+        self.assertEqual(len(observed_requests), 2)
+
 
 class TraceCollectorTests(unittest.TestCase):
     def test_resolves_component_properties_and_normalizes_spans(self):
