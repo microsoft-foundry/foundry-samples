@@ -81,7 +81,7 @@ azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/m
 Follow the prompts to select your existing Foundry project. Then set the environment variables for your existing deployment and toolbox:
 
 ```bash
-azd env set AZURE_AI_RESOURCE_NAME "<your-foundry-resource-name>"
+azd env set AZURE_AI_ACCOUNT_NAME "<your-foundry-resource-name>"
 azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME "<your-claude-deployment-name>"
 azd env set TOOLBOX_ENDPOINT "<your-toolbox-mcp-endpoint>"
 ```
