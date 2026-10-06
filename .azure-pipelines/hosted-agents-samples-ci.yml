@@ -597,7 +597,7 @@ stages:
                 COMBO_ID: $(comboId)
                 ARTIFACT_STAGING: $(Build.ArtifactStagingDirectory)
             - publish: $(Build.ArtifactStagingDirectory)/cloud-e2e-results-$(comboId)
-              artifact: cloud-e2e-results-$(comboId)
+              artifact: cloud-e2e-results-$(comboId)-attempt-$(System.JobAttempt)
               displayName: Publish test artifacts
               condition: always()
             - task: AzureCLI@2
@@ -648,9 +648,12 @@ stages:
 
               samples_json='[]'
               while IFS=$'\t' read -r combo_id name toolbox_label path deploy_mode dep_resolution; do
-                # Read the explicit status from result.txt, not just artifact presence.
-                status_file="$PIPELINE_WORKSPACE/cloud-e2e-results-$combo_id/result.txt"
-                if [ -f "$status_file" ] && grep -q "^success" "$status_file"; then
+                # A retried job publishes a new immutable artifact in the same
+                # build. Read the highest attempt, not just artifact presence.
+                status_file=$(find "$PIPELINE_WORKSPACE" -maxdepth 2 -type f \
+                  -path "$PIPELINE_WORKSPACE/cloud-e2e-results-$combo_id-attempt-*/result.txt" \
+                  -print | sort -V | tail -n 1)
+                if [ -n "$status_file" ] && grep -q "^success" "$status_file"; then
                   status="success"; badge="Passed"
                 else
                   status="failure"; badge="Failed"

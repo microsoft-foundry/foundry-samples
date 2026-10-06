@@ -113,6 +113,10 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(self.steps["results"]["env"]["JOB_STATUS"], "$(Agent.JobStatus)")
         self.assertEqual(JOB["steps"][-2]["condition"], "always()")
         self.assertEqual(
+            JOB["steps"][-2]["artifact"],
+            "cloud-e2e-results-$(comboId)-attempt-$(System.JobAttempt)",
+        )
+        self.assertEqual(
             self.steps["provision"]["condition"],
             "and(succeeded(), ne(variables['SKIP_PROVISION'], 'true'))",
         )
@@ -143,12 +147,27 @@ class PipelineTests(unittest.TestCase):
                 ".azure-pipelines/scripts/hosted-agents/**",
                 PIPELINE[trigger]["paths"]["include"],
             )
+        summary = next(
+            stage for stage in PIPELINE["stages"]
+            if stage.get("stage") == "Summary"
+        )
+        summary_script = next(
+            step["bash"]
+            for step in summary["jobs"][0]["steps"]
+            if step.get("displayName") == "Generate sample status summary"
+        )
+        self.assertIn(
+            "cloud-e2e-results-$combo_id-attempt-*/result.txt",
+            summary_script,
+        )
+        self.assertIn("sort -V | tail -n 1", summary_script)
         discovery = (CI / "discover-samples.sh").read_text(encoding="utf-8")
         sample_filter = next(
             parameter for parameter in PIPELINE["parameters"]
             if parameter["name"] == "sampleFilter"
         )
         self.assertEqual(sample_filter["default"], "*")
+
         self.assertIn('[ "$SAMPLE_FILTER" = "*" ] && SAMPLE_FILTER=""', discovery)
         shared_pattern = re.search(r'echo "\$changed_files" \| grep -qE \'([^\']+)\'', discovery)[1]
         for path in (
@@ -177,6 +196,35 @@ class PipelineTests(unittest.TestCase):
                 ".github/scripts/hosted_agent_test_spec.py",
             ):
                 self.assertIn(path, paths)
+
+    def test_summary_prefers_latest_job_attempt(self):
+        workspace = self.work / "workspace"
+        for attempt in (2, 10):
+            result_dir = workspace / f"cloud-e2e-results-combo-attempt-{attempt}"
+            result_dir.mkdir(parents=True)
+            (result_dir / "result.txt").write_text("success\n", encoding="utf-8")
+
+        result = subprocess.run(
+            [
+                BASH,
+                "-c",
+                """
+                combo_id=combo
+                find "$PIPELINE_WORKSPACE" -maxdepth 2 -type f \
+                  -path "$PIPELINE_WORKSPACE/cloud-e2e-results-$combo_id-attempt-*/result.txt" \
+                  -print | sort -V | tail -n 1
+                """,
+            ],
+            env={**os.environ, "PIPELINE_WORKSPACE": str(workspace)},
+            encoding="utf-8",
+            capture_output=True,
+            check=True,
+        )
+        self.assertTrue(
+            result.stdout.strip().endswith(
+                "cloud-e2e-results-combo-attempt-10/result.txt"
+            )
+        )
 
     def test_discovery_uses_shared_exact_skiplist_matching(self):
         discovery = (CI / "discover-samples.sh").read_text(encoding="utf-8")
