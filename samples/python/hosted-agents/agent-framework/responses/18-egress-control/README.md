@@ -2,6 +2,16 @@
 
 An [Agent Framework](https://github.com/microsoft/agent-framework) agent for testing **managed egress proxy policies** on Azure AI Foundry hosted agents. The agent accepts text commands, makes outbound HTTP requests through the egress proxy, and returns the full response — enabling validation of Allow, Deny, Transform, and Rewrite rules defined via [RAI egress policies](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/egress).
 
+## Administrator policy authoring (control plane)
+
+To restrict **which RAI egress policies developers may save**, use the
+[control-plane Azure Policy walkthrough](control-plane/README.md). It includes
+a small exact-host policy definition, assignment parameters, and allowed/denied RAI
+requests. No published built-in, model deployment, or running agent is required.
+The walkthrough demonstrates an ARM policy denial, not APES or runtime traffic
+enforcement. Run it on a disposable account separately from the runtime scenarios
+below; the administrator restrictions intentionally reject some scenario policies.
+
 ## How it works
 
 The agent uses the Agent Framework with `FoundryChatClient` and exposes an `egress_test` tool. When you send a command, the LLM routes it to the tool, which makes outbound HTTP requests via `aiohttp` and returns the result (status code, headers, body). Every outbound request includes marker headers (`X-Test-Marker`, `User-Agent`) that are useful for verifying Transform operations.

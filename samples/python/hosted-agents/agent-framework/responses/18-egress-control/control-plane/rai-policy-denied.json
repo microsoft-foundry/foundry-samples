@@ -1,0 +1,23 @@
+{
+  "properties": {
+    "basePolicyName": "Microsoft.Default",
+    "contentFilters": [],
+    "egressPolicy": {
+      "mode": "Enforced",
+      "defaultAction": "Deny",
+      "rules": [
+        {
+          "name": "allow-httpbin-get",
+          "ruleType": "Fqdn",
+          "match": {
+            "host": "example.com",
+            "path": "/get"
+          },
+          "action": {
+            "actionType": "Allow"
+          }
+        }
+      ]
+    }
+  }
+}

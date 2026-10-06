@@ -1,0 +1,92 @@
+{
+  "properties": {
+    "displayName": "Sample: RAI egress allows only approved hosts",
+    "description": "Teaching example for control-plane governance. When egress is present, require Enforced mode, default Deny, and Fqdn rules using only Allow or Deny. Allow rules must name an approved exact host. Does not govern paths, support Transform/Rewrite, or require egress on every RAI policy.",
+    "mode": "All",
+    "parameters": {
+      "approvedHosts": {
+        "type": "Array",
+        "metadata": {
+          "displayName": "Approved exact hostnames",
+          "description": "Exact hostnames such as httpbin.org. No wildcards, schemes, ports or paths. An empty list permits no Allow rules."
+        }
+      },
+      "effect": {
+        "type": "String",
+        "allowedValues": ["Audit", "Deny", "Disabled"],
+        "defaultValue": "Audit",
+        "metadata": {
+          "displayName": "Effect",
+          "description": "Deny blocks noncompliant RAI writes; Audit reports without blocking; Disabled turns off these checks."
+        }
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.CognitiveServices/accounts/raiPolicies"
+          },
+          {
+            "field": "Microsoft.CognitiveServices/accounts/raiPolicies/egressPolicy",
+            "exists": "true"
+          },
+          {
+            "anyOf": [
+              {
+                "field": "Microsoft.CognitiveServices/accounts/raiPolicies/egressPolicy.mode",
+                "notEquals": "Enforced"
+              },
+              {
+                "field": "Microsoft.CognitiveServices/accounts/raiPolicies/egressPolicy.defaultAction",
+                "notEquals": "Deny"
+              },
+              {
+                "count": {
+                  "field": "Microsoft.CognitiveServices/accounts/raiPolicies/egressPolicy.rules[*]",
+                  "where": {
+                    "anyOf": [
+                      {
+                        "field": "Microsoft.CognitiveServices/accounts/raiPolicies/egressPolicy.rules[*].ruleType",
+                        "notEquals": "Fqdn"
+                      },
+                      {
+                        "field": "Microsoft.CognitiveServices/accounts/raiPolicies/egressPolicy.rules[*].action.actionType",
+                        "notIn": ["Allow", "Deny"]
+                      },
+                      {
+                        "allOf": [
+                          {
+                            "field": "Microsoft.CognitiveServices/accounts/raiPolicies/egressPolicy.rules[*].action.actionType",
+                            "equals": "Allow"
+                          },
+                          {
+                            "anyOf": [
+                              {
+                                "field": "Microsoft.CognitiveServices/accounts/raiPolicies/egressPolicy.rules[*].match.host",
+                                "notIn": "[parameters('approvedHosts')]"
+                              },
+                              {
+                                "field": "Microsoft.CognitiveServices/accounts/raiPolicies/egressPolicy.rules[*].match.host",
+                                "contains": "*"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "greater": 0
+              }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}
