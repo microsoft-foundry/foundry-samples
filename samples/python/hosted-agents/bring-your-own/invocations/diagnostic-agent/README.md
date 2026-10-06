@@ -417,6 +417,8 @@ Request:
   ]
 }
 ```
+cd src/diagnostic-agent-python-invocations
+
 
 Response (per-host summary, full JSON elided):
 

@@ -98,6 +98,8 @@ source .env
 > If using `azd ai agent run`, dependencies are installed automatically.
 
 ```bash
+cd src/hello-world-session-multiplexing-python-responses
+
 pipx install uv==0.11.7
 uv sync --frozen --python 3.12
 ```
@@ -117,7 +119,7 @@ azd ai agent run
 
 The agent starts on `http://localhost:8088/`. Local requests do not include hosted protocol 2.0.0 platform context, so the handler fails closed until `get_request_context().user_id` and `get_request_context().call_id` are present.
 
-To run without `azd`, set the required environment variables manually, then start the agent with `uv run --no-sync python main.py`.
+To run without `azd`, set the required environment variables manually, then, from `src/hello-world-session-multiplexing-python-responses`, start the agent with `uv run --no-sync python main.py`.
 
 ### Deploy to Foundry
 
@@ -154,10 +156,12 @@ azd ai agent monitor
 - With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
   ```bash
+  cd src/hello-world-session-multiplexing-python-responses
+
   pipx install uv==0.11.7
   uv sync --frozen --python 3.12
   ```
-- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select `src/hello-world-session-multiplexing-python-responses/.venv`.
 
 ### Run and debug the agent
 
@@ -166,7 +170,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
+2. From `src/hello-world-session-multiplexing-python-responses`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry
@@ -186,9 +190,11 @@ This sample has two caller scripts.
 Use [scripts/invoke_previous_response_isolation.py](scripts/invoke_previous_response_isolation.py) when you only want to verify the core platform behavior. The script generates a fresh `agent_session_id` when `--session-id` is not provided and uses `alice` and `bob` as the acted-for users. In the Responses protocol, the first `create response` call with that session ID creates/opens the session.
 
 ```bash
+cd src/hello-world-session-multiplexing-python-responses
+
 export FOUNDRY_PROJECT_ENDPOINT="https://<account>.services.ai.azure.com/api/projects/<project>"
 export AGENT_NAME="<agent-name>"
-python scripts/invoke_previous_response_isolation.py
+uv run --no-sync python scripts/invoke_previous_response_isolation.py
 ```
 
 Flow:
@@ -205,13 +211,15 @@ If you want to force a specific session, pass `--session-id <session-id>`.
 Use [scripts/invoke_session_pool.py](scripts/invoke_session_pool.py) to demonstrate caller-owned load balancing with `alice` and `bob` as the acted-for users. The default `sticky-fill` strategy is lazy: if a user has no sticky mapping yet, it reuses the first session with available capacity; if none exists, it generates the next `agent_session_id`. The script also includes `round-robin` for demonstrating alternate assignment. It calls the A-A-B helper only when `alice` and `bob` are assigned to the same session.
 
 ```bash
+cd src/hello-world-session-multiplexing-python-responses
+
 export FOUNDRY_PROJECT_ENDPOINT="https://<account>.services.ai.azure.com/api/projects/<project>"
 export AGENT_NAME="<agent-name>"
-python scripts/invoke_session_pool.py --max-users-per-session 100
+uv run --no-sync python scripts/invoke_session_pool.py --max-users-per-session 100
 
 # Optional: show round-robin assignment. With --pool-size 2, alice and
 # bob land in different sessions and the same-session check is skipped.
-python scripts/invoke_session_pool.py --strategy round-robin --pool-size 2
+uv run --no-sync python scripts/invoke_session_pool.py --strategy round-robin --pool-size 2
 ```
 
 The assigned session is passed explicitly from the pool script into the A-A-B helper:

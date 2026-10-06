@@ -48,6 +48,8 @@ toolboxes in the target Foundry project.
 
 **Linux/macOS:**
 ```bash
+cd src/toolbox-langgraph-user-identity
+
 # 1. Copy and fill in the environment file
 cp .env.example .env  # skip if .env already exists
 # Edit .env — set FOUNDRY_PROJECT_ENDPOINT, MODEL_DEPLOYMENT_NAME,
@@ -68,6 +70,8 @@ curl -X POST http://localhost:8088/responses \
 
 **Windows (PowerShell):**
 ```powershell
+cd src/toolbox-langgraph-user-identity
+
 # 1. Copy and fill in the environment file
 Copy-Item .env.example .env  # skip if .env already exists
 # Edit .env — set FOUNDRY_PROJECT_ENDPOINT, MODEL_DEPLOYMENT_NAME,
@@ -99,10 +103,12 @@ Invoke-RestMethod -Method POST http://localhost:8088/responses `
 - With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
   ```bash
+  cd src/toolbox-langgraph-user-identity
+
   pipx install uv==0.11.7
   uv sync --frozen --python 3.12
   ```
-- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select `src/toolbox-langgraph-user-identity/.venv`.
 
 **Run and debug the agent**
 
@@ -111,7 +117,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 **Or run manually, then open the Inspector**
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
+2. From `src/toolbox-langgraph-user-identity`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 </details>

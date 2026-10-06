@@ -78,6 +78,8 @@ The agent starts on `http://localhost:8088/`.
 ### Manual setup
 
 ```bash
+cd src/env-vars-agent-responses-python
+
 pipx install uv==0.11.7
 uv sync --frozen --python 3.12
 cp .env.example .env  # then edit values — fill in any test values you like (skip if .env already exists)
@@ -144,10 +146,12 @@ curl -N -X POST http://localhost:8088/responses \
 - With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
   ```bash
+  cd src/env-vars-agent-responses-python
+
   pipx install uv==0.11.7
   uv sync --frozen --python 3.12
   ```
-- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select `src/env-vars-agent-responses-python/.venv`.
 
 **Run and debug the agent**
 
@@ -156,7 +160,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 **Or run manually, then open the Inspector**
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
+2. From `src/env-vars-agent-responses-python`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ```
