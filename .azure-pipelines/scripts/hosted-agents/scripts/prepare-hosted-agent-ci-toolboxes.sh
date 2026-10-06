@@ -74,16 +74,23 @@ if [ -n "$shared_endpoint" ]; then
         map(select(env(REMOVED_SERVICES)[.] != true)) |
       (.services[] | select(.host == "azure.ai.agent") | .env.TOOLBOX_NAME) = strenv(SHARED_NAME) |
       (.services[] | select(.host == "azure.ai.agent") | .env.TOOLBOX_ENDPOINT) = strenv(SHARED_ENDPOINT) |
+      (.services[] | select(.host == "azure.ai.agent") | select(has("env")) |
+        .env | select(has("ENABLE_WORK_IQ")) | .ENABLE_WORK_IQ) = "true" |
       (.services[] | select(.host == "azure.ai.agent") | select(has("environmentVariables")) |
         .environmentVariables[] | select(.name == "TOOLBOX_NAME") | .value) = strenv(SHARED_NAME) |
       (.services[] | select(.host == "azure.ai.agent") | select(has("environmentVariables")) |
         .environmentVariables[] | select(.name == "TOOLBOX_ENDPOINT") | .value) = strenv(SHARED_ENDPOINT) |
+      (.services[] | select(.host == "azure.ai.agent") | select(has("environmentVariables")) |
+        .environmentVariables[] | select(.name == "ENABLE_WORK_IQ") | .value) = "true" |
       (.services[] | select(.host == "azure.ai.agent") | select(has("config")) |
         .config | select(has("env")) | .env | select(has("TOOLBOX_NAME")) |
         .TOOLBOX_NAME) = strenv(SHARED_NAME) |
       (.services[] | select(.host == "azure.ai.agent") | select(has("config")) |
         .config | select(has("env")) | .env | select(has("TOOLBOX_ENDPOINT")) |
-        .TOOLBOX_ENDPOINT) = strenv(SHARED_ENDPOINT)
+        .TOOLBOX_ENDPOINT) = strenv(SHARED_ENDPOINT) |
+      (.services[] | select(.host == "azure.ai.agent") | select(has("config")) |
+        .config | select(has("env")) | .env | select(has("ENABLE_WORK_IQ")) |
+        .ENABLE_WORK_IQ) = "true"
     ' "$manifest"
   echo "Shared toolbox: $shared_name; removed local services: $(jq -r 'keys | join(", ")' <<< "$removed")"
 fi
