@@ -1,5 +1,5 @@
 FROM ghcr.io/astral-sh/uv:0.11.7 AS uv
-FROM mcr.microsoft.com/azurelinux/base/python:3.12
+FROM python:3.12-slim
 
 COPY --from=uv /uv /uvx /bin/
 
