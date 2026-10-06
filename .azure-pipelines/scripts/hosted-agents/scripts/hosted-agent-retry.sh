@@ -1,6 +1,51 @@
 #!/usr/bin/env bash
 
-# Shared helpers for hosted-agent quota and model-throttle retries.
+# Shared helpers for hosted-agent tool, quota and model-throttle retries.
+
+hosted_agent_tool_retry_delay() {
+  local retry_number="$1"
+  if [ -n "${HOSTED_AGENT_TOOL_RETRY_DELAY_SECONDS:-}" ]; then
+    printf '%s\n' "$HOSTED_AGENT_TOOL_RETRY_DELAY_SECONDS"
+    return
+  fi
+
+  local delay=$((10 * (1 << (retry_number - 1))))
+  [ "$delay" -le 40 ] || delay=40
+  printf '%s\n' "$((delay + RANDOM % 6))"
+}
+
+hosted_agent_retry_command() {
+  [ "$#" -ge 2 ] || return 2
+  local label="$1"
+  shift
+
+  local max_attempts="${HOSTED_AGENT_TOOL_MAX_ATTEMPTS:-4}"
+  if ! [[ "$max_attempts" =~ ^[1-9][0-9]*$ ]] || \
+      { [ -n "${HOSTED_AGENT_TOOL_RETRY_DELAY_SECONDS:-}" ] && \
+        ! [[ "$HOSTED_AGENT_TOOL_RETRY_DELAY_SECONDS" =~ ^[0-9]+$ ]]; }; then
+    echo "##vso[task.logissue type=error]Invalid hosted-agent tool retry configuration."
+    return 2
+  fi
+
+  local attempt=1 status delay
+  while true; do
+    if "$@"; then
+      return 0
+    else
+      status=$?
+    fi
+
+    if [ "$attempt" -ge "$max_attempts" ]; then
+      echo "##vso[task.logissue type=error]$label failed after $attempt attempts (exit $status)."
+      return "$status"
+    fi
+
+    delay=$(hosted_agent_tool_retry_delay "$attempt")
+    echo "##vso[task.logissue type=warning]$label failed (exit $status); retry $((attempt + 1))/$max_attempts in ${delay}s."
+    sleep "$delay"
+    attempt=$((attempt + 1))
+  done
+}
 
 hosted_agent_is_session_quota_error() {
   [ "$#" -gt 0 ] || return 1

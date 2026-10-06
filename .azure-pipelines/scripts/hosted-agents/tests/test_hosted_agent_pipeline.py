@@ -139,6 +139,11 @@ exit 60
             self.steps["ado-tls"]["env"]["ADO_COLLECTION_URL"],
             "$(System.CollectionUri)",
         )
+        matrix_download = next(
+            step for step in JOB["steps"]
+            if step.get("displayName") == "Download sample matrix"
+        )
+        self.assertEqual(matrix_download["retryCountOnTaskFailure"], 3)
         for name in ("status", "evidence", "delete-session", "delete-toolboxes", "results"):
             self.assertEqual(self.steps[name]["condition"], "always()")
         self.assertTrue(self.steps["delete-session"]["continueOnError"])
@@ -191,6 +196,11 @@ exit 60
             for step in summary["jobs"][0]["steps"]
             if step.get("displayName") == "Generate sample status summary"
         )
+        summary_download = next(
+            step for step in summary["jobs"][0]["steps"]
+            if step.get("displayName") == "Download result artifacts"
+        )
+        self.assertEqual(summary_download["retryCountOnTaskFailure"], 3)
         self.assertIn(
             "cloud-e2e-results-$combo_id-attempt-*/result.txt",
             summary_script,

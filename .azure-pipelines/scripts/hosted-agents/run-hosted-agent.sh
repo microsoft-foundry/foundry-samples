@@ -143,7 +143,15 @@ STEP_HYDRATE_COMBO_RECORD
     echo "##[section]Install azd, Foundry extension and yq"
     bash /dev/fd/3 3<<'STEP_INSTALL_AZD_FOUNDRY_EXTENSION_AND_YQ'
 set -euo pipefail
-curl -fsSL https://aka.ms/install-azd.sh | bash
+source ".azure-pipelines/scripts/hosted-agents/scripts/hosted-agent-retry.sh"
+
+azd_installer=$(mktemp)
+trap 'rm -f "$azd_installer"' EXIT
+hosted_agent_retry_command "Download azd installer" \
+  curl -fsSL -o "$azd_installer" https://aka.ms/install-azd.sh
+hosted_agent_retry_command "Install azd" bash "$azd_installer"
+rm -f "$azd_installer"
+trap - EXIT
 azd version
 
 # Install the latest unified Foundry CLI extension. The verify
@@ -151,13 +159,15 @@ azd version
 # --deploy-mode/--runtime/--entry-point flags the code arm needs.
 # The unified azure.yaml declares `requiredVersions.extensions:
 # microsoft.foundry`, matching the sample READMEs.
-azd ext install microsoft.foundry
+hosted_agent_retry_command "Install microsoft.foundry extension" \
+  azd ext install microsoft.foundry
 
 # azd authenticates through the az CLI session that AzureCLI@2
 # establishes for each task. This config write needs no auth.
 azd config set auth.useAzCliAuth true
 
-sudo curl -fsSL -o /usr/local/bin/yq \
+hosted_agent_retry_command "Download yq" \
+  sudo curl -fsSL -o /usr/local/bin/yq \
   https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
 sudo chmod +x /usr/local/bin/yq
 yq --version

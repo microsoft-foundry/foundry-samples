@@ -148,7 +148,9 @@ stages:
 
           - bash: |
               set -euo pipefail
-              sudo curl -fsSL -o /usr/local/bin/yq \
+              source .azure-pipelines/scripts/hosted-agents/scripts/hosted-agent-retry.sh
+              hosted_agent_retry_command "Download yq" \
+                sudo curl -fsSL -o /usr/local/bin/yq \
                 https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
               sudo chmod +x /usr/local/bin/yq
               yq --version
@@ -289,8 +291,16 @@ stages:
 
           - bash: |
               set -euo pipefail
-              curl -fsSL https://aka.ms/install-azd.sh | bash
-              azd ext install microsoft.foundry
+              source .azure-pipelines/scripts/hosted-agents/scripts/hosted-agent-retry.sh
+              azd_installer=$(mktemp)
+              trap 'rm -f "$azd_installer"' EXIT
+              hosted_agent_retry_command "Download azd installer" \
+                curl -fsSL -o "$azd_installer" https://aka.ms/install-azd.sh
+              hosted_agent_retry_command "Install azd" bash "$azd_installer"
+              rm -f "$azd_installer"
+              trap - EXIT
+              hosted_agent_retry_command "Install microsoft.foundry extension" \
+                azd ext install microsoft.foundry
               azd config set auth.useAzCliAuth true
             displayName: Install azd and Foundry extension
 
@@ -397,6 +407,7 @@ stages:
             - download: current
               artifact: HostedAgentSamplesMatrix
               displayName: Download sample matrix
+              retryCountOnTaskFailure: 3
             - bash: bash .azure-pipelines/scripts/hosted-agents/run-hosted-agent.sh hydrate
               displayName: Hydrate combo record
               env:
@@ -634,6 +645,7 @@ stages:
 
           - download: current
             displayName: Download result artifacts
+            retryCountOnTaskFailure: 3
             patterns: |
               HostedAgentSamplesMatrix/entries.json
               cloud-e2e-results-*/result.txt
