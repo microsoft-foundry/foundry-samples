@@ -77,7 +77,8 @@ function Set-RedisAgentAccess {
         throw 'Unable to acquire an Azure management token.'
     }
 
-    $AssignmentUri = 'https://management.azure.com{0}/accessPolicyAssignments/hostedAgent?api-version=2025-07-01' -f $RedisDatabaseId
+    $AssignmentName = "agent-$PrincipalId"
+    $AssignmentUri = 'https://management.azure.com{0}/accessPolicyAssignments/{1}?api-version=2025-07-01' -f $RedisDatabaseId, $AssignmentName
     $Body = @{
         properties = @{
             accessPolicyName = 'default'
@@ -88,6 +89,8 @@ function Set-RedisAgentAccess {
     Invoke-RestMethod `
         -Method Put `
         -Uri $AssignmentUri `
+        -MaximumRetryCount 5 `
+        -RetryIntervalSec 5 `
         -Headers @{ Authorization = "Bearer $ManagementToken" } `
         -ContentType 'application/json' `
         -Body $Body | Out-Null
