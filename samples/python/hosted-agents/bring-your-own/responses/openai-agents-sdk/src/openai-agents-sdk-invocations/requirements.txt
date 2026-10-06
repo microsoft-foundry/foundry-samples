@@ -1,6 +1,0 @@
-azure-ai-agentserver-responses==2.1.0
-azure-identity==1.25.3
-openai-agents>=0.1.0
-
-# debugpy enables local debugging of this agent with the Foundry Toolkit VS Code extension.
-debugpy

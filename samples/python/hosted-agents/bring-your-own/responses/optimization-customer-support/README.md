@@ -117,17 +117,13 @@ azd ai agent invoke "I ordered a laptop 3 days ago and haven't received a shippi
 
 ### Set up the Python virtual environment
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install dependencies in the virtual environment:
+- With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+  pipx install uv==0.11.7
+  uv sync --frozen --python 3.12
   ```
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
 
 ### Run and debug the agent
 
@@ -136,7 +132,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
+2. Start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry
@@ -186,7 +182,7 @@ Compare the response quality before and after optimization — you should see st
 | `azure.yaml` | Hosted agent deployment config |
 | `azure.yaml` | Template manifest for `azd ai agent init` |
 | `Dockerfile` | Container image build |
-| `requirements.txt` | Python dependencies (includes optimization wheel) |
+| `pyproject.toml` / `uv.lock` | Python dependencies and reproducible lock (includes optimization wheel) |
 | `eval.yaml` | Agent optimizer configuration (dataset, evaluators, models) |
 | `eval.jsonl` | Full evaluation dataset (10 tasks, ~40 criteria) |
 | `eval-quick.jsonl` | Quick evaluation dataset (3 tasks — faster iteration) |

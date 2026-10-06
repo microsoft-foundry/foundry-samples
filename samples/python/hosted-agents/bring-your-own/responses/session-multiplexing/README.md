@@ -65,7 +65,7 @@ Before running this sample, ensure you have:
 1. **Azure CLI**
    - Installed and authenticated: `az login`
 
-1. **Python 3.10 or higher**
+1. **Python 3.12 or higher**
    - Verify your version: `python --version`
 
 1. **A deployed hosted agent for the multiplexing test**
@@ -98,9 +98,8 @@ source .env
 > If using `azd ai agent run`, dependencies are installed automatically.
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+pipx install uv==0.11.7
+uv sync --frozen --python 3.12
 ```
 
 ### Run the agent locally
@@ -118,7 +117,7 @@ azd ai agent run
 
 The agent starts on `http://localhost:8088/`. Local requests do not include hosted protocol 2.0.0 platform context, so the handler fails closed until `get_request_context().user_id` and `get_request_context().call_id` are present.
 
-To run without `azd`, set the required environment variables manually, then start the agent with `python main.py`.
+To run without `azd`, set the required environment variables manually, then start the agent with `uv run --no-sync python main.py`.
 
 ### Deploy to Foundry
 
@@ -152,17 +151,13 @@ azd ai agent monitor
 
 ### Set up the Python virtual environment
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install dependencies in the virtual environment:
+- With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+  pipx install uv==0.11.7
+  uv sync --frozen --python 3.12
   ```
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
 
 ### Run and debug the agent
 
@@ -171,7 +166,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
+2. Start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry
@@ -246,7 +241,7 @@ The pool script owns session assignment. The A-A-B helper only proves isolation 
 | `main.py` | Responses handler using platform-managed history from `context.get_history()` |
 | `scripts/invoke_previous_response_isolation.py` | Standalone A-A-B previous_response_id isolation test |
 | `scripts/invoke_session_pool.py` | Lazy sticky session-pool demo that calls the A-A-B helper with the assigned session |
-| `requirements.txt` | Python dependencies |
+| `pyproject.toml` / `uv.lock` | Python dependencies and reproducible lock |
 | `Dockerfile` | Container image definition |
 | `azure.yaml` | Agent hosting configuration |
 | `azure.yaml` | Agent metadata and template |

@@ -438,10 +438,9 @@ This sample follows the same `azd ai agent` workflow as the other invocations sa
 For the local-only path (no `azd`):
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
+pipx install uv==0.11.7
+uv sync --frozen --python 3.12
+uv run --no-sync python main.py
 ```
 
 The agent listens on `http://localhost:8088/`. Invoke it:
