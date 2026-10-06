@@ -389,6 +389,11 @@ stages:
           steps:
             - checkout: self
               fetchDepth: 1
+            - bash: bash .azure-pipelines/scripts/hosted-agents/run-hosted-agent.sh ado-tls
+              displayName: Wait for Azure DevOps TLS
+              timeoutInMinutes: 5
+              env:
+                ADO_COLLECTION_URL: $(System.CollectionUri)
             - download: current
               artifact: HostedAgentSamplesMatrix
               displayName: Download sample matrix

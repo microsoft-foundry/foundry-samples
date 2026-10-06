@@ -84,9 +84,39 @@ class PipelineTests(unittest.TestCase):
             timeout=20,
         )
 
+    def install_tls_mocks(self):
+        bin_dir = self.work / "bin"
+        bin_dir.mkdir()
+        (bin_dir / "curl").write_text(
+            """#!/usr/bin/env bash
+set -euo pipefail
+count=0
+[ ! -f "$MOCK_CURL_COUNT" ] || count=$(cat "$MOCK_CURL_COUNT")
+count=$((count + 1))
+echo "$count" > "$MOCK_CURL_COUNT"
+if [ "$count" -ge "$MOCK_CURL_SUCCEED_ON" ]; then
+  printf '%s' "${MOCK_CURL_SUCCESS_CODE:-203}"
+  exit 0
+fi
+printf '000'
+echo 'curl: (60) simulated certificate mismatch' >&2
+exit 60
+""",
+            encoding="utf-8",
+            newline="\n",
+        )
+        (bin_dir / "sleep").write_text(
+            "#!/usr/bin/env bash\necho \"$1\" >> \"$MOCK_SLEEP_LOG\"\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        for command in ("curl", "sleep"):
+            (bin_dir / command).chmod(0o755)
+        return bin_dir
+
     def test_step_contract(self):
         expected = [
-            None, None, "hydrate", "prepare", "scaffold", "provision",
+            None, "ado-tls", None, "hydrate", "prepare", "scaffold", "provision",
             "prepare-deploy", "deploy", "verify-deploy", "diagnose-deploy",
             "session", "invoke", "guardrail", "voicelive", "status", "evidence",
             "delete-session", "delete-toolboxes", "results", None, "teardown",
@@ -101,9 +131,14 @@ class PipelineTests(unittest.TestCase):
                     self.assertTrue(step["inputs"]["scriptPath"].endswith("/run-hosted-agent.sh"))
                 else:
                     self.assertIn("run-hosted-agent.sh", step["bash"])
-        self.assertEqual(len(BODIES.findall(RUNNER)), 28)
+        self.assertEqual(len(BODIES.findall(RUNNER)), 29)
         self.assertEqual(JOB["timeoutInMinutes"], 120)
         self.assertGreaterEqual(JOB["cancelTimeoutInMinutes"], 35)
+        self.assertEqual(self.steps["ado-tls"]["timeoutInMinutes"], 5)
+        self.assertEqual(
+            self.steps["ado-tls"]["env"]["ADO_COLLECTION_URL"],
+            "$(System.CollectionUri)",
+        )
         for name in ("status", "evidence", "delete-session", "delete-toolboxes", "results"):
             self.assertEqual(self.steps[name]["condition"], "always()")
         self.assertTrue(self.steps["delete-session"]["continueOnError"])
@@ -206,6 +241,63 @@ class PipelineTests(unittest.TestCase):
                 ".github/scripts/hosted_agent_test_spec.py",
             ):
                 self.assertIn(path, paths)
+
+    def test_ado_tls_gate_retries_with_backoff(self):
+        bin_dir = self.install_tls_mocks()
+        count_file = self.work / "curl-count"
+        sleep_file = self.work / "sleep-delays"
+
+        result = self.run_phase(
+            "ado-tls",
+            keep=("STEP_WAIT_FOR_AZURE_DEVOPS_TLS",),
+            env={
+                "ADO_COLLECTION_URL": "https://msdata.visualstudio.com/",
+                "ADO_TLS_MAX_ATTEMPTS": "3",
+                "ADO_TLS_INITIAL_DELAY_SECONDS": "1",
+                "ADO_TLS_MAX_DELAY_SECONDS": "10",
+                "ADO_TLS_RETRY_JITTER_SECONDS": "0",
+                "MOCK_CURL_COUNT": str(count_file),
+                "MOCK_CURL_SUCCEED_ON": "3",
+                "MOCK_SLEEP_LOG": str(sleep_file),
+                "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            },
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(count_file.read_text(encoding="utf-8").strip(), "3")
+        self.assertEqual(
+            sleep_file.read_text(encoding="utf-8").splitlines(),
+            ["1", "2"],
+        )
+        self.assertIn(
+            "Azure DevOps TLS is healthy (HTTP 203) on attempt 3/3.",
+            result.stdout,
+        )
+
+        count_file.unlink()
+        sleep_file.unlink()
+        exhausted = self.run_phase(
+            "ado-tls",
+            keep=("STEP_WAIT_FOR_AZURE_DEVOPS_TLS",),
+            env={
+                "ADO_COLLECTION_URL": "https://msdata.visualstudio.com/",
+                "ADO_TLS_MAX_ATTEMPTS": "2",
+                "ADO_TLS_INITIAL_DELAY_SECONDS": "0",
+                "ADO_TLS_MAX_DELAY_SECONDS": "0",
+                "ADO_TLS_RETRY_JITTER_SECONDS": "0",
+                "MOCK_CURL_COUNT": str(count_file),
+                "MOCK_CURL_SUCCEED_ON": "99",
+                "MOCK_SLEEP_LOG": str(sleep_file),
+                "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            },
+        )
+
+        self.assertEqual(exhausted.returncode, 1)
+        self.assertEqual(count_file.read_text(encoding="utf-8").strip(), "2")
+        self.assertIn(
+            "Azure DevOps TLS health check failed after 2 attempts",
+            exhausted.stdout,
+        )
 
     def test_summary_prefers_latest_job_attempt(self):
         workspace = self.work / "workspace"
@@ -316,7 +408,7 @@ class PipelineTests(unittest.TestCase):
         wrappers = BODIES.sub("", RUNNER)
         self.assertNotIn("##[group]", wrappers)
         self.assertNotIn("##[endgroup]", wrappers)
-        self.assertEqual(wrappers.count("##[section]"), 28)
+        self.assertEqual(wrappers.count("##[section]"), 29)
 
     def test_prepare_preserves_stdin_and_isolates_shell_state(self):
         result = self.run_phase("prepare", {

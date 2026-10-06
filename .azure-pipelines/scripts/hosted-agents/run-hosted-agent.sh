@@ -13,6 +13,82 @@ if [ "$#" -ne 1 ]; then
 fi
 
 case "$1" in
+  ado-tls)
+    echo "##[section]Wait for Azure DevOps TLS"
+    bash /dev/fd/3 3<<'STEP_WAIT_FOR_AZURE_DEVOPS_TLS'
+set -euo pipefail
+
+collection_url="${ADO_COLLECTION_URL:-}"
+if [ -z "$collection_url" ] || [[ "$collection_url" == \$\(*\) ]]; then
+  echo "##vso[task.logissue type=error]ADO_COLLECTION_URL is not configured."
+  exit 2
+fi
+
+max_attempts="${ADO_TLS_MAX_ATTEMPTS:-5}"
+initial_delay="${ADO_TLS_INITIAL_DELAY_SECONDS:-10}"
+max_delay="${ADO_TLS_MAX_DELAY_SECONDS:-60}"
+jitter="${ADO_TLS_RETRY_JITTER_SECONDS:-5}"
+for setting in max_attempts initial_delay max_delay jitter; do
+  value="${!setting}"
+  if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+    echo "##vso[task.logissue type=error]$setting must be a non-negative integer, got '$value'."
+    exit 2
+  fi
+done
+if [ "$max_attempts" -lt 1 ]; then
+  echo "##vso[task.logissue type=error]max_attempts must be at least 1."
+  exit 2
+fi
+
+health_url="${collection_url%/}/_apis/connectionData?connectOptions=1&lastChangeId=-1&lastChangeId64=-1"
+attempt=1
+delay="$initial_delay"
+while true; do
+  error_file=$(mktemp)
+  set +e
+  http_code=$(curl \
+    --silent \
+    --show-error \
+    --output /dev/null \
+    --write-out '%{http_code}' \
+    --connect-timeout 10 \
+    --max-time 20 \
+    "$health_url" 2>"$error_file")
+  curl_status=$?
+  set -e
+
+  if [ "$curl_status" -eq 0 ] && [[ "$http_code" =~ ^[0-9]{3}$ ]] \
+      && [ "$http_code" -ge 200 ] && [ "$http_code" -lt 500 ]; then
+    rm -f "$error_file"
+    echo "Azure DevOps TLS is healthy (HTTP $http_code) on attempt $attempt/$max_attempts."
+    exit 0
+  fi
+
+  error_summary=$(tr '\n' ' ' < "$error_file" \
+    | sed 's/[[:space:]]\+/ /g; s/^ //; s/ $//')
+  rm -f "$error_file"
+  [ -n "$error_summary" ] || error_summary="HTTP ${http_code:-000}"
+
+  if [ "$attempt" -ge "$max_attempts" ]; then
+    echo "##vso[task.logissue type=error]Azure DevOps TLS health check failed after $attempt attempts: $error_summary"
+    exit 1
+  fi
+
+  wait_seconds="$delay"
+  if [ "$jitter" -gt 0 ]; then
+    wait_seconds=$((wait_seconds + RANDOM % (jitter + 1)))
+  fi
+  echo "##vso[task.logissue type=warning]Azure DevOps TLS health check attempt $attempt/$max_attempts failed (curl=$curl_status, HTTP=${http_code:-000}): $error_summary. Retrying in ${wait_seconds}s."
+  sleep "$wait_seconds"
+
+  delay=$((delay * 2))
+  if [ "$delay" -gt "$max_delay" ]; then
+    delay="$max_delay"
+  fi
+  attempt=$((attempt + 1))
+done
+STEP_WAIT_FOR_AZURE_DEVOPS_TLS
+    ;;
   hydrate)
     echo "##[section]Hydrate combo record"
     bash /dev/fd/3 3<<'STEP_HYDRATE_COMBO_RECORD'
