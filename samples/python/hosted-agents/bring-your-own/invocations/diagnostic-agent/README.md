@@ -417,8 +417,6 @@ Request:
   ]
 }
 ```
-cd src/diagnostic-agent-python-invocations
-
 
 Response (per-host summary, full JSON elided):
 
@@ -440,6 +438,8 @@ This sample follows the same `azd ai agent` workflow as the other invocations sa
 For the local-only path (no `azd`):
 
 ```bash
+cd src/diagnostic-agent-python-invocations
+
 pipx install uv==0.11.7
 uv sync --frozen --python 3.12
 uv run --no-sync python main.py
