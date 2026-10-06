@@ -162,6 +162,16 @@ class PipelineTests(unittest.TestCase):
         )
         self.assertIn("sort -V | tail -n 1", summary_script)
         discovery = (CI / "discover-samples.sh").read_text(encoding="utf-8")
+        self.assertIn(
+            "samples/python/hosted-agents/agent-framework/responses/07-teams-activity",
+            discovery,
+        )
+        self.assertIn(
+            "samples/csharp/hosted-agents/agent-framework/teams-activity",
+            discovery,
+        )
+        self.assertIn('.label == "teams-tools"', discovery)
+        self.assertIn('.label != "teams-tools"', discovery)
         sample_filter = next(
             parameter for parameter in PIPELINE["parameters"]
             if parameter["name"] == "sampleFilter"
