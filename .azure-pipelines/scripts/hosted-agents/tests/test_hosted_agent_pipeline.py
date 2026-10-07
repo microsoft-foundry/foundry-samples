@@ -147,7 +147,7 @@ exit 60
         self.assertEqual(matrix_download["retryCountOnTaskFailure"], 3)
         self.assertEqual(
             matrix_download["patterns"],
-            "HostedAgentSamplesMatrix-attempt-*/entries.json",
+            "entries.json",
         )
         for name in ("status", "evidence", "delete-session", "delete-toolboxes", "results"):
             self.assertEqual(self.steps[name]["condition"], "always()")
@@ -206,9 +206,9 @@ exit 60
             if step.get("displayName") == "Download result artifacts"
         )
         self.assertEqual(summary_download["retryCountOnTaskFailure"], 3)
-        self.assertIn(
-            "HostedAgentSamplesMatrix-attempt-*/entries.json",
-            summary_download["patterns"],
+        self.assertEqual(
+            summary_download["patterns"].splitlines(),
+            ["entries.json", "result.txt"],
         )
         status_publish = next(
             step for step in summary["jobs"][0]["steps"]

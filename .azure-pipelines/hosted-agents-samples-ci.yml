@@ -407,7 +407,9 @@ stages:
             - download: current
               displayName: Download sample matrix
               retryCountOnTaskFailure: 3
-              patterns: HostedAgentSamplesMatrix-attempt-*/entries.json
+              # Patterns are relative to each artifact root; artifact names are
+              # added as directories only after matching.
+              patterns: entries.json
             - bash: bash .azure-pipelines/scripts/hosted-agents/run-hosted-agent.sh hydrate
               displayName: Hydrate combo record
               env:
@@ -647,8 +649,8 @@ stages:
             displayName: Download result artifacts
             retryCountOnTaskFailure: 3
             patterns: |
-              HostedAgentSamplesMatrix-attempt-*/entries.json
-              cloud-e2e-results-*/result.txt
+              entries.json
+              result.txt
 
           - bash: |
               set -euo pipefail
