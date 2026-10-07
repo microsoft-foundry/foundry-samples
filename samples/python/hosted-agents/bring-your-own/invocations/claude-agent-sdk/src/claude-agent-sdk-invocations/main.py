@@ -181,6 +181,28 @@ async def _mcp_initialize(client: httpx.AsyncClient, endpoint: str, headers: dic
     return session_headers
 
 
+async def _terminate_mcp_session(client: httpx.AsyncClient, endpoint: str, headers: dict[str, str]) -> None:
+    """Best-effort termination of a discovery-only MCP session.
+
+    Per the MCP Streamable HTTP transport spec, a client that no longer needs
+    a session should send `DELETE` carrying its `mcp-session-id` so the server
+    can free it immediately, rather than leaving it to expire on its own.
+    Servers that don't support termination may reply `405 Method Not
+    Allowed`, which is expected and tolerated. This is cleanup only: failures
+    here are logged, never raised, so a terminate-session hiccup can't turn a
+    successful discovery into a failed invocation.
+    """
+    session_id = headers.get("mcp-session-id")
+    if not session_id:
+        return
+    try:
+        response = await client.delete(endpoint, headers=headers)
+        if response.status_code != 405:
+            response.raise_for_status()
+    except httpx.HTTPError:
+        logger.warning("Failed to terminate toolbox MCP discovery session %s", session_id, exc_info=True)
+
+
 async def _discover_toolbox_tools(endpoint: str, headers: dict[str, str]) -> list[str]:
     """Request-local MCP tool discovery call used only to validate the allowlist.
 
@@ -189,33 +211,37 @@ async def _discover_toolbox_tools(endpoint: str, headers: dict[str, str]) -> lis
     longer exists (or hide one that now does). `tools/list` is
     cursor-paginated, so every page is requested until the server stops
     returning `nextCursor` -- otherwise an explicitly allowed tool on a later
-    page would be reported as unknown.
+    page would be reported as unknown. The discovery session is always
+    terminated afterward (see `_terminate_mcp_session`) so hosted traffic
+    doesn't accumulate orphan server sessions.
     """
     async with httpx.AsyncClient(timeout=30.0) as client:
         session_headers = await _mcp_initialize(client, endpoint, headers)
+        try:
+            tool_names: list[str] = []
+            cursor: Optional[str] = None
+            request_id = 1
+            while True:
+                request_id += 1
+                params: dict[str, str] = {"cursor": cursor} if cursor else {}
+                response = await client.post(
+                    endpoint,
+                    headers=session_headers,
+                    json={"jsonrpc": "2.0", "id": request_id, "method": "tools/list", "params": params},
+                )
+                response.raise_for_status()
+                body = response.json()
+                if "error" in body:
+                    raise RuntimeError(f"Toolbox tools/list failed: {body['error']}")
 
-        tool_names: list[str] = []
-        cursor: Optional[str] = None
-        request_id = 1
-        while True:
-            request_id += 1
-            params: dict[str, str] = {"cursor": cursor} if cursor else {}
-            response = await client.post(
-                endpoint,
-                headers=session_headers,
-                json={"jsonrpc": "2.0", "id": request_id, "method": "tools/list", "params": params},
-            )
-            response.raise_for_status()
-            body = response.json()
-            if "error" in body:
-                raise RuntimeError(f"Toolbox tools/list failed: {body['error']}")
+                result = body.get("result", {})
+                tool_names.extend(tool["name"] for tool in result.get("tools", []) if "name" in tool)
 
-            result = body.get("result", {})
-            tool_names.extend(tool["name"] for tool in result.get("tools", []) if "name" in tool)
-
-            cursor = result.get("nextCursor")
-            if not cursor:
-                break
+                cursor = result.get("nextCursor")
+                if not cursor:
+                    break
+        finally:
+            await _terminate_mcp_session(client, endpoint, session_headers)
 
     if not tool_names:
         raise RuntimeError(f"Toolbox at {endpoint} returned no tools.")

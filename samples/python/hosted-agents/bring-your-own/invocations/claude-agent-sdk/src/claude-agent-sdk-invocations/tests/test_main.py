@@ -118,6 +118,8 @@ class _FakeAsyncClient:
     calls: list = []
     default_response: Any = _FakeHTTPResponse(200, {"result": {"tools": []}})
     responses: list = []
+    delete_calls: list = []
+    delete_response: Any = _FakeHTTPResponse(405)
 
     def __init__(self, *args, **kwargs):
         self.kwargs = kwargs
@@ -133,6 +135,10 @@ class _FakeAsyncClient:
         if _FakeAsyncClient.responses:
             return _FakeAsyncClient.responses.pop(0)
         return _FakeAsyncClient.default_response
+
+    async def delete(self, url, headers=None):
+        _FakeAsyncClient.delete_calls.append({"url": url, "headers": headers})
+        return _FakeAsyncClient.delete_response
 
 
 # --------------------------------------------------------------------------
@@ -439,6 +445,128 @@ class ToolsListPaginationTests(unittest.TestCase):
             self.assertEqual(len(calls), 1)
             allowed = calls[0]["options"].allowed_tools
             self.assertEqual(allowed, [f"mcp__{main.TOOLBOX_SERVER_LABEL}__second_page_tool"])
+
+
+class DiscoverySessionTerminationTests(unittest.TestCase):
+    """The discovery-only MCP session is always terminated after discovery,
+    whether or not the server supports termination, and termination failures
+    never turn a successful discovery into a failed invocation."""
+
+    def test_session_terminated_after_discovery_with_session_id(self):
+        with _toolbox_env(
+            TOOLBOX_ENDPOINT="https://toolbox.example.com/mcp",
+            TOOLBOX_ALLOWED_TOOLS="web_search",
+        ):
+            main = _import_main()
+            calls: list = []
+            with mock.patch.object(httpx, "AsyncClient", _FakeAsyncClient), mock.patch.object(
+                main, "query", _recording_query(calls)
+            ), mock.patch.object(
+                main, "_get_toolbox_token_provider", lambda: (lambda: "FAKE_TOKEN_VALUE")
+            ):
+                _FakeAsyncClient.calls = []
+                _FakeAsyncClient.delete_calls = []
+                _FakeAsyncClient.delete_response = _FakeHTTPResponse(200)
+                _FakeAsyncClient.responses = [
+                    _FakeHTTPResponse(200, {"result": {}}, headers={"mcp-session-id": "sess-1"}),
+                    _FakeHTTPResponse(200, {}),
+                    _FakeHTTPResponse(200, {"result": {"tools": [{"name": "web_search"}]}}),
+                ]
+                asyncio.run(_invoke(main))
+
+            # Discovery succeeded (the model was invoked) and the session
+            # assigned during initialize was explicitly terminated.
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(len(_FakeAsyncClient.delete_calls), 1)
+            self.assertEqual(
+                _FakeAsyncClient.delete_calls[0]["headers"]["mcp-session-id"], "sess-1"
+            )
+
+    def test_no_termination_call_when_no_session_id_assigned(self):
+        with _toolbox_env(
+            TOOLBOX_ENDPOINT="https://toolbox.example.com/mcp",
+            TOOLBOX_ALLOWED_TOOLS="web_search",
+        ):
+            main = _import_main()
+            calls: list = []
+            with mock.patch.object(httpx, "AsyncClient", _FakeAsyncClient), mock.patch.object(
+                main, "query", _recording_query(calls)
+            ), mock.patch.object(
+                main, "_get_toolbox_token_provider", lambda: (lambda: "FAKE_TOKEN_VALUE")
+            ):
+                _FakeAsyncClient.calls = []
+                _FakeAsyncClient.delete_calls = []
+                _FakeAsyncClient.responses = [
+                    _FakeHTTPResponse(200, {"result": {}}),  # initialize, no session id
+                    _FakeHTTPResponse(200, {}),
+                    _FakeHTTPResponse(200, {"result": {"tools": [{"name": "web_search"}]}}),
+                ]
+                asyncio.run(_invoke(main))
+
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(_FakeAsyncClient.delete_calls, [])
+
+    def test_405_on_termination_is_tolerated_not_raised(self):
+        """A server that doesn't support termination replies 405; discovery
+        must still succeed and the invocation must not fail."""
+        with _toolbox_env(
+            TOOLBOX_ENDPOINT="https://toolbox.example.com/mcp",
+            TOOLBOX_ALLOWED_TOOLS="web_search",
+        ):
+            main = _import_main()
+            calls: list = []
+            with mock.patch.object(httpx, "AsyncClient", _FakeAsyncClient), mock.patch.object(
+                main, "query", _recording_query(calls)
+            ), mock.patch.object(
+                main, "_get_toolbox_token_provider", lambda: (lambda: "FAKE_TOKEN_VALUE")
+            ):
+                _FakeAsyncClient.calls = []
+                _FakeAsyncClient.delete_calls = []
+                _FakeAsyncClient.delete_response = _FakeHTTPResponse(405)
+                _FakeAsyncClient.responses = [
+                    _FakeHTTPResponse(200, {"result": {}}, headers={"mcp-session-id": "sess-1"}),
+                    _FakeHTTPResponse(200, {}),
+                    _FakeHTTPResponse(200, {"result": {"tools": [{"name": "web_search"}]}}),
+                ]
+                events = asyncio.run(_invoke(main))
+
+            self.assertEqual(len(_FakeAsyncClient.delete_calls), 1)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(events, [{"type": "text", "content": "ok"}])
+
+    def test_termination_error_is_logged_not_raised(self):
+        """A non-405 error terminating the session is caught and logged, and
+        must not fail an otherwise-successful discovery/invocation."""
+        with _toolbox_env(
+            TOOLBOX_ENDPOINT="https://toolbox.example.com/mcp",
+            TOOLBOX_ALLOWED_TOOLS="web_search",
+        ):
+            main = _import_main()
+            calls: list = []
+
+            class _RaisingDeleteClient(_FakeAsyncClient):
+                async def delete(self, url, headers=None):
+                    _FakeAsyncClient.delete_calls.append({"url": url, "headers": headers})
+                    raise httpx.ConnectError("boom", request=httpx.Request("DELETE", url))
+
+            with mock.patch.object(httpx, "AsyncClient", _RaisingDeleteClient), mock.patch.object(
+                main, "query", _recording_query(calls)
+            ), mock.patch.object(
+                main, "_get_toolbox_token_provider", lambda: (lambda: "FAKE_TOKEN_VALUE")
+            ), mock.patch.object(main, "logger") as mock_logger:
+                _FakeAsyncClient.calls = []
+                _FakeAsyncClient.delete_calls = []
+                _FakeAsyncClient.responses = [
+                    _FakeHTTPResponse(200, {"result": {}}, headers={"mcp-session-id": "sess-1"}),
+                    _FakeHTTPResponse(200, {}),
+                    _FakeHTTPResponse(200, {"result": {"tools": [{"name": "web_search"}]}}),
+                ]
+                events = asyncio.run(_invoke(main))
+
+            self.assertEqual(len(_FakeAsyncClient.delete_calls), 1)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(events, [{"type": "text", "content": "ok"}])
+            mock_logger.warning.assert_called_once()
 
 
 class AuthScopeAndQueryPreservationTests(unittest.TestCase):
