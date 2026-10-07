@@ -146,8 +146,10 @@ durable polling. If no transcript-ready notification arrives after the end event
 the report remains pending. Readiness retries are limited to three attempts,
 five seconds apart, for empty matching results or Work IQ 404 responses.
 
-It retains at most 20 occurrences per scoped chat state and refuses incomplete or
-oversized reads: eight transcript segments, 120,000 transcript characters,
+Occurrence history is retained without automatic pruning or a count limit, so
+persisted chat state grows with each meeting. Long-running use needs a retention
+policy. The sample refuses incomplete or oversized reads: eight transcript
+segments, 120,000 transcript characters,
 32,000 invitation characters, and 20 agenda items. Reserved deliveries can remain
 undelivered after failures, and there is no cross-replica exactly-once guarantee.
 Define your own access and disclosure policy before using real meeting data;

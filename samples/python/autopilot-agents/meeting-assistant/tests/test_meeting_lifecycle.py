@@ -673,6 +673,44 @@ class LifecycleTests(IsolatedAsyncioTestCase):
         self.assertEqual(self.post.await_count, count)
         self.assertIsNone(list(self.state.occurrences.values())[-1].ended_at)
 
+    async def test_more_than_twenty_occurrences_preserve_pending_reports_and_replay_protection(self):
+        for index in range(21):
+            if index == 20:
+                self.state = MeetingState.model_validate(self.saved[-1])
+                self.processor.state = self.state
+            offset = timedelta(days=index)
+            await self.processor.start(*meeting_args(when=START + offset))
+            await self.processor.end(*meeting_args("end", when=END + offset))
+
+        self.assertEqual(len(self.state.occurrences), 21)
+        self.assertEqual(len(self.saved[-1]["occurrences"]), 21)
+        self.assertEqual(self.post.await_count, 42)
+        records = list(self.state.occurrences.values())
+        self.assertEqual(records[-1].reminder, "sent")
+        self.assertEqual(records[-1].pending_notice, "sent")
+
+        await self.processor.start(*meeting_args())
+        await self.processor.start(*meeting_args(when=START + timedelta(days=20)))
+        self.assertEqual(self.post.await_count, 42)
+        self.assertEqual(self.graph.invited_event.await_count, 21)
+
+        self.ready_transcript()
+        await self.processor.recording_available(recording_signal())
+        self.assertEqual(records[0].recap, "sent")
+        self.assertEqual(records[-1].recap, "unsent")
+        self.analysis.compare.assert_awaited_once()
+
+    async def test_more_than_twenty_occurrences_without_agendas(self):
+        self.analysis.extract_agenda.return_value = []
+        for index in range(21):
+            offset = timedelta(days=index)
+            await self.processor.start(*meeting_args(when=START + offset))
+            await self.processor.end(*meeting_args("end", when=END + offset))
+
+        self.assertEqual(len(self.state.occurrences), 21)
+        self.assertEqual(len(self.saved[-1]["occurrences"]), 21)
+        self.post.assert_not_awaited()
+
     async def test_rejoining_same_meeting_with_new_start_posts_new_reminder(self):
         await self.processor.start(*meeting_args())
         await self.processor.end(*meeting_args("end"))

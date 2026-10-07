@@ -21,7 +21,6 @@ from .workiq import WorkIQError, MeetingWorkIQ
 from .meeting_analysis import MeetingAnalysis, escape_markdown, source_link_url
 
 logger = logging.getLogger(__name__)
-MAX_OCCURRENCES = 20
 MAX_TRANSCRIPTS = 8
 MAX_SOURCE_CHARS = 120_000
 MAX_NOTIFICATION_CHARS = 64_000
@@ -147,8 +146,6 @@ class MeetingLifecycle:
         if key in self.state.occurrences:
             logger.info("Ignoring repeated meeting start")
             return
-        if len(self.state.occurrences) >= MAX_OCCURRENCES:
-            raise ValueError("Meeting state reached its occurrence limit; administrator cleanup is required.")
         if any(
             record.ended_at is None and record.chat_id == chat_id
             for record in self.state.occurrences.values()
