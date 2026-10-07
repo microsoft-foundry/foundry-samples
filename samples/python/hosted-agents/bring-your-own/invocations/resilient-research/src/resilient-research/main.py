@@ -61,8 +61,9 @@ need to distinguish steered turns from fresh turns — see
 Usage::
 
     # From inside this sample directory:
-    pip install -r requirements.txt
-    python main.py
+    pipx install uv==0.11.7
+    uv sync --frozen --python 3.12
+    uv run --no-sync python main.py
 """
 
 from __future__ import annotations

@@ -13,11 +13,93 @@ if [ "$#" -ne 1 ]; then
 fi
 
 case "$1" in
+  ado-tls)
+    echo "##[section]Wait for Azure DevOps TLS"
+    bash /dev/fd/3 3<<'STEP_WAIT_FOR_AZURE_DEVOPS_TLS'
+set -euo pipefail
+
+collection_url="${ADO_COLLECTION_URL:-}"
+if [ -z "$collection_url" ] || [[ "$collection_url" == \$\(*\) ]]; then
+  echo "##vso[task.logissue type=error]ADO_COLLECTION_URL is not configured."
+  exit 2
+fi
+
+max_attempts="${ADO_TLS_MAX_ATTEMPTS:-5}"
+initial_delay="${ADO_TLS_INITIAL_DELAY_SECONDS:-10}"
+max_delay="${ADO_TLS_MAX_DELAY_SECONDS:-60}"
+jitter="${ADO_TLS_RETRY_JITTER_SECONDS:-5}"
+for setting in max_attempts initial_delay max_delay jitter; do
+  value="${!setting}"
+  if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+    echo "##vso[task.logissue type=error]$setting must be a non-negative integer, got '$value'."
+    exit 2
+  fi
+done
+if [ "$max_attempts" -lt 1 ]; then
+  echo "##vso[task.logissue type=error]max_attempts must be at least 1."
+  exit 2
+fi
+
+health_url="${collection_url%/}/_apis/connectionData?connectOptions=1&lastChangeId=-1&lastChangeId64=-1"
+attempt=1
+delay="$initial_delay"
+while true; do
+  error_file=$(mktemp)
+  set +e
+  http_code=$(curl \
+    --silent \
+    --show-error \
+    --output /dev/null \
+    --write-out '%{http_code}' \
+    --connect-timeout 10 \
+    --max-time 20 \
+    "$health_url" 2>"$error_file")
+  curl_status=$?
+  set -e
+
+  if [ "$curl_status" -eq 0 ] && [[ "$http_code" =~ ^[0-9]{3}$ ]] \
+      && [ "$http_code" -ge 200 ] && [ "$http_code" -lt 500 ]; then
+    rm -f "$error_file"
+    echo "Azure DevOps TLS is healthy (HTTP $http_code) on attempt $attempt/$max_attempts."
+    exit 0
+  fi
+
+  error_summary=$(tr '\n' ' ' < "$error_file" \
+    | sed 's/[[:space:]]\+/ /g; s/^ //; s/ $//')
+  rm -f "$error_file"
+  [ -n "$error_summary" ] || error_summary="HTTP ${http_code:-000}"
+
+  if [ "$attempt" -ge "$max_attempts" ]; then
+    echo "##vso[task.logissue type=error]Azure DevOps TLS health check failed after $attempt attempts: $error_summary"
+    exit 1
+  fi
+
+  wait_seconds="$delay"
+  if [ "$jitter" -gt 0 ]; then
+    wait_seconds=$((wait_seconds + RANDOM % (jitter + 1)))
+  fi
+  echo "##vso[task.logissue type=warning]Azure DevOps TLS health check attempt $attempt/$max_attempts failed (curl=$curl_status, HTTP=${http_code:-000}): $error_summary. Retrying in ${wait_seconds}s."
+  sleep "$wait_seconds"
+
+  delay=$((delay * 2))
+  if [ "$delay" -gt "$max_delay" ]; then
+    delay="$max_delay"
+  fi
+  attempt=$((attempt + 1))
+done
+STEP_WAIT_FOR_AZURE_DEVOPS_TLS
+    ;;
   hydrate)
     echo "##[section]Hydrate combo record"
     bash /dev/fd/3 3<<'STEP_HYDRATE_COMBO_RECORD'
 set -euo pipefail
-entries="$PIPELINE_WORKSPACE/HostedAgentSamplesMatrix/entries.json"
+entries=$(find "$PIPELINE_WORKSPACE" -maxdepth 2 -type f \
+  -path "$PIPELINE_WORKSPACE/HostedAgentSamplesMatrix-attempt-*/entries.json" \
+  -print | sort -V | tail -n 1)
+if [ -z "$entries" ]; then
+  echo "##vso[task.logissue type=error]No hosted-agent sample matrix artifact was downloaded."
+  exit 1
+fi
 record="$(jq -c --arg id "$COMBO_ID" 'map(select(.comboId == $id)) | .[0] // empty' "$entries")"
 if [ -z "$record" ]; then
   echo "##vso[task.logissue type=error]No discovery record for combo $COMBO_ID"
@@ -67,7 +149,15 @@ STEP_HYDRATE_COMBO_RECORD
     echo "##[section]Install azd, Foundry extension and yq"
     bash /dev/fd/3 3<<'STEP_INSTALL_AZD_FOUNDRY_EXTENSION_AND_YQ'
 set -euo pipefail
-curl -fsSL https://aka.ms/install-azd.sh | bash
+source ".azure-pipelines/scripts/hosted-agents/scripts/hosted-agent-retry.sh"
+
+azd_installer=$(mktemp)
+trap 'rm -f "$azd_installer"' EXIT
+hosted_agent_retry_command "Download azd installer" \
+  curl -fsSL -o "$azd_installer" https://aka.ms/install-azd.sh
+hosted_agent_retry_command "Install azd" bash "$azd_installer"
+rm -f "$azd_installer"
+trap - EXIT
 azd version
 
 # Install the latest unified Foundry CLI extension. The verify
@@ -75,13 +165,15 @@ azd version
 # --deploy-mode/--runtime/--entry-point flags the code arm needs.
 # The unified azure.yaml declares `requiredVersions.extensions:
 # microsoft.foundry`, matching the sample READMEs.
-azd ext install microsoft.foundry
+hosted_agent_retry_command "Install microsoft.foundry extension" \
+  azd ext install microsoft.foundry
 
 # azd authenticates through the az CLI session that AzureCLI@2
 # establishes for each task. This config write needs no auth.
 azd config set auth.useAzCliAuth true
 
-sudo curl -fsSL -o /usr/local/bin/yq \
+hosted_agent_retry_command "Download yq" \
+  sudo curl -fsSL -o /usr/local/bin/yq \
   https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
 sudo chmod +x /usr/local/bin/yq
 yq --version
@@ -547,7 +639,7 @@ optional() { if unset_macro "${1:-}"; then printf ''; else printf '%s' "${1:-}";
 # passthrough is a prefix allow-list over the task environment
 # (variable-group values land there). Add a prefix here if a new
 # variable falls outside the set.
-PASSTHROUGH_PREFIXES="AZURE_ FOUNDRY_ TOOLBOX_ MODEL_ OPENAI_ BING_ SEARCH_ STORAGE_ SERVICEBUS_ CONTENT_SAFETY_ PLAYWRIGHT_ SKIP_ CLOUD_E2E_"
+PASSTHROUGH_PREFIXES="AZURE_ FOUNDRY_ TOOLBOX_ MODEL_ OPENAI_ BING_ SEARCH_ STORAGE_ SERVICEBUS_ REDIS_ CONTENT_SAFETY_ PLAYWRIGHT_ SKIP_ CLOUD_E2E_"
 # Injected by the agent / az CLI, not configuration, plus the
 # names already set above. AZURE_DEV_COLLECT_TELEMETRY is azd's
 # own opt-out knob, read from the process environment — it does
@@ -1221,9 +1313,21 @@ fi
 turn=0
 overall_exit=0
 quota_retries=0
+previous_response_id=""
 while IFS= read -r turn_record || [ -n "$turn_record" ]; do
   [ -z "$turn_record" ] && continue
   turn=$(jq -r '.global_turn' <<< "$turn_record")
+  test_turn=$(jq -r '.turn // .global_turn' <<< "$turn_record")
+  test_turn_count=$(jq -r '.test_turn_count // 1' <<< "$turn_record")
+  if [ "$test_turn" -eq 1 ]; then
+    previous_response_id=""
+  fi
+  if [ "$PROTOCOL" = "responses" ] && [ "$test_turn_count" -gt 1 ]; then
+    turn_record=$(jq -c --arg previous "$previous_response_id" '
+      . + {persist_response: true}
+      | if $previous == "" then . else .previous_response_id = $previous end
+    ' <<< "$turn_record")
+  fi
   line=$(jq -r '.serialized_input' <<< "$turn_record")
   echo "─── Turn $turn ───"
   echo "Prompt: $line"
@@ -1371,6 +1475,16 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
     fi
     break
   done
+
+  if [ "$PROTOCOL" = "responses" ] && [ "$test_turn_count" -gt 1 ] && [ $turn_exit -eq 0 ]; then
+    next_response_id=$(jq -r '.response_id // empty' "$result_file")
+    if [ -z "$next_response_id" ]; then
+      echo "##vso[task.logissue type=error]Turn $turn did not return a response id for multi-turn continuation"
+      turn_exit=1
+    else
+      previous_response_id="$next_response_id"
+    fi
+  fi
 
   # Persist only the final retry attempt as assertion evidence.
   cp "/tmp/invoke-out-${turn}.txt" "$EVIDENCE_DIR/turn-$turn-invoke.txt"

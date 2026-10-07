@@ -108,7 +108,8 @@ mode and applicable toolbox combinations.
 The runner deploys, waits for readiness, creates sessions, invokes declared
 turns, evaluates available evidence, and cleans up session/toolbox resources.
 Each job publishes diagnostics and its result. The summary publishes
-`sample-status` and a build summary; it does not publish private commit statuses.
+`sample-status-attempt-*` (consumers use the highest attempt) and a build
+summary; it does not publish private commit statuses.
 Voice Live uses a dedicated smoke client and audio fixture under the hosted-agent
 scripts.
 

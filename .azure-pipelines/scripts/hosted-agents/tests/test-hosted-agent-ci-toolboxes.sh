@@ -351,7 +351,19 @@ while IFS= read -r manifest; do
   assert_eq 0 "$(jq '.toolboxes | length' "$work/sample-shared-state.json")" "shared sample must have empty cleanup state: $manifest"
   assert_eq 0 "$(yq '[.services[] | select(.host == "azure.ai.toolbox" or .host == "azure.ai.connection")] | length' "$work/sample-shared.yaml")" "current matrix samples must not manage unused resources: $manifest"
   assert_eq file-search "$(yq -r '.services[] | select(.host == "azure.ai.agent") | .env.TOOLBOX_NAME' "$work/sample-shared.yaml")" "sample must use shared toolbox: $manifest"
-done < <(cd "$repo_root" && find samples/python/hosted-agents samples/csharp/hosted-agents -name azure.yaml -path '*toolbox*' | sort)
+  if [ "$manifest" = samples/python/hosted-agents/agent-framework/responses/07-teams-activity/azure.yaml ]; then
+    assert_eq true "$(yq -r '.services[] | select(.host == "azure.ai.agent") | .env.ENABLE_WORK_IQ' "$work/sample-shared.yaml")" "shared Teams sample must enable WorkIQ"
+  fi
+done < <(
+  cd "$repo_root"
+  {
+    find samples/python/hosted-agents samples/csharp/hosted-agents \
+      -name azure.yaml -path '*toolbox*'
+    printf '%s\n' \
+      samples/python/hosted-agents/agent-framework/responses/07-teams-activity/azure.yaml \
+      samples/csharp/hosted-agents/agent-framework/teams-activity/azure.yaml
+  } | sort -u
+)
 
 # Isolation must preserve owned connection settings, independently of which
 # OAuth configuration the current public sample uses.

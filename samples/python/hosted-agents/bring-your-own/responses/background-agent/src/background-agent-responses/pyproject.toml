@@ -1,0 +1,14 @@
+[project]
+name = "background-agent-responses"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent using the Responses protocol."
+requires-python = ">=3.12"
+dependencies = [
+    "azure-ai-agentserver-responses==2.1.0",
+    "azure-ai-projects==2.0.1",
+    "azure-identity==1.25.3",
+    "debugpy",
+    # azure-ai-projects imports httpx directly, while OpenAI 3 uses httpx2.
+    "httpx<1",
+    "openai<3",
+]

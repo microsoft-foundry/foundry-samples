@@ -72,11 +72,51 @@ done
 HOSTED_AGENT_QUOTA_RETRY_DELAY_SECONDS=0
 [ "$(hosted_agent_quota_retry_delay)" = "0" ] || fail "delay override was not honored"
 
+for retry_number in 1 2 3; do
+  delay=$(hosted_agent_tool_retry_delay "$retry_number")
+  minimum=$((10 * (1 << (retry_number - 1))))
+  maximum=$((minimum + 5))
+  [ "$delay" -ge "$minimum" ] && [ "$delay" -le "$maximum" ] \
+    || fail "tool retry delay $delay outside $minimum-$maximum seconds"
+done
+
+tool_attempts=0
+flaky_tool() {
+  tool_attempts=$((tool_attempts + 1))
+  [ "$tool_attempts" -ge 3 ]
+}
+HOSTED_AGENT_TOOL_MAX_ATTEMPTS=4
+HOSTED_AGENT_TOOL_RETRY_DELAY_SECONDS=0
+hosted_agent_retry_command "Test transient tool" flaky_tool >"$work/transient-tool.log" 2>&1
+[ "$tool_attempts" -eq 3 ] || fail "tool retry did not stop after recovery"
+
+failed_tool_attempts=0
+failed_tool() {
+  failed_tool_attempts=$((failed_tool_attempts + 1))
+  return 7
+}
+HOSTED_AGENT_TOOL_MAX_ATTEMPTS=2
+set +e
+hosted_agent_retry_command "Test exhausted tool" failed_tool >"$work/exhausted-tool.log" 2>&1
+failed_tool_status=$?
+set -e
+[ "$failed_tool_status" -eq 7 ] || fail "tool retry did not preserve the final status"
+[ "$failed_tool_attempts" -eq 2 ] || fail "tool retry exceeded its attempt bound"
+unset HOSTED_AGENT_TOOL_MAX_ATTEMPTS HOSTED_AGENT_TOOL_RETRY_DELAY_SECONDS
+
 responses_helper="$repo_root/.azure-pipelines/scripts/hosted-agents/scripts/invoke_hosted_agent_responses.py"
 pipeline="$repo_root/.azure-pipelines/hosted-agents-samples-ci.yml"
 runner="$repo_root/.azure-pipelines/scripts/hosted-agents/run-hosted-agent.sh"
 
 [ -f "$runner" ] || fail "hosted-agent E2E pipeline is missing: $runner"
+[ "$(grep -Fc 'hosted_agent_retry_command "Download yq"' "$pipeline")" -eq 1 ] \
+  || fail "discovery yq download is not retried"
+[ "$(grep -Fc 'hosted_agent_retry_command "Install microsoft.foundry extension"' "$pipeline")" -eq 1 ] \
+  || fail "orphan cleanup extension install is not retried"
+[ "$(grep -Fc 'hosted_agent_retry_command "Download yq"' "$runner")" -eq 1 ] \
+  || fail "sample yq download is not retried"
+[ "$(grep -Fc 'hosted_agent_retry_command "Install microsoft.foundry extension"' "$runner")" -eq 1 ] \
+  || fail "sample extension install is not retried"
 grep -Fq 'CI_AGENT_SESSION_ID: ado-ci-$(Build.BuildId)-$(System.JobAttempt)-${{ shard }}-$(System.JobPositionInPhase)' "$pipeline" \
   || fail "pipeline does not define one run-specific session per cell"
 response_session_uses=$((

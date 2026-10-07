@@ -33,7 +33,7 @@ This agent supports two LLM backends. Configure one of the following:
 
 ## Prerequisites
 
-- **Python 3.10+**
+- **Python 3.12+**
 - An Azure AI Foundry project with a deployed model — for the default BYOK path (`FOUNDRY_PROJECT_ENDPOINT` is auto-injected when hosted; set it locally)
 - *(GitHub Copilot model only)* A GitHub fine-grained PAT (`github_pat_` prefix)
 
@@ -151,17 +151,15 @@ azd ai agent monitor
 
 ### Set up the Python virtual environment
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install dependencies in the virtual environment:
+- With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
+  cd src/github-copilot-invocations
 
-  # or pure pip
-  pip install -r requirements.txt
+  pipx install uv==0.11.7
+  uv sync --frozen --python 3.12
   ```
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select `src/github-copilot-invocations/.venv`.
 
 ### Run and debug the agent
 
@@ -170,7 +168,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
+2. From `src/github-copilot-invocations`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry
@@ -205,9 +203,11 @@ data: {"invocation_id": "...", "session_id": "..."}
 To use your own Azure AI Foundry model instead of the Copilot model, set the Foundry variables (no `GITHUB_TOKEN` needed):
 
 ```bash
+cd src/github-copilot-invocations
+
 FOUNDRY_PROJECT_ENDPOINT=https://<account>.services.ai.azure.com/api/projects/<project> \
 AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-5.4-mini \
-python main.py
+uv run --no-sync python main.py
 ```
 
 Authentication uses Managed Identity via `DefaultAzureCredential`. When deployed as a hosted agent, `FOUNDRY_PROJECT_ENDPOINT` is auto-injected by the platform, so in `azure.yaml` you only need `AZURE_AI_MODEL_DEPLOYMENT_NAME` (declared by default).

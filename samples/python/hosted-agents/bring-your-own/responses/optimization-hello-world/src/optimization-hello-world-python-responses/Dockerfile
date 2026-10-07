@@ -1,15 +1,13 @@
+FROM ghcr.io/astral-sh/uv:0.11.7 AS uv
 FROM python:3.12-slim
 
-WORKDIR /app
+COPY --from=uv /uv /uvx /bin/
 
-COPY . user_agent/
 WORKDIR /app/user_agent
+COPY pyproject.toml uv.lock uv.toml ./
+RUN uv sync --frozen --no-dev --no-install-project
 
-RUN if [ -f requirements.txt ]; then \
-        pip install -r requirements.txt; \
-    else \
-        echo "No requirements.txt found"; \
-    fi
+COPY . .
 
 EXPOSE 8088
 
@@ -26,12 +24,12 @@ EXPOSE 8088
 # container start.
 # PYTHONDONTWRITEBYTECODE is cleared for these commands only: it blocks
 # bytecode *writes*, not *reads*, so images that set it still benefit.
-RUN PYTHONDONTWRITEBYTECODE= python -m compileall -q $(python -c "import sysconfig as s; print(s.get_paths()['stdlib'], s.get_paths()['purelib'])") || true; \
-    PYTHONDONTWRITEBYTECODE= python -m compileall -q .
+RUN PYTHONDONTWRITEBYTECODE= .venv/bin/python -m compileall -q $(.venv/bin/python -c "import sysconfig as s; print(s.get_paths()['stdlib'], s.get_paths()['purelib'])") || true; \
+    PYTHONDONTWRITEBYTECODE= .venv/bin/python -m compileall -q -x '[.]venv' .
 
 CMD bash -c '\
   if [ -f /etc/ssl/certs/adc-egress-proxy-ca.crt ]; then \
     cat /etc/ssl/certs/adc-egress-proxy-ca.crt >> /etc/ssl/certs/ca-certificates.crt && \
-    cat /etc/ssl/certs/adc-egress-proxy-ca.crt >> $(python -c "import certifi; print(certifi.where())"); \
+    cat /etc/ssl/certs/adc-egress-proxy-ca.crt >> $(/app/user_agent/.venv/bin/python -c "import certifi; print(certifi.where())"); \
   fi && \
-  python main.py'
+  /app/user_agent/.venv/bin/python main.py'

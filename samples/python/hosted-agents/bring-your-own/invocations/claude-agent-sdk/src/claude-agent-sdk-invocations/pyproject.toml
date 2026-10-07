@@ -1,0 +1,12 @@
+[project]
+name = "claude-agent-sdk-invocations"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent using the Invocations protocol."
+requires-python = ">=3.12"
+dependencies = [
+    "azure-ai-agentserver-invocations==1.1.0",
+    "azure-identity",
+    "claude-agent-sdk>=0.1.74",
+    "debugpy",
+    "httpx<1.0",
+]
