@@ -270,7 +270,7 @@ stages:
               CODE_DEPLOY_ENABLED: $(CLOUD_E2E_CODE_DEPLOY_ENABLED)
 
           - publish: $(Build.ArtifactStagingDirectory)/matrix
-            artifact: HostedAgentSamplesMatrix
+            artifact: HostedAgentSamplesMatrix-attempt-$(System.JobAttempt)
             displayName: Publish sample matrix
 
   # ── Reclaim toolboxes leaked by interrupted runs ────────────────────
@@ -342,7 +342,7 @@ stages:
               TOOLBOX_PROJECT_ENDPOINT_WESTUS2: $(TOOLBOX_PROJECT_ENDPOINT_WESTUS2)
 
           - publish: $(Build.ArtifactStagingDirectory)/toolbox-orphan-cleanup
-            artifact: cloud-e2e-toolbox-orphan-cleanup
+            artifact: cloud-e2e-toolbox-orphan-cleanup-attempt-$(System.JobAttempt)
             displayName: Upload orphan-cleanup results
             condition: always()
             continueOnError: true
@@ -405,9 +405,9 @@ stages:
               env:
                 ADO_COLLECTION_URL: $(System.CollectionUri)
             - download: current
-              artifact: HostedAgentSamplesMatrix
               displayName: Download sample matrix
               retryCountOnTaskFailure: 3
+              patterns: HostedAgentSamplesMatrix-attempt-*/entries.json
             - bash: bash .azure-pipelines/scripts/hosted-agents/run-hosted-agent.sh hydrate
               displayName: Hydrate combo record
               env:
@@ -647,12 +647,18 @@ stages:
             displayName: Download result artifacts
             retryCountOnTaskFailure: 3
             patterns: |
-              HostedAgentSamplesMatrix/entries.json
+              HostedAgentSamplesMatrix-attempt-*/entries.json
               cloud-e2e-results-*/result.txt
 
           - bash: |
               set -euo pipefail
-              entries="$PIPELINE_WORKSPACE/HostedAgentSamplesMatrix/entries.json"
+              entries=$(find "$PIPELINE_WORKSPACE" -maxdepth 2 -type f \
+                -path "$PIPELINE_WORKSPACE/HostedAgentSamplesMatrix-attempt-*/entries.json" \
+                -print | sort -V | tail -n 1)
+              [ -n "$entries" ] || {
+                echo "##vso[task.logissue type=error]No hosted-agent sample matrix artifact was downloaded."
+                exit 1
+              }
               mkdir -p /tmp/status
 
               summary=/tmp/status/summary.md
@@ -717,7 +723,7 @@ stages:
               BUILD_URL: $(System.CollectionUri)$(System.TeamProject)/_build/results?buildId=$(Build.BuildId)
 
           - publish: /tmp/status
-            artifact: sample-status
+            artifact: sample-status-attempt-$(System.JobAttempt)
             displayName: Upload status artifact
             condition: always()
 

@@ -93,7 +93,13 @@ STEP_WAIT_FOR_AZURE_DEVOPS_TLS
     echo "##[section]Hydrate combo record"
     bash /dev/fd/3 3<<'STEP_HYDRATE_COMBO_RECORD'
 set -euo pipefail
-entries="$PIPELINE_WORKSPACE/HostedAgentSamplesMatrix/entries.json"
+entries=$(find "$PIPELINE_WORKSPACE" -maxdepth 2 -type f \
+  -path "$PIPELINE_WORKSPACE/HostedAgentSamplesMatrix-attempt-*/entries.json" \
+  -print | sort -V | tail -n 1)
+if [ -z "$entries" ]; then
+  echo "##vso[task.logissue type=error]No hosted-agent sample matrix artifact was downloaded."
+  exit 1
+fi
 record="$(jq -c --arg id "$COMBO_ID" 'map(select(.comboId == $id)) | .[0] // empty' "$entries")"
 if [ -z "$record" ]; then
   echo "##vso[task.logissue type=error]No discovery record for combo $COMBO_ID"

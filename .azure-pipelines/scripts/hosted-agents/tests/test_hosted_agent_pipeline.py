@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check phase boundaries without provisioning or invoking Azure resources."""
 
+import json
 import os
 from pathlib import Path
 import re
@@ -144,6 +145,10 @@ exit 60
             if step.get("displayName") == "Download sample matrix"
         )
         self.assertEqual(matrix_download["retryCountOnTaskFailure"], 3)
+        self.assertEqual(
+            matrix_download["patterns"],
+            "HostedAgentSamplesMatrix-attempt-*/entries.json",
+        )
         for name in ("status", "evidence", "delete-session", "delete-toolboxes", "results"):
             self.assertEqual(self.steps[name]["condition"], "always()")
         self.assertTrue(self.steps["delete-session"]["continueOnError"])
@@ -202,7 +207,47 @@ exit 60
         )
         self.assertEqual(summary_download["retryCountOnTaskFailure"], 3)
         self.assertIn(
+            "HostedAgentSamplesMatrix-attempt-*/entries.json",
+            summary_download["patterns"],
+        )
+        status_publish = next(
+            step for step in summary["jobs"][0]["steps"]
+            if step.get("displayName") == "Upload status artifact"
+        )
+        self.assertEqual(
+            status_publish["artifact"],
+            "sample-status-attempt-$(System.JobAttempt)",
+        )
+        discover = next(
+            stage for stage in PIPELINE["stages"]
+            if stage.get("stage") == "Discover"
+        )
+        matrix_publish = next(
+            step for step in discover["jobs"][0]["steps"]
+            if step.get("displayName") == "Publish sample matrix"
+        )
+        self.assertEqual(
+            matrix_publish["artifact"],
+            "HostedAgentSamplesMatrix-attempt-$(System.JobAttempt)",
+        )
+        cleanup = next(
+            stage for stage in PIPELINE["stages"]
+            if stage.get("stage") == "CleanupOrphanedToolboxes"
+        )
+        orphan_publish = next(
+            step for step in cleanup["jobs"][0]["steps"]
+            if step.get("displayName") == "Upload orphan-cleanup results"
+        )
+        self.assertEqual(
+            orphan_publish["artifact"],
+            "cloud-e2e-toolbox-orphan-cleanup-attempt-$(System.JobAttempt)",
+        )
+        self.assertIn(
             "cloud-e2e-results-$combo_id-attempt-*/result.txt",
+            summary_script,
+        )
+        self.assertIn(
+            "HostedAgentSamplesMatrix-attempt-*/entries.json",
             summary_script,
         )
         self.assertIn("sort -V | tail -n 1", summary_script)
@@ -308,6 +353,47 @@ exit 60
             "Azure DevOps TLS health check failed after 2 attempts",
             exhausted.stdout,
         )
+
+    def test_hydrate_prefers_latest_matrix_attempt(self):
+        workspace = self.work / "workspace"
+        for attempt, sample_name in ((2, "older"), (10, "latest")):
+            artifact = workspace / f"HostedAgentSamplesMatrix-attempt-{attempt}"
+            artifact.mkdir(parents=True)
+            (artifact / "entries.json").write_text(
+                json.dumps([{
+                    "comboId": "combo",
+                    "sampleId": "sample-id",
+                    "samplePath": "samples/python/hosted-agents/example",
+                    "sampleName": sample_name,
+                    "sampleLanguage": "python",
+                    "protocol": "responses",
+                    "protocolVersion": "1.0.0",
+                    "isToolbox": "false",
+                    "toolboxLabel": "",
+                    "toolboxUrl": "",
+                    "toolboxQuery": "",
+                    "useWestus2": "false",
+                    "voiceLive": "false",
+                    "deployMode": "container",
+                    "runtime": "python_3_13",
+                    "entryPoint": "main.py",
+                    "depResolution": "",
+                }]),
+                encoding="utf-8",
+            )
+
+        result = self.run_phase(
+            "hydrate",
+            keep=("STEP_HYDRATE_COMBO_RECORD",),
+            env={
+                "COMBO_ID": "combo",
+                "PIPELINE_WORKSPACE": str(workspace),
+            },
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("variable=SAMPLE_NAME]latest", result.stdout)
+        self.assertNotIn("variable=SAMPLE_NAME]older", result.stdout)
 
     def test_summary_prefers_latest_job_attempt(self):
         workspace = self.work / "workspace"
