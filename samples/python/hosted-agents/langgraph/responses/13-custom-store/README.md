@@ -128,14 +128,17 @@ configure the local agent's model authentication separately.
 1. Install **VS Code**, the
    [Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio),
    and the [Python extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python).
-2. Open the sample root or the initialized workspace. Use **Python: Create
-   Environment...** or **Python: Select Interpreter** to select Python 3.13.
-   With that environment activated, install the runtime dependencies:
+2. Open the sample root or the initialized workspace. Install uv if needed,
+   then sync the committed environment:
 
    ```bash
+   python -m pip install uv
    cd src/custom-store
    uv sync --frozen
    ```
+
+   Run **Python: Select Interpreter** and choose
+   `src/custom-store/.venv` before using F5.
 
 3. Configure the model connection described in [Prerequisites](#prerequisites).
    For identity-based local model access, run `az login` in the integrated

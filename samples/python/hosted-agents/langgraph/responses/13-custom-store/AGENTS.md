@@ -56,7 +56,7 @@ Provision declared resources with `azd provision` first when needed. Follow the
 README for initialization and authentication. In a Toolkit-scaffolded VS Code
 workspace, use **F5** and **Agent Inspector**, or follow the manual run path.
 
-For on-premises runs, use `python main.py` from the source directory with
+For on-premises runs, use `uv run --no-sync python main.py` from the source directory with
 the required project endpoint and model deployment name in `.env`.
 `AZURE_AI_API_KEY` is optional; when it is empty or absent, authenticate an
 Azure identity for `DefaultAzureCredential` (for example, with `az login`

@@ -186,6 +186,19 @@ azd ai agent invoke "How do I create a Foundry project with the Azure CLI?"
   ```
 
 - In VS Code, select `src/toolbox-langgraph/.venv` as the Python interpreter.
+
+### Create the toolbox
+
+The toolbox must exist in your Foundry project before you run the agent. This sample expects a toolbox named **`my-toolbox`**. Create it with the VS Code Foundry Toolkit extension:
+
+1. In the **Foundry Toolkit** view (signed in), open **Tool Catalog** → **Catalog** tab → **Toolboxes** → **Create Your Toolbox**.
+
+   Or, if you're reading this README in VS Code, directly click [[Create in VS Code]](vscode://ms-windows-ai-studio.windows-ai-studio/open_tools).
+2. In the **Included** panel, click **+ Add ▾** → **Add tools**. Add **Web Search**, then add an unauthenticated MCP server with the URL `https://learn.microsoft.com/api/mcp`. To use different tools, follow the tool's **Guide** in the [Toolbox tool types](#toolbox-tool-types) table above.
+3. Follow the configuration dialog to add each tool.
+4. Back on **Build a Custom Toolbox**, name the toolbox **`my-toolbox`**, then click **Publish**.
+5. Set `TOOLBOX_NAME=my-toolbox` in the sample's `.env` file.
+
 ### Run and debug the agent
 
 Press **F5** to start the agent. The agent starts and the **Agent Inspector** opens automatically. Chat with the agent in the Inspector.
