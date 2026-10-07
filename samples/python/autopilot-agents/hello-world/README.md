@@ -122,6 +122,9 @@ version supporting the `GlobalStandard` SKU in your region and uses capacity
 `1`. Existing deployments keep their model, version, SKU, and capacity.
 
 Provisioning creates only missing resources; it does not manage permissions.
+The in-project hook `scripts\prepare-provision.ps1` calls the shared
+`..\scripts\prepare-provision.ps1` without changing the sample's working directory.
+Keep the parent `scripts` directory when copying this sample.
 Existing resources keep their configuration. It saves the project resource ID,
 endpoint, region, subscription, and model deployment name in the active `azd`
 environment. You do not need to copy these values or set them individually.
