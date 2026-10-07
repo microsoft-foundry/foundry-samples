@@ -112,10 +112,14 @@ emit_entries() {
   if { [ -f "$yaml_file" ] && [ "$(yq '((.voiceLiveCompatible // false) == true) or ((.services[] | select(.host == "azure.ai.agent") | .voiceLiveCompatible) == true)' "$yaml_file")" = "true" ]; } || echo "$sample_dir" | grep -q '/voicelive/'; then
     voice_live="true"
   fi
-  # Toolbox samples live exclusively under hosted-agents — match any
-  # hosted-agents sample whose directory name contains "toolbox".
+  # Generic toolbox samples are named accordingly. Teams Activity is routed to
+  # its dedicated shared WorkIQ toolbox even though its directory omits
+  # "toolbox".
   case "$sample_dir" in
-    samples/python/hosted-agents/*toolbox*|samples/csharp/hosted-agents/*toolbox*) is_toolbox="true" ;;
+    samples/python/hosted-agents/*toolbox*|\
+    samples/csharp/hosted-agents/*toolbox*|\
+    samples/python/hosted-agents/agent-framework/responses/07-teams-activity|\
+    samples/csharp/hosted-agents/agent-framework/teams-activity) is_toolbox="true" ;;
   esac
   # Toolbox samples use the default ncus project, so the matrix is expanded
   # from the TOOLBOX_ENDPOINT_NCUS variable.
@@ -202,6 +206,15 @@ emit_entries() {
     # Per-sample toolbox exclusions for known-broken combos.
     local filtered_toolboxes_json="$toolboxes_json"
     case "$sample_dir" in
+      samples/python/hosted-agents/agent-framework/responses/07-teams-activity|\
+      samples/csharp/hosted-agents/agent-framework/teams-activity)
+        echo "Pinning $sample_dir to the shared teams-tools WorkIQ toolbox." >&2
+        filtered_toolboxes_json=$(echo "$toolboxes_json" | jq -c 'map(select(.label == "teams-tools"))')
+        if [ "$filtered_toolboxes_json" = "[]" ]; then
+          echo "##vso[task.logissue type=warning]Skipping $sample_dir — no 'teams-tools' entry found in TOOLBOX_ENDPOINT_NCUS." >&2
+          return 0
+        fi
+        ;;
       samples/csharp/hosted-agents/agent-framework/foundry-toolbox-server-side|samples/csharp/hosted-agents/agent-framework/toolbox-auth-paths)
         # The csharp foundry-toolbox-server-side and toolbox-auth-paths samples
         # trigger an 'invalid_payload' on /tools/0/container when they hand a
@@ -210,7 +223,8 @@ emit_entries() {
         # that cannot be fixed from this repo.
         # TODO(hosted-agents): drop this exclusion once the SDK fix ships.
         echo "##vso[task.logissue type=warning]Excluding csharp $sample_dir x code-interpreter combo: known .NET Agent Framework SDK bug serializes tools[].container as null where the Responses API requires a string." >&2
-        filtered_toolboxes_json=$(echo "$toolboxes_json" | jq -c 'map(select(.label != "code-interpreter" and .label != "foundry-iq-kb"))')
+        filtered_toolboxes_json=$(echo "$toolboxes_json" | jq -c \
+          'map(select(.label != "code-interpreter" and .label != "foundry-iq-kb" and .label != "teams-tools"))')
         ;;
       samples/python/hosted-agents/agent-framework/responses/17-foundry-iq-toolbox)
         # Unlike the generic toolbox relays, this sample is grounded on a
@@ -227,9 +241,9 @@ emit_entries() {
         fi
         ;;
       *)
-        # The `foundry-iq-kb` toolbox is dedicated to 17-foundry-iq-toolbox
-        # above (its paired query only matches that knowledge base's content).
-        filtered_toolboxes_json=$(echo "$toolboxes_json" | jq -c 'map(select(.label != "foundry-iq-kb"))')
+        # Dedicated toolbox labels are consumed only by their pinned samples.
+        filtered_toolboxes_json=$(echo "$toolboxes_json" | jq -c \
+          'map(select(.label != "foundry-iq-kb" and .label != "teams-tools"))')
         ;;
     esac
     echo "$filtered_toolboxes_json" | jq -c \

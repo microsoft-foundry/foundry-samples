@@ -450,6 +450,7 @@ def build_plan(
                 planned_turns.append(
                     {
                         "turn": turn_index,
+                        "test_turn_count": len(turns),
                         "global_turn": global_turn,
                         "input": turn["input"],
                         "serialized_input": serialize_input(turn["input"]),
