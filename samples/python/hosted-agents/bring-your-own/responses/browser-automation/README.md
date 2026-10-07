@@ -23,7 +23,7 @@ browser-automation/
 ├── README.md
 ├── azure.yaml               # Unified manifest — project, model, and agent (name, protocols, resources, env vars)
 └── src/
-    └── browser-automation-python-byo-sample-foundry/
+    └── bat-python-byo/
         ├── main.py            # Responses handler, session management, agentic tool loop
         ├── pyproject.toml     # Python project and direct dependencies
         ├── uv.lock            # Reproducible dependency lock
