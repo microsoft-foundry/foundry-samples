@@ -1,0 +1,18 @@
+[project]
+name = "toolbox-langgraph"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent built with LangGraph."
+requires-python = ">=3.12"
+dependencies = [
+    "langchain-azure-ai[hosting]>=1.2.9",
+    "azure-ai-contentunderstanding>=1.2.0b2",
+    "azure-ai-projects",
+    "openai<3",
+    "httpx<1",
+    "langchain",
+    "langchain-openai",
+    "langchain-mcp-adapters",
+    "mcp>=1.24,<2",
+    "python-dotenv",
+    "debugpy",
+]

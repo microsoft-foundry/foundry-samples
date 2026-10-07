@@ -10,8 +10,8 @@ This project is a **Microsoft Foundry hosted agent** built with LangGraph Deep A
 - `src/langgraph-deep-agents/utils.py` - Foundry chat-model construction
 - `src/langgraph-deep-agents/research_agent/prompts.py` - research workflow and subagent prompts
 - `src/langgraph-deep-agents/research_agent/tools.py` - Foundry Toolbox loading
-- `src/langgraph-deep-agents/requirements.in` - direct dependencies
-- `src/langgraph-deep-agents/requirements.txt` - locked dependencies
+- `src/langgraph-deep-agents/pyproject.toml` - direct dependencies
+- `src/langgraph-deep-agents/uv.lock` - locked dependency graph
 
 ## Development workflow
 

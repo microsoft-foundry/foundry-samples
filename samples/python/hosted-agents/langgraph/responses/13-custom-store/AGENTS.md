@@ -22,18 +22,16 @@ wired into the host and graph. SQLite is only a simple example implementation ra
 - `src/custom-store/sqlite_conversation_chain_store.py`
   - custom conversation-chain store.
 - `src/custom-store/sqlite_response_store.py`
-- `src/custom-store/requirements.in` -
-  direct dependencies.
-- `src/custom-store/requirements.txt` - portable, fully resolved runtime dependencies.
+- `src/custom-store/pyproject.toml` - direct dependencies.
+- `src/custom-store/uv.lock` - portable, fully resolved runtime dependencies.
 - `README.md` - prerequisites, deployment paths, and store behavior checks.
 
 ## Dependency workflow
 
 Follow the [Python Hosted Agent dependency policy](../../../DEPENDENCY_POLICY.md).
-`requirements.in` declares direct dependencies; `requirements.txt` is the
-pip-compatible consumer artifact with pinned direct and transitive dependencies.
-Regenerate and commit `requirements.txt` whenever dependency inputs change,
-using a resolver rather than maintaining a second list by hand. Run the policy
+`pyproject.toml` declares direct dependencies; `uv.lock` is the
+consumer artifact with pinned direct and transitive dependencies.
+Regenerate and commit `uv.lock` whenever dependency inputs change. Run the policy
 checker documented in the shared policy, including `--resolve` when network
 access is available, for dependency changes.
 

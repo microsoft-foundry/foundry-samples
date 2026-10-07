@@ -172,42 +172,20 @@ azd ai agent invoke "How do I create a Foundry project with the Azure CLI?"
 
 ### Set up the Python virtual environment
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Ensure `pip` is version 26.1 or newer (check with `pip --version`). Older versions fail to resolve this sample's dependencies. Upgrade if needed:
+- Install uv if it is not already available:
 
   ```bash
-  python -m pip install --upgrade pip
+  python -m pip install uv
   ```
 
-- Change to the agent source directory before installing dependencies:
+- From the sample root, sync the committed environment:
 
   ```bash
   cd src/toolbox-langgraph
+  uv sync --frozen
   ```
 
-- Install dependencies in the virtual environment. One transitive dependency ships as a pre-release, so pre-releases must be allowed when using `uv`:
-
-  ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install --prerelease=allow -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
-  ```
-
-### Create the toolbox
-
-The toolbox must exist in your Foundry project before you run the agent. This sample expects a toolbox named **`my-toolbox`**. Create it with the VS Code Foundry Toolkit extension:
-
-1. In the **Foundry Toolkit** view (signed in), open **Tool Catalog** → **Catalog** tab → **Toolboxes** → **Create Your Toolbox**.
-
-   Or, if you're reading this README in VS Code, directly click [[Create in VS Code]](vscode://ms-windows-ai-studio.windows-ai-studio/open_tools).
-2. In the **Included** panel, click **+ Add ▾** → **Add tools**. Add **Web Search**, then add an unauthenticated MCP server with the URL `https://learn.microsoft.com/api/mcp`. To use different tools, follow the tool's **Guide** in the [Toolbox tool types](#toolbox-tool-types) table above.
-3. Follow the configuration dialog to add each tool.
-4. Back on **Build a Custom Toolbox**, name the toolbox **`my-toolbox`**, then click **Publish**.
-5. Set `TOOLBOX_NAME=my-toolbox` in the sample's `.env` file.
-
+- In VS Code, select `src/toolbox-langgraph/.venv` as the Python interpreter.
 ### Run and debug the agent
 
 Press **F5** to start the agent. The agent starts and the **Agent Inspector** opens automatically. Chat with the agent in the Inspector.
@@ -216,7 +194,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 
 1. Set the required environment variables (including `TOOLBOX_NAME`), and sign in to Azure with the Azure CLI (`az login`).
 2. From `src/toolbox-langgraph`, start the agent:
-   `python -m langchain_azure_ai.agents.hosting.run --protocol responses`
+   `uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses`
    (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 

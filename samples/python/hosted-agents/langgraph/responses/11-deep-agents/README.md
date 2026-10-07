@@ -81,4 +81,4 @@ See [Microsoft Foundry hosted agents](https://learn.microsoft.com/azure/foundry/
 
 ## Debug in VS Code
 
-Open this sample folder in VS Code, select its Python environment, install `requirements.txt`, and create `.env` from `.env.example`. Press **F5** to start the server under `debugpy` and open Foundry Toolkit Agent Inspector.
+Open this sample folder in VS Code, run `uv sync --frozen` from `src/langgraph-deep-agents`, select `src/langgraph-deep-agents/.venv` as the Python interpreter, and create `.env` from `.env.example`. Press **F5** to start the server under `debugpy` and open Foundry Toolkit Agent Inspector.

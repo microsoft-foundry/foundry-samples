@@ -47,9 +47,8 @@ storage backend that satisfies the contracts for on-prem deployments.
   | `AZURE_AI_API_KEY` | No | API key for model authentication. When empty or absent, the agent uses `DefaultAzureCredential`. |
 
 Install runtime dependencies from
-[requirements.txt](src/custom-store/requirements.txt), the committed,
-fully resolved dependency artifact. The source
-[requirements.in](src/custom-store/requirements.in) declares direct dependencies.
+[pyproject.toml](src/custom-store/pyproject.toml) and the committed
+[uv.lock](src/custom-store/uv.lock).
 Contributors updating dependencies should follow the
 [Python Hosted Agent dependency policy](../../../DEPENDENCY_POLICY.md) and
 regenerate the pinned artifact in the same change.
@@ -134,7 +133,8 @@ configure the local agent's model authentication separately.
    With that environment activated, install the runtime dependencies:
 
    ```bash
-   python -m pip install -r src/custom-store/requirements.txt
+   cd src/custom-store
+   uv sync --frozen
    ```
 
 3. Configure the model connection described in [Prerequisites](#prerequisites).
@@ -149,7 +149,7 @@ configure the local agent's model authentication separately.
 
    ```bash
    cd src/custom-store
-   python main.py
+   uv run --no-sync python main.py
    ```
 
    Then open the Command Palette and select **Foundry Toolkit: Open Agent
@@ -173,11 +173,8 @@ Create a virtual environment from the sample root:
 
 ```bash
 cd src/custom-store
-python -m venv .venv
-# Windows: .venv\Scripts\Activate.ps1
-# macOS/Linux: source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install uv
+uv sync --frozen
 ```
 
 Configure `.env` in the source directory as described in
@@ -196,7 +193,7 @@ Then start the agent from the source directory with the virtual environment
 activated:
 
 ```bash
-python main.py
+uv run --no-sync python main.py
 ```
 
 ## Test the stores
