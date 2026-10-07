@@ -120,13 +120,17 @@ class MeetingAnalysisTests(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(ValueError):
                     await self.analysis.compare(["Budget", "Hiring"], {"transcript:t1": "Budget approved."})
 
-    async def test_rejects_quote_mismatch_and_unknown_source(self):
-        for evidence in (item(quote="Budget rejected."), item(source="transcript:wrong"),
-                         item(quote=" ")):
+    async def test_rejects_unknown_source_and_empty_quote(self):
+        for evidence in (item(source="transcript:wrong"), item(quote=" ")):
             with self.subTest(evidence=evidence):
                 self.respond({"items": [evidence]})
                 with self.assertRaises(ValueError):
                     await self.analysis.compare(["Budget"], {"transcript:t1": "Budget approved."})
+
+    async def test_model_quote_does_not_require_exact_source_match(self):
+        self.respond({"items": [item(quote="We approved the budget.")]})
+        report = await self.analysis.compare(["Budget"], {"transcript:t1": "Budget approved."})
+        self.assertIn('Source Transcript 1: "We approved the budget."', report)
 
     async def test_closed_without_evidence_rejected(self):
         self.respond({"items": [{**item(), "evidence": []}]})
@@ -254,11 +258,41 @@ class MeetingAnalysisTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Alice: Approved. Bob: Agreed. Done.", report)
         self.assertNotIn("&lt;v", report)
 
-    async def test_display_cleaning_does_not_relax_verbatim_evidence_validation(self):
+    async def test_multiple_voice_classes_preserve_speaker_text_and_escaping(self):
+        for classes in (".loud.clear", ".loud..clear", "." + "a." * 60 + "b"):
+            with self.subTest(classes=classes):
+                quote = f"<v{classes} Alice &amp; Bob>**Budget** approved.</v>"
+                self.respond({"items": [item(quote=quote)]})
+                report = await self.analysis.compare(["Budget"], {"transcript:t1": quote})
+                self.assertIn(r"Alice &amp; Bob: \*\*Budget\*\* approved.", report)
+                self.assertNotIn("&lt;v", report)
+                self.assertEqual(
+                    json.loads(self.parse.call_args.kwargs["input"][0]["content"])["sources"],
+                    {"transcript:t1": quote},
+                )
+
+    async def test_classed_voice_tag_without_speaker_renders_as_plain_text(self):
+        quote = "<v.loud.clear>Budget approved.</v>"
+        self.respond({"items": [item(quote=quote)]})
+        report = await self.analysis.compare(["Budget"], {"transcript:t1": quote})
+        self.assertIn('"Budget approved."', report)
+        self.assertNotIn("&lt;v", report)
+
+    async def test_malformed_voice_tag_with_repeated_classes_is_preserved_and_escaped(self):
+        quote = "<v." + "!." * 190
+        self.respond({"items": [item(quote=quote)]})
+        report = await self.analysis.compare(["Budget"], {"transcript:t1": quote})
+        self.assertIn("&lt;v." + r"\!." * 190, report)
+
+    async def test_model_formatted_speaker_quote_is_rendered_without_rewriting_source(self):
         raw = "<v Alice>Budget approved.</v>"
         self.respond({"items": [item(quote="Alice: Budget approved.")]})
-        with self.assertRaisesRegex(ValueError, "does not occur"):
-            await self.analysis.compare(["Budget"], {"transcript:t1": raw})
+        report = await self.analysis.compare(["Budget"], {"transcript:t1": raw})
+        self.assertIn('"Alice: Budget approved."', report)
+        self.assertEqual(
+            json.loads(self.parse.call_args.kwargs["input"][0]["content"])["sources"],
+            {"transcript:t1": raw},
+        )
 
     async def test_text_and_total_output_bounds(self):
         self.respond({"items": [{**item(), "explanation": "x" * 501}]})

@@ -1,4 +1,4 @@
-"""Bounded, evidence-checked agenda analysis; no tools or conversational state."""
+"""Bounded, structured agenda analysis; no tools or conversational state."""
 
 from __future__ import annotations
 
@@ -92,20 +92,21 @@ def _normalize(text: str) -> str:
     return " ".join(text.split())
 
 
-def _markdown(text: str) -> str:
+def escape_markdown(text: str) -> str:
     # Quotes and identifiers remain data, not Teams links, HTML, or mentions.
     text = html.escape(_normalize(text), quote=False)
     return re.sub(r"([\\`*_{}\[\]()#+!|>~-])", r"\\\1", text)
 
 
 def _quote_text(text: str) -> str:
-    # Check evidence against raw WebVTT first; voice annotations are display metadata.
+    # Voice annotations are display metadata; leave model inputs unchanged.
+    # The class suffix includes dots, so one match covers all classes without nested repetition.
     text = re.sub(
-        r"<v(?:\.[^\s<>]+)*(?:[ \t]+([^<>\r\n]+))?>",
+        r"<v(?:\.[^\s<>]+)?(?:[ \t]+([^<>\r\n]+))?>",
         lambda match: f"{match[1]}: " if match[1] else "",
         text,
     )
-    return _markdown(html.unescape(text.replace("</v>", "")))
+    return escape_markdown(html.unescape(text.replace("</v>", "")))
 
 
 def source_link_url(url: str) -> str:
@@ -198,18 +199,12 @@ class MeetingAnalysis:
         indices = [item.agenda_index for item in result.items]
         if sorted(indices) != list(range(len(agenda))):
             raise ValueError("Every agenda index must appear exactly once")
-        normalized_sources = {key: _normalize(value) for key, value in sources.items()}
-        has_transcript = any(
-            key.startswith("transcript:") and value
-            for key, value in normalized_sources.items()
-        )
+        has_transcript = any(body.strip() for body in sources.values())
         lines = [HEADING]
         for item in sorted(result.items, key=lambda item: item.agenda_index):
             for evidence in item.evidence:
-                if evidence.source_id not in normalized_sources:
+                if evidence.source_id not in sources:
                     raise ValueError("Evidence references an unknown source")
-                if _normalize(evidence.quote) not in normalized_sources[evidence.source_id]:
-                    raise ValueError("Evidence quote does not occur in its source")
             if item.status == "Closed" and not any(
                 evidence.source_id.startswith("transcript:") for evidence in item.evidence
             ):
@@ -219,8 +214,8 @@ class MeetingAnalysis:
             if item.status == "Not discussed" and not has_transcript:
                 raise ValueError("Not discussed requires an available transcript")
             lines.append(
-                f"\n{item.agenda_index + 1}. **{_markdown(agenda[item.agenda_index])}**"
-                f" - **{item.status}**\n   {_markdown(item.explanation)}"
+                f"\n{item.agenda_index + 1}. **{escape_markdown(agenda[item.agenda_index])}**"
+                f" - **{item.status}**\n   {escape_markdown(item.explanation)}"
             )
             for evidence in item.evidence:
                 lines.append(

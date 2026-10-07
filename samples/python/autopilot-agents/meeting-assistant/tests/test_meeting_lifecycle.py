@@ -271,8 +271,8 @@ class EventContractTests(TestCase):
             conversation={"id": CHAT, "conversationType": "personal", "tenantId": TENANT},
         )))
 
-    def test_recording_and_transcript_success_notifications(self):
-        for content in ("Recording", "Transcript", "Recording+Transcript"):
+    def test_transcript_success_notifications(self):
+        for content in ("Transcript", "Recording+Transcript"):
             event = recording_activity(content_types=content)
             self.assertTrue(is_recording_available(event))
             parsed = RecordingAvailable.from_activity(event)
@@ -309,6 +309,7 @@ class EventContractTests(TestCase):
             recording_activity(status="Initial"),
             recording_activity(status="ChunkFinished"),
             recording_activity(status="Failed"),
+            recording_activity(content_types="Recording"),
             recording_activity(content_types="Video"),
             recording_activity(type="event"),
             recording_activity(text=r'{\"scopeId\":\"synthetic\"}'),
@@ -459,6 +460,28 @@ class LifecycleTests(IsolatedAsyncioTestCase):
         self.assertEqual(self.post.await_count, 1)
         self.graph.invited_event.assert_awaited_once_with(JOIN, START)
 
+    async def test_reminder_escapes_agenda_without_changing_snapshot_or_analysis(self):
+        agenda = [
+            "Approve **budget** and [plan](https://example.test/plan)",
+            "<at>person</at> & <b>hiring</b>",
+            "Review `scope`\\notes\n# Decision",
+        ]
+        self.analysis.extract_agenda.return_value = agenda
+        await self.processor.start(*meeting_args())
+        self.post.assert_awaited_once_with(
+            "**Agenda reminder**\n\n"
+            r"1. Approve \*\*budget\*\* and \[plan\]\(https://example.test/plan\)" "\n"
+            "2. &lt;at&gt;person&lt;/at&gt; &amp; &lt;b&gt;hiring&lt;/b&gt;\n"
+            r"3. Review \`scope\`\\notes \# Decision"
+        )
+        record = next(iter(self.state.occurrences.values()))
+        self.assertEqual(record.agenda, agenda)
+        self.assertEqual(next(iter(self.saved[-1]["occurrences"].values()))["agenda"], agenda)
+        self.ready_transcript()
+        await self.processor.end(*meeting_args("end"))
+        await self.processor.recording_available(recording_signal())
+        self.assertEqual(self.analysis.compare.call_args.args[0], agenda)
+
     async def test_sdk_models_are_unchanged_while_state_is_normalized(self):
         start, chat_id = meeting_args(
             when=START.astimezone(timezone(timedelta(hours=2))), join_url=f" {JOIN} ",
@@ -493,6 +516,7 @@ class LifecycleTests(IsolatedAsyncioTestCase):
         self.analysis.extract_agenda.return_value = []
         await self.processor.start(*meeting_args())
         await self.processor.end(*meeting_args("end"))
+        await self.processor.recording_available(recording_signal())
         self.post.assert_not_awaited()
         self.graph.list_transcripts.assert_not_awaited()
 
@@ -522,18 +546,25 @@ class LifecycleTests(IsolatedAsyncioTestCase):
             raise WorkIQError(403, "AccessDenied")
 
         self.graph.list_transcripts.side_effect = unavailable
+        await self.processor.end(*meeting_args("end"))
+        self.graph.list_transcripts.assert_not_awaited()
         with self.assertRaises(WorkIQError):
-            await self.processor.end(*meeting_args("end"))
+            await self.processor.recording_available(recording_signal())
         self.assertEqual(self.post.await_count, 2)
         self.analysis.compare.assert_not_awaited()
         self.processor.state = MeetingState.model_validate(self.saved[-1])
         await self.processor.end(*meeting_args("end"))
         self.assertEqual(self.post.await_count, 2)
 
-    async def test_end_with_ready_transcript_acknowledges_then_reports(self):
+    async def test_end_with_ready_transcript_waits_for_notification_before_reporting(self):
         await self.processor.start(*meeting_args())
         self.ready_transcript()
         await self.processor.end(*meeting_args("end"))
+        self.assertEqual(self.post.await_count, 2)
+        self.graph.list_transcripts.assert_not_awaited()
+        self.graph.get_transcript.assert_not_awaited()
+        self.analysis.compare.assert_not_awaited()
+        await self.processor.recording_available(recording_signal())
         messages = [call.args[0] for call in self.post.call_args_list]
         self.assertEqual(len(messages), 3)
         self.assertIn("prepare meeting notes", messages[1])
@@ -566,6 +597,7 @@ class LifecycleTests(IsolatedAsyncioTestCase):
         record = next(iter(self.state.occurrences.values()))
         record.viewer_url = "https://contoso.sharepoint.com/:v:/g/one-recording"
         await self.processor.end(*meeting_args("end"))
+        await self.processor.recording_available(recording_signal())
         self.assertIn("/l/chat/", self.analysis.compare.call_args.kwargs["source_url"])
         self.assertIn("Select Recap", self.post.call_args.args[0])
 
@@ -589,6 +621,7 @@ class LifecycleTests(IsolatedAsyncioTestCase):
         self.graph.list_meeting_insights = AsyncMock(side_effect=AssertionError("Must not read insights"))
         self.graph.get_meeting_insight = AsyncMock(side_effect=AssertionError("Must not read insights"))
         await self.processor.end(*meeting_args("end"))
+        await self.processor.recording_available(recording_signal())
         self.graph.list_meeting_insights.assert_not_awaited()
         self.graph.get_meeting_insight.assert_not_awaited()
         self.assertNotIn("Copilot summary", self.post.call_args.args[0])
@@ -601,14 +634,27 @@ class LifecycleTests(IsolatedAsyncioTestCase):
             "has_more": False,
         }
         await self.processor.end(*meeting_args("end"))
+        with patch("agent.meeting_lifecycle.asyncio.sleep", new_callable=AsyncMock):
+            await self.processor.recording_available(recording_signal())
         self.graph.get_transcript.assert_not_awaited()
         self.analysis.compare.assert_not_awaited()
 
+    async def test_transcript_without_end_timestamp_remains_usable_after_notification(self):
+        await self.processor.start(*meeting_args())
+        await self.processor.end(*meeting_args("end"))
+        self.ready_transcript()
+        del self.graph.list_transcripts.return_value["items"][0]["endDateTime"]
+        await self.processor.recording_available(recording_signal())
+        self.graph.get_transcript.assert_awaited_once_with("meeting-id", "transcript")
+        self.analysis.compare.assert_awaited_once()
+        self.assertEqual(next(iter(self.state.occurrences.values())).recap, "sent")
+
     async def test_missing_timestamps_and_pagination_fail_closed(self):
         await self.processor.start(*meeting_args())
+        await self.processor.end(*meeting_args("end"))
         self.graph.list_transcripts.return_value = {"items": [{"id": "unknown"}], "has_more": False}
         with self.assertRaisesRegex(ValueError, "timestamps"):
-            await self.processor.end(*meeting_args("end"))
+            await self.processor.recording_available(recording_signal())
         self.graph.list_transcripts.return_value = {"items": [], "has_more": True}
         with self.assertRaisesRegex(ValueError, "incomplete"):
             await self.processor.recording_available(recording_signal())
@@ -653,16 +699,27 @@ class LifecycleTests(IsolatedAsyncioTestCase):
         with self.assertLogs("agent.meeting_lifecycle", level="INFO"):
             await self.processor.recording_available(recording_signal(chat_id="another-chat"))
         self.assertEqual(self.graph.list_transcripts.await_count, count)
-        self.assertFalse(next(iter(self.state.occurrences.values())).artifacts_available)
+        self.assertEqual(next(iter(self.state.occurrences.values())).recap, "unsent")
 
-    async def test_notification_before_end_waits_and_survives_reload(self):
+    async def test_notification_before_end_is_ignored_even_after_reload(self):
         await self.processor.start(*meeting_args())
-        await self.processor.recording_available(recording_signal())
+        url = "https://contoso.sharepoint.com/:v:/g/recording"
+        with self.assertLogs("agent.meeting_lifecycle", level="INFO") as logs:
+            await self.processor.recording_available(RecordingAvailable(
+                chat_id=CHAT, started_at=START + timedelta(minutes=1), viewer_url=url,
+            ))
+        self.assertIn("before the meeting-end event", "\n".join(logs.output))
         self.graph.list_transcripts.assert_not_awaited()
         self.analysis.compare.assert_not_awaited()
         self.processor.state = MeetingState.model_validate(self.saved[-1])
+        self.assertIsNone(next(iter(self.processor.state.occurrences.values())).viewer_url)
         self.ready_transcript()
         await self.processor.end(*meeting_args("end"))
+        self.graph.list_transcripts.assert_not_awaited()
+        self.graph.get_transcript.assert_not_awaited()
+        self.analysis.compare.assert_not_awaited()
+        self.assertEqual(self.post.await_count, 2)
+        await self.processor.recording_available(recording_signal())
         self.analysis.compare.assert_awaited_once()
         self.assertEqual(self.post.await_count, 3)
 
@@ -676,7 +733,6 @@ class LifecycleTests(IsolatedAsyncioTestCase):
         records = list(self.state.occurrences.values())
         self.assertEqual(records[0].recap, "sent")
         self.assertEqual(records[1].recap, "unsent")
-        self.assertFalse(records[1].artifacts_available)
 
     async def test_notification_without_observed_occurrence_is_logged_and_ignored(self):
         with self.assertLogs("agent.meeting_lifecycle", level="INFO"):
@@ -721,7 +777,7 @@ class LifecycleTests(IsolatedAsyncioTestCase):
         ):
             await self.processor.recording_available(recording_signal())
         self.assertEqual(sleep.await_count, 2)
-        self.assertEqual(self.graph.list_transcripts.await_count, 4)
+        self.assertEqual(self.graph.list_transcripts.await_count, 3)
         self.assertIn("still pending", logs.output[-1])
         self.assertEqual(next(iter(self.state.occurrences.values())).recap, "unsent")
         self.ready_transcript()
@@ -741,8 +797,9 @@ class LifecycleTests(IsolatedAsyncioTestCase):
         await self.processor.start(*meeting_args())
         self.ready_transcript()
         self.graph.get_transcript.return_value = {"content": "x" * 120001}
+        await self.processor.end(*meeting_args("end"))
         with self.assertRaisesRegex(ValueError, "complete-analysis limit"):
-            await self.processor.end(*meeting_args("end"))
+            await self.processor.recording_available(recording_signal())
         self.analysis.compare.assert_not_awaited()
 
 
@@ -773,12 +830,11 @@ class SdkPersistenceTests(IsolatedAsyncioTestCase):
         graph = SimpleNamespace(
             meeting_in_chat=AsyncMock(return_value={"id": "meeting"}),
             invited_event=AsyncMock(return_value={"id": "event", "body": {"content": "Approve budget"}}),
-            list_transcripts=AsyncMock(side_effect=[
-                {"items": [], "has_more": False},
-                {"items": [{
+            list_transcripts=AsyncMock(return_value={
+                "items": [{
                     "id": "transcript", "createdDateTime": START.isoformat(), "endDateTime": END.isoformat(),
-                }], "has_more": False},
-            ]),
+                }], "has_more": False,
+            }),
             get_transcript=AsyncMock(return_value={"content": "Budget approved."}),
         )
         analysis = SimpleNamespace(
@@ -803,6 +859,7 @@ class SdkPersistenceTests(IsolatedAsyncioTestCase):
             for event in (
                 meeting_activity(), meeting_activity(),
                 meeting_activity("end"), meeting_activity("end"),
+                recording_activity(content_types="Recording"),
                 recording_activity(),
                 recording_activity(),
             ):
@@ -810,11 +867,13 @@ class SdkPersistenceTests(IsolatedAsyncioTestCase):
                 event.recipient.id = f"8:orgid:{AGENT_USER}"
                 event.service_url = "https://example.test/teams"
                 await adapter.run_pipeline(TurnContext(adapter, event), app.on_turn)
+                if event.type == "event" or 'contentTypes="Recording"' in (event.text or ""):
+                    graph.list_transcripts.assert_not_awaited()
         self.assertEqual(post.await_count, 3)
         self.assertIn("Agenda reminder", post.call_args_list[0].args[0])
         self.assertIn("prepare meeting notes", post.call_args_list[1].args[0])
         self.assertIn("Closed: Approve budget", post.call_args_list[2].args[0])
-        self.assertEqual(graph.list_transcripts.await_count, 2)
+        self.assertEqual(graph.list_transcripts.await_count, 1)
         analysis.compare.assert_awaited_once()
         self.assertEqual(graph.invited_event.await_count, 1)
         self.assertEqual(workiq_client.call_count, 6)

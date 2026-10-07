@@ -267,7 +267,7 @@ class MeetingHandlers:
     async def on_recording_available(self, context: TurnContext, turn: TurnState) -> None:
         signal = RecordingAvailable.from_activity(context.activity)
         if signal is None:
-            raise ValueError("Expected a recording or transcript availability notification.")
+            raise ValueError("Expected a transcript availability notification.")
         async with self.processor(context, turn) as processor:
             await processor.recording_available(signal)
 

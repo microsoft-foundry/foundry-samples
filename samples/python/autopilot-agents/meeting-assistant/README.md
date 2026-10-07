@@ -6,7 +6,7 @@ Deploy a Python Autopilot that responds to Teams meeting events:
 - Extracts an explicit agenda from the invitation and posts a reminder at meeting start.
 - After meeting end, compares the transcript with that agenda and reports each
   item's status: **Closed**, **Open**, **Not discussed**, or **Unclear**.
-- Retries a pending report when Teams signals that a recording or transcript is available.
+- Reads transcripts only when Teams signals transcript availability after the meeting-end event.
 
 Microsoft 365 reads use **Work IQ MCP with the Autopilot's agent-user identity**.
 Reports include transcript quotes and links to the recording viewer or meeting
@@ -89,12 +89,15 @@ Deployment and publication alone do not grant consent.
 Invite the agent user to a **scheduled, non-channel Teams meeting** with explicit
 agenda items in the invitation body. Start transcription during the meeting.
 Expect a greeting when the agent is added, an agenda reminder at actual meeting
-start, and an end acknowledgment followed by a transcript-grounded closure report.
+start, and an end acknowledgment. A transcript-ready notification received after
+meeting end triggers the transcript read and closure report. Recording-only
+notifications and transcript notifications received before the end event are ignored.
 
 The agent must be able to read its calendar invitation, meeting chat, and
 transcripts through Work IQ. If no report appears, inspect logs for event
-delivery, consent, billing, or transcript-access failures. Quotes are checked
-against the transcript, but the model's interpretation still needs human review.
+delivery, consent, billing, or transcript-access failures. The model is instructed
+to quote transcript evidence, but quoted text is not checked for exact matches.
+Review generated quotes and conclusions against the linked sources.
 
 ## Runtime configuration
 
@@ -139,8 +142,9 @@ change. Avoid `azd down` on environments using shared resources.
 
 This is an event-driven demo, not a production meeting service. It relies on Teams
 start/end and artifact notifications; it does not recover missing events through
-durable polling. Readiness retries are limited to three attempts, five seconds
-apart, for empty matching results or Work IQ 404 responses.
+durable polling. If no transcript-ready notification arrives after the end event,
+the report remains pending. Readiness retries are limited to three attempts,
+five seconds apart, for empty matching results or Work IQ 404 responses.
 
 It retains at most 20 occurrences per scoped chat state and refuses incomplete or
 oversized reads: eight transcript segments, 120,000 transcript characters,

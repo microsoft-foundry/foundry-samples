@@ -18,7 +18,7 @@ from microsoft_teams.api.activities.event.meeting_start import MeetingStartEvent
 from pydantic import BaseModel, Field
 
 from .workiq import WorkIQError, MeetingWorkIQ
-from .meeting_analysis import MeetingAnalysis, source_link_url
+from .meeting_analysis import MeetingAnalysis, escape_markdown, source_link_url
 
 logger = logging.getLogger(__name__)
 MAX_OCCURRENCES = 20
@@ -61,9 +61,7 @@ class RecordingAvailable(BaseModel):
             or root.get("type") != "Video.2/CallRecording.1"
             or status is None or status.get("status") != "Success"
             or content is None
-            or not {"Recording", "Transcript"}.intersection(
-                content.get("contentTypes", "").split("+")
-            )
+            or "Transcript" not in content.get("contentTypes", "").split("+")
         ):
             return None
         # Use the recording's start, not delivery time, to distinguish recurrences.
@@ -102,7 +100,6 @@ class Occurrence(BaseModel):
     join_url: str
     started_at: datetime
     ended_at: datetime | None = None
-    artifacts_available: bool = False
     viewer_url: str | None = None
     agenda: list[str] = Field(default_factory=list)
     reminder: Literal["unsent", "reserved", "sent"] = "unsent"
@@ -172,7 +169,7 @@ class MeetingLifecycle:
             logger.info("No explicit agenda found; skipping meeting reminder and closure report")
             return
         text = "**Agenda reminder**\n\n" + "\n".join(
-            f"{index}. {item}" for index, item in enumerate(agenda, 1)
+            f"{index}. {escape_markdown(item)}" for index, item in enumerate(agenda, 1)
         )
         await self._post_once(record, "reminder", text)
 
@@ -201,12 +198,8 @@ class MeetingLifecycle:
                 record, "pending_notice",
                 "The meeting has ended. I'll prepare meeting notes and share them here once "
                 "the transcript is available. I'll retry automatically when Teams reports "
-                "that the recording or transcript is ready.",
+                "that the transcript is ready.",
             )
-        if record.artifacts_available:
-            await self._process_available(record)
-        else:
-            await self.process_pending(record)
 
     async def recording_available(self, signal: RecordingAvailable) -> None:
         records = [
@@ -222,16 +215,12 @@ class MeetingLifecycle:
         if len(records) != 1:
             raise ValueError("Recording notification matches more than one observed occurrence.")
         record = records[0]
-        if not record.artifacts_available or (
-            signal.viewer_url is not None and signal.viewer_url != record.viewer_url
-        ):
-            record.artifacts_available = True
-            if signal.viewer_url is not None:
-                record.viewer_url = signal.viewer_url
-            await self.save()
         if record.ended_at is None:
-            logger.info("Recording is available; waiting for the meeting-end event")
+            logger.info("Ignoring transcript availability received before the meeting-end event")
             return
+        if signal.viewer_url is not None and signal.viewer_url != record.viewer_url:
+            record.viewer_url = signal.viewer_url
+            await self.save()
         await self._process_available(record)
 
     async def _process_available(self, record: Occurrence) -> None:
@@ -276,8 +265,8 @@ class MeetingLifecycle:
             await self._post_once(
                 record, "pending_notice",
                 "The meeting has ended, but its transcript is not ready or cannot yet be matched "
-                "to this occurrence. I'll retry automatically when Teams reports that the recording "
-                "or transcript is available.",
+                "to this occurrence. I'll retry automatically when Teams reports that the "
+                "transcript is available.",
             )
             return False
         if len(transcripts) > MAX_TRANSCRIPTS:
