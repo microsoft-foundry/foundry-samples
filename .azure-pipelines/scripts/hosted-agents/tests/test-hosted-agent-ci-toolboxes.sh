@@ -308,6 +308,24 @@ cp "$work/shared.yaml" "$work/shared-once.yaml"
 "$prepare" "$work/shared.yaml" "$work/shared-state.json" 12345 1 shared "$shared_endpoint" >/dev/null
 cmp "$work/shared-once.yaml" "$work/shared.yaml" || fail "shared preparation must be idempotent"
 
+# Replacing a toolbox must preserve feature flags, not enable integrations that
+# require delegated-user authentication in an app-only CI job.
+assert_eq 0 "$(yq '[.services.test-agent | (.env, .config.env) | select(has("ENABLE_WORK_IQ"))] | length' "$work/shared.yaml")" "shared preparation must not invent WorkIQ map settings"
+assert_eq 0 "$(yq '[.services.test-agent.environmentVariables[] | select(.name == "ENABLE_WORK_IQ")] | length' "$work/shared.yaml")" "shared preparation must not invent a WorkIQ list setting"
+for enabled in false true; do
+  cp "$work/shared-original.yaml" "$work/shared-workiq.yaml"
+  ENABLED="$enabled" yq -i '
+    .services.test-agent.env.ENABLE_WORK_IQ = strenv(ENABLED) |
+    .services.test-agent.config.env.ENABLE_WORK_IQ = strenv(ENABLED) |
+    .services.test-agent.environmentVariables += [{"name": "ENABLE_WORK_IQ", "value": strenv(ENABLED)}]
+  ' "$work/shared-workiq.yaml"
+  "$prepare" "$work/shared-workiq.yaml" "$work/shared-workiq-state.json" 12345 1 shared "$shared_endpoint" >/dev/null
+  for shape in '.env' '.config.env'; do
+    assert_eq "$enabled" "$(yq -r ".services.test-agent$shape.ENABLE_WORK_IQ" "$work/shared-workiq.yaml")" "shared preparation must preserve WorkIQ in $shape"
+  done
+  assert_eq "$enabled" "$(yq -r '.services.test-agent.environmentVariables[] | select(.name == "ENABLE_WORK_IQ") | .value' "$work/shared-workiq.yaml")" "shared preparation must preserve WorkIQ in the list"
+done
+
 # Missing/empty matrix URL retains owned-resource deployment and isolation.
 cp "$work/shared-original.yaml" "$work/owned.yaml"
 yq -i 'del(.services.test-agent.config)' "$work/owned.yaml"
@@ -352,7 +370,7 @@ while IFS= read -r manifest; do
   assert_eq 0 "$(yq '[.services[] | select(.host == "azure.ai.toolbox" or .host == "azure.ai.connection")] | length' "$work/sample-shared.yaml")" "current matrix samples must not manage unused resources: $manifest"
   assert_eq file-search "$(yq -r '.services[] | select(.host == "azure.ai.agent") | .env.TOOLBOX_NAME' "$work/sample-shared.yaml")" "sample must use shared toolbox: $manifest"
   if [ "$manifest" = samples/python/hosted-agents/agent-framework/responses/07-teams-activity/azure.yaml ]; then
-    assert_eq true "$(yq -r '.services[] | select(.host == "azure.ai.agent") | .env.ENABLE_WORK_IQ' "$work/sample-shared.yaml")" "shared Teams sample must enable WorkIQ"
+    assert_eq false "$(yq -r '.services[] | select(.host == "azure.ai.agent") | .env.ENABLE_WORK_IQ' "$work/sample-shared.yaml")" "shared Teams sample must preserve disabled WorkIQ"
   fi
 done < <(
   cd "$repo_root"
