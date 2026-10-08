@@ -39,6 +39,7 @@ class RecordingAvailable(BaseModel):
     chat_id: str
     started_at: datetime
     viewer_url: str | None = None
+    call_id: str | None = None
 
     @classmethod
     def from_activity(cls, activity: Activity) -> RecordingAvailable | None:
@@ -73,6 +74,10 @@ class RecordingAvailable(BaseModel):
         except ValueError:
             logger.warning("Rejected recording notification with an invalid timestamp")
             return None
+        identifier = root.find("./Identifiers/Id[@type='callId']")
+        call_id = None
+        if identifier is not None:
+            call_id = (identifier.get("value") or "").strip() or None
         viewer_url = None
         for item in content.findall("item"):
             uri = item.get("uri")
@@ -89,6 +94,7 @@ class RecordingAvailable(BaseModel):
             break
         return cls(
             chat_id=activity.conversation.id, started_at=started_at, viewer_url=viewer_url,
+            call_id=call_id,
         )
 
 
@@ -100,6 +106,7 @@ class Occurrence(BaseModel):
     started_at: datetime
     ended_at: datetime | None = None
     viewer_url: str | None = None
+    call_id: str | None = None
     agenda: list[str] = Field(default_factory=list)
     reminder: Literal["unsent", "reserved", "sent"] = "unsent"
     recap: Literal["unsent", "reserved", "sent"] = "unsent"
@@ -215,6 +222,12 @@ class MeetingLifecycle:
         if record.ended_at is None:
             logger.info("Ignoring transcript availability received before the meeting-end event")
             return
+        if signal.call_id is not None:
+            if record.call_id is not None and record.call_id != signal.call_id:
+                raise ValueError("The occurrence call binding changed; refusing to select another call.")
+            if record.call_id is None:
+                record.call_id = signal.call_id
+                await self.save()
         if signal.viewer_url is not None and signal.viewer_url != record.viewer_url:
             record.viewer_url = signal.viewer_url
             await self.save()
@@ -247,17 +260,26 @@ class MeetingLifecycle:
         meeting = await self.workiq.meeting_in_chat(record.join_url, record.chat_id)
         if meeting["id"] != record.meeting_id:
             raise ValueError("The meeting binding changed; refusing to post artifacts to this chat.")
-        listing = await self.workiq.list_transcripts(record.meeting_id)
+        if record.call_id is not None:
+            listing = await self.workiq.list_transcripts(record.meeting_id, call_id=record.call_id)
+        else:
+            listing = await self.workiq.list_transcripts(record.meeting_id)
         if listing["has_more"]:
             raise ValueError("Transcript listing is incomplete; cannot safely compare this occurrence.")
         transcripts = []
         for item in listing["items"]:
-            if not item.get("createdDateTime"):
-                raise ValueError("A transcript lacks occurrence timestamps; refusing to guess.")
-            started = utc_time(item["createdDateTime"])
-            ended = utc_time(item.get("endDateTime") or item["createdDateTime"])
-            if record.started_at <= started <= ended <= record.ended_at + timedelta(minutes=5):
-                transcripts.append(item)
+            if record.call_id is not None:
+                if not item.get("callId"):
+                    raise ValueError("A transcript lacks its call ID; refusing to guess.")
+                if item["callId"] == record.call_id:
+                    transcripts.append(item)
+            else:
+                timestamp = item.get("endDateTime") or item.get("createdDateTime")
+                if not timestamp:
+                    raise ValueError("A transcript lacks occurrence timestamps; refusing to guess.")
+                ended = utc_time(timestamp)
+                if record.started_at <= ended <= record.ended_at + timedelta(minutes=5):
+                    transcripts.append(item)
         if not transcripts:
             await self._post_once(
                 record, "pending_notice",

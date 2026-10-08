@@ -144,6 +144,27 @@ class WorkIQClientTests(IsolatedAsyncioTestCase):
             with self.assertRaises(WorkIQError):
                 await client.list_transcripts("meeting")
 
+    async def test_transcript_listing_filters_and_escapes_call_id(self):
+        client, session = self.client(entity({"value": [{"id": "transcript", "callId": "call'quoted"}]}))
+        result = await client.list_transcripts("meeting", call_id="call'quoted")
+        self.assertEqual(result["items"], [{"id": "transcript", "callId": "call'quoted"}])
+        url = urlsplit(session.call_tool.call_args.args[1]["entityUrls"][0])
+        self.assertEqual(url.path, "/me/onlineMeetings/meeting/transcripts")
+        params = parse_qs(url.query)
+        self.assertEqual(params["$filter"], ["callId eq 'call''quoted'"])
+        self.assertEqual(params["$select"], ["id,callId"])
+        self.assertEqual(params["$top"], [str(MAX_ITEMS)])
+
+    async def test_call_filtered_listing_does_not_follow_pages_or_hide_filter_errors(self):
+        client, session = self.client(entity({"value": [], "@odata.nextLink": "next-page"}))
+        self.assertTrue((await client.list_transcripts("meeting", call_id="call"))["has_more"])
+        session.call_tool.assert_awaited_once()
+        client, session = self.client(entity({"error": {"code": "RequestUnsupportedQuery"}}, 400))
+        with self.assertRaises(WorkIQError) as caught:
+            await client.list_transcripts("meeting", call_id="call")
+        self.assertEqual(caught.exception.status, 400)
+        session.call_tool.assert_awaited_once()
+
     async def test_meeting_binding_and_join_url_validation(self):
         client, session = self.client(entity({"value": [{"id": "m", "chatInfo": {"threadId": "chat"}}]}))
         self.assertEqual((await client.meeting_in_chat(JOIN, "chat"))["id"], "m")

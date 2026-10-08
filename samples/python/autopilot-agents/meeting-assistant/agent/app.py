@@ -127,7 +127,7 @@ def is_added_to_meeting(activity: Activity) -> bool:
         return False
     if isinstance(activity.channel_data, ChannelData):
         channel_data = activity.channel_data
-    else:
+    elif isinstance(activity.channel_data, dict):
         if activity.channel_data.get("meeting") is None:
             return False
         try:
@@ -135,6 +135,8 @@ def is_added_to_meeting(activity: Activity) -> bool:
         except ValidationError:
             logger.warning("Ignoring invalid Teams channel data in a meeting membership update")
             return False
+    else:
+        return False
     return bool(channel_data.meeting and channel_data.meeting.id and channel_data.meeting.id.strip())
 
 

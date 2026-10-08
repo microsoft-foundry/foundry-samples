@@ -78,8 +78,9 @@ future action does not close it. Conflicts, ambiguous resolution, missing or
 insufficient transcripts mean Unclear, not Closed. Open means explicit outstanding
 work, supported by a quote. Not discussed means absent from the supplied transcript,
 not proof it never occurred; do not use this status when no transcript is available.
-Explain each classification using only related evidence. Cite source_id exactly as
-supplied, with short verbatim quotes (whitespace differences allowed), retaining
+Explain each classification using only related evidence. Keep source identifiers
+out of explanations; cite source_id exactly as supplied only in evidence entries,
+with short verbatim quotes (whitespace differences allowed), retaining
 timestamps in quotes when available. Never fabricate or paraphrase quotes. Provide
 at most 3 quotes of at most 400 characters per item, and an explanation of at most
 500 characters. For absent evidence use an empty evidence list and explain the
@@ -213,9 +214,14 @@ class MeetingAnalysis:
                 raise ValueError("Open items require supporting evidence")
             if item.status == "Not discussed" and not has_transcript:
                 raise ValueError("Not discussed requires an available transcript")
+            explanation = item.explanation
+            for index, source_id in sorted(
+                enumerate(sources, 1), key=lambda entry: len(entry[1]), reverse=True,
+            ):
+                explanation = explanation.replace(source_id, f"Transcript {index}")
             lines.append(
                 f"\n{item.agenda_index + 1}. **{escape_markdown(agenda[item.agenda_index])}**"
-                f" - **{item.status}**\n   {escape_markdown(item.explanation)}"
+                f" - **{item.status}**\n   {escape_markdown(explanation)}"
             )
             for evidence in item.evidence:
                 lines.append(
@@ -223,6 +229,8 @@ class MeetingAnalysis:
                 )
             if not item.evidence:
                 lines.append("   - Evidence: no supporting quote in the supplied sources.")
+        if source_labels:
+            lines.append("\nSources reviewed: " + ", ".join(source_labels.values()))
         output = "\n".join(lines)
         if len(output.encode("utf-8")) > MAX_OUTPUT_BYTES:
             raise ValueError("Meeting analysis exceeds the Teams output limit")

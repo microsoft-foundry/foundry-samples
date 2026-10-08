@@ -10,7 +10,8 @@ Deploy a Python Autopilot that responds to Teams meeting events:
 
 Microsoft 365 reads use **Work IQ MCP with the Autopilot's agent-user identity**.
 Reports include transcript quotes and links to the recording viewer or meeting
-chat's **Recap**. The agent does not join audio/video or respond to ordinary chat
+chat's **Recap**. Reviewed-source links remain available even when no supporting
+quote is found. The agent does not join audio/video or respond to ordinary chat
 messages. Without an explicit agenda, it does not post reminders or closure reports.
 
 This preview sample assumes familiarity with the
@@ -145,6 +146,15 @@ start/end and artifact notifications; it does not recover missing events through
 durable polling. If no transcript-ready notification arrives after the end event,
 the report remains pending. Readiness retries are limited to three attempts,
 five seconds apart, for empty matching results or Work IQ 404 responses.
+
+Transcript-ready notifications bind their `Identifiers/Id` value with
+`type="callId"` to the observed occurrence. Transcript listing uses a server-side
+`callId` filter and checks returned call IDs before reading content. Notifications
+without a call ID retain timestamp matching: transcription end time first, then
+creation time if end time is absent. The sample reads one page only; calls with
+additional transcript pages are unsupported and no partial report is posted.
+Live Work IQ filter support and notification-to-Graph call-ID mapping still need
+confirmation with agent credentials.
 
 Occurrence history is retained without automatic pruning or a count limit, so
 persisted chat state grows with each meeting. Long-running use needs a retention

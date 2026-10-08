@@ -56,12 +56,20 @@ def meeting_activity(kind="start", *, pascal_case=True, **overrides):
     return activity(**values)
 
 
-def recording_signal(*, when=None, chat_id=CHAT):
-    return RecordingAvailable(chat_id=chat_id, started_at=when or START + timedelta(minutes=1))
+def recording_signal(*, when=None, chat_id=CHAT, call_id=None):
+    return RecordingAvailable(
+        chat_id=chat_id, started_at=when or START + timedelta(minutes=1), call_id=call_id,
+    )
 
 
-def recording_activity(*, status="Success", content_types="Recording+Transcript", when=None, **overrides):
+def recording_activity(
+    *, status="Success", content_types="Recording+Transcript", when=None, call_id=None, **overrides,
+):
     timestamp = (when or START + timedelta(minutes=1)).isoformat()
+    identifiers = (
+        f'<Identifiers><Id type="callId" value="{call_id}" /></Identifiers>'
+        if call_id is not None else ""
+    )
     values = {
         "type": "message", "textFormat": "plain",
         "conversation": {"id": CHAT, "isGroup": True, "conversationType": "groupChat", "tenantId": TENANT},
@@ -70,6 +78,7 @@ def recording_activity(*, status="Success", content_types="Recording+Transcript"
             '<URIObject format_version="1.1" type="Video.2/CallRecording.1" version="1.0">'
             f'<RecordingStatus status="{status}" code="200" />'
             '<Title>Planning</Title>'
+            f'{identifiers}'
             f'<RecordingContent contentTypes="{content_types}" timestamp="{timestamp}" duration="0:00:37.4">'
             '<item type="onedriveForBusinessTranscript" uri="https://example.test/not-followed" />'
             '</RecordingContent></URIObject>'
@@ -126,6 +135,14 @@ class EventContractTests(TestCase):
             self.assertFalse(is_added_to_meeting(event))
         event = meeting_added_activity()
         event.recipient.id = ""
+        self.assertFalse(is_added_to_meeting(event))
+
+    def test_missing_channel_data_is_not_a_meeting_addition(self):
+        payload = meeting_added_activity().model_dump(mode="json", by_alias=True, exclude_none=True)
+        del payload["channelData"]
+        event = activity(**payload)
+        self.assertIsNone(event.channel_data)
+        self.assertTrue(is_supported_teams_group_chat(event))
         self.assertFalse(is_added_to_meeting(event))
 
     def test_malformed_meeting_metadata_is_logged(self):
@@ -278,6 +295,17 @@ class EventContractTests(TestCase):
             parsed = RecordingAvailable.from_activity(event)
             self.assertEqual(parsed.chat_id, CHAT)
             self.assertEqual(parsed.started_at, START + timedelta(minutes=1))
+
+    def test_notification_extracts_call_id_value_not_processing_id(self):
+        text = recording_activity(call_id=" call-current ").text.replace(
+            "<Title>", '<CallProcessingId value="processing-other" /><Title>',
+        )
+        parsed = RecordingAvailable.from_activity(recording_activity(text=text))
+        self.assertEqual(parsed.call_id, "call-current")
+        for call_id in (None, "", " "):
+            with self.subTest(call_id=call_id):
+                parsed = RecordingAvailable.from_activity(recording_activity(call_id=call_id))
+                self.assertIsNone(parsed.call_id)
 
     def test_notification_preserves_sharepoint_viewer_not_transcript_api_url(self):
         url = "https://contoso.sharepoint.com/:v:/g/recording?view=transcript&mode=read"
@@ -630,10 +658,154 @@ class LifecycleTests(IsolatedAsyncioTestCase):
     async def test_previous_occurrence_transcript_is_not_used(self):
         await self.processor.start(*meeting_args())
         self.graph.list_transcripts.return_value = {
-            "items": [{"id": "old", "createdDateTime": (START - timedelta(days=7)).isoformat()}],
+            "items": [
+                {"id": "old", "createdDateTime": (START - timedelta(days=7)).isoformat()},
+                {
+                    "id": "delayed-old",
+                    "createdDateTime": (START + timedelta(minutes=1)).isoformat(),
+                    "endDateTime": (END - timedelta(days=7)).isoformat(),
+                },
+            ],
             "has_more": False,
         }
         await self.processor.end(*meeting_args("end"))
+        with patch("agent.meeting_lifecycle.asyncio.sleep", new_callable=AsyncMock):
+            await self.processor.recording_available(recording_signal())
+        self.graph.get_transcript.assert_not_awaited()
+        self.analysis.compare.assert_not_awaited()
+
+    async def test_call_id_selects_transcripts_without_artifact_timestamps(self):
+        await self.processor.start(*meeting_args())
+        await self.processor.end(*meeting_args("end"))
+        self.graph.list_transcripts.return_value = {
+            "items": [
+                {"id": "first", "callId": "call-current"},
+                {"id": "other", "callId": "call-other"},
+                {"id": "second", "callId": "call-current"},
+            ],
+            "has_more": False,
+        }
+        await self.processor.recording_available(recording_signal(call_id="call-current"))
+        self.graph.list_transcripts.assert_awaited_once_with("meeting-id", call_id="call-current")
+        self.assertEqual(self.graph.get_transcript.await_count, 2)
+        self.analysis.compare.assert_awaited_once_with(
+            ["Approve budget"],
+            {
+                "transcript:first": "00:10 Budget approved.",
+                "transcript:second": "00:10 Budget approved.",
+            },
+            source_url="https://teams.microsoft.com/l/chat/19%3Ameeting%40thread.v2/conversations",
+        )
+        record = next(iter(self.state.occurrences.values()))
+        self.assertEqual(record.call_id, "call-current")
+        self.assertEqual(record.recap, "sent")
+
+    async def test_call_id_is_persisted_and_reused_after_reload(self):
+        await self.processor.start(*meeting_args())
+        await self.processor.end(*meeting_args("end"))
+        with patch("agent.meeting_lifecycle.asyncio.sleep", new_callable=AsyncMock):
+            await self.processor.recording_available(recording_signal(call_id="call-current"))
+        self.assertEqual(next(iter(self.saved[-1]["occurrences"].values()))["call_id"], "call-current")
+        self.state = MeetingState.model_validate(self.saved[-1])
+        self.processor.state = self.state
+        self.graph.list_transcripts.reset_mock()
+        self.graph.list_transcripts.return_value = {
+            "items": [{"id": "transcript", "callId": "call-current"}], "has_more": False,
+        }
+        await self.processor.recording_available(recording_signal())
+        self.graph.list_transcripts.assert_awaited_once_with("meeting-id", call_id="call-current")
+        self.assertEqual(next(iter(self.state.occurrences.values())).recap, "sent")
+
+    async def test_notification_cannot_replace_a_bound_call_id(self):
+        await self.processor.start(*meeting_args())
+        await self.processor.end(*meeting_args("end"))
+        with patch("agent.meeting_lifecycle.asyncio.sleep", new_callable=AsyncMock):
+            await self.processor.recording_available(recording_signal(call_id="call-current"))
+        count = self.graph.list_transcripts.await_count
+        with self.assertRaisesRegex(ValueError, "call binding"):
+            await self.processor.recording_available(recording_signal(call_id="call-other"))
+        self.assertEqual(self.graph.list_transcripts.await_count, count)
+        self.assertEqual(next(iter(self.state.occurrences.values())).call_id, "call-current")
+
+    async def test_call_filtered_listing_requires_identity_and_a_complete_page(self):
+        await self.processor.start(*meeting_args())
+        await self.processor.end(*meeting_args("end"))
+        for listing, message in (
+            ({"items": [{"id": "missing"}], "has_more": False}, "call ID"),
+            ({"items": [{"id": "blank", "callId": ""}], "has_more": False}, "call ID"),
+            ({"items": [{"id": "transcript", "callId": "call-current"}], "has_more": True}, "incomplete"),
+        ):
+            with self.subTest(listing=listing):
+                self.graph.list_transcripts.return_value = listing
+                with self.assertRaisesRegex(ValueError, message):
+                    await self.processor.recording_available(recording_signal(call_id="call-current"))
+        self.graph.get_transcript.assert_not_awaited()
+        self.analysis.compare.assert_not_awaited()
+
+    async def test_recurring_occurrences_keep_separate_call_ids(self):
+        await self.processor.start(*meeting_args())
+        await self.processor.end(*meeting_args("end"))
+        await self.processor.start(*meeting_args(when=START + timedelta(days=7)))
+        await self.processor.end(*meeting_args("end", when=END + timedelta(days=7)))
+        self.graph.list_transcripts.return_value = {
+            "items": [
+                {"id": "first", "callId": "call-first"},
+                {"id": "later", "callId": "call-later"},
+            ],
+            "has_more": False,
+        }
+        await self.processor.recording_available(recording_signal(
+            call_id="call-later", when=START + timedelta(days=7, minutes=1),
+        ))
+        await self.processor.recording_available(recording_signal(call_id="call-first"))
+        records = list(self.state.occurrences.values())
+        self.assertEqual([record.call_id for record in records], ["call-first", "call-later"])
+        self.assertEqual([record.recap for record in records], ["sent", "sent"])
+        sources = [call.args[1] for call in self.analysis.compare.call_args_list]
+        self.assertEqual(sources, [
+            {"transcript:later": "00:10 Budget approved."},
+            {"transcript:first": "00:10 Budget approved."},
+        ])
+
+    async def test_transcripts_match_by_end_time_not_resource_creation_time(self):
+        await self.processor.start(*meeting_args())
+        await self.processor.end(*meeting_args("end"))
+        self.graph.list_transcripts.return_value = {
+            "items": [
+                {
+                    "id": "created-later",
+                    "createdDateTime": (END + timedelta(minutes=10)).isoformat(),
+                    "endDateTime": (START + timedelta(minutes=15)).isoformat(),
+                },
+                {
+                    "id": "created-earlier",
+                    "createdDateTime": (START - timedelta(days=1)).isoformat(),
+                    "endDateTime": END.isoformat(),
+                },
+                {"id": "end-only", "endDateTime": END.isoformat()},
+            ],
+            "has_more": False,
+        }
+        await self.processor.recording_available(recording_signal())
+        self.assertEqual(self.graph.get_transcript.await_count, 3)
+        self.analysis.compare.assert_awaited_once_with(
+            ["Approve budget"],
+            {
+                "transcript:created-later": "00:10 Budget approved.",
+                "transcript:created-earlier": "00:10 Budget approved.",
+                "transcript:end-only": "00:10 Budget approved.",
+            },
+            source_url="https://teams.microsoft.com/l/chat/19%3Ameeting%40thread.v2/conversations",
+        )
+        self.assertEqual(next(iter(self.state.occurrences.values())).recap, "sent")
+
+    async def test_transcript_end_outside_occurrence_does_not_fall_back_to_creation_time(self):
+        await self.processor.start(*meeting_args())
+        await self.processor.end(*meeting_args("end"))
+        self.ready_transcript()
+        self.graph.list_transcripts.return_value["items"][0]["endDateTime"] = (
+            END + timedelta(minutes=6)
+        ).isoformat()
         with patch("agent.meeting_lifecycle.asyncio.sleep", new_callable=AsyncMock):
             await self.processor.recording_available(recording_signal())
         self.graph.get_transcript.assert_not_awaited()
@@ -744,13 +916,15 @@ class LifecycleTests(IsolatedAsyncioTestCase):
         url = "https://contoso.sharepoint.com/:v:/g/recording"
         with self.assertLogs("agent.meeting_lifecycle", level="INFO") as logs:
             await self.processor.recording_available(RecordingAvailable(
-                chat_id=CHAT, started_at=START + timedelta(minutes=1), viewer_url=url,
+                chat_id=CHAT, started_at=START + timedelta(minutes=1),
+                viewer_url=url, call_id="call-current",
             ))
         self.assertIn("before the meeting-end event", "\n".join(logs.output))
         self.graph.list_transcripts.assert_not_awaited()
         self.analysis.compare.assert_not_awaited()
         self.processor.state = MeetingState.model_validate(self.saved[-1])
         self.assertIsNone(next(iter(self.processor.state.occurrences.values())).viewer_url)
+        self.assertIsNone(next(iter(self.processor.state.occurrences.values())).call_id)
         self.ready_transcript()
         await self.processor.end(*meeting_args("end"))
         self.graph.list_transcripts.assert_not_awaited()
@@ -871,6 +1045,7 @@ class SdkPersistenceTests(IsolatedAsyncioTestCase):
             list_transcripts=AsyncMock(return_value={
                 "items": [{
                     "id": "transcript", "createdDateTime": START.isoformat(), "endDateTime": END.isoformat(),
+                    "callId": "call-current",
                 }], "has_more": False,
             }),
             get_transcript=AsyncMock(return_value={"content": "Budget approved."}),
@@ -898,8 +1073,8 @@ class SdkPersistenceTests(IsolatedAsyncioTestCase):
                 meeting_activity(), meeting_activity(),
                 meeting_activity("end"), meeting_activity("end"),
                 recording_activity(content_types="Recording"),
-                recording_activity(),
-                recording_activity(),
+                recording_activity(call_id="call-current"),
+                recording_activity(call_id="call-current"),
             ):
                 event.from_property.id = f"8:orgid:{USER}"
                 event.recipient.id = f"8:orgid:{AGENT_USER}"
@@ -912,6 +1087,7 @@ class SdkPersistenceTests(IsolatedAsyncioTestCase):
         self.assertIn("prepare meeting notes", post.call_args_list[1].args[0])
         self.assertIn("Closed: Approve budget", post.call_args_list[2].args[0])
         self.assertEqual(graph.list_transcripts.await_count, 1)
+        graph.list_transcripts.assert_awaited_once_with("meeting", call_id="call-current")
         analysis.compare.assert_awaited_once()
         self.assertEqual(graph.invited_event.await_count, 1)
         self.assertEqual(workiq_client.call_count, 6)

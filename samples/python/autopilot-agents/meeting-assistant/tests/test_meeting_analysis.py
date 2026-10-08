@@ -165,6 +165,40 @@ class MeetingAnalysisTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertIn("recording%28with%29%5Bbrackets%5D", report)
 
+    async def test_report_without_quotes_links_reviewed_source_and_hides_opaque_id(self):
+        source = "transcript:ktViz" + "A" * 220
+        self.respond({"items": [{
+            **item(status="Not discussed"),
+            "explanation": f"The supplied transcript (source_id: {source}) does not mention this topic.",
+            "evidence": [],
+        }]})
+        url = "https://contoso.sharepoint.com/:v:/g/recording"
+        report = await self.analysis.compare(
+            ["Identify GA date"], {source: "We discussed alarms."}, source_url=url,
+        )
+        self.assertIn(f"Sources reviewed: [Transcript 1]({url})", report)
+        self.assertIn("source\\_id: Transcript 1", report)
+        self.assertNotIn(source, report)
+        self.assertIn("Evidence: no supporting quote in the supplied sources.", report)
+        sent = json.loads(self.parse.call_args.kwargs["input"][0]["content"])
+        self.assertEqual(sent["sources"], {source: "We discussed alarms."})
+        self.assertNotIn(url, self.parse.call_args.kwargs["input"][0]["content"])
+
+    async def test_explanation_labels_handle_overlapping_ids_and_preserve_escaping(self):
+        self.respond({"items": [{
+            **item(status="Unclear"),
+            "explanation": "transcript:t10 and transcript:t1: <at>someone</at> [click](https://example.test)",
+            "evidence": [],
+        }]})
+        report = await self.analysis.compare(
+            ["Confirm owners"], {"transcript:t1": "First.", "transcript:t10": "Second."},
+        )
+        self.assertIn("Transcript 2 and Transcript 1:", report)
+        self.assertIn("Sources reviewed: Transcript 1, Transcript 2", report)
+        self.assertNotIn("transcript:", report)
+        self.assertNotIn("<at>", report)
+        self.assertNotIn("[click](", report)
+
     async def test_rejects_untrusted_citation_urls_before_model_call(self):
         for url in (
             "http://teams.microsoft.com/l/chat/example/conversations",

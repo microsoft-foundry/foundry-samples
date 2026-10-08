@@ -504,10 +504,14 @@ class MeetingWorkIQ:
             "$filter": f"JoinWebUrl eq '{escaped}'", "$select": "id,chatInfo,joinWebUrl",
         })
 
-    async def list_transcripts(self, meeting_id: str) -> dict[str, Any]:
-        return await self._list(f"/me/onlineMeetings/{segment(meeting_id)}/transcripts", {
-            "$select": "id,createdDateTime,endDateTime",
-        })
+    async def list_transcripts(
+        self, meeting_id: str, *, call_id: str | None = None,
+    ) -> dict[str, Any]:
+        params = {"$select": "id,createdDateTime,endDateTime"}
+        if call_id is not None:
+            escaped = call_id.replace("'", "''")
+            params = {"$select": "id,callId", "$filter": f"callId eq '{escaped}'"}
+        return await self._list(f"/me/onlineMeetings/{segment(meeting_id)}/transcripts", params)
 
     async def get_transcript(self, meeting_id: str, transcript_id: str) -> dict[str, Any]:
         path = f"/me/onlineMeetings/{segment(meeting_id)}/transcripts/{segment(transcript_id)}/content"
