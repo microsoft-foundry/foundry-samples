@@ -1,0 +1,23 @@
+[project]
+name = "toolbox-langgraph"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent using the Responses protocol."
+requires-python = ">=3.12"
+dependencies = [
+    "aiohttp",
+    "azure-ai-agentserver-responses==2.1.0",
+    "azure-ai-projects>=2.0.0",
+    "azure-identity>=1.25.0",
+    "debugpy",
+    # azure-ai-projects imports httpx directly, while OpenAI 3 uses httpx2.
+    "httpx<1",
+    "langchain-azure-ai>=1.2.3",
+    "langchain-mcp-adapters>=0.2.2",
+    "langgraph>=1.1.8",
+    # langchain-mcp-adapters currently uses APIs removed in MCP 2.
+    "mcp>=1.24,<2",
+    "openai<3",
+    "pydantic-core<2.46.0",
+    "python-dotenv==1.1.1",
+    "starlette<1.0.0",
+]

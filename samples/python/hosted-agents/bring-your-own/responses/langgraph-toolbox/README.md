@@ -39,16 +39,19 @@ serves responses over the Foundry Responses Protocol.
 
 **Linux/macOS:**
 ```bash
+cd src/toolbox-langgraph
+
 # 1. Copy and fill in the environment file
 cp .env.example .env  # skip if .env already exists
 # Edit .env — set FOUNDRY_PROJECT_ENDPOINT, AZURE_AI_MODEL_DEPLOYMENT_NAME,
 #              and TOOLBOX_ENDPOINT at minimum
 
 # 2. Install dependencies
-pip install -r requirements.txt
+pipx install uv==0.11.7
+uv sync --frozen --python 3.12
 
 # 3. Start the agent
-python main.py
+uv run --no-sync python main.py
 
 # 4. Invoke
 curl -X POST http://localhost:8088/responses \
@@ -58,16 +61,19 @@ curl -X POST http://localhost:8088/responses \
 
 **Windows (PowerShell):**
 ```powershell
+cd src/toolbox-langgraph
+
 # 1. Copy and fill in the environment file
 Copy-Item .env.example .env  # skip if .env already exists
 # Edit .env — set FOUNDRY_PROJECT_ENDPOINT, AZURE_AI_MODEL_DEPLOYMENT_NAME,
 #              and TOOLBOX_ENDPOINT at minimum
 
 # 2. Install dependencies
-pip install -r requirements.txt
+pipx install uv==0.11.7
+uv sync --frozen --python 3.12
 
 # 3. Start the agent
-python main.py
+uv run --no-sync python main.py
 
 # 4. Invoke
 Invoke-RestMethod -Method POST http://localhost:8088/responses `
@@ -85,17 +91,15 @@ Invoke-RestMethod -Method POST http://localhost:8088/responses `
 
 **Set up the Python virtual environment**
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install dependencies in the virtual environment:
+- With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
+  cd src/toolbox-langgraph
 
-  # or pure pip
-  pip install -r requirements.txt
+  pipx install uv==0.11.7
+  uv sync --frozen --python 3.12
   ```
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select `src/toolbox-langgraph/.venv`.
 
 **Run and debug the agent**
 
@@ -104,7 +108,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 **Or run manually, then open the Inspector**
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
+2. From `src/toolbox-langgraph`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 </details>
@@ -232,7 +236,7 @@ After `azd ai agent init`, perform these steps before `azd up` will work:
 
 ### What `azd ai agent init` Does
 
-`azd ai agent init` copies all source files (main.py, Dockerfile, requirements.txt, etc.) **verbatim** from the manifest directory into `src/<agent-name>/` in the scaffolded project. It does NOT generate or modify main.py — it copies the exact file from your manifest.
+`azd ai agent init` copies all source files (main.py, Dockerfile, pyproject.toml, uv.lock, etc.) **verbatim** from the manifest directory into `src/<agent-name>/` in the scaffolded project. It does NOT generate or modify main.py — it copies the exact file from your manifest.
 
 The init command also:
 - Creates `azure.yaml` with service config, connections, and toolbox definitions
@@ -260,7 +264,8 @@ my-project/
 │       ├── agent.yaml        # Agent definition (env vars, protocols)
 │       ├── main.py           # Agent code
 │       ├── Dockerfile        # Container build
-│       └── requirements.txt  # Dependencies
+│       ├── pyproject.toml     # Project and direct dependencies
+│       └── uv.lock            # Reproducible dependency lock
 └── azure.yaml                # azd service + toolbox configuration
 ```
 
@@ -367,7 +372,7 @@ variable in new deployments.
 
 ## Tracing
 
-The `azure-ai-agentserver-core[tracing]` package is included in `requirements.txt` and
+The `azure-ai-agentserver-core[tracing]` package is part of the dependency graph locked in `uv.lock` and
 provides OpenTelemetry auto-instrumentation for LLM calls, MCP tool invocations, and
 server spans. Traces can be exported to Azure Monitor (Application Insights).
 
