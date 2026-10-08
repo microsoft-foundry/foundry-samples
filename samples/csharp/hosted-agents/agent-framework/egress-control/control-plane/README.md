@@ -355,6 +355,14 @@ From the parent sample directory, in the session that has `ACCOUNT_ID` and
 
 ```bash
 azd env set RAI_POLICY_ID "$ACCOUNT_ID/raiPolicies/$ALLOWED_NAME"
+```
+
+For the .NET sample only, `azure.ai.agents` 1.0.0-beta.16 does not interpolate
+`${RAI_POLICY_ID}` in `policies.raiPolicyName`. Run
+`azd env get-value RAI_POLICY_ID`, then replace `${RAI_POLICY_ID}` in the
+generated `azure.yaml` with that full ARM resource ID before deploying.
+
+```bash
 azd deploy
 azd ai agent invoke "test egress to https://httpbin.org/get"
 azd ai agent invoke "test egress to https://example.com/get"
