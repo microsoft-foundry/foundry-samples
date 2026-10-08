@@ -393,19 +393,28 @@ infrastructure to clean up this demonstration.
 
 Run cleanup even if a test failed or a forbidden write unexpectedly succeeded.
 If needed, restore the saved variables with `source /path/to/session.sh`.
-Use the administrator identity for removing the assignment and definition.
+If one identity has both permission sets, it can run every command below. When
+using separate identities, switch the Azure CLI login as labeled and run
+`az account set --subscription "$SUBSCRIPTION_ID"` after each login.
+
+Using the **administrator identity**, remove the assignment first and then the
+custom definition:
 
 ```bash
 az rest --method delete --resource "$ARM_AUDIENCE" \
   --url "$ARM_ENDPOINT$ASSIGNMENT_ID?api-version=2024-04-01"
 
 az rest --method delete --resource "$ARM_AUDIENCE" \
+  --url "$ARM_ENDPOINT$DEFINITION_ID?api-version=2023-04-01"
+```
+
+Using the **developer identity**, remove the two test RAI policies:
+
+```bash
+az rest --method delete --resource "$ARM_AUDIENCE" \
   --url "$ARM_ENDPOINT$ACCOUNT_ID/raiPolicies/$ALLOWED_NAME?api-version=$RAI_API_VERSION"
 az rest --method delete --resource "$ARM_AUDIENCE" \
   --url "$ARM_ENDPOINT$ACCOUNT_ID/raiPolicies/$DENIED_NAME?api-version=$RAI_API_VERSION"
-
-az rest --method delete --resource "$ARM_AUDIENCE" \
-  --url "$ARM_ENDPOINT$DEFINITION_ID?api-version=2023-04-01"
 ```
 
 A 404 on an exact test resource is acceptable during cleanup; do not ignore
