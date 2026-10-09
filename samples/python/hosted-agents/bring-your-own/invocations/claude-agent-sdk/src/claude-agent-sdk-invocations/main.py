@@ -43,6 +43,7 @@ _TOOLBOX_API_VERSION = "v1"
 _TOOLBOX_SCOPE = "https://ai.azure.com/.default"
 # Header documented by the Foundry Toolboxes (preview) protocol reference.
 _TOOLBOX_FEATURES = "Toolboxes=V1Preview"
+_MCP_ACCEPT = "application/json, text/event-stream"
 
 # `get_bearer_token_provider` itself is safe to share across requests/threads:
 # calling it is what produces a fresh token (it caches/refreshes internally),
@@ -127,6 +128,7 @@ def _toolbox_headers() -> dict[str, str]:
     token = _get_toolbox_token_provider()()
     headers = {
         "Content-Type": "application/json",
+        "Accept": _MCP_ACCEPT,
         "Authorization": f"Bearer {token}",
         "Foundry-Features": _TOOLBOX_FEATURES,
     }
@@ -138,19 +140,17 @@ _MCP_PROTOCOL_VERSION = "2024-11-05"
 
 
 async def _mcp_initialize(client: httpx.AsyncClient, endpoint: str, headers: dict[str, str]) -> dict[str, str]:
-    """Perform the MCP lifecycle handshake and return headers carrying any
-    assigned `mcp-session-id`.
+    """Initialize an MCP session and return headers carrying its session ID.
 
-    MCP operations must follow `initialize` + `notifications/initialized`; a
-    strict toolbox endpoint rejects `tools/list` sent beforehand. Mirrors the
-    repository's existing Toolbox client
-    (`bring-your-own/invocations/toolbox/.../main.py`), which performs this
-    same handshake before listing tools.
+    The caller sends `notifications/initialized` before any other operation.
+    Keeping that notification inside the caller's cleanup scope ensures an
+    assigned session is terminated even if the notification fails.
     """
-    response = await client.post(
+    body, session_id = await _mcp_response_body(
+        client,
         endpoint,
-        headers=headers,
-        json={
+        headers,
+        {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "initialize",
@@ -160,25 +160,54 @@ async def _mcp_initialize(client: httpx.AsyncClient, endpoint: str, headers: dic
                 "clientInfo": {"name": "claude-agent-sdk-invocations", "version": "1.0.0"},
             },
         },
+        1,
     )
-    response.raise_for_status()
-    body = response.json()
     if "error" in body:
         raise RuntimeError(f"Toolbox initialize failed: {body['error']}")
 
     session_headers = dict(headers)
-    session_id = response.headers.get("mcp-session-id")
     if session_id:
         session_headers["mcp-session-id"] = session_id
 
-    # Fire-and-forget notification per the MCP lifecycle: no id, no response body.
-    notify = await client.post(
-        endpoint,
-        headers=session_headers,
-        json={"jsonrpc": "2.0", "method": "notifications/initialized"},
-    )
-    notify.raise_for_status()
     return session_headers
+
+
+async def _mcp_response_body(
+    client: httpx.AsyncClient,
+    endpoint: str,
+    headers: dict[str, str],
+    payload: dict,
+    request_id: int,
+) -> tuple[dict, Optional[str]]:
+    """Read the JSON-RPC response from either supported Streamable HTTP form."""
+    async with client.stream("POST", endpoint, headers=headers, json=payload) as response:
+        response.raise_for_status()
+        content_type = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+
+        if content_type == "application/json":
+            await response.aread()
+            body = response.json()
+            if isinstance(body, dict) and body.get("id") == request_id:
+                return body, response.headers.get("mcp-session-id")
+        elif content_type == "text/event-stream":
+            data_lines: list[str] = []
+            async for line in response.aiter_lines():
+                if not line:
+                    if data_lines:
+                        body = json.loads("\n".join(data_lines))
+                        data_lines = []
+                        if isinstance(body, dict) and body.get("id") == request_id:
+                            return body, response.headers.get("mcp-session-id")
+                elif line.startswith("data:"):
+                    data_lines.append(line[5:].removeprefix(" "))
+            if data_lines:
+                body = json.loads("\n".join(data_lines))
+                if isinstance(body, dict) and body.get("id") == request_id:
+                    return body, response.headers.get("mcp-session-id")
+        else:
+            raise RuntimeError(f"Toolbox returned unsupported MCP response content type: {content_type!r}.")
+
+    raise RuntimeError(f"Toolbox MCP response did not include a response for request ID {request_id}.")
 
 
 async def _terminate_mcp_session(client: httpx.AsyncClient, endpoint: str, headers: dict[str, str]) -> None:
@@ -218,19 +247,27 @@ async def _discover_toolbox_tools(endpoint: str, headers: dict[str, str]) -> lis
     async with httpx.AsyncClient(timeout=30.0) as client:
         session_headers = await _mcp_initialize(client, endpoint, headers)
         try:
+            # Fire-and-forget notification per the MCP lifecycle: no id, no response body.
+            notify = await client.post(
+                endpoint,
+                headers=session_headers,
+                json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+            )
+            notify.raise_for_status()
+
             tool_names: list[str] = []
             cursor: Optional[str] = None
             request_id = 1
             while True:
                 request_id += 1
                 params: dict[str, str] = {"cursor": cursor} if cursor else {}
-                response = await client.post(
+                body, _ = await _mcp_response_body(
+                    client,
                     endpoint,
-                    headers=session_headers,
-                    json={"jsonrpc": "2.0", "id": request_id, "method": "tools/list", "params": params},
+                    session_headers,
+                    {"jsonrpc": "2.0", "id": request_id, "method": "tools/list", "params": params},
+                    request_id,
                 )
-                response.raise_for_status()
-                body = response.json()
                 if "error" in body:
                     raise RuntimeError(f"Toolbox tools/list failed: {body['error']}")
 

@@ -27,7 +27,7 @@ import os
 import sys
 import types
 import unittest
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from typing import Any, Optional
 from unittest import mock
@@ -93,10 +93,17 @@ def _recording_query(bucket: list):
 
 
 class _FakeHTTPResponse:
-    def __init__(self, status_code: int = 200, json_body: Optional[dict] = None, headers: Optional[dict] = None):
+    def __init__(
+        self,
+        status_code: int = 200,
+        json_body: Optional[dict] = None,
+        headers: Optional[dict] = None,
+        text: str = "",
+    ):
         self.status_code = status_code
         self._json_body = json_body or {}
-        self.headers = headers or {}
+        self.headers = {"content-type": "application/json", **(headers or {})}
+        self.text = text
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -104,6 +111,13 @@ class _FakeHTTPResponse:
 
     def json(self):
         return self._json_body
+
+    async def aread(self):
+        return self.text.encode("utf-8")
+
+    async def aiter_lines(self):
+        for line in self.text.splitlines():
+            yield line
 
 
 class _FakeAsyncClient:
@@ -133,8 +147,23 @@ class _FakeAsyncClient:
     async def post(self, url, headers=None, json=None):
         _FakeAsyncClient.calls.append({"url": url, "headers": headers, "json": json})
         if _FakeAsyncClient.responses:
-            return _FakeAsyncClient.responses.pop(0)
-        return _FakeAsyncClient.default_response
+            response = _FakeAsyncClient.responses.pop(0)
+        else:
+            response = _FakeAsyncClient.default_response
+        if json and "id" in json and response.headers.get("content-type") == "application/json":
+            response = _FakeHTTPResponse(
+                response.status_code,
+                dict(response._json_body),
+                dict(response.headers),
+                response.text,
+            )
+            response._json_body.setdefault("id", json["id"])
+        return response
+
+    @asynccontextmanager
+    async def stream(self, method, url, headers=None, json=None):
+        response = await self.post(url, headers=headers, json=json)
+        yield response
 
     async def delete(self, url, headers=None):
         _FakeAsyncClient.delete_calls.append({"url": url, "headers": headers})
@@ -400,6 +429,77 @@ class McpHandshakeTests(unittest.TestCase):
             self.assertEqual(_FakeAsyncClient.calls[1]["headers"]["mcp-session-id"], "sess-1")
             self.assertEqual(_FakeAsyncClient.calls[2]["headers"]["mcp-session-id"], "sess-1")
             self.assertNotIn("mcp-session-id", _FakeAsyncClient.calls[0]["headers"])
+
+    def test_sse_responses_and_required_accept_header_are_supported(self):
+        with _toolbox_env(
+            TOOLBOX_ENDPOINT="https://toolbox.example.com/mcp",
+            TOOLBOX_ALLOWED_TOOLS="web_search",
+        ):
+            main = _import_main()
+            calls: list = []
+            with mock.patch.object(httpx, "AsyncClient", _FakeAsyncClient), mock.patch.object(
+                main, "query", _recording_query(calls)
+            ), mock.patch.object(
+                main, "_get_toolbox_token_provider", lambda: (lambda: "FAKE_TOKEN_VALUE")
+            ):
+                _FakeAsyncClient.calls = []
+                _FakeAsyncClient.delete_calls = []
+                _FakeAsyncClient.delete_response = _FakeHTTPResponse(200)
+                _FakeAsyncClient.responses = [
+                    _FakeHTTPResponse(
+                        200,
+                        headers={"content-type": "text/event-stream", "mcp-session-id": "sess-sse"},
+                        text='event: message\ndata: {"jsonrpc":"2.0","id":1,"result":{}}\n\n',
+                    ),
+                    _FakeHTTPResponse(202),
+                    _FakeHTTPResponse(
+                        200,
+                        headers={"content-type": "text/event-stream"},
+                        text=(
+                            'event: message\ndata: {"jsonrpc":"2.0","method":"notifications/progress"}\n\n'
+                            'event: message\ndata: {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"web_search"}]}}\n\n'
+                        ),
+                    ),
+                ]
+                events = asyncio.run(_invoke(main))
+
+            self.assertEqual(events, [{"type": "text", "content": "ok"}])
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(len(_FakeAsyncClient.delete_calls), 1)
+            self.assertTrue(
+                all(
+                    call["headers"]["Accept"] == "application/json, text/event-stream"
+                    for call in _FakeAsyncClient.calls
+                )
+            )
+
+    def test_initialized_notification_failure_terminates_assigned_session(self):
+        with _toolbox_env(
+            TOOLBOX_ENDPOINT="https://toolbox.example.com/mcp",
+            TOOLBOX_ALLOWED_TOOLS="web_search",
+        ):
+            main = _import_main()
+            calls: list = []
+            with mock.patch.object(httpx, "AsyncClient", _FakeAsyncClient), mock.patch.object(
+                main, "query", _recording_query(calls)
+            ), mock.patch.object(
+                main, "_get_toolbox_token_provider", lambda: (lambda: "FAKE_TOKEN_VALUE")
+            ):
+                _FakeAsyncClient.calls = []
+                _FakeAsyncClient.delete_calls = []
+                _FakeAsyncClient.delete_response = _FakeHTTPResponse(200)
+                _FakeAsyncClient.responses = [
+                    _FakeHTTPResponse(200, {"result": {}}, headers={"mcp-session-id": "sess-failed"}),
+                    _FakeHTTPResponse(500),
+                ]
+                events = asyncio.run(_invoke(main))
+
+            self.assertIn("toolbox integration failed", events[0]["error"])
+            self.assertEqual(calls, [])
+            self.assertEqual(len(_FakeAsyncClient.delete_calls), 1)
+            self.assertEqual(
+                _FakeAsyncClient.delete_calls[0]["headers"]["mcp-session-id"], "sess-failed"
+            )
 
 
 class ToolsListPaginationTests(unittest.TestCase):
