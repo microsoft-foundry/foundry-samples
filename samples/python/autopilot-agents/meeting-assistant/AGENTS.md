@@ -2,6 +2,24 @@
 
 These instructions apply only to this sample, not to other Autopilot samples.
 
+## Meeting documentation maintenance
+
+Spell out Autopilot and ActivityProtocol in documentation; do not abbreviate either.
+
+Keep [MEETING_OBJECTS.md](MEETING_OBJECTS.md) and the related README descriptions
+up to date whenever meeting behavior changes. This includes Activity routes or
+payload fields, calendar-event selection, identity bindings, Work IQ
+paths and query fields, recording/transcript retrieval, persisted state, and
+source-link rendering.
+
+Update the object relationships, per-payload pointer tables, synthetic examples,
+lookup flow, limitations, and source references affected by the change. State
+expected payload fields and object relationships directly, distinguishing fields
+the sample consumes from fields present but unused or available through APIs.
+Update that expected behavior when newly discovered edge cases require changes.
+Never add real meeting content, tenant/user IDs, artifact IDs, credentials, or
+live notification URLs to documentation examples.
+
 ## Hosted session and lock scope
 
 `azure.yaml` deploys this sample as a Foundry-hosted Microsoft 365 Autopilot
