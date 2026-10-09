@@ -24,3 +24,7 @@ samples/python/hosted-agents/bring-your-own/invocations/claude-agent-sdk
 
 # Requires Cognitive Services OpenAI User on the hosted identity at account scope.
 samples/python/hosted-agents/bring-your-own/voicelive/github-copilot-responses-voicelive
+
+# Requires a dedicated Claude deployment and account-scope Foundry User role;
+# the shared toolbox matrix supplies neither prerequisite.
+samples/python/hosted-agents/agent-framework/responses/25-claude-foundry-toolbox
