@@ -15,7 +15,7 @@ client = AnthropicFoundryClient(
     resource=os.environ["AZURE_AI_RESOURCE_NAME"],
     model=os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"],
     azure_ad_token_provider=get_bearer_token_provider(
-        credential, "https://cognitiveservices.azure.com/.default"
+        credential, "https://ai.azure.com/.default"
     ),
 )
 
