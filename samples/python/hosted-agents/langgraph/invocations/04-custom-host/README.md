@@ -99,14 +99,11 @@ class AssistantState(TypedDict, total=False):
 From `src/langgraph-custom-host-invocations`:
 
 ```bash
-python -m venv .venv
-# Windows: .venv\Scripts\Activate.ps1
-# macOS/Linux: source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install uv
+uv sync --frozen
 cp .env.example .env
 az login
-python main.py
+uv run --no-sync python main.py
 ```
 
 Send a location-aware request. The `-i` flag shows the

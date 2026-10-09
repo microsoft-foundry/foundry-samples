@@ -1,0 +1,17 @@
+[project]
+name = "langchain-azure-resilient-invocations"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent built with LangGraph."
+requires-python = ">=3.12"
+dependencies = [
+    "azure-ai-projects>=2.3.0,<2.5",
+    "azure-identity>=1.25.1",
+    "langchain-azure-ai[hosting,opentelemetry]>=1.2.9",
+    "openai>=2,<3",
+    "httpx>=0.28.1,<1",
+    "langgraph>=1.2.8",
+    "langchain-openai>=1.1.11",
+    "python-dotenv>=1.2.2",
+    "opentelemetry-exporter-otlp-proto-http>=1.37",
+    "debugpy",
+]

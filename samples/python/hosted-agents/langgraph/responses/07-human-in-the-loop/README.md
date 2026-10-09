@@ -156,24 +156,20 @@ azd ai agent invoke "Draft a marketing email for our new AI product launch."
 
 ### Set up the Python virtual environment
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Ensure `pip` is version 26.1 or newer (check with `pip --version`). Older versions fail to resolve this sample's dependencies. Upgrade if needed:
+- Install uv if it is not already available:
 
   ```bash
-  python -m pip install --upgrade pip
+  python -m pip install uv
   ```
 
-- Install dependencies in the virtual environment. One transitive dependency ships as a pre-release, so pre-releases must be allowed when using `uv`:
+- From the sample root, sync the committed environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install --prerelease=allow -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+  cd src/langgraph-human-in-the-loop-responses
+  uv sync --frozen
   ```
 
+- In VS Code, select `src/langgraph-human-in-the-loop-responses/.venv` as the Python interpreter.
 ### Run and debug the agent
 
 Press **F5** to start the agent. The agent starts and the **Agent Inspector** opens automatically. Send the following message in the Inspector:
@@ -187,7 +183,7 @@ When the agent pauses with an approval request, the Inspector renders an interac
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python -m langchain_azure_ai.agents.hosting.run --protocol responses` (listens on `http://localhost:8088`).
+2. Start the agent: `uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry
