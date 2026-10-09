@@ -3,6 +3,7 @@
 .azure/
 .env
 .env.example
+.venv/
 README.md
 eval.yaml
 eval.jsonl

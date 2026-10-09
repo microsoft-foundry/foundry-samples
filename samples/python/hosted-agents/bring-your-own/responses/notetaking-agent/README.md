@@ -86,17 +86,15 @@ For the full deployment guide, see [Azure AI Foundry hosted agents](https://aka.
 
 ### Set up the Python virtual environment
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install dependencies in the virtual environment:
+- With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
+  cd src/notetaking-agent-responses-python
 
-  # or pure pip
-  pip install -r requirements.txt
+  pipx install uv==0.11.7
+  uv sync --frozen --python 3.12
   ```
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select `src/notetaking-agent-responses-python/.venv`.
 
 ### Run and debug the agent
 
@@ -105,7 +103,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
+2. From `src/notetaking-agent-responses-python`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry
@@ -122,7 +120,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 |---|---|
 | `main.py` | Agent entry point with Responses handler and OpenAI function calling |
 | `note_store.py` | Thread-safe per-session JSONL note persistence |
-| `requirements.txt` | Python dependencies |
+| `pyproject.toml` / `uv.lock` | Python dependencies and reproducible lock |
 | `Dockerfile` | Container image definition |
 | `azure.yaml` | Agent hosting configuration |
 | `azure.yaml` | Agent metadata and template |

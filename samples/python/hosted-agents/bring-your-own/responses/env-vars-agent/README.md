@@ -78,7 +78,10 @@ The agent starts on `http://localhost:8088/`.
 ### Manual setup
 
 ```bash
-pip install -r requirements.txt
+cd src/env-vars-agent-responses-python
+
+pipx install uv==0.11.7
+uv sync --frozen --python 3.12
 cp .env.example .env  # then edit values — fill in any test values you like (skip if .env already exists)
 export FOUNDRY_PROJECT_ENDPOINT="https://your-project.services.ai.azure.com/api/projects/your-project"
 export AZURE_AI_MODEL_DEPLOYMENT_NAME="gpt-5.4-mini"
@@ -86,7 +89,7 @@ export SECRET_API_KEY="ab12-fake-test-key"
 export TARGET="https://api.example.com"
 export SECRET_KEY="p@ssw0rd-test-value"
 export NON_SECRET_KEY="westus2"
-python main.py
+uv run --no-sync python main.py
 ```
 
 The agent starts on `http://localhost:8088/`.
@@ -140,17 +143,15 @@ curl -N -X POST http://localhost:8088/responses \
 
 **Set up the Python virtual environment**
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install dependencies in the virtual environment:
+- With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
+  cd src/env-vars-agent-responses-python
 
-  # or pure pip
-  pip install -r requirements.txt
+  pipx install uv==0.11.7
+  uv sync --frozen --python 3.12
   ```
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select `src/env-vars-agent-responses-python/.venv`.
 
 **Run and debug the agent**
 
@@ -159,7 +160,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 **Or run manually, then open the Inspector**
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
+2. From `src/env-vars-agent-responses-python`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ```
@@ -217,7 +218,7 @@ The agent's `get_env_var(name, kind)` tool mirrors this three-way split: pass `k
 | File | Purpose |
 |------|---------|
 | `main.py` | `ResponsesAgentServerHost` startup + Responses-API function-calling loop with the `get_env_var` tool |
-| `requirements.txt` | Python dependencies — `azure-ai-agentserver-responses` + `azure-ai-projects` + `azure-identity` |
+| `pyproject.toml` / `uv.lock` | Python dependencies and reproducible lock — `azure-ai-agentserver-responses` + `azure-ai-projects` + `azure-identity` |
 | `azure.yaml` | Container agent spec (`kind: hosted`, protocol, resources) |
 | `azure.yaml` | Foundry deployment manifest — model, env vars, connection placeholders |
 | `Dockerfile` | python:3.12-slim image, exposes port 8088 |

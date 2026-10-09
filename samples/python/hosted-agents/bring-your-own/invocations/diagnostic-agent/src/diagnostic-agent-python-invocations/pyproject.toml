@@ -1,0 +1,10 @@
+[project]
+name = "diagnostic-agent-python-invocations"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent using the Invocations protocol."
+requires-python = ">=3.12"
+dependencies = [
+    "azure-ai-agentserver-invocations==1.1.0",
+    "azure-identity",
+    "debugpy",
+]

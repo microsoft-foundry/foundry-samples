@@ -148,7 +148,9 @@ stages:
 
           - bash: |
               set -euo pipefail
-              sudo curl -fsSL -o /usr/local/bin/yq \
+              source .azure-pipelines/scripts/hosted-agents/scripts/hosted-agent-retry.sh
+              hosted_agent_retry_command "Download yq" \
+                sudo curl -fsSL -o /usr/local/bin/yq \
                 https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
               sudo chmod +x /usr/local/bin/yq
               yq --version
@@ -268,7 +270,7 @@ stages:
               CODE_DEPLOY_ENABLED: $(CLOUD_E2E_CODE_DEPLOY_ENABLED)
 
           - publish: $(Build.ArtifactStagingDirectory)/matrix
-            artifact: HostedAgentSamplesMatrix
+            artifact: HostedAgentSamplesMatrix-attempt-$(System.JobAttempt)
             displayName: Publish sample matrix
 
   # ── Reclaim toolboxes leaked by interrupted runs ────────────────────
@@ -289,8 +291,16 @@ stages:
 
           - bash: |
               set -euo pipefail
-              curl -fsSL https://aka.ms/install-azd.sh | bash
-              azd ext install microsoft.foundry
+              source .azure-pipelines/scripts/hosted-agents/scripts/hosted-agent-retry.sh
+              azd_installer=$(mktemp)
+              trap 'rm -f "$azd_installer"' EXIT
+              hosted_agent_retry_command "Download azd installer" \
+                curl -fsSL -o "$azd_installer" https://aka.ms/install-azd.sh
+              hosted_agent_retry_command "Install azd" bash "$azd_installer"
+              rm -f "$azd_installer"
+              trap - EXIT
+              hosted_agent_retry_command "Install microsoft.foundry extension" \
+                azd ext install microsoft.foundry
               azd config set auth.useAzCliAuth true
             displayName: Install azd and Foundry extension
 
@@ -332,7 +342,7 @@ stages:
               TOOLBOX_PROJECT_ENDPOINT_WESTUS2: $(TOOLBOX_PROJECT_ENDPOINT_WESTUS2)
 
           - publish: $(Build.ArtifactStagingDirectory)/toolbox-orphan-cleanup
-            artifact: cloud-e2e-toolbox-orphan-cleanup
+            artifact: cloud-e2e-toolbox-orphan-cleanup-attempt-$(System.JobAttempt)
             displayName: Upload orphan-cleanup results
             condition: always()
             continueOnError: true
@@ -389,9 +399,17 @@ stages:
           steps:
             - checkout: self
               fetchDepth: 1
+            - bash: bash .azure-pipelines/scripts/hosted-agents/run-hosted-agent.sh ado-tls
+              displayName: Wait for Azure DevOps TLS
+              timeoutInMinutes: 5
+              env:
+                ADO_COLLECTION_URL: $(System.CollectionUri)
             - download: current
-              artifact: HostedAgentSamplesMatrix
               displayName: Download sample matrix
+              retryCountOnTaskFailure: 3
+              # Patterns are relative to each artifact root; artifact names are
+              # added as directories only after matching.
+              patterns: entries.json
             - bash: bash .azure-pipelines/scripts/hosted-agents/run-hosted-agent.sh hydrate
               displayName: Hydrate combo record
               env:
@@ -597,7 +615,7 @@ stages:
                 COMBO_ID: $(comboId)
                 ARTIFACT_STAGING: $(Build.ArtifactStagingDirectory)
             - publish: $(Build.ArtifactStagingDirectory)/cloud-e2e-results-$(comboId)
-              artifact: cloud-e2e-results-$(comboId)
+              artifact: cloud-e2e-results-$(comboId)-attempt-$(System.JobAttempt)
               displayName: Publish test artifacts
               condition: always()
             - task: AzureCLI@2
@@ -629,13 +647,20 @@ stages:
 
           - download: current
             displayName: Download result artifacts
+            retryCountOnTaskFailure: 3
             patterns: |
-              HostedAgentSamplesMatrix/entries.json
-              cloud-e2e-results-*/result.txt
+              entries.json
+              result.txt
 
           - bash: |
               set -euo pipefail
-              entries="$PIPELINE_WORKSPACE/HostedAgentSamplesMatrix/entries.json"
+              entries=$(find "$PIPELINE_WORKSPACE" -maxdepth 2 -type f \
+                -path "$PIPELINE_WORKSPACE/HostedAgentSamplesMatrix-attempt-*/entries.json" \
+                -print | sort -V | tail -n 1)
+              [ -n "$entries" ] || {
+                echo "##vso[task.logissue type=error]No hosted-agent sample matrix artifact was downloaded."
+                exit 1
+              }
               mkdir -p /tmp/status
 
               summary=/tmp/status/summary.md
@@ -648,9 +673,12 @@ stages:
 
               samples_json='[]'
               while IFS=$'\t' read -r combo_id name toolbox_label path deploy_mode dep_resolution; do
-                # Read the explicit status from result.txt, not just artifact presence.
-                status_file="$PIPELINE_WORKSPACE/cloud-e2e-results-$combo_id/result.txt"
-                if [ -f "$status_file" ] && grep -q "^success" "$status_file"; then
+                # A retried job publishes a new immutable artifact in the same
+                # build. Read the highest attempt, not just artifact presence.
+                status_file=$(find "$PIPELINE_WORKSPACE" -maxdepth 2 -type f \
+                  -path "$PIPELINE_WORKSPACE/cloud-e2e-results-$combo_id-attempt-*/result.txt" \
+                  -print | sort -V | tail -n 1)
+                if [ -n "$status_file" ] && grep -q "^success" "$status_file"; then
                   status="success"; badge="Passed"
                 else
                   status="failure"; badge="Failed"
@@ -697,7 +725,7 @@ stages:
               BUILD_URL: $(System.CollectionUri)$(System.TeamProject)/_build/results?buildId=$(Build.BuildId)
 
           - publish: /tmp/status
-            artifact: sample-status
+            artifact: sample-status-attempt-$(System.JobAttempt)
             displayName: Upload status artifact
             condition: always()
 

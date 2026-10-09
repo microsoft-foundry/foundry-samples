@@ -113,7 +113,7 @@ jobs:
         if: steps.lang.outputs.language == 'typescript'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Set up Java (Temurin)
         if: steps.lang.outputs.language == 'java'
@@ -298,7 +298,7 @@ jobs:
         if: needs.detect.outputs.has_changes == 'true' && steps.langs.outputs.has_node == 'true'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: '20'
+          node-version: '22'
       - name: Set up Java (Temurin)
         if: needs.detect.outputs.has_changes == 'true' && steps.langs.outputs.has_java == 'true'
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1

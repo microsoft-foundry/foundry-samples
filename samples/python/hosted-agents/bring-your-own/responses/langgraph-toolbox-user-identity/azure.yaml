@@ -40,8 +40,7 @@ services:
     category: RemoteTool
     target: https://api.githubcopilot.com/mcp
     authType: OAuth2
-    credentials:
-      type: OAuth2
+    connectorName: foundrygithubmcp
   langgraph-toolbox-user-identity-tools:
     host: azure.ai.toolbox
     uses:

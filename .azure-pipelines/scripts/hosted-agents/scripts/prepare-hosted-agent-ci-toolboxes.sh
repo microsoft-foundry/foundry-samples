@@ -67,6 +67,8 @@ if [ -n "$shared_endpoint" ]; then
     exit 1
   fi
 
+  # Substitute toolbox routing only. Preserve feature flags such as
+  # ENABLE_WORK_IQ: shared-toolbox selection does not supply a delegated user.
   REMOVED_SERVICES="$removed" SHARED_NAME="$shared_name" SHARED_ENDPOINT="$shared_endpoint" \
     yq -i '
       .services |= with_entries(select(env(REMOVED_SERVICES)[.key] != true)) |

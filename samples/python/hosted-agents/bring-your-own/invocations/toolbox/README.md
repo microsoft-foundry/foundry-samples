@@ -70,7 +70,7 @@ Before running this sample, ensure you have:
 2. **Azure CLI**
    - Installed and authenticated: `az login`
 
-3. **Python 3.10 or later**
+3. **Python 3.12 or later**
    - Verify your version: `python --version`
 
 4. **Provisioned remote dependencies**
@@ -131,17 +131,15 @@ The agent starts on `http://localhost:8088`.
 
 **Set up the Python virtual environment**
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install dependencies in the virtual environment:
+- With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
-   ```bash
-   # use uv to accelerate
-   pip install uv
-   uv pip install -r requirements.txt
+  ```bash
+  cd src/toolbox-python-invocations
 
-   # or pure pip
-   pip install -r requirements.txt
-   ```
+  pipx install uv==0.11.7
+  uv sync --frozen --python 3.12
+  ```
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select `src/toolbox-python-invocations/.venv`.
 
 **Prepare remote dependencies**
 
@@ -154,7 +152,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 **Or run manually, then open the Inspector**
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
+2. From `src/toolbox-python-invocations`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 </details>
@@ -162,14 +160,15 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 #### Manual setup
 
 ```bash
+cd src/toolbox-python-invocations
+
 cp .env.example .env  # skip if .env already exists
 # Edit .env and fill in your values, then:
 export $(grep -v '^#' .env | xargs)
 
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
+pipx install uv==0.11.7
+uv sync --frozen --python 3.12
+uv run --no-sync python main.py
 ```
 
 The agent starts on `http://localhost:8088`.

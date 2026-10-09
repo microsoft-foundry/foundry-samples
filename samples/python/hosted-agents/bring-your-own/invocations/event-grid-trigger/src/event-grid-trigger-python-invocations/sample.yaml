@@ -1,5 +1,5 @@
 name: Hosted Agent — Event Grid → hosted agent (blob trigger)
 description: A BYO Invocations agent that Event Grid POSTs to directly using the system topic's system-assigned managed identity with audience https://ai.azure.com. Receives Storage BlobCreated events, downloads the blob with the per-agent Microsoft Entra identity, summarizes it with a Foundry model, and writes the summary to a sibling container. Summaries are also emitted via the agent's logs (Application Insights).
 
-build: "pip install -r requirements.txt"
-validate: "python -m compileall -q ."
+build: "uv sync --python 3.12 --frozen --no-dev --no-install-project"
+validate: "uv run --no-sync python -m compileall -q main.py"

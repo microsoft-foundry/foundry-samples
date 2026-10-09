@@ -97,8 +97,8 @@ In another terminal, start the Textual CUI:
 
 ```bash
 cd client
-uv sync
-uv run python client.py
+uv sync --frozen
+uv run --no-sync python client.py
 ```
 
 Ask it to book a trip. The CUI displays the proposed `book_trip` arguments
@@ -132,8 +132,8 @@ and Python extensions. Install the agent dependencies and start the host:
 
 ```bash
 cd src/langchain-azure-resilient-invocations
-python -m pip install -r requirements.txt
-python main.py
+uv sync --frozen
+uv run --no-sync python main.py
 ```
 
 Then open **Agent Inspector** in VS Code
@@ -159,7 +159,7 @@ Start the CUI in another terminal:
 
 ```bash
 cd client
-uv run python client.py
+uv run --no-sync python client.py
 ```
 
 Enter:
@@ -178,7 +178,7 @@ The same flow works against a deployed Foundry agent:
 
 ```bash
 cd client
-uv run python client.py --url "<hosted-invocations-endpoint>" --auth
+uv run --no-sync python client.py --url "<hosted-invocations-endpoint>" --auth
 ```
 
 After the hosted process restarts, the CUI polls the same invocation and the
@@ -356,5 +356,5 @@ Run CUI against a deployed Microsoft Foundry agent with Azure authentication:
 
 ```bash
 cd client
-uv run python client.py --url "https://<account>.services.ai.azure.com/api/projects/<project>/agents/<agent-name>/endpoint/protocols/invocations?api-version=v1" --auth
+uv run --no-sync python client.py --url "https://<account>.services.ai.azure.com/api/projects/<project>/agents/<agent-name>/endpoint/protocols/invocations?api-version=v1" --auth
 ```

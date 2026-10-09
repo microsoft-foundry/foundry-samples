@@ -23,9 +23,10 @@ browser-automation/
 ├── README.md
 ├── azure.yaml               # Unified manifest — project, model, and agent (name, protocols, resources, env vars)
 └── src/
-    └── browser-automation-python-byo-sample-foundry/
+    └── bat-python-byo/
         ├── main.py            # Responses handler, session management, agentic tool loop
-        ├── requirements.txt   # Python dependencies
+        ├── pyproject.toml     # Python project and direct dependencies
+        ├── uv.lock            # Reproducible dependency lock
         ├── Dockerfile         # Container build
         ├── skills/
         │   ├── form-filler.md # Form-filling workflow with date picker handling
@@ -89,16 +90,19 @@ User → Responses Protocol → Handler (main.py)
 ## Running Locally
 
 ```bash
+cd src/bat-python-byo
+
 # Set environment
 export FOUNDRY_PROJECT_ENDPOINT="https://<account>.services.ai.azure.com/api/projects/<project>"
 export AZURE_AI_MODEL_DEPLOYMENT_NAME="gpt-4.1"
 
 # Install dependencies
-pip install -r requirements.txt
+pipx install uv==0.11.7
+uv sync --frozen --python 3.12
 npm install -g @playwright/cli@latest
 
 # Run
-python src/main.py
+uv run --no-sync python main.py
 ```
 
 ### Invoke the agent
@@ -118,17 +122,15 @@ curl -sS -X POST http://localhost:8088/responses \
 
 **Set up the Python virtual environment**
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install dependencies in the virtual environment:
+- With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
+  cd src/bat-python-byo
 
-  # or pure pip
-  pip install -r requirements.txt
+  pipx install uv==0.11.7
+  uv sync --frozen --python 3.12
   ```
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select `src/bat-python-byo/.venv`.
 
 **Run and debug the agent**
 
@@ -137,7 +139,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 **Or run manually, then open the Inspector**
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
+2. From `src/bat-python-byo`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ## Deploying to Foundry

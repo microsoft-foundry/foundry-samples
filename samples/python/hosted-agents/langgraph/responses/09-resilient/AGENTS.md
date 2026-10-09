@@ -10,8 +10,9 @@ agent that runs in Foundry Agent Service over the Responses protocol.
   tools, and checkpointing.
 - `src/langchain-azure-resilient-responses/langgraph.json` - Graph entrypoint
   configuration.
-- `src/langchain-azure-resilient-responses/requirements.in` - Direct agent
+- `src/langchain-azure-resilient-responses/pyproject.toml` - Direct agent
   dependencies.
+- `src/langchain-azure-resilient-responses/uv.lock` - Locked dependency graph.
 - `src/langchain-azure-resilient-responses/Dockerfile` - Container definition.
 - `client/` - Textual client for background response recovery, steering,
   cancellation, and human approval.
@@ -29,8 +30,8 @@ Run the Textual client in a separate terminal:
 
 ```bash
 cd client
-uv sync
-uv run python client.py
+uv sync --frozen
+uv run --no-sync python client.py
 ```
 
 Keep external effects idempotent. A recovered LangGraph node can execute again
