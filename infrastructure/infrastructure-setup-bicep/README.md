@@ -9,6 +9,15 @@ for read-only analysis of the network configuration between an agent subnet and
 an endpoint. It complements the existing diagnostic agent's live runtime probes
 and can inspect infrastructure provisioned with either Bicep or Terraform.
 
+## Managed compute templates
+
+### [48-managed-compute-deployment/](./48-managed-compute-deployment/README.md)
+
+- Demonstrates deploying an OSS model under an existing Microsoft Foundry account.
+- Uses Global managed compute with vLLM and one NVIDIA A100 80 GB accelerator.
+- Includes Bicep and generated ARM JSON workflows, with a matching
+  [Terraform AzAPI sample](../infrastructure-setup-terraform/48-managed-compute-deployment/).
+
 ## Azure AI Agent Service Templates
 
 Azure AI Agent Service offers three deployment modes optimized for agent workloads:

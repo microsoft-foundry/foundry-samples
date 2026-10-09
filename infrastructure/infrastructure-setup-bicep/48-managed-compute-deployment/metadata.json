@@ -1,0 +1,9 @@
+{
+  "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
+  "itemDisplayName": "Deploy OSS models to Microsoft Foundry managed compute",
+  "description": "This template creates an example OSS model deployment under an existing Microsoft Foundry account.",
+  "summary": "Deploy an OSS model with vLLM on Microsoft Foundry managed compute.",
+  "githubUsername": "ManojBableshwar",
+  "dateUpdated": "2026-10-04",
+  "type": "QuickStart"
+}
