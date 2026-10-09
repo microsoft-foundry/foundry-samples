@@ -10,6 +10,7 @@ participate in Microsoft Teams conversations.
 | Sample | What you will build |
 | --- | --- |
 | [Hello World](hello-world/README.md) | A minimal agent that responds to Teams direct messages, group chats, and channel messages that mention it. Interactively create or reuse its Foundry project and model deployment. |
+| [Meeting Assistant](meeting-assistant/README.md) | Post meeting agenda reminders and transcript-grounded closure reports. |
 
 Start with the [Hello World walkthrough](hello-world/README.md#step-1-install-the-prerequisites).
 It contains the complete sequence: prerequisites, permissions, sign-in,

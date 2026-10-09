@@ -36,7 +36,8 @@ and observability.
 ## Key files
 
 - `azure.yaml` - hosted-agent service, direct code deployment, and publication metadata
-- `scripts/prepare-provision.ps1` - resource selection and preprovision settings
+- `scripts/prepare-provision.ps1` - in-project hook wrapper required by azd
+- `../scripts/prepare-provision.ps1` - shared resource selection and preprovision settings
 - `infra/main.bicep` - resource-group orchestration and deployment outputs
 - `infra/modules/foundry.bicep` - conditional Foundry resources
 - `main.py` - direct code deployment entry point
