@@ -66,7 +66,7 @@ If you don't yet have a toolbox, see [`04-foundry-toolbox`](../04-foundry-toolbo
 
 ### Prerequisites
 
-- Python 3.12+ (the container image uses `python:3.12-slim`; `azure.yaml` declares the hosted runtime as `python_3_13`)
+- Python 3.13+ (the container image and `azure.yaml` hosted runtime both use Python 3.13)
 - `az login` / `azd auth login`
 - An existing Foundry project with an existing Claude model deployment and an existing toolbox
 
@@ -75,7 +75,7 @@ If you don't yet have a toolbox, see [`04-foundry-toolbox`](../04-foundry-toolbo
 ```bash
 mkdir my-claude-toolbox-agent && cd my-claude-toolbox-agent
 
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/23-claude-foundry-toolbox/azure.yaml
+azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/25-claude-foundry-toolbox/azure.yaml
 ```
 
 Follow the prompts to select your existing Foundry project. Then set the environment variables for your existing deployment and toolbox:
@@ -115,10 +115,11 @@ azd ai agent invoke "Search the web for the latest Microsoft Foundry announcemen
 ### Option 2: VS Code (Foundry Toolkit)
 
 1. Install the **[Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)** extension (and the **[Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)** extension pack for debugging).
-2. Create/select a Python virtual environment, then install dependencies:
+2. In the service project directory, install uv and sync the committed lockfile:
    ```bash
-   pip install uv
-   uv pip install -r requirements.txt
+   cd src/claude-foundry-toolbox-responses
+   pipx install uv==0.11.7
+   uv sync --frozen --python 3.13
    ```
 3. Copy `.env.example` to `.env` and fill in `AZURE_AI_RESOURCE_NAME`, `AZURE_AI_MODEL_DEPLOYMENT_NAME`, and `TOOLBOX_ENDPOINT` for your existing project/deployment/toolbox.
 4. Press **F5** to start the agent; the **Agent Inspector** opens automatically.
@@ -146,11 +147,11 @@ Project-scope-only `Foundry User` is **not sufficient**: it fails Claude inferen
    Look for `instance_identity.principal_id` in the output.
 2. Get your subscription ID, resource group, and account name:
    ```bash
-   az account show --query id -o tsv
-   az group list --query "[0].name" -o tsv
-   azd env get-values   # find AZURE_AI_ACCOUNT_NAME in the output
+   azd env get-value AZURE_SUBSCRIPTION_ID
+   azd env get-value AZURE_RESOURCE_GROUP
+   azd env get-value AZURE_AI_ACCOUNT_NAME
    ```
-3. Assign the `Foundry User` role at **account** scope (role definition ID `53ca6127-db72-4b80-b1b0-d745d6d5456d`) using your actual principal ID, subscription ID, resource group, and account name — do not leave the placeholders below unreplaced:
+3. Assign the `Foundry User` role at **account** scope (role definition ID `53ca6127-db72-4b80-b1b0-d745d6d5456d`) using the values from the active azd environment and the principal ID — do not leave the placeholders below unreplaced:
    ```bash
    az role assignment create \
      --assignee-object-id <PRINCIPAL_ID> \
@@ -169,43 +170,13 @@ Project-scope-only `Foundry User` is **not sufficient**: it fails Claude inferen
 
 See [`claude-agent-sdk`'s RBAC section](../../../bring-your-own/invocations/claude-agent-sdk/README.md#️-critical-rbac-configuration-after-deployment) for the full step-by-step reference this guidance is adapted from (including troubleshooting for a persistent 401).
 
-## Verified prior deployed behavior (not reproduced by this turn's validation)
+## Cloud E2E coverage
 
-A prior deployment of this same code/configuration pattern (1 CPU / 2Gi, `python_3_13` remote build, Responses protocol `2.0.0`) was exercised end-to-end against web search after completing the RBAC steps above, and confirmed:
-
-- An actual `function_call` for the web search tool, with a matching `function_call_output` (not just a terminal `response.completed`/HTTP 200 — those alone don't prove the tool call executed or returned real results).
-- 34 citations with grounded Microsoft Learn URLs in the final response.
-
-**This repository turn did not re-run that deployment or re-verify it live.** The checks performed for this sample addition were offline only (file structure, syntax/compile checks, and YAML well-formedness) — see [Offline validation performed](#offline-validation-performed-this-turn). Treat the bullets above as a record of prior verified behavior for this code pattern, not as a claim that this exact checked-in copy was itself redeployed and re-tested.
-
-### Known streaming quirk: leading `{}` in function-call arguments
-
-During that prior verified deployment, the streamed `output_item.done` event's function-call `arguments` field was observed to start with an extra, spurious `{}` prefix (i.e. the wire value looks like `"{}{...real JSON...}"`). Naively concatenating/parsing that field as JSON directly fails. The underlying tool call still executed correctly and returned a valid result — this is a presentation/streaming artifact in the emitted arguments string, not a sign that the call failed.
-
-If you add any client-side logic that parses streamed function-call arguments, strip or tolerate this leading `{}` rather than treating the resulting parse error as a tool failure. Any verifier you add for this sample should check for the presence of a matching `function_call` / `function_call_output` pair and should **not** silently repair or normalize this artifact — call it out when detected so it stays visible rather than being hidden by "successful" tolerant parsing.
-
-## Offline validation performed this turn
-
-Because no new deployment or cloud mutation was authorized for this turn, validation was limited to:
-
-- File/directory structure review against the [`04-foundry-toolbox`](../04-foundry-toolbox/) and [`claude-agent-sdk`](../../../bring-your-own/invocations/claude-agent-sdk/) precedents.
-- Python syntax/compile checks on `main.py`.
-- YAML well-formedness checks on `azure.yaml`.
-
-No live Foundry resources were called, no deployment was performed, and no RBAC/role assignment commands were executed as part of this turn.
-
-## Optional: Work IQ Mail toolbox (not configured by default, not verified end-to-end)
-
-This sample does **not** include Mail tooling by default. If you want to add a separately configured **Work IQ Mail** toolbox as an additional tool source, be aware of the following before doing so:
-
-- It requires catalog authentication consent and a specific Microsoft 365 license (see below) — this is **not** something you get "for free" alongside the default web-search toolbox.
-- If you add it, restrict `allowed_tools` to an explicitly discovered, read-only tool name only. Discovery for this connector surfaced a name pattern of the form `<server_label>___SearchMessagesQueryParameters`, which accepts a single `queryParameters` string argument (OData-style), e.g. a minimal read-only query such as `?$top=1&$select=isRead`.
-- **Do not** blindly expose the full Mail toolbox — it also contains send/delete-capable tools. Any `allowed_tools` allowlist must be deliberately curated by you based on what discovery actually returns, not assumed.
-- **This was not verified to work end-to-end.** Tool discovery succeeded, but the actual deployed execution of the read-only search tool **failed** a license check requiring the `M365_COPILOT_BUSINESS_CHAT` service plan. The model only saw a generic `Error: Function failed.`; the specific license-related cause was only visible in hosted agent logs, not in the model-facing error. Do not claim or assume Mail e2e success from this sample — no email was successfully sent, read, or mutated, and no live mailbox testing passed.
-- No email sending or mutation operations should ever be allow-listed for a general-purpose sample like this one.
-- A managed-OAuth connection attempt on an internal test environment failed connector resolution during this investigation. Don't present the experimental `user-entra-token` auth mode as a universally supported setup path for this connector — validate connector-specific auth support before relying on it.
-
-Given the above, treat Mail integration as a documented possibility for your own environment, not a supported or tested part of this sample.
+This sample is excluded from the shared cloud E2E matrix because that matrix supplies
+a shared non-Claude model deployment and does not grant the runtime identity the
+account-scope `Foundry User` role required by this sample. The behavior contract
+defines the expected answer and toolbox-call evidence for a separately configured
+test environment with an existing Claude deployment and toolbox.
 
 ## Next steps
 

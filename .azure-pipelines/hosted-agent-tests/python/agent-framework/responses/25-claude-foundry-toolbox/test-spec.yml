@@ -1,12 +1,10 @@
 version: 1
 
 # Behavior contract for the Claude + Foundry Toolbox (Responses) sample. The agent
-# runs an Anthropic Claude model through `AnthropicFoundryClient` and discovers/
-# invokes tools from an existing, already-configured toolbox over MCP via
-# `FoundryToolbox` — this sample does not provision a toolbox itself. It is written
-# against the generic `web-search` toolbox fanned into the cloud E2E matrix, so the
-# test is pinned to that label; against other generic toolboxes (code-interpreter,
-# mcp-skills, ...) it is `not_applicable` rather than failing.
+# uses an existing Claude deployment and discovers/invokes tools from an existing
+# toolbox over MCP via `FoundryToolbox`. The generic cloud E2E matrix does not
+# provide a Claude deployment or account-scope Foundry User role, so this sample is
+# excluded from that matrix until those prerequisites can be supplied safely.
 #
 # The turn asks a stable, historical factual question (rather than a "latest news"
 # style prompt) so the expected answer never changes, while still requiring a real
@@ -22,6 +20,12 @@ tests:
     turns:
       - input: "What year did Neil Armstrong become the first person to walk on the Moon? Search the web and cite a source URL."
         assertions:
+          - source: raw
+            type: regex
+            value: '"type"\s*:\s*"function_call"\s*,'
+          - source: raw
+            type: regex
+            value: '"type"\s*:\s*"function_call_output"'
           - source: assistant_text
             type: contains
             value: "1969"
