@@ -62,6 +62,7 @@ class _FakeClaudeAgentOptions:
     system_prompt: Optional[str] = None
     mcp_servers: Optional[dict] = None
     allowed_tools: Optional[list] = None
+    env: Optional[dict] = None
 
 
 @dataclass
@@ -390,6 +391,14 @@ class CallIdPropagationTests(unittest.TestCase):
             )
             mcp_headers = calls[0]["options"].mcp_servers[main.TOOLBOX_SERVER_LABEL]["headers"]
             self.assertEqual(mcp_headers["x-agent-foundry-call-id"], "call-abc-123")
+            self.assertEqual(
+                _FakeAsyncClient.calls[0]["headers"]["Authorization"], "Bearer FAKE_TOKEN_VALUE"
+            )
+            self.assertEqual(mcp_headers["Authorization"], "Bearer ${FOUNDRY_TOOLBOX_TOKEN}")
+            self.assertNotIn("FAKE_TOKEN_VALUE", repr(calls[0]["options"].mcp_servers))
+            self.assertEqual(
+                calls[0]["options"].env, {"FOUNDRY_TOOLBOX_TOKEN": "FAKE_TOKEN_VALUE"}
+            )
             # Also carries the protocol-reference feature header on both.
             self.assertEqual(
                 _FakeAsyncClient.calls[0]["headers"]["Foundry-Features"], "Toolboxes=V1Preview"

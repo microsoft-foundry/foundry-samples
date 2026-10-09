@@ -44,6 +44,7 @@ _TOOLBOX_SCOPE = "https://ai.azure.com/.default"
 # Header documented by the Foundry Toolboxes (preview) protocol reference.
 _TOOLBOX_FEATURES = "Toolboxes=V1Preview"
 _MCP_ACCEPT = "application/json, text/event-stream"
+_TOOLBOX_TOKEN_ENV = "FOUNDRY_TOOLBOX_TOKEN"
 
 # `get_bearer_token_provider` itself is safe to share across requests/threads:
 # calling it is what produces a fresh token (it caches/refreshes internally),
@@ -111,9 +112,12 @@ def _toolbox_headers() -> dict[str, str]:
 
     Builds a brand-new dict every call (never a shared/cached dict, never
     mutated in place) so nothing leaks across concurrent requests. The bearer
-    token is minted fresh here and reused for both the discovery call and the
-    native `mcp_servers` HTTP config within *this* invocation -- it is not
-    re-minted per outbound call. `claude_agent_sdk`'s MCP HTTP transport
+    token is minted fresh here and reused for discovery and the native MCP
+    transport within *this* invocation -- it is not re-minted per outbound
+    call. The native MCP config uses an environment-variable placeholder for
+    Authorization; `ClaudeAgentOptions.env` supplies the actual token so it
+    is not serialized into the child-process command line.
+    `claude_agent_sdk`'s MCP HTTP transport
     (`McpHttpServerConfig`/`McpSSEServerConfig`) does not expose a mid-stream
     token-refresh hook, so if a single invocation genuinely outlives the
     token's lifetime the subsequent MCP call fails with 401 and surfaces as an
@@ -336,11 +340,16 @@ async def handle_invoke(request: Request) -> Response:
                 headers = _toolbox_headers()
                 discovered = await _discover_toolbox_tools(TOOLBOX_ENDPOINT, headers)
                 allowed = _validate_allowed_tools(TOOLBOX_ALLOWED_TOOLS, discovered)
+                mcp_headers = dict(headers)
+                mcp_headers["Authorization"] = f"Bearer ${{{_TOOLBOX_TOKEN_ENV}}}"
+                option_kwargs["env"] = {
+                    _TOOLBOX_TOKEN_ENV: headers["Authorization"].removeprefix("Bearer ")
+                }
                 option_kwargs["mcp_servers"] = {
                     TOOLBOX_SERVER_LABEL: {
                         "type": "http",
                         "url": TOOLBOX_ENDPOINT,
-                        "headers": headers,
+                        "headers": mcp_headers,
                     }
                 }
                 option_kwargs["allowed_tools"] = [
