@@ -3,7 +3,7 @@
 Deploy a Python Autopilot that responds to Teams meeting events:
 
 - Greets the chat when the agent is added to a meeting.
-- Extracts an explicit agenda from the invitation and posts a reminder at meeting start.
+- Extracts an explicit agenda from the calendar event and posts a reminder at meeting start.
 - After meeting end, compares the transcript with that agenda and reports each
   item's status: **Closed**, **Open**, **Not discussed**, or **Unclear**.
 - Reads transcripts only when Teams signals transcript availability after the meeting-end event.
@@ -16,6 +16,9 @@ messages. Without an explicit agenda, it does not post reminders or closure repo
 
 This preview sample assumes familiarity with the
 [Hello World walkthrough](../hello-world/README.md).
+
+See [Meeting objects, identifiers, and ActivityProtocol payloads](MEETING_OBJECTS.md) for
+the calendar-event-to-transcript object map, inbound payload pointers, and lookup flow.
 
 ## Step 1: Check the prerequisites
 
@@ -88,13 +91,13 @@ Deployment and publication alone do not grant consent.
 ## Step 5: Try a meeting
 
 Invite the agent user to a **scheduled, non-channel Teams meeting** with explicit
-agenda items in the invitation body. Start transcription during the meeting.
+agenda items in the calendar event body. Start transcription during the meeting.
 Expect a greeting when the agent is added, an agenda reminder at actual meeting
 start, and an end acknowledgment. A transcript-ready notification received after
 meeting end triggers the transcript read and closure report. Recording-only
 notifications and transcript notifications received before the end event are ignored.
 
-The agent must be able to read its calendar invitation, meeting chat, and
+The agent must be able to read its calendar event, meeting chat, and
 transcripts through Work IQ. If no report appears, inspect logs for event
 delivery, consent, billing, or transcript-access failures. The model is instructed
 to quote transcript evidence, but quoted text is not checked for exact matches.
@@ -153,14 +156,23 @@ Transcript-ready notifications bind their `Identifiers/Id` value with
 without a call ID retain timestamp matching: transcription end time first, then
 creation time if end time is absent. The sample reads one page only; calls with
 additional transcript pages are unsupported and no partial report is posted.
-Live Work IQ filter support and notification-to-Graph call-ID mapping still need
-confirmation with agent credentials.
+The readiness notification's call ID identifies the call whose transcripts are
+requested through Work IQ. Live server-side filtering and notification-to-Graph
+call-ID equality with agent credentials remain validation follow-ups; offline
+tests verify the request and matching logic, not that live contract.
+
+Calendar selection requires exactly one online event in the agent user's default
+calendar with the same join URL and a scheduled start within 12 hours of actual
+start. Reusing an older meeting link outside that window is not supported, and
+multiple matching candidates are rejected rather than choosing the nearest.
+A missing end event leaves an unfinished occurrence that blocks a new start in
+the same chat; the sample does not recover it automatically.
 
 Occurrence history is retained without automatic pruning or a count limit, so
 persisted chat state grows with each meeting. Long-running use needs a retention
 policy. The sample refuses incomplete or oversized reads: eight transcript
 segments, 120,000 transcript characters,
-32,000 invitation characters, and 20 agenda items. Reserved deliveries can remain
+32,000 calendar-event body characters, and 20 agenda items. Reserved deliveries can remain
 undelivered after failures, and there is no cross-replica exactly-once guarantee.
 Define your own access and disclosure policy before using real meeting data;
 meeting content is sent to the configured Foundry model.
