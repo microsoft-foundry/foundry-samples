@@ -203,7 +203,7 @@ This sample wires three MCP servers into a single toolbox: WorkIQ Mail and WorkI
      --kind remote-tool \
      --target https://api.githubcopilot.com/mcp \
      --auth-type oauth2 \
-     --managed-connector foundrygithubmcp
+     --connector-name foundrygithubmcp
    ```
 
    Inspect with `azd ai connection list` / `azd ai connection show <name>`; remove with `azd ai connection delete <name> --force`.
