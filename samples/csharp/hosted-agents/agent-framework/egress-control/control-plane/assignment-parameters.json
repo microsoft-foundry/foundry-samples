@@ -1,0 +1,10 @@
+{
+  "approvedHosts": {
+    "value": [
+      "httpbin.org"
+    ]
+  },
+  "effect": {
+    "value": "Deny"
+  }
+}

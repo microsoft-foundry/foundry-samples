@@ -2,6 +2,16 @@
 
 An [Agent Framework](https://github.com/microsoft/agent-framework) C# agent for testing **managed egress proxy policies** on Microsoft Foundry hosted agents. It is the .NET counterpart to the [Python egress-control sample](../../../../../python/hosted-agents/agent-framework/responses/18-egress-control/README.md).
 
+## Administrator policy authoring (control plane)
+
+To restrict **which RAI egress policies developers may save**, use the
+[control-plane Azure Policy walkthrough](control-plane/README.md). It includes
+a small exact-host policy definition, assignment parameters, and allowed/denied RAI
+requests. No published built-in, model deployment, or running agent is required.
+The walkthrough demonstrates an ARM policy denial, not APES or runtime traffic
+enforcement. Run it on a disposable account separately from the runtime scenarios
+below; the administrator restrictions intentionally reject some scenario policies.
+
 ## How it works
 
 The agent registers an async C# `EgressTest` function tool with Agent Framework and hosts it through the Responses protocol. The tool uses `HttpClient` to make outbound requests and returns the status, response headers, and up to 4,000 characters of the body. Each request includes `X-Test-Marker` and a distinct `User-Agent`, allowing egress policies to demonstrate Allow, Deny, Transform, and Rewrite behavior.
