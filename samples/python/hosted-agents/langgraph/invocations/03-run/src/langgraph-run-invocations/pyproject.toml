@@ -1,0 +1,15 @@
+[project]
+name = "langgraph-run-invocations"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent built with LangGraph."
+requires-python = ">=3.12"
+dependencies = [
+    "langchain-azure-ai[hosting,opentelemetry]>=1.2.9",
+    "azure-ai-projects",
+    "openai<3",
+    "httpx<1",
+    "langchain",
+    "langchain-openai",
+    "python-dotenv",
+    "debugpy",
+]

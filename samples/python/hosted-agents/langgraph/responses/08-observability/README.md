@@ -41,7 +41,7 @@ The sample sets two tracing toggles in [azure.yaml](azure.yaml):
 | `OTEL_AUTO_CONFIGURE_AZURE_MONITOR` | Let `enable_auto_tracing()` configure the OpenTelemetry `TracerProvider` and Azure Monitor exporter itself, using `APPLICATIONINSIGHTS_CONNECTION_STRING`. |
 | `AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED` | Capture prompts, completions, and tool I/O on spans. |
 
-The `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable is injected when the agent is deployed to Foundry, so no extra setup is needed in hosted mode. To ship telemetry from a **local** run, you must set it yourself — either in `.env` (for `python -m langchain_azure_ai.agents.hosting.run --protocol responses`) or via `azd env set` (for `azd ai agent run`).
+The `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable is injected when the agent is deployed to Foundry, so no extra setup is needed in hosted mode. To ship telemetry from a **local** run, you must set it yourself — either in `.env` (for `uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses`) or via `azd env set` (for `azd ai agent run`).
 
 ## Option 1: Azure Developer CLI (`azd`)
 
@@ -138,24 +138,20 @@ Once deployed, the agent's traces, metrics, and logs flow into the Application I
 
 ### Set up the Python virtual environment
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Ensure `pip` is version 26.1 or newer (check with `pip --version`). Older versions fail to resolve this sample's dependencies. Upgrade if needed:
+- Install uv if it is not already available:
 
   ```bash
-  python -m pip install --upgrade pip
+  python -m pip install uv
   ```
 
-- Install dependencies in the virtual environment. One transitive dependency ships as a pre-release, so pre-releases must be allowed when using `uv`:
+- From the sample root, sync the committed environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install --prerelease=allow -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+  cd src/langgraph-observability-responses
+  uv sync --frozen
   ```
 
+- In VS Code, select `src/langgraph-observability-responses/.venv` as the Python interpreter.
 ### Run and debug the agent
 
 Press **F5** to start the agent. The agent starts and the **Agent Inspector** opens automatically. Chat with the agent in the Inspector.
@@ -163,7 +159,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python -m langchain_azure_ai.agents.hosting.run --protocol responses` (listens on `http://localhost:8088`).
+2. Start the agent: `uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry

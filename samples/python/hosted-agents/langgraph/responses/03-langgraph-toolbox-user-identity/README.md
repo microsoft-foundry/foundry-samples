@@ -88,9 +88,8 @@ From `src/toolbox-langgraph-user-identity`, create a local environment:
 
 ```bash
 cp .env.example .env
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
+python -m pip install uv
+uv sync --frozen
 ```
 
 Set `FOUNDRY_PROJECT_ENDPOINT`, `AZURE_AI_MODEL_DEPLOYMENT_NAME`, and
@@ -100,7 +99,7 @@ toolbox declared by the sample; running `azd provision` creates them.
 Start the server:
 
 ```bash
-python -m langchain_azure_ai.agents.hosting.run --protocol responses
+uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses
 ```
 
 In another terminal, invoke the local Responses endpoint:
