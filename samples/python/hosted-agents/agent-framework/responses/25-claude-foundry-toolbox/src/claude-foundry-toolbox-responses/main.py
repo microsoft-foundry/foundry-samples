@@ -17,14 +17,13 @@ async def main():
     credential = DefaultAzureCredential()
 
     # AnthropicFoundryClient talks to the Claude deployment through Foundry.
-    # Its token scope (https://cognitiveservices.azure.com/.default) is
-    # distinct from the toolbox's scope below -- do not share a single
-    # bearer-token provider between the two.
+    # Claude's Foundry endpoint expects the Foundry token audience. FoundryToolbox
+    # uses the same scope internally from the credential below.
     client = AnthropicFoundryClient(
         resource=os.environ["AZURE_AI_RESOURCE_NAME"],
         model=os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"],
         azure_ad_token_provider=get_bearer_token_provider(
-            credential, "https://cognitiveservices.azure.com/.default"
+            credential, "https://ai.azure.com/.default"
         ),
     )
 
