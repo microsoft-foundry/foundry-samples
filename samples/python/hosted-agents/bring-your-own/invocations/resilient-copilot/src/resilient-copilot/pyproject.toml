@@ -1,0 +1,14 @@
+[project]
+name = "resilient-copilot"
+version = "0.1.0"
+description = "A long-running, crash-resilient GitHub Copilot SDK agent hosted on Microsoft Foundry."
+requires-python = ">=3.13"
+dependencies = [
+    "github-copilot-sdk==1.0.11",
+    "azure-ai-agentserver-invocations==1.1.0",
+    "azure-ai-agentserver-core==2.1.0",
+    "azure-identity==1.25.3",
+    "python-dotenv==1.1.1",
+    # debugpy enables local debugging of this agent with the Foundry Toolkit VS Code extension.
+    "debugpy",
+]
