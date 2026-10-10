@@ -1,0 +1,65 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.32.0'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.18'
+name: meeting-assistant-autopilot
+hooks:
+  preprovision:
+    shell: pwsh
+    run: ./scripts/prepare-provision.ps1
+    interactive: true
+services:
+  meeting-assistant-autopilot:
+    host: azure.ai.agent
+    project: .
+    language: python
+    codeConfiguration:
+      runtime: python_3_13
+      entryPoint: main.py
+    kind: hosted
+    name: meeting-assistant-autopilot
+    displayName: Meeting Assistant Autopilot
+    description: Meeting agenda reminders and transcript-grounded closure reports.
+    protocols:
+      - protocol: activity
+        version: 2.0.0
+    activity:
+      digitalWorkerType: m365
+      publish:
+        publishScope: tenant
+        canRespondWithoutMention: true
+        appVersion: 1.1.2
+        agentDisplayName: Meeting Assistant Autopilot
+        shortDescription: Meeting agenda reminders and automatic transcript-based closure.
+        fullDescription: >
+          Greets the meeting chat, posts agenda reminders at actual meeting start,
+          and compares transcripts with the agenda after the meeting. Uses native
+          Teams meeting lifecycle handlers and Work IQ MCP for Microsoft 365 reads.
+        developerName: Microsoft
+        developerWebsiteUrl: https://www.microsoft.com
+        privacyUrl: https://privacy.microsoft.com
+        termsOfUseUrl: https://www.microsoft.com/legal/terms-of-use
+        optionalPermissionScopes:
+          - resourceAppId: fdcc1f02-fc51-4226-8753-f668596af7f7
+            scopes:
+              - WorkIQAgent.Ask
+    env:
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+      # Optional raw Activity capture; may include meeting content and personal data.
+      MEETING_LOG_ACTIVITY_PAYLOADS: "true"
+      # Optional unredacted capture of Work IQ arguments, responses, and errors.
+      MEETING_LOG_WORKIQ_PAYLOADS: "true"
+      AGENTAPPLICATION__USERAUTHORIZATION__HANDLERS__AGENTIC__TYPE: AgenticUserAuthorization
+      AGENTAPPLICATION__USERAUTHORIZATION__HANDLERS__AGENTIC__SETTINGS__SCOPES: api://workiq.svc.cloud.microsoft/WorkIQAgent.Ask
+      FOUNDRY_AGENT365_TRACING_ENABLED: "true"
+      OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "false"
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1Gi
+infra:
+  provider: bicep
+  path: infra
+  module: main

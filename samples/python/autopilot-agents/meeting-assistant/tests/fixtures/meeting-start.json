@@ -1,0 +1,38 @@
+{
+  "recipient": {
+    "agenticUserId": "AGENT_USER_ID",
+    "agenticAppId": "AGENT_APP_ID",
+    "agenticAppBlueprintId": "AGENT_BLUEPRINT_ID",
+    "callbackUri": "https://example.invalid/agent/callback",
+    "tenantId": "TENANT_ID",
+    "role": "agenticUser",
+    "id": "AGENT_CHANNEL_ID"
+  },
+  "type": "event",
+  "id": "ACTIVITY_10",
+  "timestamp": "2026-10-02T19:11:53.9718847Z",
+  "serviceUrl": "https://example.invalid/teams/",
+  "channelId": "msteams",
+  "from": {"id": "USER_CHANNEL_ID", "name": "", "aadObjectId": "USER_OBJECT_ID"},
+  "conversation": {
+    "isGroup": true,
+    "conversationType": "groupChat",
+    "tenantId": "TENANT_ID",
+    "id": "MEETING_CHAT_ID"
+  },
+  "locale": "en-US",
+  "entities": [{"type": "clientInfo", "locale": "en-US", "country": "COUNTRY"}],
+  "channelData": {
+    "tenant": {"id": "TENANT_ID"},
+    "source": null,
+    "meeting": {"id": "MEETING_ID"}
+  },
+  "value": {
+    "MeetingType": "Scheduled",
+    "Title": "MEETING_TITLE",
+    "Id": "MEETING_ID",
+    "JoinUrl": "https://example.invalid/meet/MEETING_ID",
+    "StartTime": "2026-10-02T19:11:53.9718847Z"
+  },
+  "name": "application/vnd.microsoft.meetingStart"
+}
