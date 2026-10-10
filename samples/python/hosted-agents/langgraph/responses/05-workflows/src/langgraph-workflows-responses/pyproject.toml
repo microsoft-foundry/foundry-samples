@@ -1,0 +1,16 @@
+[project]
+name = "langgraph-workflows-responses"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent built with LangGraph."
+requires-python = ">=3.12"
+dependencies = [
+    "langchain-azure-ai[hosting]>=1.2.9",
+    "azure-ai-projects",
+    "openai<3",
+    "httpx<1",
+    "langchain",
+    "langchain-openai",
+    "langgraph>=1.1.8",
+    "python-dotenv",
+    "debugpy",
+]

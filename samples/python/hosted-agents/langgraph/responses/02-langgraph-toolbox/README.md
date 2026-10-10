@@ -172,29 +172,20 @@ azd ai agent invoke "How do I create a Foundry project with the Azure CLI?"
 
 ### Set up the Python virtual environment
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Ensure `pip` is version 26.1 or newer (check with `pip --version`). Older versions fail to resolve this sample's dependencies. Upgrade if needed:
+- Install uv if it is not already available:
 
   ```bash
-  python -m pip install --upgrade pip
+  python -m pip install uv
   ```
 
-- Change to the agent source directory before installing dependencies:
+- From the sample root, sync the committed environment:
 
   ```bash
   cd src/toolbox-langgraph
+  uv sync --frozen
   ```
 
-- Install dependencies in the virtual environment. One transitive dependency ships as a pre-release, so pre-releases must be allowed when using `uv`:
-
-  ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install --prerelease=allow -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
-  ```
+- In VS Code, select `src/toolbox-langgraph/.venv` as the Python interpreter.
 
 ### Create the toolbox
 
@@ -216,7 +207,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 
 1. Set the required environment variables (including `TOOLBOX_NAME`), and sign in to Azure with the Azure CLI (`az login`).
 2. From `src/toolbox-langgraph`, start the agent:
-   `python -m langchain_azure_ai.agents.hosting.run --protocol responses`
+   `uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses`
    (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 

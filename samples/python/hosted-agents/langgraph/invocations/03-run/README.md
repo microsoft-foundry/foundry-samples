@@ -120,24 +120,25 @@ azd deploy
 
 ### Set up the Python virtual environment
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the project.
-- Ensure `pip` is version 26.1 or newer (check with `pip --version`). Older versions fail to resolve this sample's dependencies. Upgrade if needed:
+- Install uv if it is not already available:
 
   ```bash
-  python -m pip install --upgrade pip
+  python -m pip install uv
   ```
 
-- Install dependencies in the virtual environment:
+- From the sample root, sync the committed environment:
 
   ```bash
-  pip install -r src/langgraph-run-invocations/requirements.txt
+  cd src/langgraph-run-invocations
+  uv sync --frozen
   ```
 
+- In VS Code, select `src/langgraph-run-invocations/.venv` as the Python interpreter.
 ### Run locally
 
 ```bash
 cd src/langgraph-run-invocations
-python -m langchain_azure_ai.agents.hosting.run --protocol invocations
+uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol invocations
 ```
 
 Then invoke it:

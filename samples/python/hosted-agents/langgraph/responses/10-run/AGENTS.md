@@ -7,7 +7,8 @@ This project is a **Microsoft Foundry hosted agent** built with LangGraph and th
 - `azure.yaml` - Foundry hosted-agent manifest
 - `src/langgraph-run-responses/main.py` - exported LangGraph graph used by the hosting entrypoint
 - `src/langgraph-run-responses/langgraph.json` - graph registry for the run command
-- `src/langgraph-run-responses/requirements.txt` - locked dependencies
+- `src/langgraph-run-responses/pyproject.toml` - direct dependencies
+- `src/langgraph-run-responses/uv.lock` - locked dependency graph
 
 ## Development workflow
 
