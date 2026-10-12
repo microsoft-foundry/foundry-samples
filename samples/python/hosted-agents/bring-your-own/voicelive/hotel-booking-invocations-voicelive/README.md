@@ -106,6 +106,8 @@ Before running this sample, ensure you have:
 	 - Authenticated: `azd auth login`
 2. **Python 3.12 or later**
 	 - Verify your version: `python --version`
+3. **uv 0.11.7 or later**
+	 - [Install uv](https://docs.astral.sh/uv/getting-started/installation/) and verify it is available on `PATH`: `uv --version`
 
 ### Environment variables
 

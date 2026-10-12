@@ -45,9 +45,11 @@ If both modes are configured, the Foundry BYOK model takes precedence.
 
 1. A Foundry project with a deployed model, or permission to create them with
    `azd provision`.
-2. **Python 3.10 or later.**
-3. Azure CLI authentication (`az login`) for local BYOK authentication.
-4. The hosted agent's managed identity needs **Cognitive Services OpenAI User** on the Foundry account. The Copilot SDK provider sends requests to
+2. **Python 3.13 or later.**
+3. [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+   installed and available on `PATH`.
+4. Azure CLI authentication (`az login`) for local BYOK authentication.
+5. The hosted agent's managed identity needs **Cognitive Services OpenAI User** on the Foundry account. The Copilot SDK provider sends requests to
    `/openai/v1/responses`, which requires the account-level
    `Microsoft.CognitiveServices/accounts/OpenAI/responses/write` data action.
    Assign the role to the hosted agent's `*-AgentIdentity` service principal
@@ -65,7 +67,13 @@ If both modes are configured, the Foundry BYOK model takes precedence.
    azd ext install microsoft.foundry
    ```
 
-3. Authenticate:
+3. Verify uv is available:
+
+   ```bash
+   uv --version
+   ```
+
+4. Authenticate:
 
    ```bash
    azd auth login

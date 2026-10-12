@@ -44,10 +44,12 @@ history mutation, or hosted-agent handoff.
 
 ## Prerequisites
 
-1. Python 3.13.
-2. Azure Developer CLI (`azd`) 1.27.1 or later with the Foundry extension.
-3. Azure CLI authentication for local model access.
-4. A Foundry project and model deployment, or permission for `azd provision` to create them.
+1. Python 3.13 or later.
+2. [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+   installed and available on `PATH`.
+3. Azure Developer CLI (`azd`) 1.27.1 or later with the Foundry extension.
+4. Azure CLI authentication for local model access.
+5. A Foundry project and model deployment, or permission for `azd provision` to create them.
 
 Install and authenticate the tools:
 
