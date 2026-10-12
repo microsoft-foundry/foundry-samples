@@ -1714,7 +1714,6 @@ dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
-    { name = "starlette" },
     { name = "websockets" },
 ]
 
@@ -1735,7 +1734,6 @@ dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "pytest-asyncio", specifier = "==1.4.0" },
     { name = "ruff", specifier = "==0.16.5" },
-    { name = "starlette", specifier = "==1.6.0" },
     { name = "websockets", specifier = "==17.1" },
 ]
 
