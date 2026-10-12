@@ -1,8 +1,0 @@
-python-dotenv
-uvicorn
-pipecat-ai[silero,websocket,azure]>=0.0.105
-pipecat-ai-subagents>=0.3.0
-azure-ai-transcription
-
-# debugpy enables local debugging of this agent with the Foundry Toolkit VS Code extension.
-debugpy

@@ -1,0 +1,17 @@
+[project]
+name = "pipecat-ws-webrtc"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent using the Invocations WebSocket protocol."
+requires-python = ">=3.12"
+dependencies = [
+    "azure-ai-transcription",
+    "azure-identity",
+    "debugpy",
+    "fastapi",
+    "httpx",
+    "opencv-python-headless",
+    "pipecat-ai[silero,webrtc,websocket,azure]>=0.0.105",
+    "pipecat-ai-subagents>=0.3.0",
+    "python-dotenv",
+    "uvicorn",
+]

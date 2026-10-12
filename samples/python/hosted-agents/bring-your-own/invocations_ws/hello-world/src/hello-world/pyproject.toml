@@ -1,0 +1,17 @@
+[project]
+name = "hello-world-invocations-ws"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent using the Invocations WebSocket protocol."
+requires-python = ">=3.12"
+dependencies = [
+    "azure-ai-agentserver-invocations==1.1.0",
+    "azure-ai-voicelive[aiohttp]>=1.2.0",
+    "azure-identity>=1.20.0",
+    "debugpy",
+    "python-dotenv>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "websockets>=14",
+]

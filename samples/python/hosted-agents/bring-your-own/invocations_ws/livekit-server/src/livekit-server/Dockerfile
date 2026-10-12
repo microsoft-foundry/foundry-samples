@@ -1,4 +1,7 @@
+FROM ghcr.io/astral-sh/uv:0.11.7 AS uv
 FROM python:3.12-slim
+
+COPY --from=uv /uv /uvx /bin/
 
 WORKDIR /app
 
@@ -8,17 +11,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc g++ && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt \
-    && pip uninstall -y pip setuptools \
-    && find /usr/local/lib/python3.12/site-packages \
+COPY pyproject.toml uv.lock uv.toml ./
+RUN uv sync --frozen --no-dev --no-install-project \
+    && (find /app/.venv/lib/python3.12/site-packages \
         \( -type d -name 'tests' \
         -o -type d -name 'test' \) \
-        -exec rm -rf {} + 2>/dev/null; true
+        -exec rm -rf {} + 2>/dev/null || true)
 
 # Pre-fetch Silero VAD weights so the agent doesn't download them at
 # every cold-start.
-RUN python -c "from livekit.plugins.silero import VAD; VAD.load()"
+RUN .venv/bin/python -c "from livekit.plugins.silero import VAD; VAD.load()"
 
 COPY agent.py server.py azure_tts_text_streaming.py ./
 
@@ -38,7 +40,7 @@ EXPOSE 8088
 # container start.
 # PYTHONDONTWRITEBYTECODE is cleared for these commands only: it blocks
 # bytecode *writes*, not *reads*, so images that set it still benefit.
-RUN PYTHONDONTWRITEBYTECODE= python -m compileall -q $(python -c "import sysconfig as s; print(s.get_paths()['stdlib'], s.get_paths()['purelib'])") || true; \
-    PYTHONDONTWRITEBYTECODE= python -m compileall -q .
+RUN PYTHONDONTWRITEBYTECODE= .venv/bin/python -m compileall -q $(.venv/bin/python -c "import sysconfig as s; print(s.get_paths()['stdlib'], s.get_paths()['purelib'])") || true; \
+    PYTHONDONTWRITEBYTECODE= .venv/bin/python -m compileall -q -x '[.]venv' .
 
-CMD ["python", "server.py"]
+CMD ["/app/.venv/bin/python", "server.py"]

@@ -67,32 +67,33 @@ A sample for building real-time voice agents that maintain two parallel tracks s
 | [main.py](src/duplex-live-agent/main.py) | The whole agent — `@app.ws_handler` opens a Voice Live session and runs two pumps. |
 | [azure.yaml](azure.yaml) | Hosted-agent runtime config (`invocations_ws`, 1 CPU / 1 Gi). |
 | [azure.yaml](azure.yaml) | `azd ai agent init` manifest. |
-| [Dockerfile](src/duplex-live-agent/Dockerfile) | python:3.12-slim, installs dependencies from `requirements.txt`. |
-| [requirements.txt](src/duplex-live-agent/requirements.txt) | Pins `azure-ai-agentserver-invocations==1.1.0` + `azure-ai-voicelive[aiohttp]` + `azure-identity` + `python-dotenv`. |
+| [Dockerfile](src/duplex-live-agent/Dockerfile) | Builds a frozen uv environment on `python:3.12-slim`. |
+| [pyproject.toml](src/duplex-live-agent/pyproject.toml) | Runtime dependencies and the local-only `websockets` development group. |
+| [uv.lock](src/duplex-live-agent/uv.lock) | Fully resolved runtime and development dependency graph. |
 | [.env.example](src/duplex-live-agent/.env.example) | Required Voice Live env vars. |
 | [e2e_local.py](src/duplex-live-agent/e2e_local.py) | Headless E2E that streams a 1 kHz tone in and asserts audio + events come back. |
 
 ## Prerequisites
 
-1. Python 3.10 or later.
-2. Azure CLI logged in (`az login`).
-3. An Azure AI Services / Voice Live resource and access to a realtime model (e.g. `gpt-realtime`).
-4. The `Foundry User` role on that resource for your user (or the hosted agent's managed identity, post-deploy).
+1. Python 3.12 or later.
+2. [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later.
+3. Azure CLI logged in (`az login`).
+4. An Azure AI Services / Voice Live resource and access to a realtime model (e.g. `gpt-realtime`).
+5. The `Foundry User` role on that resource for your user (or the hosted agent's managed identity, post-deploy).
 
 ## Running locally
 
 ```bash
-cd duplex-live-agent
-
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt websockets
+cd samples/python/hosted-agents/bring-your-own/invocations_ws/duplex-live-agent
+python -m pip install uv
+cd src/duplex-live-agent
+uv sync --frozen
 
 cp .env.example .env
 # Fill in AZURE_VOICELIVE_ENDPOINT and AZURE_VOICELIVE_MODEL.
 export $(grep -v '^#' .env | xargs)
 
-python main.py
+uv run --no-sync python main.py
 # → Uvicorn running on http://0.0.0.0:8088
 ```
 
@@ -101,9 +102,8 @@ python main.py
 In a second terminal:
 
 ```bash
-cd duplex-live-agent
-source .venv/bin/activate
-python e2e_local.py
+cd samples/python/hosted-agents/bring-your-own/invocations_ws/duplex-live-agent/src/duplex-live-agent
+uv run --no-sync python e2e_local.py
 # [e2e] session_started:   True
 # [e2e] audio_bytes recvd: 230400
 # [e2e] result:            PASS
@@ -118,11 +118,11 @@ spoken utterance — server-VAD is bypassed entirely.
 
 ### Browser test (standalone client)
 
-The sample ships a tiny single-file browser client in [`chat_client/`](chat_client/index.html).
+The sample ships a tiny single-file browser client in [`chat_client/`](src/duplex-live-agent/chat_client/index.html).
 With the agent running on `:8088`, just serve the folder:
 
 ```bash
-cd chat_client
+cd samples/python/hosted-agents/bring-your-own/invocations_ws/duplex-live-agent/src/duplex-live-agent/chat_client
 python -m http.server 8080
 ```
 
@@ -183,7 +183,8 @@ this on a WebSocket, so the standalone `chat_client/index.html` is for
 local dev only):
 
 ```bash
-python e2e_local.py \
+cd src/duplex-live-agent
+uv run --no-sync python e2e_local.py \
   --foundry "https://<account>.services.ai.azure.com/api/projects/<project>" \
   --agent duplex-live-agent
 ```

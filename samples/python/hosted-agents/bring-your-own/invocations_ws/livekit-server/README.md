@@ -52,10 +52,12 @@ theft, service abuse, or data exposure.
 | `agent.py` | LiveKit Agents worker. Defines a small multi-agent workflow (`GreeterAgent` ⇄ `CheckOrderAgent`) using the [LiveKit handoff pattern](https://docs.livekit.io/agents/logic/agents-handoffs/) — each specialist has its own Azure TTS voice. Uses `livekit-plugins-azure` for STT and `livekit-plugins-openai` (Azure OpenAI variant) for the LLM. For TTS it uses the in-repo [`azure_tts_text_streaming.py`](src/livekit-server/azure_tts_text_streaming.py) plugin (Azure Speech `TextStream` over websocket v2) for token-level streaming, instead of the chunked SSML path in `livekit-plugins-azure`. Registers with `agent_name=foundry-azure-voice` for explicit dispatch so it never competes with other agents on the same LiveKit project. |
 | `azure_tts_text_streaming.py` | LiveKit `tts.TTS` subclass that wraps the Azure Speech SDK's `SpeechSynthesisRequest(TextStream)` API. LLM tokens are written into a persistent `input_stream` as they arrive on the LiveKit `SynthesizeStream._input_ch`, and audio chunks stream back over a single websocket — noticeably lower TTFA than the stock SSML-per-utterance plugin. |
 | `server.py` | FastAPI `/invocations_ws` signaling endpoint. Mints a JWT (with a `RoomAgentDispatch` targeting this worker) and hands the browser `{type: "config", livekit_url, token, room, identity}`. Also spawns `agent.py start` as a child process so one command boots everything. |
-| `Dockerfile` | Container image for hosted deployment. Runs `python server.py`. |
+| `Dockerfile` | Container image for hosted deployment. Runs `server.py` from the frozen uv environment. |
 | `azure.yaml` / `azure.yaml` | Foundry hosted-agent manifests. |
+| `pyproject.toml` | Direct backend dependencies and Python requirement. |
+| `uv.lock` | Fully resolved backend dependency graph. |
 | `.env.example` | Copy to `.env` and fill in Azure + LiveKit credentials. |
-| [`chat_client/`](chat_client/) | Browser portal — LiveKit signaling proxy. |
+| [`chat_client/`](src/livekit-server/chat_client/) | Browser portal — LiveKit signaling proxy. |
 
 ## Prerequisites
 
@@ -64,6 +66,8 @@ theft, service abuse, or data exposure.
   between browser and agent and is the only piece that has to run
   outside this sample.
 - Azure Speech and Azure OpenAI resources.
+- Python 3.12 or later.
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later.
 
 > Self-hosting LiveKit is also supported but requires TLS + TURN and a
 > reachable UDP port; LiveKit Cloud is significantly simpler.
@@ -72,24 +76,24 @@ theft, service abuse, or data exposure.
 
 ```bash
 cd samples/python/hosted-agents/bring-your-own/invocations_ws/livekit-server
-
-# 1) Python deps. Reuse the parent venv used by the other samples, or
-#    create a fresh one.
-source ../.venv/bin/activate
-pip install -r requirements.txt
+python -m pip install uv
+cd src/livekit-server
+uv sync --frozen
 
 # 2) Configure
 cp .env.example .env
 # edit .env -> AZURE_*, LIVEKIT_URL/KEY/SECRET
 
 # 3) Start the backend (signaling endpoint + agent worker in one process)
-python server.py
+uv run --no-sync python server.py
 ```
 
 Then start the chat-client portal:
 
 ```bash
-cd chat_client
+cd samples/python/hosted-agents/bring-your-own/invocations_ws/livekit-server/src/livekit-server/chat_client
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 # To use this LOCAL livekit-server instead of the hosted Foundry agent,
@@ -101,7 +105,7 @@ python web_portal.py
 Open <http://localhost:9529> in Chrome / Edge.
 
 > `server.py` automatically launches `agent.py start` as a child
-> process. To run the worker yourself (e.g. with `python agent.py dev`
+> process. To run the worker yourself (e.g. with `uv run --no-sync python agent.py dev`
 > for live reload), set `RUN_AGENT_WORKER=0` before starting `server.py`.
 
 ## Default ports
@@ -124,13 +128,13 @@ Open <http://localhost:9529> in Chrome / Edge.
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | LiveKit server the agent registers with and the browser joins. |
 | `LIVEKIT_PUBLIC_URL` | Optional override of the URL handed to the *browser*. Falls back to `LIVEKIT_URL`. |
 | `LIVEKIT_AGENT_WORKER_NAME` | Optional. Worker name used for explicit dispatch (must match between `agent.py` and `server.py`). Defaults to `foundry-azure-voice`. |
-| `RUN_AGENT_WORKER` | Set to `0` to skip launching `agent.py` from `server.py` (e.g. when running it yourself with `python agent.py dev`). |
+| `RUN_AGENT_WORKER` | Set to `0` to skip launching `agent.py` from `server.py` (e.g. when running it yourself with `uv run --no-sync python agent.py dev`). |
 
 ## Hosted deployment (Azure Foundry)
 
 Same pattern as the sibling samples — `azd ai agent init` scaffolds a
 project, `azd deploy` does an ACR remote build and registers the new
-agent version with Foundry. The container runs `python server.py`,
+agent version with Foundry. The container runs `server.py` from the uv environment,
 which boots both the signaling endpoint and the LiveKit agent worker.
 
 ### 1. Initialise an azd workspace

@@ -1,0 +1,21 @@
+[project]
+name = "duplex-live-agent"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent using the Invocations WebSocket protocol."
+requires-python = ">=3.12"
+dependencies = [
+    "agent-framework-core==1.10.0",
+    "agent-framework-foundry==1.10.0",
+    "agent-framework-orchestrations==1.0.0",
+    "azure-ai-agentserver-invocations==1.1.0",
+    "azure-ai-voicelive[aiohttp]>=1.0.0b1",
+    "azure-identity>=1.20.0",
+    "debugpy",
+    "github-copilot-sdk==0.3.0",
+    "python-dotenv>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "websockets>=14",
+]
