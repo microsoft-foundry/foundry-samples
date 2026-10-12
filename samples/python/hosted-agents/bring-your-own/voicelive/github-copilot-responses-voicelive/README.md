@@ -122,13 +122,16 @@ azd ai agent monitor
 1. Install the
    [Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)
    and the VS Code Python extension.
-2. Create or select a Python environment and install the complete dependency
-   graph:
+2. Install uv, sync the committed environment, and select its interpreter:
 
    ```bash
-   pip install -r src/github-copilot-responses-voicelive/requirements.txt
+   python -m pip install uv
+   cd src/github-copilot-responses-voicelive
+   uv sync --frozen
    ```
 
+   In VS Code, select `src/github-copilot-responses-voicelive/.venv` as the
+   Python interpreter.
 3. Configure the values from
    [`src/github-copilot-responses-voicelive/.env.example`](src/github-copilot-responses-voicelive/.env.example).
 4. Press **F5**. The Toolkit generates local task files, starts the agent, and

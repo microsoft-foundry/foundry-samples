@@ -119,9 +119,8 @@ sample therefore uses the protocol-aware smoke client instead of the standard In
 From the sample source directory:
 
 ```bash
-python3.13 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt -r requirements-dev.txt
+python -m pip install uv
+uv sync --frozen
 cp .env.example .env
 ```
 
@@ -135,7 +134,7 @@ Load the environment and start the server:
 set -a
 source .env
 set +a
-python main.py
+uv run --no-sync python main.py
 ```
 
 The server listens on `PORT` or port `8088` and exposes `GET /readiness` and the
@@ -146,7 +145,7 @@ The server listens on `PORT` or port `8088` and exposes `GET /readiness` and the
 The smoke test sends `/help`, so it validates the Bridge wire flow without calling a model:
 
 ```bash
-python scripts/smoke_test.py
+uv run --no-sync python scripts/smoke_test.py
 ```
 
 Expected message sequence:
@@ -188,8 +187,8 @@ the Voice wrapper and Voice Live.
 Tests use deterministic fake model streams and make no cloud calls:
 
 ```bash
-python -m pytest -q
-ruff check .
+uv run --no-sync python -m pytest -q
+uv run --no-sync ruff check .
 ```
 
 From the repository root, run the standard per-sample validator:
@@ -221,7 +220,7 @@ bash .github/scripts/validate-sample.sh \
   Protocol `1.0`. This is separate from the `invocations_ws` transport version in `azure.yaml`.
 - If model calls fail locally, verify `FOUNDRY_PROJECT_ENDPOINT`,
   `AZURE_AI_MODEL_DEPLOYMENT_NAME`, and the active Azure CLI identity.
-- If the smoke test cannot connect, start `python main.py` first and verify that port `8088` is
+- If the smoke test cannot connect, start `uv run --no-sync python main.py` first and verify that port `8088` is
   available, or set the smoke client's URL to match `PORT`.
 
 ## Next steps

@@ -24,10 +24,12 @@ Agents transfer control via handoff tools. Status updates stream in real-time as
 #### Run Locally
 
 ```bash
+cd src/handoff-langgraph-responses-voicelive
 cp .env.example .env
 # Edit .env with your values
-pip install -r requirements.txt
-python main.py
+python -m pip install uv
+uv sync --frozen
+uv run --no-sync python main.py
 ```
 
 #### Test

@@ -1,0 +1,15 @@
+[project]
+name = "github-copilot-responses-voicelive"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent for VoiceLive scenarios."
+requires-python = ">=3.13"
+dependencies = [
+    "github-copilot-sdk==1.0.11",
+    "azure-ai-agentserver-responses==1.0.0b9",
+    "azure-ai-projects==2.0.1",
+    "azure-identity==1.25.3",
+    "debugpy",
+    # azure-ai-projects uses the httpx 0.x client while OpenAI 3 uses httpx2.
+    "httpx<1",
+    "openai<3",
+]

@@ -1,16 +1,15 @@
+FROM ghcr.io/astral-sh/uv:0.11.7 AS uv
 FROM python:3.13-slim
 
-WORKDIR /app
+COPY --from=uv /uv /uvx /bin/
 
-COPY . user_agent/
 WORKDIR /app/user_agent
-
-RUN pip install --no-input --upgrade pip && \
-    pip install --no-input -r requirements.txt
+COPY pyproject.toml uv.lock uv.toml ./
+RUN uv sync --frozen --no-dev --no-install-project
 
 # Resolve the SDK's pinned CLI runtime at build time instead of on the first
 # invocation, when the container filesystem may be read-only.
-RUN python -m copilot download-runtime && \
+RUN .venv/bin/python -m copilot download-runtime && \
     cli_path="$(find /root/.cache/github-copilot-sdk/cli -type f -name copilot -print -quit)" && \
     test -n "$cli_path" && \
     install -m 0755 "$cli_path" /usr/local/bin/copilot && \
@@ -21,11 +20,13 @@ ENV PORT=8088
 ENV HOST=0.0.0.0
 ENV PYTHONUNBUFFERED=1
 
+COPY . .
+
 EXPOSE 8088
 
 # Precompile dependencies best-effort, but fail the build for invalid
 # application Python.
-RUN PYTHONDONTWRITEBYTECODE= python -m compileall -q $(python -c "import sysconfig as s; print(s.get_paths()['stdlib'], s.get_paths()['purelib'])") || true; \
-    PYTHONDONTWRITEBYTECODE= python -m compileall -q .
+RUN PYTHONDONTWRITEBYTECODE= .venv/bin/python -m compileall -q $(.venv/bin/python -c "import sysconfig as s; print(s.get_paths()['stdlib'], s.get_paths()['purelib'])") || true; \
+    PYTHONDONTWRITEBYTECODE= .venv/bin/python -m compileall -q -x '[.]venv' .
 
-CMD ["python", "main.py"]
+CMD ["/app/user_agent/.venv/bin/python", "main.py"]

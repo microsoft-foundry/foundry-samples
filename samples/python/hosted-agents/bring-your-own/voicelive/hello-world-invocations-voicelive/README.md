@@ -78,9 +78,9 @@ export $(grep -v '^#' .env | xargs)
 > If using `azd ai agent run`, dependencies are installed automatically — skip to [Running the Sample](#running-the-sample).
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install uv
+cd src/hello-world-python-invocations-voicelive
+uv sync --frozen
 ```
 
 ### Running the Sample
@@ -156,7 +156,7 @@ Each response is a stream of SSE events: `output_audio_transcription.delta` even
 If running without `azd`, set environment variables manually (see [Environment Variables](#environment-variables)), then:
 
 ```bash
-python main.py
+uv run --no-sync python main.py
 ```
 
 ### Deploying the Agent to Microsoft Foundry
