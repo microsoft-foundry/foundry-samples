@@ -10,5 +10,4 @@ dependencies = [
     "debugpy",
     "openai==2.32.0",
     "pydantic-ai-slim[openai]==1.75.0",
-    "starlette==1.7.0",
 ]

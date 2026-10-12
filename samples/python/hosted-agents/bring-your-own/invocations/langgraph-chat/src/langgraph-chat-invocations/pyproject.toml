@@ -11,5 +11,4 @@ dependencies = [
     "langchain-core==1.3.0",
     "langgraph==1.1.8",
     "langgraph-prebuilt==1.0.10",
-    "starlette==1.7.0",
 ]

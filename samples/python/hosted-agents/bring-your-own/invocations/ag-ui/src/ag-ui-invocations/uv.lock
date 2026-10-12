@@ -13,7 +13,6 @@ dependencies = [
     { name = "debugpy" },
     { name = "openai" },
     { name = "pydantic-ai-slim", extra = ["openai"] },
-    { name = "starlette" },
 ]
 
 [package.metadata]
@@ -24,7 +23,6 @@ requires-dist = [
     { name = "debugpy" },
     { name = "openai", specifier = "==2.32.0" },
     { name = "pydantic-ai-slim", extras = ["openai"], specifier = "==1.75.0" },
-    { name = "starlette", specifier = "==1.7.0" },
 ]
 
 [[package]]

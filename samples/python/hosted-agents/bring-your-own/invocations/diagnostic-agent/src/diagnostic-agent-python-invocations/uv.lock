@@ -556,7 +556,6 @@ dependencies = [
     { name = "azure-ai-agentserver-invocations" },
     { name = "azure-identity" },
     { name = "debugpy" },
-    { name = "starlette" },
 ]
 
 [package.metadata]
@@ -564,7 +563,6 @@ requires-dist = [
     { name = "azure-ai-agentserver-invocations", specifier = "==1.1.0" },
     { name = "azure-identity" },
     { name = "debugpy" },
-    { name = "starlette", specifier = "==1.7.0" },
 ]
 
 [[package]]
