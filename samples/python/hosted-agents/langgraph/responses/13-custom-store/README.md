@@ -30,6 +30,8 @@ storage backend that satisfies the contracts for on-prem deployments.
 
 - **Python 3.13** for local development to match the hosted runtime declared in
   [azure.yaml](azure.yaml).
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+  installed and available on `PATH`.
 - **A Foundry project and model deployment.** Use an existing project, or create
   the resources during the Foundry-hosted setup below. On-premises runs use an
   existing Foundry model deployment.

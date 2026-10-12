@@ -27,6 +27,8 @@ This sample is configured for **Microsoft Foundry** mode by default
 ### Prerequisites
 
 - Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+  installed and available on `PATH`
 - `az login` 
 - A Foundry resource with Claude model deployments
 

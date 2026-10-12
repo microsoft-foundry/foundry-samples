@@ -13,6 +13,8 @@ The agent receives a request via `POST /responses` with `"background": true`. Th
 ### Prerequisites
 
 - Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+  installed and available on `PATH`
 - Azure CLI installed and authenticated (`az login`)
 - Foundry project with a deployed model
 

@@ -43,6 +43,8 @@ The stages stream **simulated** tokens so the sample runs offline with no creden
 ### Prerequisites
 
 - Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+  installed and available on `PATH`
 - Azure CLI installed and authenticated (`az login`)
 
 ### Run the agent locally

@@ -25,6 +25,8 @@ A minimal getting-started agent implementing the [AG-UI protocol](https://docs.a
 ### Prerequisites
 
 - Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+  installed and available on `PATH`
 - A Foundry project with a deployed model
 
 ### Run the agent locally
