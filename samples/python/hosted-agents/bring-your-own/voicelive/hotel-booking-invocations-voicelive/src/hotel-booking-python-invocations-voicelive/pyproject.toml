@@ -7,4 +7,5 @@ dependencies = [
     "azure-ai-agentserver-invocations==1.1.0",
     # debugpy enables local debugging with the Foundry Toolkit.
     "debugpy",
+    "starlette==1.7.0",
 ]
