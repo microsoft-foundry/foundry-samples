@@ -7,4 +7,5 @@ dependencies = [
     "azure-ai-agentserver-invocations==1.1.0",
     "azure-identity",
     "debugpy",
+    "starlette==1.7.0",
 ]

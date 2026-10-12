@@ -603,6 +603,7 @@ dependencies = [
     { name = "httpx" },
     { name = "openai" },
     { name = "python-dotenv" },
+    { name = "starlette" },
 ]
 
 [package.metadata]
@@ -617,6 +618,7 @@ requires-dist = [
     { name = "httpx", specifier = "<1" },
     { name = "openai", specifier = "<3" },
     { name = "python-dotenv" },
+    { name = "starlette", specifier = "==1.6.0" },
 ]
 
 [[package]]

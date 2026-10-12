@@ -13,4 +13,5 @@ dependencies = [
     # azure-ai-projects imports httpx directly, while OpenAI 3 uses httpx2.
     "httpx<1",
     "openai<3",
+    "starlette==1.6.0",
 ]

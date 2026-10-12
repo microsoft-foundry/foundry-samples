@@ -775,6 +775,7 @@ dependencies = [
     { name = "debugpy" },
     { name = "httpx" },
     { name = "openai" },
+    { name = "starlette" },
 ]
 
 [package.metadata]
@@ -786,6 +787,7 @@ requires-dist = [
     { name = "debugpy" },
     { name = "httpx", specifier = "<1" },
     { name = "openai", specifier = "<3" },
+    { name = "starlette", specifier = "==1.6.0" },
 ]
 
 [[package]]

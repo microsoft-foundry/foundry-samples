@@ -15,4 +15,5 @@ dependencies = [
     "httpx<1",
     "openai<3",
     "python-dotenv",
+    "starlette==1.6.0",
 ]

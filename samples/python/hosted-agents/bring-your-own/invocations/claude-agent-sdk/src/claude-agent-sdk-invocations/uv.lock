@@ -513,6 +513,7 @@ dependencies = [
     { name = "claude-agent-sdk" },
     { name = "debugpy" },
     { name = "httpx" },
+    { name = "starlette" },
 ]
 
 [package.metadata]
@@ -521,6 +522,7 @@ requires-dist = [
     { name = "claude-agent-sdk", specifier = ">=0.1.74" },
     { name = "debugpy" },
     { name = "httpx", specifier = "<1.0" },
+    { name = "starlette", specifier = "==1.7.0" },
 ]
 
 [[package]]

@@ -652,6 +652,7 @@ dependencies = [
     { name = "debugpy" },
     { name = "github-copilot-sdk" },
     { name = "python-dotenv" },
+    { name = "starlette" },
 ]
 
 [package.metadata]
@@ -661,6 +662,7 @@ requires-dist = [
     { name = "debugpy" },
     { name = "github-copilot-sdk", specifier = "==1.0.11" },
     { name = "python-dotenv", specifier = "==1.1.1" },
+    { name = "starlette", specifier = "==1.6.0" },
 ]
 
 [[package]]
