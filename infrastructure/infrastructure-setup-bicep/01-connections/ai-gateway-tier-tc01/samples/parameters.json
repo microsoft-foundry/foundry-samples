@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "aiServicesName": { "value": "foundry" },
+    "projectName": { "value": "gateway-project" },
+    "projectDescription": { "value": "AI Gateway tier TC01 sample." },
+    "projectDisplayName": { "value": "AI Gateway tier TC01" },
+    "location": { "value": "eastus2" },
+
+    "modelName": { "value": "gpt-5.4" },
+    "modelFormat": { "value": "OpenAI" },
+    "modelVersion": { "value": "2026-03-05" },
+    "modelSkuName": { "value": "GlobalStandard" },
+    "modelCapacity": { "value": 40 },
+
+    "gatewayName": { "value": "" },
+    "publisherEmail": { "value": "noreply@example.com" },
+    "publisherName": { "value": "AI Gateway TC01" },
+    "tokensPerMinute": { "value": 100 }
+  }
+}
