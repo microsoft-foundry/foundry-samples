@@ -1,0 +1,12 @@
+{
+  "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
+  "type": "QuickStart",
+  "itemDisplayName": "Network Secured Agent Setup with capabilitySettings (Implicit Capability Hosts)",
+  "description": "Network-secured Standard Agent setup with account network injection and project capabilitySettings selecting BYO stores. Capability hosts are implicit; all RBAC is assigned explicitly by enabled deployment modules or an authorized operator, never by the service.",
+  "summary": "Network-injected agents with implicit capability hosts, BYO store settings, and explicit deployment-managed or operator-managed RBAC.",
+  "githubUsername": "fosteramanda",
+  "dateUpdated": "2026-09-21",
+  "environments": [
+    "AzureCloud"
+  ]
+}
