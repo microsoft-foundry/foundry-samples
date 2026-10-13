@@ -1,0 +1,10 @@
+[project]
+name = "hotel-booking-python-invocations-voicelive"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent for VoiceLive scenarios."
+requires-python = ">=3.12"
+dependencies = [
+    "azure-ai-agentserver-invocations==1.1.0",
+    # debugpy enables local debugging with the Foundry Toolkit.
+    "debugpy",
+]

@@ -68,6 +68,9 @@ Before running this sample, ensure you have:
 1. **Python 3.12 or higher**
    - Verify your version: `python --version`
 
+1. **uv 0.11.7 or later**
+   - [Install uv](https://docs.astral.sh/uv/getting-started/installation/) and verify it is available on `PATH`: `uv --version`
+
 1. **A deployed hosted agent for the multiplexing test**
    - Protocol `2.0.0` platform context is populated in hosted Foundry. Local calls are useful for startup checks, but they do not demonstrate session multiplexing.
 

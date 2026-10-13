@@ -34,6 +34,8 @@ This agent supports two LLM backends. Configure one of the following:
 ## Prerequisites
 
 - **Python 3.12+**
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+  installed and available on `PATH`
 - An Azure AI Foundry project with a deployed model — for the default BYOK path (`FOUNDRY_PROJECT_ENDPOINT` is auto-injected when hosted; set it locally)
 - *(GitHub Copilot model only)* A GitHub fine-grained PAT (`github_pat_` prefix)
 

@@ -2,6 +2,15 @@
 
 Multi-agent customer support handoff demo using LangGraph, served as a hosted agent through the Responses protocol. Optimized for voice-first scenarios.
 
+## Prerequisites
+
+1. Python 3.12 or later.
+2. [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+   installed and available on `PATH`.
+3. Azure Developer CLI (`azd`) 1.27.1 or later with the Foundry extension for
+   the `azd` workflow.
+4. Azure CLI authentication (`az login`) for local model access.
+
 ## Architecture
 
 Three specialized agents with handoff:
@@ -24,10 +33,12 @@ Agents transfer control via handoff tools. Status updates stream in real-time as
 #### Run Locally
 
 ```bash
+cd src/handoff-langgraph-responses-voicelive
 cp .env.example .env
 # Edit .env with your values
-pip install -r requirements.txt
-python main.py
+python -m pip install uv
+uv sync --frozen
+uv run --no-sync python main.py
 ```
 
 #### Test
@@ -54,7 +65,7 @@ azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/m
 # Provision Azure resources (Foundry project, model deployment, App Insights)
 azd provision
 
-# Run the agent locally (handles env vars, dependency install, and startup)
+# Run the agent locally (uses uv to sync dependencies, then starts the agent)
 azd ai agent run
 ```
 

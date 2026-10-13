@@ -19,7 +19,7 @@ A real-time voice agent hosted as a **Bring Your Own** WebSocket container that 
 
 Why a single `/invocations_ws` endpoint? This sample lives under the `bring-your-own/invocations_ws/` tree, where the Foundry contract is "one duplex WebSocket called `invocations_ws`". We keep that surface here but use the WebSocket purely for **WebRTC signaling** (offer / answer / ICE candidates / ICE config). Audio still flows over the WebRTC peer connection and never touches the signaling WebSocket.
 
-The browser client lives in [`chat_client/`](chat_client/) — a small FastAPI portal that terminates the browser's WebSocket, attaches the Entra token as the `Authorization` header in hosted mode, and forwards signaling JSON to the upstream `/invocations_ws`. The same proxy works against either a local server or the Foundry-hosted agent.
+The browser client lives in [`chat_client/`](src/pipecat-ws-webrtc/chat_client/) — a small FastAPI portal that terminates the browser's WebSocket, attaches the Entra token as the `Authorization` header in hosted mode, and forwards signaling JSON to the upstream `/invocations_ws`. The same proxy works against either a local server or the Foundry-hosted agent.
 
 ## ⚠️ Security Warning
 
@@ -76,9 +76,10 @@ Failure to properly secure these components may result in credential theft, serv
 | `Dockerfile`                  | Container image for Foundry deployment (`linux/amd64`, port 8088) |
 | `azure.yaml`         | Foundry hosted-agent manifest                                  |
 | `azure.yaml`                  | Foundry hosted-agent definition (kind / protocols / resources) |
-| `requirements.txt`            | Bot deps (`pipecat-ai[silero,webrtc,websocket,azure]`)         |
+| `pyproject.toml`              | Direct bot dependencies and Python requirement                 |
+| `uv.lock`                     | Fully resolved bot dependency graph                            |
 | `.env.example`                | Required Azure Speech / Foundry env vars for the bot           |
-| [`chat_client/`](chat_client/) | Browser portal — pipecat WebRTC signaling proxy |
+| [`chat_client/`](src/pipecat-ws-webrtc/chat_client/) | Browser portal — pipecat WebRTC signaling proxy |
 
 The agent classes (`GreeterAgent`, `CheckOrderAgent`) and helper services (`AzureFastTranscriptionSTTService`, `AzureTTSTextStreamingService`) are bundled here as copies of the files under [`../pipecat-ws-server/`](../pipecat-ws-server/), so the container build context is self-contained.
 
@@ -97,10 +98,11 @@ The server may also push `{ "type": "closed" }` if the peer connection is torn d
 
 ## Prerequisites
 
-1. **Python 3.10 or later** — `python --version`
-2. **Azure CLI** — installed and authenticated: `az login`
-3. **Azure Developer CLI (`azd`)** (only needed for the deploy step) — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.25 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
-4. **Azure resources**:
+1. **Python 3.12 or later** — `python --version`
+2. **uv 0.11.7 or later** — [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
+3. **Azure CLI** — installed and authenticated: `az login`
+4. **Azure Developer CLI (`azd`)** (only needed for the deploy step) — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.25 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
+5. **Azure resources**:
    - Azure Speech (any region) — for STT and TTS
    - Azure OpenAI deployment (e.g. `gpt-4o-mini`) — for the LLM agents
    - A STUN/TURN provider for production deployments (e.g. Azure Communication Services relay token, Twilio NTS, Cloudflare TURN, or self-hosted coturn)
@@ -128,9 +130,9 @@ cp .env.example .env
 # Edit .env with your values
 ```
 
-### Client ([`chat_client/.env`](chat_client/.env.example))
+### Client ([`chat_client/.env`](src/pipecat-ws-webrtc/chat_client/.env.example))
 
-The shared portal under [`chat_client/`](chat_client/) handles the
+The shared portal under [`chat_client/`](src/pipecat-ws-webrtc/chat_client/) handles the
 browser. Configure it to point at either a local `server.py` or the
 Foundry-hosted agent.
 
@@ -163,7 +165,7 @@ PIPECAT_WEBRTC_AGENT_NAME=pipecat-ws-webrtc
 ```
 
 ```bash
-cd chat_client
+cd samples/python/hosted-agents/bring-your-own/invocations_ws/pipecat-webrtc/src/pipecat-ws-webrtc/chat_client
 cp .env.example .env
 # Edit .env with your values
 ```
@@ -178,13 +180,12 @@ You can run the server and client in two terminals.
 
 ```bash
 cd samples/python/hosted-agents/bring-your-own/invocations_ws/pipecat-webrtc
-
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install uv
+cd src/pipecat-ws-webrtc
+uv sync --frozen
 
 # Make sure .env is filled in (see "Server" table above)
-python server.py
+uv run --no-sync python server.py
 ```
 
 The server logs `Uvicorn running on http://0.0.0.0:8089` and exposes:
@@ -200,10 +201,9 @@ The server logs `Uvicorn running on http://0.0.0.0:8089` and exposes:
 In a second terminal:
 
 ```bash
-cd samples/python/hosted-agents/bring-your-own/invocations_ws/pipecat-webrtc/chat_client
-
-python -m venv ../.venv          # (or reuse the server's venv)
-source ../.venv/bin/activate
+cd samples/python/hosted-agents/bring-your-own/invocations_ws/pipecat-webrtc/src/pipecat-ws-webrtc/chat_client
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 
 # Local mode — point at the server you just started
@@ -311,7 +311,7 @@ Once the agent is `Running` in Foundry, point the shared web portal at it.
    https://{account}.services.ai.azure.com/api/projects/{project}
    ```
 
-2. Update `chat_client/.env`:
+2. Update `src/pipecat-ws-webrtc/chat_client/.env`:
 
    ```bash
    # Comment out the local-mode override
@@ -327,7 +327,8 @@ Once the agent is `Running` in Foundry, point the shared web portal at it.
 4. Restart the portal and reload <http://localhost:9528>:
 
    ```bash
-   cd chat_client && python web_portal.py
+   cd samples/python/hosted-agents/bring-your-own/invocations_ws/pipecat-webrtc/src/pipecat-ws-webrtc/chat_client
+   python web_portal.py
    ```
 
 The portal log shows the upstream `agent_session_id` it generated; that ID is also useful when fetching server logs:
@@ -335,4 +336,3 @@ The portal log shows the upstream `agent_session_id` it generated; that ID is al
 ```bash
 azd ai agent monitor pipecat-ws-webrtc --session-id <session-id> --follow
 ```
-

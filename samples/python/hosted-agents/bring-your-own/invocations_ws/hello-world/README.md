@@ -53,20 +53,21 @@ shuttle audio bytes and control events.
 | [main.py](src/hello-world/main.py) | The whole agent — `@app.ws_handler` opens a Voice Live session and runs two pumps. |
 | [azure.yaml](azure.yaml) | Hosted-agent runtime config (`invocations_ws`, 1 CPU / 2 Gi). |
 | [azure.yaml](azure.yaml) | `azd ai agent init` manifest. |
-| [Dockerfile](src/hello-world/Dockerfile) | python:3.12-slim, installs dependencies from `requirements.txt`. |
-| [requirements.txt](src/hello-world/requirements.txt) | Container/runtime deps — `azure-ai-agentserver-invocations==1.1.0` + `azure-ai-voicelive[aiohttp]` + `azure-identity` + `python-dotenv`. |
-| [requirements-dev.txt](src/hello-world/requirements-dev.txt) | **Local-only** test/proxy deps (`websockets`) used by `e2e_local.py` and `chat_client/proxy.py`. Not installed into the container. |
+| [Dockerfile](src/hello-world/Dockerfile) | Builds a frozen uv environment on `python:3.12-slim`. |
+| [pyproject.toml](src/hello-world/pyproject.toml) | Runtime dependencies and the local-only `websockets` development group. |
+| [uv.lock](src/hello-world/uv.lock) | Fully resolved runtime and development dependency graph. |
 | [.env.example](src/hello-world/.env.example) | Required Voice Live env vars. |
 | [e2e_local.py](src/hello-world/e2e_local.py) | Headless E2E that streams a 1 kHz tone in and asserts audio + events come back. Supports `--foundry`/`--agent` to run against a deployed hosted agent. |
-| [chat_client/index.html](chat_client/index.html) | Standalone browser client (mic + transcript). |
-| [chat_client/proxy.py](chat_client/proxy.py) | Local proxy that serves `index.html` and injects an `Authorization: Bearer` header onto the upstream WebSocket — used to talk to a deployed Foundry agent from the browser. |
+| [chat_client/index.html](src/hello-world/chat_client/index.html) | Standalone browser client (mic + transcript). |
+| [chat_client/proxy.py](src/hello-world/chat_client/proxy.py) | Local proxy that serves `index.html` and injects an `Authorization: Bearer` header onto the upstream WebSocket — used to talk to a deployed Foundry agent from the browser. |
 
 ## Prerequisites
 
-1. Python 3.10 or later.
-2. Azure CLI logged in (`az login`).
-3. An Azure AI Services / Voice Live resource and access to a realtime model (e.g. `gpt-realtime`).
-4. The `Foundry User` role on that resource at **account scope** —
+1. Python 3.12 or later.
+2. [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later.
+3. Azure CLI logged in (`az login`).
+4. An Azure AI Services / Voice Live resource and access to a realtime model (e.g. `gpt-realtime`).
+5. The `Foundry User` role on that resource at **account scope** —
    for your user when running locally, and for the hosted agent's
    managed identity post-deploy (see [Deploying to Microsoft Foundry](#deploying-to-microsoft-foundry)).
 
@@ -74,16 +75,15 @@ shuttle audio bytes and control events.
 
 ```bash
 cd samples/python/hosted-agents/bring-your-own/invocations_ws/hello-world
-
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install uv
+cd src/hello-world
+uv sync --frozen
 
 cp .env.example .env
 # Fill in AZURE_VOICELIVE_ENDPOINT and AZURE_VOICELIVE_MODEL.
 export $(grep -v '^#' .env | xargs)
 
-python main.py
+uv run --no-sync python main.py
 # → Uvicorn running on http://0.0.0.0:8088
 ```
 
@@ -92,10 +92,8 @@ python main.py
 In a second terminal:
 
 ```bash
-cd samples/python/hosted-agents/bring-your-own/invocations_ws/hello-world
-source .venv/bin/activate
-pip install -r requirements-dev.txt   # one-time: installs `websockets`
-python e2e_local.py
+cd samples/python/hosted-agents/bring-your-own/invocations_ws/hello-world/src/hello-world
+uv run --no-sync python e2e_local.py
 # [e2e] session_started:   True
 # [e2e] audio_bytes recvd: 230400
 # [e2e] result:            PASS
@@ -110,13 +108,13 @@ spoken utterance — server-VAD is bypassed entirely.
 
 ### Browser test (standalone client)
 
-The sample ships a tiny single-file browser client in [`chat_client/index.html`](chat_client/index.html)
-plus a small Python proxy in [`chat_client/proxy.py`](chat_client/proxy.py).
+The sample ships a tiny single-file browser client in [`chat_client/index.html`](src/hello-world/chat_client/index.html)
+plus a small Python proxy in [`chat_client/proxy.py`](src/hello-world/chat_client/proxy.py).
 
 **Against the locally-running agent** (no auth needed) — just serve the folder:
 
 ```bash
-cd chat_client
+cd samples/python/hosted-agents/bring-your-own/invocations_ws/hello-world/src/hello-world/chat_client
 python -m http.server 8080
 ```
 
@@ -129,10 +127,8 @@ requires, so use the bundled proxy, which serves `index.html` *and*
 bridges the upstream WS with the token injected:
 
 ```bash
-# One-time: install local-only test deps (provides `websockets`).
-pip install -r requirements-dev.txt
-
-python chat_client/proxy.py \
+cd samples/python/hosted-agents/bring-your-own/invocations_ws/hello-world/src/hello-world
+uv run --no-sync python chat_client/proxy.py \
   --foundry "https://<account>.services.ai.azure.com/api/projects/<project>" \
   --agent hello-world
 ```
@@ -225,7 +221,8 @@ this on a WebSocket, so the standalone `chat_client/index.html` is for
 local dev only):
 
 ```bash
-python e2e_local.py \
+cd src/hello-world
+uv run --no-sync python e2e_local.py \
   --foundry "https://<account>.services.ai.azure.com/api/projects/<project>" \
   --agent hello-world
 ```

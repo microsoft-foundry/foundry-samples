@@ -48,6 +48,9 @@ Before running this sample, ensure you have:
 3. **Python 3.12 or later**
    - Verify your version: `python --version`
 
+4. **uv 0.11.7 or later**
+   - [Install uv](https://docs.astral.sh/uv/getting-started/installation/) and verify it is available on `PATH`: `uv --version`
+
 > [!NOTE]
 > You do **not** need an existing [Microsoft Foundry](https://learn.microsoft.com/en-us/azure/ai-foundry/what-is-foundry?view=foundry) project or model deployment to get started — `azd provision` creates them for you. If you already have a project, see the [note below](#using-azd) on how to target it.
 

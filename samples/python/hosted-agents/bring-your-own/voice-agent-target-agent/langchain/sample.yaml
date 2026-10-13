@@ -2,14 +2,13 @@ name: Voice Live Bridge LangChain Python
 description: A tool-using LangChain hosted text agent implementing Voice Live Bridge Protocol 1.0.
 
 build: >-
-  python -m pip install --disable-pip-version-check
-  -r src/voice-live-bridge-langchain-python/requirements.txt
-  -r src/voice-live-bridge-langchain-python/requirements-dev.txt
+  cd src/voice-live-bridge-langchain-python &&
+  uv sync --frozen
 validate: >-
   cd src/voice-live-bridge-langchain-python &&
-  python -m compileall -q . &&
-  python -c "import azure.ai.agentserver.invocations.voice" &&
-  python -m ruff check .
+  uv run --no-sync python -m compileall -q -x '[.]venv' . &&
+  uv run --no-sync python -c "import azure.ai.agentserver.invocations.voice" &&
+  uv run --no-sync ruff check .
 test: >-
   cd src/voice-live-bridge-langchain-python &&
-  python -m pytest -q
+  uv run --no-sync python -m pytest -q

@@ -69,6 +69,12 @@ class AssistantState(TypedDict, total=False):
 
 ## Run with Azure Developer CLI
 
+Prerequisites:
+
+- Python 3.12 or later
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+  installed and available on `PATH`
+
 1. Install and authenticate the required tools:
 
    ```bash

@@ -1,3 +1,30 @@
+[project]
+name = "voice-live-bridge-langchain-python"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted voice bridge agent."
+requires-python = ">=3.13"
+dependencies = [
+    "azure-ai-agentserver-core==2.1.0",
+    "azure-ai-agentserver-invocations==1.1.0",
+    "azure-identity==1.25.1",
+    "langchain==1.3.15",
+    "langchain-core==1.6.1",
+    "langchain-openai==1.5.2",
+    "openai==3.1.0",
+    "opentelemetry-api==1.43.0",
+]
+
+[dependency-groups]
+dev = [
+    "iniconfig==2.3.0",
+    "pluggy==1.6.0",
+    "Pygments==2.21.0",
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "ruff==0.16.5",
+    "websockets==16.1.1",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

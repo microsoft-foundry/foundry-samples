@@ -104,8 +104,10 @@ Before running this sample, ensure you have:
 1. **Azure Developer CLI (`azd`)**
 	 - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) and the AI agent extension: `azd ext install azure.ai.agents`
 	 - Authenticated: `azd auth login`
-2. **Python 3.10 or later**
+2. **Python 3.12 or later**
 	 - Verify your version: `python --version`
+3. **uv 0.11.7 or later**
+	 - [Install uv](https://docs.astral.sh/uv/getting-started/installation/) and verify it is available on `PATH`: `uv --version`
 
 ### Environment variables
 
@@ -116,15 +118,15 @@ See [`.env.example`](src/hotel-booking-python-invocations-voicelive/.env.example
 ### Install dependencies
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install uv
+cd src/hotel-booking-python-invocations-voicelive
+uv sync --frozen
 ```
 
 ### Start the agent
 
 ```bash
-python main.py
+uv run --no-sync python main.py
 ```
 
 The service listens on `http://localhost:8088`.

@@ -13,6 +13,8 @@ A note-taking agent built with `azure-ai-agentserver-invocations` and Azure Open
 ## Prerequisites
 
 - Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+  installed and available on `PATH`
 - Azure OpenAI resource with a deployed model (e.g., `gpt-5.4-mini`)
 - Azure credentials configured (e.g., `az login`)
 

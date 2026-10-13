@@ -1,0 +1,16 @@
+[project]
+name = "hello-world-python-invocations-voicelive"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent for VoiceLive scenarios."
+requires-python = ">=3.12"
+dependencies = [
+    "azure-ai-agentserver-invocations==1.1.0",
+    # Keep the 1.0 Invocations SDK on its compatible Core 2.x line.
+    "azure-ai-agentserver-core==2.1.0",
+    "azure-ai-projects==2.0.1",
+    "azure-identity==1.25.3",
+    "debugpy",
+    # azure-ai-projects imports httpx directly, while OpenAI 3 uses httpx2.
+    "httpx<1",
+    "openai<3",
+]

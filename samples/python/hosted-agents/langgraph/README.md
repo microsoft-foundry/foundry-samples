@@ -51,11 +51,16 @@ with `az login` during local development.
 
 #### Prerequisites
 
-1. **Azure Developer CLI (`azd`)**
+1. **Python version declared by the selected runtime's `pyproject.toml`**
+
+2. **uv 0.11.7 or later**
+   - [Install uv](https://docs.astral.sh/uv/getting-started/installation/) and verify it is available on `PATH`: `uv --version`
+
+3. **Azure Developer CLI (`azd`)**
    - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) and the AI agent extension: `azd ext install azure.ai.agents`
    - Authenticated: `azd auth login`
 
-2. **Azure Subscription**
+4. **Azure Subscription**
 
 #### Create a new project
 

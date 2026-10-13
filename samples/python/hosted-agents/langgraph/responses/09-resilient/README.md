@@ -56,7 +56,8 @@ continue the latest completed checkpoint.
 ### Prerequisites
 
 - Python 3.12 or later
-- [`uv`](https://docs.astral.sh/uv/)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+  installed and available on `PATH`
 - [Azure Developer CLI (`azd`)](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
 - Azure CLI authenticated with `az login`
 - A Microsoft Foundry project and model deployment accessible through

@@ -45,9 +45,11 @@ If both modes are configured, the Foundry BYOK model takes precedence.
 
 1. A Foundry project with a deployed model, or permission to create them with
    `azd provision`.
-2. **Python 3.10 or later.**
-3. Azure CLI authentication (`az login`) for local BYOK authentication.
-4. The hosted agent's managed identity needs **Cognitive Services OpenAI User** on the Foundry account. The Copilot SDK provider sends requests to
+2. **Python 3.13 or later.**
+3. [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+   installed and available on `PATH`.
+4. Azure CLI authentication (`az login`) for local BYOK authentication.
+5. The hosted agent's managed identity needs **Cognitive Services OpenAI User** on the Foundry account. The Copilot SDK provider sends requests to
    `/openai/v1/responses`, which requires the account-level
    `Microsoft.CognitiveServices/accounts/OpenAI/responses/write` data action.
    Assign the role to the hosted agent's `*-AgentIdentity` service principal
@@ -65,7 +67,13 @@ If both modes are configured, the Foundry BYOK model takes precedence.
    azd ext install microsoft.foundry
    ```
 
-3. Authenticate:
+3. Verify uv is available:
+
+   ```bash
+   uv --version
+   ```
+
+4. Authenticate:
 
    ```bash
    azd auth login
@@ -122,13 +130,16 @@ azd ai agent monitor
 1. Install the
    [Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)
    and the VS Code Python extension.
-2. Create or select a Python environment and install the complete dependency
-   graph:
+2. Install uv, sync the committed environment, and select its interpreter:
 
    ```bash
-   pip install -r src/github-copilot-responses-voicelive/requirements.txt
+   python -m pip install uv
+   cd src/github-copilot-responses-voicelive
+   uv sync --frozen
    ```
 
+   In VS Code, select `src/github-copilot-responses-voicelive/.venv` as the
+   Python interpreter.
 3. Configure the values from
    [`src/github-copilot-responses-voicelive/.env.example`](src/github-copilot-responses-voicelive/.env.example).
 4. Press **F5**. The Toolkit generates local task files, starts the agent, and

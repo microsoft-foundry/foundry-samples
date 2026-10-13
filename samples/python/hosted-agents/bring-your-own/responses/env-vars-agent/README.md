@@ -62,6 +62,8 @@ Built with `azure-ai-agentserver-responses` (BYO — no Agent Framework). The mo
 ### Prerequisites
 
 - Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+  installed and available on `PATH`
 - Azure CLI installed and authenticated (`az login`)
 - Foundry project with a deployed model (e.g., `gpt-5.4-mini`)
 - (For deployment) the project's hosted-agent feature enabled; `azure.yaml`

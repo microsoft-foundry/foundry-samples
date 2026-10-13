@@ -45,6 +45,9 @@ The extra `main.py` is the hosting adaptation that starts the Foundry Responses 
 1. Install the [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd).
 2. Install the Foundry agent extension with `azd extension install azure.ai.agents`.
 3. Authenticate with `azd auth login`.
+4. Install Python 3.13 or later.
+5. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7
+   or later and ensure it is available on `PATH`.
 
 ## Initialize and provision
 

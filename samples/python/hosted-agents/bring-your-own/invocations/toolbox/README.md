@@ -73,7 +73,10 @@ Before running this sample, ensure you have:
 3. **Python 3.12 or later**
    - Verify your version: `python --version`
 
-4. **Provisioned remote dependencies**
+4. **uv 0.11.7 or later**
+   - [Install uv](https://docs.astral.sh/uv/getting-started/installation/) and verify it is available on `PATH`: `uv --version`
+
+5. **Provisioned remote dependencies**
    - Run `azd up` from the initialized project directory before local development. `azd ai agent run` starts the agent locally but does not create the remote toolbox.
 
 ### Configure the toolbox

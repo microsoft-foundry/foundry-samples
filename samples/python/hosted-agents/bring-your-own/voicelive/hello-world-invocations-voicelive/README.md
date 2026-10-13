@@ -45,8 +45,11 @@ Before running this sample, ensure you have:
 2. **Azure CLI**
    - Installed and authenticated: `az login`
 
-3. **Python 3.10 or later**
+3. **Python 3.12 or later**
    - Verify your version: `python --version`
+
+4. **uv 0.11.7 or later**
+   - [Install uv](https://docs.astral.sh/uv/getting-started/installation/) and verify it is available on `PATH`: `uv --version`
 
 > [!NOTE]
 > You do **not** need an existing [Microsoft Foundry](https://learn.microsoft.com/en-us/azure/ai-foundry/what-is-foundry?view=foundry) project or model deployment to get started — `azd provision` creates them for you. If you already have a project, see the [note below](#using-azd) on how to target it.
@@ -75,12 +78,13 @@ export $(grep -v '^#' .env | xargs)
 ### Installing Dependencies
 
 > [!NOTE]
-> If using `azd ai agent run`, dependencies are installed automatically — skip to [Running the Sample](#running-the-sample).
+> `azd ai agent run` uses the installed `uv` command to sync dependencies automatically.
+> After installing uv, skip to [Running the Sample](#running-the-sample).
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install uv
+cd src/hello-world-python-invocations-voicelive
+uv sync --frozen
 ```
 
 ### Running the Sample
@@ -156,7 +160,7 @@ Each response is a stream of SSE events: `output_audio_transcription.delta` even
 If running without `azd`, set environment variables manually (see [Environment Variables](#environment-variables)), then:
 
 ```bash
-python main.py
+uv run --no-sync python main.py
 ```
 
 ### Deploying the Agent to Microsoft Foundry
@@ -226,7 +230,7 @@ Once the agent is deployed to Microsoft Foundry, you can interact with it using 
 - The agent must already be deployed to Microsoft Foundry (see [Deploying the Agent](#deploying-the-agent-to-microsoft-foundry)).
 - An **Azure VoiceLive endpoint** — provision one through the Azure portal or your Foundry project.
 - A working **microphone and speakers** on your machine.
-- **Python 3.10+** with the following packages:
+- **Python 3.12+** with the following packages:
 
 ```bash
 pip install azure-ai-voicelive[aiohttp]==1.3.0b1 azure-identity pyaudio

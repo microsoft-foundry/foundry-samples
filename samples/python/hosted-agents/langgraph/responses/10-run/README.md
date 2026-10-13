@@ -57,6 +57,10 @@ selects `responses` in both its local command and Docker image.
    azd auth login
    ```
 
+4. Python 3.12 or later.
+5. [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
+   installed and available on `PATH`.
+
 ### Initialize the agent project
 
 No cloning required. Create a new folder and initialize from the manifest:
