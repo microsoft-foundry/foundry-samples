@@ -1,3 +1,0 @@
-agent-framework-foundry
-agent-framework-foundry-hosting>=1.0.0b260813
-aiohttp>=3.9

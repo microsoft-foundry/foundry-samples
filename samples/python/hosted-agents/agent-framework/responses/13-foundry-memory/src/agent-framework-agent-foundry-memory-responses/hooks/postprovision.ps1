@@ -32,10 +32,10 @@ if (-not $env:MEMORY_STORE_NAME) {
 }
 
 Write-Host "Provisioning the Foundry Memory Store '$($env:MEMORY_STORE_NAME)'..."
-# Install only the imports used by the provisioning script.
-Invoke-Checked { python -m pip install -q azure-ai-projects azure-identity aiohttp python-dotenv } "pip install"
+# Install the locked runtime dependencies used by the provisioning script.
+Invoke-Checked { uv sync --frozen --no-dev --no-install-project } "uv sync"
 # Idempotent: an existing store with the same name is left untouched.
-Invoke-Checked { python provision_memory_store.py } "provision_memory_store.py"
+Invoke-Checked { uv run --no-sync python provision_memory_store.py } "provision_memory_store.py"
 
 # Ensure agent.yaml receives the name if init resolved it before this
 # hook ran.

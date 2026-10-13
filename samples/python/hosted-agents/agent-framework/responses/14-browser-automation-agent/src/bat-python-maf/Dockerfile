@@ -1,4 +1,7 @@
-FROM python:3.12-slim
+FROM ghcr.io/astral-sh/uv:0.11.7 AS uv
+FROM python:3.13-slim
+
+COPY --from=uv /uv /uvx /bin/
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=utf-8
@@ -16,11 +19,13 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-COPY . user_agent/
 WORKDIR /app/user_agent
+COPY pyproject.toml uv.lock uv.toml ./
+RUN uv sync --frozen --no-dev --no-install-project
 
-RUN pip install --no-cache-dir -r requirements.txt \
-    && npm install -g @playwright/cli@latest \
+COPY . .
+
+RUN npm install -g @playwright/cli@latest \
     && playwright-cli install --skills
 
 EXPOSE 8088
@@ -35,7 +40,7 @@ EXPOSE 8088
 # container start.
 # PYTHONDONTWRITEBYTECODE is cleared for these commands only: it blocks
 # bytecode *writes*, not *reads*, so images that set it still benefit.
-RUN PYTHONDONTWRITEBYTECODE= python -m compileall -q $(python -c "import sysconfig as s; print(s.get_paths()['stdlib'], s.get_paths()['purelib'])") || true; \
-    PYTHONDONTWRITEBYTECODE= python -m compileall -q .
+RUN PYTHONDONTWRITEBYTECODE= .venv/bin/python -m compileall -q $(.venv/bin/python -c "import sysconfig as s; print(s.get_paths()['stdlib'], s.get_paths()['purelib'])") || true; \
+    PYTHONDONTWRITEBYTECODE= .venv/bin/python -m compileall -q -x '[.]venv' .
 
-CMD ["python", "main.py"]
+CMD ["/app/user_agent/.venv/bin/python", "main.py"]

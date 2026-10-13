@@ -105,12 +105,23 @@ azd ai agent invoke "test egress to https://httpbin.org/get"
 
 1. **VS Code** with the **[Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.azure-ai-foundry)** extension installed.
 2. Sign in to Azure in VS Code.
+3. For debugging Python in VS Code, install the **[Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)** extension pack.
+4. **Python 3.13 or later** and [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment.
 
 ### Create the project
 
 1. Open the Command Palette (`Ctrl+Shift+P`) and run **Foundry Toolkit: Create Hosted Agent**.
 2. Select this sample from the gallery. The extension scaffolds the project into a new workspace and generates `azure.yaml`, `.env`, and `.vscode/tasks.json` + `launch.json` automatically.
 3. Complete the **Foundry Project Setup** to pick the subscription and Foundry project (or create a new one).
+
+### Set up the Python virtual environment
+
+- Create and synchronize the locked environment:
+
+  ```bash
+  uv sync --frozen
+  ```
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
 
 ### Run and debug the agent
 
@@ -120,6 +131,12 @@ Press **F5** to start the agent in debug mode. The agent host will start on `htt
 
 1. Open the Command Palette (`Ctrl+Shift+P`) and run **Foundry Toolkit: Open Agent Inspector**.
 2. The Inspector connects to the running agent. Send messages to chat and view streamed responses.
+
+### Or run manually, then open the Inspector
+
+1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
+2. Start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
+3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry
 
