@@ -129,10 +129,13 @@ The `redis` and `redis-entraid` clients are installed from `requirements.txt`.
    azd ext install microsoft.foundry
    ```
 
-3. Authenticate:
+3. Install the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli).
+4. Authenticate with both CLIs. The `azd deploy` post-deployment hook uses
+   `az account get-access-token`, which requires a separate Azure CLI sign-in:
 
    ```bash
    azd auth login
+   az login
    ```
 
 ### Initialize the agent project
