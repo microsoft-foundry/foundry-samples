@@ -37,7 +37,7 @@ All examples use `"authType": "ApiKey"` with workspace-managed credentials. The 
 
 ### 1. ModelDiscovery (Dynamic Discovery)
 
-The `modelDiscovery` object enables runtime model detection through API endpoints. Azure Agents combines this configuration with the connection's `target` URL and `credentials` to make discovery calls.
+The `modelDiscovery` object enables runtime model detection through API endpoints. Endpoints can be relative to the connection `target` or absolute HTTPS URIs on the same origin as `target`.
 
 ```json
 {
@@ -50,15 +50,42 @@ The `modelDiscovery` object enables runtime model detection through API endpoint
 ```
 
 **Fields:**
-- `listModelsEndpoint` - Endpoint to retrieve all available models (relative to target URL)
-- `getModelEndpoint` - Endpoint to get specific model details with `{deploymentName}` placeholder
+- `listModelsEndpoint` - Relative endpoint or allowed absolute URI used to retrieve all available models
+- `getModelEndpoint` - Relative endpoint or allowed absolute URI used to get specific model details; it must contain exactly one `{deploymentName}` placeholder in the path
 - `deploymentProvider` - Provider format for response parsing. **Supported values: `"OpenAI"` and `"AzureOpenAI"`** (exactly 2 formats)
 
-**How Azure Agents Uses It:**
-1. Constructs full URL: `{target}{listModelsEndpoint}`
+**How ModelGateway Uses It:**
+1. Constructs full URL: `{target}{listModelsEndpoint}` when relative endpoint is passed in, or uses the `{listModelsEndpoint}` absolute endpoint as-is
 2. Adds authentication headers from `credentials`
 3. Makes HTTP request to discover available models
 4. Parses response based on `deploymentProvider` format (OpenAI or AzureOpenAI)
+
+#### Absolute discovery endpoints
+
+Absolute endpoints support providers whose inference and discovery APIs share an origin but use sibling paths:
+
+```json
+{
+  "target": "https://contoso.services.ai.azure.com/openai/v1",
+  "metadata": {
+    "modelDiscovery": {
+      "listModelsEndpoint": "https://contoso.services.ai.azure.com/openai/deployments?api-version=2022-12-01",
+      "getModelEndpoint": "https://contoso.services.ai.azure.com/openai/deployments/{deploymentName}?api-version=2022-12-01",
+      "deploymentProvider": "AzureOpenAI"
+    }
+  }
+}
+```
+
+Requirements:
+
+- `target` and each absolute discovery endpoint must use HTTPS.
+- Scheme, hostname, and effective port must match exactly. The discovery path can differ from the target path.
+- User information, fragments, path traversal, and encoded path separators are rejected.
+- `getModelEndpoint` must contain exactly one `{deploymentName}` placeholder in its path.
+- Existing query parameters are preserved. An endpoint `api-version` takes precedence over `deploymentAPIVersion`; duplicate `api-version` parameters are rejected.
+
+Relative endpoints remain supported and do not require this feature.
 
 **Supported DeploymentProvider Formats:**
 
