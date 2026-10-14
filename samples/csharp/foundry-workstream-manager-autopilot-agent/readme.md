@@ -179,7 +179,9 @@ azd env set DIGITAL_WORKER_SETUP_DONE ""
 azd provision
 ```
 
-> **⚠️ Traffic routing & draining:** Creating a new agent version does not instantly move every live session onto it. When you shift endpoint traffic routing to the new version, **existing sessions continue to run on the previous version until they go idle**, so two versions can be active at once. Use the per-version telemetry queries in [Monitoring & Observability](#-monitoring--observability) (slice `requests` by `application_Version`) to watch the cutover and confirm when the old version has fully drained.
+> **⚠️ Traffic routing & draining:** Creating a new agent version does not instantly move every live session onto it. Existing sessions can continue on the previous version after endpoint routing changes. Confirm the intended version is selected for new invocations, then follow the session checks in [Autopilot sample operations](../../AUTOPILOT_OPERATIONS.md) rather than treating an idle timeout or traffic pin as proof that your conversation uses the new code.
+
+Use these values with that guide: deploy a new version with `azd provision`, use `AZURE_AI_PROJECT_ENDPOINT` as the endpoint setting and the agent name stored in `AGENT_NAME`, and run the span query described in [Monitoring & Observability](#-monitoring--observability).
 
 ---
 
@@ -254,7 +256,7 @@ When disabled, none of the above is created, no connection string is injected, a
 
 ### Per-version / per-instance telemetry
 
-In the autopilot (digital worker) model, one blueprint spawns many agent instances, and updating endpoint traffic routing leaves **multiple agent versions active at once** (existing sessions stay on the previous version until they go idle). To make this debuggable, every telemetry item is stamped with the Foundry-injected identifiers via `FoundryInstanceTelemetryInitializer`:
+Updating endpoint traffic routing can leave **multiple agent versions active at once**. Inspect the session version and follow [Autopilot sample operations](../../AUTOPILOT_OPERATIONS.md) to verify a code update. The existing classic Application Insights telemetry is stamped with the Foundry-injected identifiers via `FoundryInstanceTelemetryInitializer`:
 
 | Foundry env var | Mapped to |
 |-----------------|-----------|
@@ -281,6 +283,12 @@ requests
 | extend failureRate = todouble(failed) / total
 ```
 
+The application also emits `invoke_agent <agentName>` spans around Responses API invocations. They include `gen_ai.operation.name`, `gen_ai.agent.name`, stable `<agentName>:<agentVersion>` agent and main-agent IDs, input/output message envelopes, the final Responses API response ID, and project/session identifiers. A separate OpenTelemetry registration exports only this custom source; it does not add a second set of HTTP request or dependency collectors. To run the tracing tests locally, use `dotnet test tests/WorkstreamManagerAgent.Tests/WorkstreamManagerAgent.Tests.csproj` from this sample directory.
+
+To confirm these spans after an update, run the guide's query for samples that emit their own `invoke_agent <agentName>` spans. They are custom `ActivityKind.Internal` spans, so they appear in `dependencies`; the `requests` queries above still apply to the classic request telemetry.
+
+**Content capture:** the new invocation spans retain message envelopes but omit conversation text by default. To opt in deliberately, set `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true` in the `azd` environment and run `azd provision` to deploy a new version, then repeat the session checks. Use `false` to disable it. The creation script reads the value only from the `azd` environment, not from your shell. This controls the new message attributes only. Read [Protect message content](../../AUTOPILOT_OPERATIONS.md#protect-message-content) before using real conversations.
+
 ---
 
 ## 📖 Additional Resources
@@ -301,4 +309,3 @@ requests
 ## 🤝 Support
 
 For issues or questions, please refer to the official documentation or contact your Azure administrator.
-

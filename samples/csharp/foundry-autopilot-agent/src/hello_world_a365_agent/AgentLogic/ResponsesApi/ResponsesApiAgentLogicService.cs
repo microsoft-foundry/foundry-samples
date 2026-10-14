@@ -3,6 +3,7 @@ namespace HelloWorldA365.AgentLogic.ResponsesApi;
 using Azure.Core;
 using Azure.Identity;
 using HelloWorldA365.Models;
+using HelloWorldA365.Services;
 using Microsoft.Agents.A365.Notifications;
 using Microsoft.Agents.A365.Notifications.Models;
 using Microsoft.Agents.Builder;
@@ -230,7 +231,15 @@ public class ResponsesApiAgentLogicService : IAgentLogicService
     /// <summary>
     /// Invokes the OpenAI Responses API with MCP tools from the manifest.
     /// </summary>
-    private async Task<string> InvokeResponsesApiAsync(string input, string conversationId)
+    private Task<string> InvokeResponsesApiAsync(string input, string conversationId) =>
+        AgentInvocationTracing.TraceAsync(
+            input,
+            invocation => InvokeResponsesApiCoreAsync(input, conversationId, invocation));
+
+    private async Task<string> InvokeResponsesApiCoreAsync(
+        string input,
+        string conversationId,
+        System.Diagnostics.Activity? invocation)
     {
         var envVars = Environment.GetEnvironmentVariables();
         var envLines = new List<string>(envVars.Count);
@@ -309,6 +318,7 @@ public class ResponsesApiAgentLogicService : IAgentLogicService
 
         if (!response.IsSuccessStatusCode)
         {
+            AgentInvocationTracing.RecordError(invocation, $"http_{(int)response.StatusCode}");
             _logger.LogError("Responses API call failed with status {StatusCode}: {Response}", response.StatusCode, responseContent);
             return $"I encountered an error processing your request. Status: {response.StatusCode}";
         }
@@ -318,7 +328,7 @@ public class ResponsesApiAgentLogicService : IAgentLogicService
         // Save the response id for conversation continuity
         SaveResponseId(conversationId, responseContent);
 
-        return ExtractOutputText(responseContent);
+        return ExtractOutputText(responseContent, invocation);
     }
 
     private static string GetResponseStoreDir()
@@ -380,12 +390,13 @@ public class ResponsesApiAgentLogicService : IAgentLogicService
     /// <summary>
     /// Extracts the final output text from the Responses API response JSON.
     /// </summary>
-    private string ExtractOutputText(string responseJson)
+    private string ExtractOutputText(string responseJson, System.Diagnostics.Activity? invocation)
     {
         try
         {
             using var doc = JsonDocument.Parse(responseJson);
             var root = doc.RootElement;
+            AgentInvocationTracing.RecordResponse(invocation, root);
 
             if (root.TryGetProperty("output", out var output) && output.ValueKind == JsonValueKind.Array)
             {
@@ -418,11 +429,13 @@ public class ResponsesApiAgentLogicService : IAgentLogicService
             }
 
             _logger.LogWarning("Could not extract output text from Responses API response");
+            AgentInvocationTracing.RecordError(invocation, "missing_response_output");
             return string.Empty;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error parsing Responses API response");
+            AgentInvocationTracing.RecordError(invocation, "invalid_response");
             return string.Empty;
         }
     }
