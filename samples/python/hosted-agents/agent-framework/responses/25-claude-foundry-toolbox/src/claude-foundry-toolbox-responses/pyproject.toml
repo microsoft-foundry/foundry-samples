@@ -1,0 +1,15 @@
+[project]
+name = "claude-foundry-toolbox-responses"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent running Claude through Foundry with FoundryToolbox, built with Microsoft Agent Framework."
+requires-python = ">=3.13"
+dependencies = [
+    "agent-framework-core==1.19.0",
+    "agent-framework-foundry==1.13.1",
+    "agent-framework-anthropic==1.0.0b260918",
+    "agent-framework-foundry-hosting==1.0.0b260918",
+    "anthropic==0.116.0",
+    "azure-identity==1.25.3",
+    "debugpy==1.8.17",
+    "python-dotenv==1.2.3",
+]
