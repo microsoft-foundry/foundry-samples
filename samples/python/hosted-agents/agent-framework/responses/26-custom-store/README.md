@@ -106,7 +106,7 @@ Three local tools provide deterministic validation scenarios:
 
 ## Prerequisites
 
-1. Python 3.11 or later. The `azd ai agent run` path uses Python 3.13.
+1. Python 3.13 or later.
 2. A Foundry project with a deployed chat model, or permission to create both
    through `azd provision`.
 3. The Foundry User role on the Foundry project for the local or hosted identity.
@@ -116,7 +116,7 @@ Three local tools provide deterministic validation scenarios:
 5. [Docker](https://www.docker.com/) for the local Redis container. Deployment
    provisions Azure Managed Redis instead and requires no local Redis.
 
-The `redis` and `redis-entraid` clients are installed from `requirements.txt`.
+The `redis` and `redis-entraid` clients are pinned in `uv.lock`.
 
 ## Option 1: Azure Developer CLI
 
@@ -294,8 +294,8 @@ Open the service directory in VS Code. Create a `.venv`, then install the
 dependencies:
 
 ```bash
-pip install uv
-uv pip install -r requirements.txt
+python -m pip install "uv==0.11.7"
+uv sync --frozen
 ```
 
 Copy `.env.example` to `.env` and configure the Foundry endpoint, model
