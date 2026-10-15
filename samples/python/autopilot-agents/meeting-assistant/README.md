@@ -177,10 +177,10 @@ undelivered after failures, and there is no cross-replica exactly-once guarantee
 Define your own access and disclosure policy before using real meeting data;
 meeting content is sent to the configured Foundry model.
 
-The pinned preview SDKs require the small compatibility bridge in
-[agent/hosting.py](agent/hosting.py): AgentServer Activity `1.0.0b3` passes a
-`ClaimsIdentity` argument removed by the M365 SDK. The bridge uses public APIs
-without patching installed packages.
+The sample uses `ActivityAgentServerHost(digital_worker=True)` directly for
+the M365 HTTP bridge and storage lifecycle. AgentServer Activity `1.0.0b4` is
+required because earlier versions pass a `ClaimsIdentity` constructor argument
+removed by the pinned M365 SDK.
 
 ## Local offline checks
 

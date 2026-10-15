@@ -22,7 +22,6 @@ from microsoft_teams.api.activities.event.meeting_end import MeetingEndEventValu
 from microsoft_teams.api.activities.event.meeting_start import MeetingStartEventValue
 
 from agent.app import MeetingHandlers, build_app
-from agent.hosting import MeetingActivityHost
 from agent.workiq import WORKIQ_SCOPE
 from test_meeting_assistant import INSTANCE, SETTINGS, TENANT
 
@@ -54,11 +53,13 @@ class HostingTests(IsolatedAsyncioTestCase):
             patch("agent.app.MeetingHandlers", side_effect=make_handlers),
         ):
             self.host = build_app()
+        lifespan = self.host.router.lifespan_context(self.host)
+        await lifespan.__aenter__()
+        self.addAsyncCleanup(lifespan.__aexit__, None, None, None)
         self.client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=self.host), base_url="https://agent.test",
         )
         self.addAsyncCleanup(self.client.aclose)
-        self.addAsyncCleanup(self.host.close_storage)
 
     async def test_actual_http_host_dispatches_native_meeting_events(self):
         processor = SimpleNamespace(start=AsyncMock(), end=AsyncMock())
@@ -122,7 +123,7 @@ class HostingTests(IsolatedAsyncioTestCase):
             self.assertTrue(all(call.args[2] == "AGENTIC" for call in sign_in.call_args_list))
         self.assertEqual(inspect.signature(ClaimsIdentity), signature)
         self.assertNotIn("is_authenticated", signature.parameters)
-        self.assertIsInstance(self.host, ActivityAgentServerHost)
+        self.assertIs(type(self.host), ActivityAgentServerHost)
         for context in contexts:
             self.assertEqual(context.session_id, "synthetic-session")
             self.assertEqual(context.user_id, "synthetic-user")
@@ -217,21 +218,26 @@ class HostingTests(IsolatedAsyncioTestCase):
         store.aclose = AsyncMock()
         with (
             patch.dict(os.environ, {**ENV, "FOUNDRY_HOSTING_ENVIRONMENT": "test"}, clear=True),
-            patch("agent.hosting.FoundryStorage", return_value=store) as factory,
+            patch(
+                "azure.ai.agentserver.activity._foundry_storage.FoundryStorage",
+                return_value=store,
+            ) as factory,
+            patch("agent.app.configure_observability"),
         ):
-            host = MeetingActivityHost(configure_observability=None)
+            host = build_app()
         factory.assert_called_once_with()
         self.assertTrue(host.config.is_hosted)
         async with host.router.lifespan_context(host):
             store.aclose.assert_not_awaited()
-        store.aclose.assert_awaited_once()
-        await host.close_storage()
         store.aclose.assert_awaited_once()
 
     async def test_caller_owned_storage_is_not_closed(self):
         store = MemoryStorage()
         store.aclose = AsyncMock()
         with patch.dict(os.environ, ENV, clear=True):
-            host = MeetingActivityHost(configure_observability=None, storage=store)
-        await host.close_storage()
+            host = ActivityAgentServerHost(
+                digital_worker=True, configure_observability=None, storage=store,
+            )
+        async with host.router.lifespan_context(host):
+            store.aclose.assert_not_awaited()
         store.aclose.assert_not_awaited()
