@@ -23,7 +23,7 @@ live notification URLs to documentation examples.
 ## Hosted session and lock scope
 
 `azure.yaml` deploys this sample as a Foundry-hosted Microsoft 365 Autopilot
-using the Activity protocol. Its hosted Teams delivery uses conversation-scoped
+using ActivityProtocol. Its hosted Teams delivery uses conversation-scoped
 sessions. Foundry gives each session a dedicated VM-isolated sandbox, so unrelated
 conversations do not share a Python process or its in-memory locks.
 
