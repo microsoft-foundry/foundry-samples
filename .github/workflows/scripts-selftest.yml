@@ -12,8 +12,8 @@ name: scripts self-test
 # These are pure script tests. Do NOT make any job here a required check and do NOT edit rulesets.
 #
 # Trigger scope: validation scripts, ADO pipeline code/fixtures, or validation workflow definitions.
-# A normal sample-authoring PR (samples/**, docs, etc.) never triggers it, so there is zero added
-# friction for contributors.
+# Prompt-agent sample changes also run contract discovery; other sample-authoring
+# PRs (and docs-only PRs) do not trigger it.
 # No `push:` trigger: PR-time is the gate that matters; `workflow_dispatch` covers manual/backfill.
 on:
   workflow_dispatch:
@@ -26,6 +26,7 @@ on:
       - '.github/workflows/validation-report.yml'
       - '.github/workflows/validation-pilot.yml'
       - '.github/scripts/discover-validation-samples.py'
+      - 'samples/*/prompt-agents/**'
 
 permissions:
   contents: read
@@ -52,6 +53,10 @@ jobs:
           bash .azure-pipelines/scripts/hosted-agents/tests/test-hosted-agent-ci-toolboxes.sh
           bash .azure-pipelines/scripts/hosted-agents/tests/test-hosted-agent-session-quota.sh
           python .github/scripts/test/test_ado_pipeline_fixtures.py
+      - name: Test prompt-agent helpers and contracts
+        run: |
+          python -m unittest discover -s .azure-pipelines/scripts/prompt-agents/tests -p 'test_*.py'
+          python .azure-pipelines/scripts/prompt-agents/discover_samples.py discover --validate-contracts
       - name: Test Bicep pipeline selection
         run: python .azure-pipelines/scripts/bicep/test_bicep_pipeline.py
       - name: Check shell syntax
