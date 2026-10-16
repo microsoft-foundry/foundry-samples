@@ -1,0 +1,7 @@
+# Skip only ephemeral live deployment. Static Bicep compilation remains required.
+# Use one exact repository-relative sample directory per line.
+# Blank lines and full-line comments are ignored.
+
+# Manages a billable child resource under an existing AIServices account and
+# requires managed-compute accelerator quota unavailable to generic ephemeral RG validation.
+infrastructure/infrastructure-setup-bicep/48-managed-compute-deployment
