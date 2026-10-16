@@ -1,6 +1,6 @@
 # Activity-protocol host + its core dependency, pinned to the published beta
 # releases on PyPI. Bump these when a newer beta is needed.
-azure-ai-agentserver-activity==1.0.0b1
+azure-ai-agentserver-activity==1.0.0b4
 
 # Microsoft 365 Agents SDK
 microsoft-agents-hosting-core
