@@ -1,0 +1,14 @@
+.DS_Store
+**/.azure/
+**/.env
+**/.env.*
+!**/.env.example
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.foundry/results/
+**/azd-ai-agents-*.log
+**/*.key
+**/*.pem
+**/*.pfx
+**/outputs/
