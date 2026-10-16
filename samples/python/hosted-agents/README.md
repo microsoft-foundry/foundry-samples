@@ -86,9 +86,9 @@ Hosted agents run any code you can put in a container. These samples cover three
 |                         | **Agent Framework**                                                                | **LangGraph**                                                         | **Bring Your Own**                                                                                                          |
 | ----------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | **Best for**            | Starting fresh on Foundry — also supports AutoGen and Semantic Kernel              | Already using LangChain / LangGraph                                   | Already built with CrewAI or your own stack                                                                                 |
-| **SDK**                 | `agent-framework-foundry-hosting` (includes core, openai, foundry, orchestrations) | `langchain-azure-ai[hosting]` (`ResponsesHostServer` / `InvocationsHostServer`) | `azure-ai-agentserver-responses` / `azure-ai-agentserver-invocations`, or `azure-ai-agentserver-core` for fully custom HTTP |
+| **SDK**                 | `agent-framework-foundry-hosting` (includes core, openai, foundry, orchestrations) | `langchain-azure-ai[hosting]` (`ResponsesHostServer` / `InvocationsHostServer`) | `azure-ai-agentserver-responses` / `azure-ai-agentserver-invocations` / `azure-ai-agentserver-a2a`, or `azure-ai-agentserver-core` for fully custom HTTP |
 | **Foundry integration** | Native — sessions, tools, memory, streaming all built in                           | Native via `langchain_azure_ai.agents.hosting` — sessions, streaming, and tool-call surfacing built in for LangGraph agents (`create_agent`) and custom `StateGraph`s | Core adapter hosts the web server and exposes `/invocations` and `/responses` endpoints; you supply the agent logic         |
-| **Protocols**           | Responses and Invocations                                                          | Responses and Invocations                                             | Responses and Invocations                                                                                                   |
+| **Protocols**           | Responses and Invocations                                                          | Responses and Invocations                                             | Responses, Invocations, and A2A                                                                                             |
 | **Language support**    | Python and C#                                                                      | Python only                                                           | Any language (Python and C# samples provided)                                                                               |
 | **Start here**          | [Basic Agent →](agent-framework/responses/01-basic/)                               | [LangGraph Chat →](langgraph/responses/01-langgraph-chat/)            | [Hello World →](bring-your-own/responses/hello-world/)                                                                      |
 
@@ -203,6 +203,12 @@ Already built an agent with CrewAI or your own code? The protocol SDKs (`azure-a
 | **[GitHub Copilot](bring-your-own/invocations/github-copilot/)**       | Agent that integrates with GitHub Copilot as the AI backbone.                                               |
 | **[Human-in-the-Loop](bring-your-own/invocations/human-in-the-loop/)** | Long-running agent that pauses for human approval before continuing.                                        |
 | **[Event Grid Trigger](bring-your-own/invocations/event-grid-trigger/)** | Event-driven agent: Azure Storage → Event Grid → hosted agent (direct delivery, authenticated by the system topic's system-assigned managed identity); agent summarizes the new blob and writes the summary to a sibling Storage container. |
+
+### A2A protocol
+
+| Sample | What it shows |
+| ------ | ------------- |
+| **[Echo](bring-your-own/a2a/echo/)** | Minimal native A2A v1 agent using `a2a-sdk`, hosted on Foundry with `azure-ai-agentserver-a2a`, plus a dedicated local and hosted A2A client. |
 
 ## Python dependencies
 

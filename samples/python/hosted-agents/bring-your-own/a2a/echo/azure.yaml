@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.27.1'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.9'
+name: echo-a2a
+services:
+  ai-project:
+    host: azure.ai.project
+  echo-a2a:
+    host: azure.ai.agent
+    metadata:
+      tags:
+        - AI Agent Hosting
+        - A2A Protocol
+        - Bring Your Own
+        - Python
+    project: src/echo-a2a
+    language: python
+    codeConfiguration:
+      runtime: python_3_13
+      entryPoint: main.py
+    uses:
+      - ai-project
+    kind: hosted
+    name: echo-a2a
+    displayName: Echo (Python, A2A)
+    description: >
+      Minimal native A2A v1 echo agent hosted by
+      azure-ai-agentserver-a2a for the Foundry platform contract.
+    protocols:
+      - protocol: a2a
+        version: 1.0.0
+    agentEndpoint:
+      protocols:
+        - a2a
+        - responses
+    agentCard:
+      description: Echoes the user's A2A message as a completed Task artifact.
+      version: 1.0.0
+      skills:
+        - id: echo
+          name: Echo
+          description: Returns the supplied text with an Echo prefix.
+          tags:
+            - echo
+          examples:
+            - hello
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1Gi
+infra:
+  provider: microsoft.foundry
