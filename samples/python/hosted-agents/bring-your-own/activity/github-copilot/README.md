@@ -126,9 +126,10 @@ Make sure the following are installed and available:
 
 | Requirement | Why you need it |
 |-------------|-----------------|
-| [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) | Provisions infrastructure and deploys the agent. Use **1.25 or later**. Install the agent service target with `azd extension install azure.ai.agents`. |
+| [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) | Provisions infrastructure and deploys the agent. Use **1.27.1 or later**. Install the agent service target with `azd extension install azure.ai.agents`. |
 | [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) | Authentication (`az login`). |
-| [Python 3.10+](https://www.python.org/downloads/) | The agent runtime (built inside the Docker image; also handy for local edits). |
+| [Python 3.13+](https://www.python.org/downloads/) | Matches the local, container, and hosted runtime declared by the sample. |
+| [uv 0.11.7+](https://docs.astral.sh/uv/getting-started/installation/) | Creates the local environment from the committed lockfile. |
 | [Docker](https://www.docker.com/products/docker-desktop/) | **Optional.** `azd deploy` uses a remote ACR build, so you don't need Docker unless you want to build the image locally. |
 | **Model quota** | A `gpt-5-mini` (GlobalStandard) deployment is created by `azd provision`. Make sure your subscription has capacity in the target region. |
 
@@ -158,14 +159,14 @@ Only needed for the **org-wide** path (publishing to your tenant app catalog), n
 
 ### Step 1: Open the correct workspace folder
 
-The launch configuration and tasks are defined inside `src/github-copilot/`, not the repo root. VS Code must have that folder loaded as a workspace root before F5 works.
+The launch configuration and tasks are defined inside `src/github-copilot-activity/`, not the repo root. VS Code must have that folder loaded as a workspace root before F5 works.
 
 If you opened the repo root folder, add the inner folder first:
 
 1. **File → Add Folder to Workspace…**
-2. Select `src/github-copilot/` and click **Add**.
+2. Select `src/github-copilot-activity/` and click **Add**.
 
-The Explorer panel should now show `github-copilot` as a workspace root (with its own `.vscode/` visible). You can then save this as a multi-root workspace file if you like.
+The Explorer panel should now show `github-copilot-activity` as a workspace root (with its own `.vscode/` visible). You can then save this as a multi-root workspace file if you like.
 
 ### Step 2: Prepare the LLM model and .env file
 
@@ -179,6 +180,9 @@ Copy `.env.example` to `.env` and fill in the required values:
 
 ```powershell
 Copy-Item src/github-copilot-activity/.env.example src/github-copilot-activity/.env
+Set-Location src/github-copilot-activity
+uv sync --frozen
+Set-Location ../..
 ```
 
 Then open `.env` and set:
@@ -193,9 +197,8 @@ Then open `.env` and set:
 Press **F5** (or **Run → Start Debugging**). The launch configuration will:
 
 1. Install `agentsplayground` if not already installed (one-time, via winget).
-2. Create a `.venv` (Python 3.13) and install `requirements.txt` if not already done.
-3. Start the agent (`main.py`) under the VS Code debugger.
-4. Launch **M365 Agents Playground** automatically once port 8088 is ready.
+2. Start the agent (`main.py`) under the VS Code debugger using the uv environment.
+3. Launch **M365 Agents Playground** automatically once port 8088 is ready.
 
 When the debug session ends, the `postDebugTask` kills `agentsplayground` and any process still bound to port 8088.
 

@@ -41,7 +41,8 @@ Make sure the following are installed and available:
 |-------------|-----------------|
 | [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) | Provisions infrastructure and deploys the agent. Use **1.25 or later** (earlier versions have a container-registry resolution bug during remote build). Install the agent service target with `azd extension install azure.ai.agents`. |
 | [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) | Authentication (`az login`). |
-| [Python 3.10+](https://www.python.org/downloads/) | The agent runtime (built inside the Docker image; also handy for local edits). |
+| [Python 3.13+](https://www.python.org/downloads/) | Matches the local, container, and hosted runtime declared by the sample. |
+| [uv 0.11.7+](https://docs.astral.sh/uv/getting-started/installation/) | Creates the local environment from the committed lockfile. |
 | [Docker](https://www.docker.com/products/docker-desktop/) | **Optional.** `azd deploy` uses a remote ACR build, so you don't need Docker unless you want to build the image locally. |
 
 ### Required permissions
@@ -80,14 +81,25 @@ If you opened the repo root folder, add the inner folder first:
 
 The Explorer panel should now show `echo-activity` as a workspace root (with its own `.vscode/` visible). You can then save this as a multi-root workspace file if you like.
 
-### Step 2: Press F5
+### Step 2: Prepare the locked Python environment
+
+From the sample directory:
+
+```powershell
+Set-Location src/echo-activity
+uv sync --frozen
+Set-Location ../..
+```
+
+In VS Code, select the Python interpreter from `src/echo-activity/.venv`.
+
+### Step 3: Press F5
 
 Press **F5** (or **Run → Start Debugging**). The launch configuration will:
 
 1. Install `agentsplayground` if not already installed (one-time, via winget).
-2. Create a `.venv` (Python 3.13) and install `requirements.txt` if not already done.
-3. Start the agent (`main.py`) under the VS Code debugger.
-4. Launch **M365 Agents Playground** automatically once port 8088 is ready.
+2. Start the agent (`main.py`) under the VS Code debugger using the uv environment.
+3. Launch **M365 Agents Playground** automatically once port 8088 is ready.
 
 When the debug session ends, the `postDebugTask` kills `agentsplayground` and any process still bound to port 8088.
 
@@ -144,4 +156,3 @@ A single deploy wires together several pieces to produce a working Teams agent:
 3. **Agent version + blueprint + instance identity** *(`azd deploy`).* Creating the agent version makes the Foundry service auto-create the Managed Agent Identity Blueprint (MAIB) and provision the agent **instance** identity used for outbound auth — then `azd` patches the `activity` protocol onto the agent endpoint.
 
 4. **Azure Bot + Teams channel** *(foundry extension postdeploy).* An instance-identity bot (`<agent-name>-bot-uai`) whose `msaAppId` is the agent **instance** identity, configured with the agent endpoint and the Microsoft Teams channel.
-

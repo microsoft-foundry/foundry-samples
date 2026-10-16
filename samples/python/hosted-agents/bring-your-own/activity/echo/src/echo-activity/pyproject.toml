@@ -1,0 +1,17 @@
+[project]
+name = "echo-activity"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent using the Activity protocol."
+requires-python = ">=3.13"
+dependencies = [
+    # The M365 SDK connector imports aiohttp but does not declare it.
+    "aiohttp>=3.9.0",
+    # Keep the protocol host on the published beta until explicitly upgraded.
+    "azure-ai-agentserver-activity==1.0.0b1",
+    "azure-identity>=1.17.0",
+    "debugpy",
+    "microsoft-agents-activity",
+    "microsoft-agents-authentication-msal",
+    "microsoft-agents-hosting-core",
+    "python-dotenv>=1.0.0",
+]
