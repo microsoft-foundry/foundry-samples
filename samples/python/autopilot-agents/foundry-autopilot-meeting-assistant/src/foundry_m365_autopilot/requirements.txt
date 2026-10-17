@@ -1,0 +1,26 @@
+# Microsoft 365 Agents SDK — hosting + bot protocol
+microsoft-agents-hosting-aiohttp>=1.1.0.dev7
+microsoft-agents-hosting-core>=1.1.0.dev7
+microsoft-agents-authentication-msal>=1.1.0.dev7
+microsoft-agents-activity>=1.1.0.dev7
+
+# Microsoft Agent 365 SDK — runtime + observability
+microsoft_agents_a365_observability_core>=0.1.0
+microsoft_agents_a365_runtime>=0.1.0
+microsoft-opentelemetry>=0.1.0a3
+
+# Azure SDK
+azure-identity>=1.17.0
+azure-keyvault-secrets>=4.8.0
+azure-monitor-opentelemetry>=1.6.0
+azure-storage-blob>=12.20.0
+
+# HTTP / web stack — the agent calls the Azure OpenAI Responses API
+# directly over HTTP via httpx; no agent_framework dependency.
+aiohttp>=3.10,<4.0
+httpx>=0.24.0,<1.0
+python-dotenv>=1.0.0
+
+# Utilities
+pydantic>=2.0.0
+typing-extensions>=4.0.0
