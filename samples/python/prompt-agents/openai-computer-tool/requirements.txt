@@ -1,7 +1,7 @@
 azure-ai-projects>=2.0.0b4
 azure-identity>=1.19.0
 openai>=2.8.0
-playwright>=1.50.0
 pyautogui>=0.9.54
 pillow>=11.0.0
 python-dotenv>=1.0.1
+
