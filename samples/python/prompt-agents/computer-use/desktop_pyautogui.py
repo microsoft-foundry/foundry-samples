@@ -85,7 +85,14 @@ def handle_desktop_action(action: dict[str, Any]) -> None:
 
         case "scroll":
             pyautogui.moveTo(x=action["x"], y=action["y"])
-            pyautogui.scroll(-action.get("scroll_y", 0), x=action["x"], y=action["y"])
+            scroll_y = action.get("scroll_y", 0)
+            if scroll_y:
+                clicks = int(-scroll_y / 100) or (-1 if scroll_y > 0 else 1)
+                pyautogui.scroll(clicks, x=action["x"], y=action["y"])
+            scroll_x = action.get("scroll_x", 0)
+            if scroll_x and hasattr(pyautogui, "hscroll"):
+                hclicks = int(scroll_x / 100) or (1 if scroll_x > 0 else -1)
+                pyautogui.hscroll(hclicks, x=action["x"], y=action["y"])
 
         case "type":
             pyautogui.write(action["text"], interval=0.02)
@@ -111,7 +118,7 @@ def take_desktop_screenshot() -> str:
 
 
 def main() -> None:
-    openai_client, model = create_agent_and_client(
+    openai_client, model, extra_body = create_agent_and_client(
         agent_name="foundry-cua-desktop-agent",
         instructions=INSTRUCTIONS,
     )
@@ -127,6 +134,7 @@ def main() -> None:
         prompt=PROMPT,
         handle_action=handle_desktop_action,
         take_screenshot=take_desktop_screenshot,
+        extra_body=extra_body,
     )
 
 

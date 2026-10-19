@@ -112,7 +112,7 @@ def take_browser_screenshot(page: Page) -> str:
 
 
 def main() -> None:
-    openai_client, model = create_agent_and_client(
+    openai_client, model, extra_body = create_agent_and_client(
         agent_name="foundry-cua-browser-agent",
         instructions=INSTRUCTIONS,
     )
@@ -120,7 +120,7 @@ def main() -> None:
     task_board_url = (Path(__file__).resolve().parent / "task_board.html").as_uri()
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(channel="msedge", headless=False)
+        browser = pw.chromium.launch(headless=False)
         page = browser.new_page(viewport={"width": 1024, "height": 768})
         page.goto(task_board_url)
 
@@ -131,6 +131,7 @@ def main() -> None:
             prompt=PROMPT,
             handle_action=lambda action: handle_browser_action(page, action),
             take_screenshot=lambda: take_browser_screenshot(page),
+            extra_body=extra_body,
         )
 
         time.sleep(2.0)

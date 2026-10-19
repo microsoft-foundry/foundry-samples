@@ -21,8 +21,8 @@ from openai import OpenAI
 def create_agent_and_client(
     agent_name: str,
     instructions: str,
-) -> tuple[OpenAI, str]:
-    """Register the Prompt Agent with the GA `ComputerTool` and return an OpenAI client + model name."""
+) -> tuple[OpenAI, str, dict[str, Any]]:
+    """Register the Prompt Agent with the GA `ComputerTool` and return an OpenAI client, model, and extra_body."""
     endpoint = os.environ["PROJECT_ENDPOINT"].rstrip("/")
     model = os.environ.get("MODEL_DEPLOYMENT_NAME", "gpt-5.4")
 
@@ -33,7 +33,7 @@ def create_agent_and_client(
         tools=[ComputerTool()],
     )
 
-    # 2. Authenticate with DefaultAzureCredential (or OPENAI_API_KEY if provided for local testing)
+    # 2. Authenticate with DefaultAzureCredential and register the Prompt Agent version
     api_key = os.environ.get("OPENAI_API_KEY")
     if api_key:
         openai_client = OpenAI(
@@ -41,7 +41,7 @@ def create_agent_and_client(
             api_key=api_key,
             default_headers={"api-key": api_key},
         )
-        return openai_client, model
+        return openai_client, model, {}
 
     project_client = AIProjectClient(
         endpoint=endpoint,
@@ -52,8 +52,9 @@ def create_agent_and_client(
         definition=agent_definition,
     )
     print(f"Created Prompt Agent: {agent.name} (version {agent.version})")
+    extra_body = {"agent_reference": {"name": agent.name, "type": "agent_reference"}}
 
-    return project_client.get_openai_client(), model
+    return project_client.get_openai_client(), model, extra_body
 
 
 def run_cua_loop(
@@ -63,17 +64,18 @@ def run_cua_loop(
     prompt: str,
     handle_action: Callable[[dict[str, Any]], None],
     take_screenshot: Callable[[], str],
+    extra_body: dict[str, Any] | None = None,
     max_turns: int = 10,
 ) -> str:
     """Run the multi-turn `computer_call` -> action execution -> `computer_call_output` loop."""
     computer_tool = ComputerTool().as_dict()  # {"type": "computer"}
+    request_kwargs: dict[str, Any] = {"extra_body": extra_body} if extra_body else {"model": model, "tools": [computer_tool]}
 
     print(f"\nUser Prompt: {prompt}\n")
     response = openai_client.responses.create(
-        model=model,
         instructions=instructions,
-        tools=[computer_tool],
         input=prompt,
+        **request_kwargs,
     )
 
     for turn in range(1, max_turns + 1):
@@ -83,6 +85,10 @@ def run_cua_loop(
             return response.output_text
 
         call = computer_calls[0]
+        if getattr(call, "pending_safety_checks", None):
+            checks = ", ".join(f"{c.code}: {c.message}" for c in call.pending_safety_checks)
+            raise RuntimeError(f"Refusing to execute computer_call with pending safety checks: {checks}")
+
         print(f"[Turn {turn}] Executing {len(call.actions)} action(s) (call_id={call.call_id}):")
 
         # Execute each batched action returned by the model
@@ -118,17 +124,11 @@ def run_cua_loop(
             "output": screenshot_output,
         }
 
-        if getattr(call, "pending_safety_checks", None):
-            call_output["acknowledged_safety_checks"] = [
-                {"id": check.id, "code": check.code, "message": check.message}
-                for check in call.pending_safety_checks
-            ]
-
         response = openai_client.responses.create(
-            model=model,
             previous_response_id=response.id,
-            tools=[computer_tool],
+            instructions=instructions,
             input=[call_output],
+            **request_kwargs,
         )
 
     return response.output_text
