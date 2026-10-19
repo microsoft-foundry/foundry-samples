@@ -1,0 +1,14 @@
+name: public-docs
+description: Microsoft Learn documentation and Bing-backed public web search.
+tools:
+  - type: mcp
+    server_label: learn
+    server_url: https://learn.microsoft.com/api/mcp
+    allowed_tools:
+      - microsoft_docs_search
+      - microsoft_docs_fetch
+      - microsoft_code_sample_search
+    require_approval: never
+  - type: web_search
+    name: web_search
+    description: Search the public web for current information with source links.

@@ -1,27 +1,15 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-/*
- * Browser Automation — Bring Your Own Responses agent with Playwright via Toolbox (C#)
- *
- * Hosted agent that automates browser interactions using playwright-cli via
- * Foundry Toolbox MCP. Supports multiple concurrent browser sessions with
- * lazy initialization — sessions are only created when the model first needs
- * to interact with a browser.
- *
- * Required environment variables:
- *   FOUNDRY_PROJECT_ENDPOINT       — Foundry project endpoint (auto-injected)
- *   AZURE_AI_MODEL_DEPLOYMENT_NAME — Model deployment name
- */
-
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Azure.AI.AgentServer.Responses;
 using Azure.AI.AgentServer.Responses.Models;
 using Azure.AI.Extensions.OpenAI;
 using Azure.AI.Projects;
 using Azure.Identity;
 using DotNetEnv;
-using Microsoft.Extensions.DependencyInjection;
 using OpenAI.Responses;
 
 namespace BrowserAutomation;
@@ -30,59 +18,54 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        // Load environment variables from a .env file if present (for local development).
         Env.NoClobber().TraversePath().Load();
 
-        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APPLICATIONINSIGHTS_CONNECTION_STRING")))
-            Console.Error.WriteLine(
-                "[WARNING] APPLICATIONINSIGHTS_CONNECTION_STRING not set — traces will not be sent " +
-                "to Application Insights. Set it to enable local telemetry. " +
-                "(This variable is auto-injected in hosted Foundry containers.)");
-
-        var foundryEndpoint = Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_ENDPOINT")
-            ?? throw new InvalidOperationException("FOUNDRY_PROJECT_ENDPOINT environment variable is not set.");
-        var deployment = Environment.GetEnvironmentVariable("AZURE_AI_MODEL_DEPLOYMENT_NAME")
-            ?? throw new InvalidOperationException("AZURE_AI_MODEL_DEPLOYMENT_NAME environment variable is not set.");
+        var endpoint = Environment.GetEnvironmentVariable(
+                "FOUNDRY_PROJECT_ENDPOINT")
+            ?? throw new InvalidOperationException(
+                "FOUNDRY_PROJECT_ENDPOINT environment variable is not set.");
+        var deployment = Environment.GetEnvironmentVariable(
+                "AZURE_AI_MODEL_DEPLOYMENT_NAME")
+            ?? throw new InvalidOperationException(
+                "AZURE_AI_MODEL_DEPLOYMENT_NAME environment variable is not set.");
+        var toolboxName = Environment.GetEnvironmentVariable("TOOLBOX_NAME")
+            ?? Constants.DefaultToolboxName;
 
         var credential = new DefaultAzureCredential();
-        var projectClient = new AIProjectClient(new Uri(foundryEndpoint), credential);
-        var responsesClient = projectClient.ProjectOpenAIClient
+        var responsesClient = new AIProjectClient(
+                new Uri(endpoint),
+                credential)
+            .ProjectOpenAIClient
             .GetProjectResponsesClientForModel(deployment);
-
-        // Toolbox MCP endpoint
-        var toolboxName = Constants.DefaultToolboxName;
-        var toolboxEndpoint = $"{foundryEndpoint.TrimEnd('/')}/toolboxes/{toolboxName}/mcp?api-version=v1";
 
         ResponsesServer.Run<BrowserAutomationHandler>(configure: builder =>
         {
             builder.Services.AddSingleton(responsesClient);
-            builder.Services.AddSingleton(new ToolboxConfig(toolboxEndpoint, credential));
+            builder.Services.AddSingleton(new ToolboxConfig(
+                $"{endpoint.TrimEnd('/')}/toolboxes/{toolboxName}/mcp?api-version=v1",
+                credential));
         });
     }
 }
 
-/// <summary>Configuration for ToolboxClient creation per-request.</summary>
-public record ToolboxConfig(string Endpoint, DefaultAzureCredential Credential);
+public record ToolboxConfig(
+    string Endpoint,
+    DefaultAzureCredential Credential);
 
-/// <summary>Browser session state.</summary>
-public record SessionState(BrowserSession Browser, string? LiveViewUrl);
-
-// ──────────────────────────────────────────────────────────────────
-// Handler
-// ──────────────────────────────────────────────────────────────────
+public sealed record BrowserSessionState(
+    string BrowserSessionId,
+    string? LiveViewUrl);
 
 public class BrowserAutomationHandler : ResponseHandler
 {
     private readonly ProjectResponsesClient _responsesClient;
-    private readonly ToolboxConfig _toolboxConfig;
     private readonly ILogger<BrowserAutomationHandler> _logger;
-
-    // Multi-session state — static so it persists across requests (matches Python module-level globals)
-    private static readonly Dictionary<string, SessionState> _sessions = new();
-    private static readonly HashSet<string> _usedSessions = new(); // sessions touched in current request
+    private static readonly ConcurrentDictionary<string, BrowserSessionState>
+        ActiveSessions = new();
     private static string? _lastSession;
+    private static readonly SemaphoreSlim SessionGate = new(1, 1);
     private static ToolboxClient? _toolbox;
-    private readonly int _browserTimeout;
+    private static readonly object ToolboxLock = new();
 
     public BrowserAutomationHandler(
         ProjectResponsesClient responsesClient,
@@ -90,415 +73,481 @@ public class BrowserAutomationHandler : ResponseHandler
         ILogger<BrowserAutomationHandler> logger)
     {
         _responsesClient = responsesClient;
-        _toolboxConfig = toolboxConfig;
         _logger = logger;
-        _browserTimeout = int.TryParse(Environment.GetEnvironmentVariable("BROWSER_TIMEOUT_SECONDS"), out var t) ? t : 180;
-    }
-
-    private ToolboxClient GetToolbox()
-    {
-        _toolbox ??= new ToolboxClient(
-            _toolboxConfig.Endpoint,
-            () =>
-            {
-                var ctx = new Azure.Core.TokenRequestContext(new[] { Constants.AzureAiScope });
-                return _toolboxConfig.Credential.GetToken(ctx, default).Token;
-            },
-            _logger);
-        return _toolbox;
+        lock (ToolboxLock)
+        {
+            _toolbox ??= new ToolboxClient(
+                toolboxConfig.Endpoint,
+                toolboxConfig.Credential,
+                logger);
+        }
     }
 
     public override IAsyncEnumerable<ResponseStreamEvent> CreateAsync(
         CreateResponse request,
         ResponseContext context,
-        CancellationToken cancellationToken)
-    {
-        return new TextResponse(context, request,
-            createTextStream: ct => ProcessAsync(request, context, ct));
-    }
+        CancellationToken cancellationToken) =>
+        new TextResponse(
+            context,
+            request,
+            createTextStream: ct => ProcessAsync(
+                request,
+                context,
+                ct));
 
     private async IAsyncEnumerable<string> ProcessAsync(
         CreateResponse request,
         ResponseContext context,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var userInput = await context.GetInputTextAsync(cancellationToken: cancellationToken) ?? "";
+        var userInput = await context.GetInputTextAsync(
+            cancellationToken: cancellationToken) ?? "";
         if (string.IsNullOrWhiteSpace(userInput))
         {
             yield return "No input provided.";
             yield break;
         }
 
-        // Check for /verbose flag
-        var verboseMode = userInput.TrimStart().StartsWith("/verbose");
-        if (verboseMode)
-            userInput = userInput.Replace("/verbose", "", StringComparison.OrdinalIgnoreCase).TrimStart();
+        var verbose = userInput.TrimStart().StartsWith(
+            "/verbose",
+            StringComparison.OrdinalIgnoreCase);
+        if (verbose)
+            userInput = userInput.Replace(
+                "/verbose",
+                "",
+                StringComparison.OrdinalIgnoreCase).TrimStart();
 
-        _usedSessions.Clear();
-
-        // Build input items with history
         var inputItems = new List<ResponseItem>();
         try
         {
             var history = await context.GetHistoryAsync(cancellationToken);
-            foreach (var item in history)
+            foreach (var item in history.OfType<OutputItemMessage>())
             {
-                if (item is OutputItemMessage { Content: { } contents })
+                foreach (var content in item.Content ?? [])
                 {
-                    foreach (var content in contents)
-                    {
-                        switch (content)
-                        {
-                            case MessageContentOutputTextContent { Text: { } assistantText }:
-                                inputItems.Add(ResponseItem.CreateAssistantMessageItem(assistantText));
-                                break;
-                            case MessageContentInputTextContent { Text: { } userText }:
-                                inputItems.Add(ResponseItem.CreateUserMessageItem(userText));
-                                break;
-                        }
-                    }
+                    if (content is MessageContentOutputTextContent
+                        { Text: { } assistantText })
+                        inputItems.Add(
+                            ResponseItem.CreateAssistantMessageItem(
+                                assistantText));
+                    else if (content is MessageContentInputTextContent
+                        { Text: { } userText })
+                        inputItems.Add(
+                            ResponseItem.CreateUserMessageItem(userText));
                 }
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            _logger.LogWarning("get_history failed; continuing without: {Error}", ex.Message);
+            _logger.LogWarning(
+                "get_history failed; continuing without: {Error}",
+                exception.Message);
         }
 
-        if (_sessions.Count > 0)
+        if (!ActiveSessions.IsEmpty)
         {
             inputItems.Add(ResponseItem.CreateUserMessageItem(
-                $"[Active sessions: [{string.Join(", ", _sessions.Keys)}], default: {_lastSession}]"));
+                "[Active sessions: "
+                + JsonSerializer.Serialize(ActiveSessions.ToDictionary(
+                    pair => pair.Key,
+                    pair => pair.Value.BrowserSessionId))
+                + $", default: {_lastSession}]"));
         }
         inputItems.Add(ResponseItem.CreateUserMessageItem(userInput));
 
-        var systemPrompt = Constants.GetSystemPrompt(Skills.ListSkills());
-        var tools = BuildTools();
+        var instructions = Constants.GetSystemPrompt(Skills.ListSkills());
+        var tools = await BuildToolsAsync(cancellationToken);
+        var usedSessions = new HashSet<string>();
+        string finalReply = "";
 
-        var verboseText = new System.Text.StringBuilder();
-        string? finalReply = null;
-
-        // Agentic loop — runs until model produces a final response (no tool calls)
-        while (true)
+        for (var round = 0; round < 20; round++)
         {
-            if (cancellationToken.IsCancellationRequested)
+            var options = new CreateResponseOptions
             {
-                yield return "⚠️ Cancelled.\n";
-                yield break;
-            }
-
-            var options = new CreateResponseOptions { Instructions = systemPrompt };
+                Instructions = instructions,
+            };
             foreach (var tool in tools)
                 options.Tools.Add(tool);
             foreach (var item in inputItems)
                 options.InputItems.Add(item);
 
-            var result = await _responsesClient.CreateResponseAsync(options, cancellationToken);
-
-            var functionCalls = result.Value.OutputItems
+            var response = await _responsesClient.CreateResponseAsync(
+                options,
+                cancellationToken);
+            var calls = response.Value.OutputItems
                 .OfType<FunctionCallResponseItem>()
                 .ToList();
-
-            if (functionCalls.Count == 0)
+            if (calls.Count == 0)
             {
-                finalReply = result.Value.GetOutputText() ?? "(No response)";
-                // Add output items to input for context
-                foreach (var item in result.Value.OutputItems)
-                    inputItems.Add(item);
+                finalReply = response.Value.GetOutputText()
+                    ?? "(No response)";
                 break;
             }
 
-            // Process tool calls
-            foreach (var fc in functionCalls)
+            foreach (var call in calls)
             {
-                var sessionsBefore = new HashSet<string>(_sessions.Keys);
-
-                var toolResult = await HandleToolCallAsync(fc.FunctionName, fc.FunctionArguments);
-
-                // Detect new sessions (covers both explicit create_session and lazy creation via run_browser/run_parallel)
-                var newSessions = _sessions.Keys.Except(sessionsBefore);
-                foreach (var newSess in newSessions)
+                var result = await HandleToolCallAsync(
+                    call.FunctionName,
+                    call.FunctionArguments,
+                    usedSessions,
+                    cancellationToken);
+                if (result.LiveViewUrl is not null)
                 {
-                    var url = _sessions[newSess].LiveViewUrl;
-                    var sessionLog = !string.IsNullOrEmpty(url)
-                        ? $"🌐 Created **{newSess}** → [Live View]({url})\n"
-                        : $"🌐 Created **{newSess}** (session ready)\n";
-                    yield return sessionLog;
-                    verboseText.Append(sessionLog);
+                    yield return $"🔴 Created **{result.SessionName}**: "
+                        + $"[Live View]({result.LiveViewUrl})\n";
                 }
+                if (verbose)
+                    yield return $"🔧 `{call.FunctionName}`\n";
 
-                // Format verbose log
-                var log = FormatToolLog(fc.FunctionName, fc.FunctionArguments, toolResult);
-                if (log != null)
-                {
-                    if (verboseMode)
-                    {
-                        yield return log.Value.Text;
-                        verboseText.Append(log.Value.Text);
-                    }
-                    else
-                    {
-                        // Heartbeat: emit empty string to keep SSE alive
-                        yield return "";
-                    }
-                }
-
-                inputItems.Add(ResponseItem.CreateFunctionCallItem(fc.CallId, fc.FunctionName, fc.FunctionArguments));
-                inputItems.Add(ResponseItem.CreateFunctionCallOutputItem(fc.CallId, toolResult));
+                inputItems.Add(ResponseItem.CreateFunctionCallItem(
+                    call.CallId,
+                    call.FunctionName,
+                    call.FunctionArguments));
+                inputItems.Add(ResponseItem.CreateFunctionCallOutputItem(
+                    call.CallId,
+                    result.IsError
+                        ? $"Tool error: {result.Output}"
+                        : result.Output));
             }
         }
 
-        if (verboseText.Length > 0)
-            yield return "\n---\n\n";
-
+        if (string.IsNullOrEmpty(finalReply))
+            finalReply = "Tool-call limit reached before the task completed.";
         yield return finalReply;
 
-        // Append active session live view links at the end for easy access
-        if (_sessions.Count > 0)
+        var links = ActiveSessions
+            .Select(pair =>
+                $"- **{pair.Key}**: "
+                + (string.IsNullOrEmpty(pair.Value.LiveViewUrl)
+                    ? "(no live view)"
+                    : $"[Live View]({pair.Value.LiveViewUrl})"))
+            .ToList();
+        if (links.Count > 0)
         {
-            var links = _sessions.Select(kv =>
-            {
-                var url = kv.Value.LiveViewUrl;
-                return !string.IsNullOrEmpty(url)
-                    ? $"- **{kv.Key}**: [Live View]({url})"
-                    : $"- **{kv.Key}**: (no live view)";
-            });
-            var footer = $"\n\n---\n**Active Sessions:**\n{string.Join("\n", links)}";
-            if (_usedSessions.Count > 0)
-                footer += $"\n\n_Used Sessions in this response: {string.Join(", ", _usedSessions)}_";
-            yield return footer + "\n";
+            yield return "\n\n---\n**Active Browser Sessions:**\n"
+                + string.Join("\n", links);
+            if (usedSessions.Count > 0)
+                yield return "\n\n_Used Sessions in this response: "
+                    + string.Join(", ", usedSessions.Order())
+                    + "_";
         }
     }
 
-    // ── Tool execution ───────────────────────────────────────────────
-
-    private async Task<string> HandleToolCallAsync(string functionName, BinaryData arguments)
+    private async Task<ToolboxCallResult> HandleToolCallAsync(
+        string functionName,
+        BinaryData arguments,
+        HashSet<string> usedSessions,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var args = JsonSerializer.Deserialize<JsonElement>(arguments);
+            _logger.LogInformation(
+                "[tool] name={Name} arguments={Arguments}",
+                functionName,
+                Redaction.Redact(arguments.ToString()));
 
-            return functionName switch
+            if (functionName == "load_skill")
             {
-                "load_skill" => HandleLoadSkill(args),
-                "create_session" => await HandleCreateSessionAsync(args),
-                "end_session" => await HandleEndSessionAsync(args),
-                "run_browser" => await HandleRunBrowserAsync(args),
-                "run_parallel" => await HandleRunParallelAsync(args),
-                "list_sessions" => HandleListSessions(),
-                _ => JsonSerializer.Serialize(new { error = $"Unknown tool: {functionName}" }),
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Tool '{Name}' failed", functionName);
-            return JsonSerializer.Serialize(new { error = ex.Message });
-        }
-    }
-
-    private string HandleLoadSkill(JsonElement args)
-    {
-        var name = args.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
-        var content = Skills.LoadSkill(name);
-        if (content == null)
-            return JsonSerializer.Serialize(new { error = $"Skill '{name}' not found. Available: {string.Join(", ", Skills.ListSkills())}" });
-        return JsonSerializer.Serialize(new { skill = name, instructions = content });
-    }
-
-    private async Task<string> HandleCreateSessionAsync(JsonElement args)
-    {
-        var name = args.TryGetProperty("name", out var n) ? n.GetString() ?? $"session-{_sessions.Count + 1}" : $"session-{_sessions.Count + 1}";
-
-        if (_sessions.ContainsKey(name))
-            return JsonSerializer.Serialize(new { status = "already_exists", session = name, live_view_url = _sessions[name].LiveViewUrl });
-
-        var toolbox = GetToolbox();
-        var result = await toolbox.CallToolAsync("create_session");
-
-        var cdpUrl = result.TryGetProperty("cdp_url", out var cdp) ? cdp.GetString() : null;
-        var liveViewUrl = result.TryGetProperty("live_view_url", out var lv) ? lv.GetString() : null;
-
-        if (string.IsNullOrEmpty(cdpUrl))
-            return JsonSerializer.Serialize(new { error = "No CDP URL returned from Toolbox" });
-
-        var browser = new BrowserSession(name, _browserTimeout, _logger);
-        var (success, output) = await browser.ConnectAsync(cdpUrl);
-        if (!success)
-            return JsonSerializer.Serialize(new { error = $"Browser connect failed: {output}" });
-
-        _sessions[name] = new SessionState(browser, liveViewUrl);
-        _lastSession = name;
-        _logger.LogInformation("Session '{Name}' created (live_view: {HasUrl})", name, !string.IsNullOrEmpty(liveViewUrl));
-
-        return JsonSerializer.Serialize(new { status = "created", session = name, live_view_url = liveViewUrl });
-    }
-
-    private async Task<string> HandleEndSessionAsync(JsonElement args)
-    {
-        var name = args.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
-
-        if (name == "all")
-        {
-            var ended = _sessions.Keys.ToList();
-            foreach (var sn in ended)
-            {
-                try { await _sessions[sn].Browser.CloseAsync(); } catch { }
+                using var document = JsonDocument.Parse(arguments);
+                var name = document.RootElement.GetProperty("name").GetString()
+                    ?? "";
+                var skill = Skills.LoadSkill(name);
+                var output = skill is null
+                    ? JsonSerializer.Serialize(new
+                    {
+                        error = $"Skill '{name}' not found.",
+                    })
+                    : JsonSerializer.Serialize(new
+                    {
+                        skill = name,
+                        instructions = skill,
+                    });
+                return new ToolboxCallResult(
+                    output,
+                    null,
+                    null,
+                    skill is null);
             }
-            _sessions.Clear();
-            _lastSession = null;
-            return JsonSerializer.Serialize(new { status = "ended_all", sessions = ended });
+
+            await SessionGate.WaitAsync(cancellationToken);
+            try
+            {
+                return await HandleBrowserToolAsync(
+                    functionName,
+                    arguments,
+                    usedSessions,
+                    cancellationToken);
+            }
+            finally
+            {
+                SessionGate.Release();
+            }
         }
-
-        if (!_sessions.ContainsKey(name))
-            return JsonSerializer.Serialize(new { error = $"Session '{name}' not found. Available: [{string.Join(", ", _sessions.Keys)}]" });
-
-        try { await _sessions[name].Browser.CloseAsync(); } catch { }
-        _sessions.Remove(name);
-        if (_lastSession == name)
-            _lastSession = _sessions.Keys.FirstOrDefault();
-        return JsonSerializer.Serialize(new { status = "ended", session = name, remaining = _sessions.Keys.ToList() });
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                exception,
+                "Tool '{Name}' failed",
+                functionName);
+            return new ToolboxCallResult(
+                $"Tool call failed: {exception.Message}",
+                null,
+                null,
+                true);
+        }
     }
 
-    private async Task<string> HandleRunBrowserAsync(JsonElement args)
+    private static KeyValuePair<string, BrowserSessionState> ResolveSession(
+        string? reference)
     {
-        var sessName = args.TryGetProperty("session", out var s) ? s.GetString() : null;
-        sessName ??= _lastSession;
-
-        // Lazy session creation
-        if (_sessions.Count == 0)
+        var name = string.IsNullOrEmpty(reference) ? _lastSession : reference;
+        if (name is not null && ActiveSessions.TryGetValue(name, out var state))
+            return new(name, state);
+        foreach (var pair in ActiveSessions)
         {
-            var createResult = await HandleCreateSessionAsync(
-                JsonDocument.Parse("""{"name":"default"}""").RootElement);
-            if (createResult.Contains("error"))
-                return createResult;
-            sessName = "default";
+            if (pair.Value.BrowserSessionId == name)
+                return pair;
         }
-        else if (string.IsNullOrEmpty(sessName) || !_sessions.ContainsKey(sessName))
-        {
-            return JsonSerializer.Serialize(new { error = $"Session '{sessName}' not found. Available: [{string.Join(", ", _sessions.Keys)}]" });
-        }
-
-        var browser = _sessions[sessName].Browser;
-        var command = args.TryGetProperty("command", out var c) ? c.GetString() ?? "" : "";
-        var cmdArgs = args.TryGetProperty("args", out var a) && a.ValueKind == JsonValueKind.Array
-            ? a.EnumerateArray().Select(x => x.GetString() ?? "").ToArray()
-            : Array.Empty<string>();
-
-        _lastSession = sessName;
-        _usedSessions.Add(sessName);
-        var (success, output) = await browser.RunAsync(command, cmdArgs);
-        return JsonSerializer.Serialize(new { success, output });
+        throw new InvalidOperationException(
+            $"Session '{name}' not found. Available: "
+            + string.Join(", ", ActiveSessions.Keys));
     }
 
-    private async Task<string> HandleRunParallelAsync(JsonElement args)
-    {
-        if (!args.TryGetProperty("tasks", out var tasksEl) || tasksEl.ValueKind != JsonValueKind.Array)
-            return JsonSerializer.Serialize(new { error = "No tasks provided" });
+    private static async Task<ToolboxTool> GetBrowserToolAsync(
+        string shortName,
+        CancellationToken cancellationToken) =>
+        (await _toolbox!.ListToolsAsync(cancellationToken)).Single(tool =>
+            tool.Name.Split("___").Last() == shortName);
 
-        // Ensure default session
-        if (_sessions.Count == 0)
+    private static async Task<ToolboxCallResult> CreateSessionAsync(
+        string? name,
+        JsonObject arguments,
+        CancellationToken cancellationToken,
+        string? toolName = null)
+    {
+        if (name is null)
         {
-            var createResult = await HandleCreateSessionAsync(
-                JsonDocument.Parse("""{"name":"default"}""").RootElement);
-            if (createResult.Contains("error"))
-                return createResult;
+            var number = 1;
+            while (ActiveSessions.ContainsKey($"session-{number}"))
+                number++;
+            name = $"session-{number}";
         }
+        if (string.IsNullOrWhiteSpace(name) || name == "all")
+            throw new ArgumentException(
+                "A non-empty session name other than 'all' is required.");
+        if (ActiveSessions.TryGetValue(name, out var existing))
+            return new ToolboxCallResult(
+                JsonSerializer.Serialize(new
+                {
+                    status = "already_exists",
+                    session = name,
+                    browserSessionId = existing.BrowserSessionId,
+                }),
+                existing.BrowserSessionId,
+                null,
+                false,
+                name);
 
-        var tasks = new List<Task<object>>();
-        foreach (var task in tasksEl.EnumerateArray())
+        toolName ??= (await GetBrowserToolAsync(
+            "create_browser_session", cancellationToken)).Name;
+        var result = await _toolbox!.CallToolAsync(
+            toolName,
+            BinaryData.FromString(arguments.ToJsonString()),
+            cancellationToken);
+        if (result.IsError)
+            return result;
+        if (string.IsNullOrEmpty(result.BrowserSessionId))
+            throw new InvalidOperationException(
+                "Browser creation returned no browserSessionId.");
+
+        ActiveSessions[name] = new BrowserSessionState(
+            result.BrowserSessionId, result.LiveViewUrl);
+        _lastSession = name;
+        return result with
         {
-            tasks.Add(RunOneParallelTask(task));
-        }
-
-        var results = await Task.WhenAll(tasks);
-        return JsonSerializer.Serialize(new { parallel_results = results });
-    }
-
-    private async Task<object> RunOneParallelTask(JsonElement task)
-    {
-        var sess = task.TryGetProperty("session", out var s) ? s.GetString() : null;
-        sess ??= _lastSession ?? "default";
-
-        if (!_sessions.ContainsKey(sess))
-            return new { session = sess, error = $"Session '{sess}' not found" };
-
-        var browser = _sessions[sess].Browser;
-        var command = task.TryGetProperty("command", out var c) ? c.GetString() ?? "" : "";
-        var cmdArgs = task.TryGetProperty("args", out var a) && a.ValueKind == JsonValueKind.Array
-            ? a.EnumerateArray().Select(x => x.GetString() ?? "").ToArray()
-            : Array.Empty<string>();
-
-        _usedSessions.Add(sess);
-        var (success, output) = await browser.RunAsync(command, cmdArgs);
-        return new { session = sess, command, success, output };
-    }
-
-    private string HandleListSessions()
-    {
-        var info = new Dictionary<string, object>();
-        foreach (var (name, state) in _sessions)
-        {
-            info[name] = new { live_view_url = state.LiveViewUrl, connected = state.Browser.Connected };
-        }
-        return JsonSerializer.Serialize(new { sessions = info, @default = _lastSession });
-    }
-
-    // ── Verbose logging ──────────────────────────────────────────────
-
-    private (string Kind, string Text)? FormatToolLog(string name, BinaryData arguments, string resultText)
-    {
-        var args = JsonSerializer.Deserialize<JsonElement>(arguments);
-
-        return name switch
-        {
-            "end_session" => FormatEndSessionLog(args, resultText),
-            "run_browser" => FormatRunBrowserLog(args),
-            "run_parallel" => ("log", $"⚡ Running {(args.TryGetProperty("tasks", out var t) ? t.GetArrayLength() : 0)} tasks in parallel\n"),
-            "load_skill" => ("log", $"📖 Loading skill: {(args.TryGetProperty("name", out var n) ? n.GetString() : "?")}\n"),
-            "list_sessions" => ("log", "📋 Listed sessions\n"),
-            _ => null,
+            SessionName = name,
+            Output = JsonSerializer.Serialize(new
+            {
+                status = "created",
+                session = name,
+                browserSessionId = result.BrowserSessionId,
+                result = result.Output,
+            }),
         };
     }
 
-    private (string Kind, string Text) FormatEndSessionLog(JsonElement args, string resultText)
+    private static async Task<ToolboxCallResult> CloseSessionAsync(
+        string? reference,
+        JsonObject arguments,
+        CancellationToken cancellationToken,
+        string? toolName = null)
     {
-        var sessName = args.TryGetProperty("name", out var n) ? n.GetString() ?? "?" : "?";
-        try
+        var session = ResolveSession(reference);
+        var tool = toolName is null
+            ? await GetBrowserToolAsync("close_browser_session", cancellationToken)
+            : (await _toolbox!.ListToolsAsync(cancellationToken))
+                .Single(tool => tool.Name == toolName);
+        var schema = JsonNode.Parse(tool.InputSchema.ToString())!.AsObject();
+        var properties = schema["properties"]!.AsObject();
+        var sessionParameter = properties.ContainsKey("browserSessionId")
+            ? "browserSessionId"
+            : "browser_session_id";
+        arguments[sessionParameter] = session.Value.BrowserSessionId;
+        var result = await _toolbox!.CallToolAsync(
+            tool.Name,
+            BinaryData.FromString(arguments.ToJsonString()),
+            cancellationToken);
+        if (!result.IsError)
         {
-            var result = JsonSerializer.Deserialize<JsonElement>(resultText);
-            var status = result.TryGetProperty("status", out var s) ? s.GetString() : null;
-            if (status == "ended_all") return ("log", "🔴 Ended ALL sessions\n");
-            if (status == "ended") return ("log", $"🔴 Ended **{sessName}**\n");
+            ActiveSessions.TryRemove(session.Key, out _);
+            if (_lastSession == session.Key)
+                _lastSession = ActiveSessions.Keys.FirstOrDefault();
         }
-        catch { }
-        return ("log", $"🔴 End {sessName}\n");
+        return result with { SessionName = session.Key };
     }
 
-    private (string Kind, string Text) FormatRunBrowserLog(JsonElement args)
+    private static async Task<ToolboxCallResult> HandleBrowserToolAsync(
+        string functionName,
+        BinaryData arguments,
+        HashSet<string> usedSessions,
+        CancellationToken cancellationToken)
     {
-        var sess = args.TryGetProperty("session", out var s) ? s.GetString() : _lastSession ?? "?";
-        var cmd = args.TryGetProperty("command", out var c) ? c.GetString() ?? "" : "";
-        var cmdArgs = args.TryGetProperty("args", out var a) && a.ValueKind == JsonValueKind.Array
-            ? a.EnumerateArray().Take(2).Select(x => Redaction.Redact(x.GetString() ?? "")).ToList()
-            : new List<string>();
-        return ("log", $"🔧 [{sess}] `{cmd} {string.Join(" ", cmdArgs)}`\n");
-    }
-
-    // ── Tool definitions ─────────────────────────────────────────────
-
-    private static List<ResponseTool> BuildTools()
-    {
-        var defs = JsonSerializer.Deserialize<JsonElement>(Constants.ToolDefinitions);
-        var tools = new List<ResponseTool>();
-        foreach (var def in defs.EnumerateArray())
+        var args = JsonNode.Parse(arguments.ToString())!.AsObject();
+        if (functionName == "list_sessions")
+            return new ToolboxCallResult(
+                JsonSerializer.Serialize(new
+                {
+                    sessions = ActiveSessions.ToDictionary(
+                        pair => pair.Key,
+                        pair => new
+                        {
+                            browserSessionId = pair.Value.BrowserSessionId,
+                            connected = true,
+                        }),
+                    @default = _lastSession,
+                }), null, null, false);
+        if (functionName == "create_session")
+            return await CreateSessionAsync(
+                args["name"]!.GetValue<string>(), new(), cancellationToken);
+        if (functionName == "end_session")
         {
-            var name = def.GetProperty("name").GetString()!;
-            var desc = def.GetProperty("description").GetString()!;
-            var parameters = def.GetProperty("parameters");
+            var reference = args["name"]!.GetValue<string>();
+            if (string.IsNullOrWhiteSpace(reference))
+                throw new ArgumentException("A non-empty session name is required.");
+            if (reference != "all")
+                return await CloseSessionAsync(reference, new(), cancellationToken);
+            var results = new Dictionary<string, string>();
+            var isError = false;
+            foreach (var name in ActiveSessions.Keys.ToList())
+            {
+                var result = await CloseSessionAsync(name, new(), cancellationToken);
+                results[name] = result.Output;
+                isError |= result.IsError;
+            }
+            return new ToolboxCallResult(
+                JsonSerializer.Serialize(new
+                {
+                    status = isError ? "close_failed" : "ended_all",
+                    results,
+                    remaining = ActiveSessions.Keys.ToList(),
+                }), null, null, isError);
+        }
+
+        var shortName = functionName.Split("___").Last();
+        if (shortName == "create_browser_session")
+            return await CreateSessionAsync(
+                null, args, cancellationToken, functionName);
+        var tool = (await _toolbox!.ListToolsAsync(cancellationToken))
+            .Single(tool => tool.Name == functionName);
+        var schema = JsonNode.Parse(tool.InputSchema.ToString())!.AsObject();
+        var properties = schema["properties"] as JsonObject;
+        var sessionParameter = properties?.ContainsKey("browserSessionId") == true
+            ? "browserSessionId"
+            : properties?.ContainsKey("browser_session_id") == true
+                ? "browser_session_id"
+                : null;
+        if (sessionParameter is null)
+            return await _toolbox.CallToolAsync(
+                functionName, arguments, cancellationToken);
+
+        var requestedSession = args[sessionParameter]?.GetValue<string>();
+        ToolboxCallResult? created = null;
+        if (string.IsNullOrEmpty(requestedSession)
+            && ActiveSessions.IsEmpty
+            && shortName != "close_browser_session")
+        {
+            created = await CreateSessionAsync("default", new(), cancellationToken);
+            if (created.IsError)
+                return created;
+        }
+        var session = ResolveSession(requestedSession);
+        args[sessionParameter] = session.Value.BrowserSessionId;
+        if (shortName == "close_browser_session")
+            return await CloseSessionAsync(
+                session.Key, args, cancellationToken, functionName);
+        _lastSession = session.Key;
+        usedSessions.Add(session.Key);
+        var callResult = await _toolbox.CallToolAsync(
+            functionName,
+            BinaryData.FromString(args.ToJsonString()),
+            cancellationToken);
+        return callResult with
+        {
+            SessionName = session.Key,
+            LiveViewUrl = created?.LiveViewUrl ?? callResult.LiveViewUrl,
+        };
+    }
+
+    private async Task<List<ResponseTool>> BuildToolsAsync(
+        CancellationToken cancellationToken)
+    {
+        var definitions = new List<JsonElement>();
+        using (var localDocument = JsonDocument.Parse(
+                   Constants.LoadSkillDefinition))
+        {
+            definitions.Add(localDocument.RootElement.Clone());
+        }
+        using (var sessionDocument = JsonDocument.Parse(
+                   Constants.SessionToolDefinitions))
+        {
+            definitions.AddRange(sessionDocument.RootElement.EnumerateArray()
+                .Select(definition => definition.Clone()));
+        }
+
+        var tools = new List<ResponseTool>();
+        foreach (var local in definitions)
+        {
             tools.Add(ResponseTool.CreateFunctionTool(
-                functionName: name,
-                functionDescription: desc,
-                functionParameters: BinaryData.FromString(parameters.GetRawText()),
+                functionName: local.GetProperty("name").GetString()!,
+                functionDescription: local.GetProperty("description").GetString()!,
+                functionParameters: BinaryData.FromString(
+                    local.GetProperty("parameters").GetRawText()),
+                strictModeEnabled: false));
+        }
+
+        foreach (var tool in await _toolbox!.ListToolsAsync(cancellationToken))
+        {
+            var schema = JsonNode.Parse(tool.InputSchema.ToString())!.AsObject();
+            foreach (var key in new[] { "browserSessionId", "browser_session_id" })
+            {
+                if (schema["properties"]?[key] is not JsonObject property)
+                    continue;
+                property["description"] =
+                    "Friendly session name or service browserSessionId. "
+                    + "Omit to use the default browser session.";
+                if (schema["required"] is JsonArray required)
+                {
+                    for (var index = required.Count - 1; index >= 0; index--)
+                    {
+                        if (required[index]?.GetValue<string>() == key)
+                            required.RemoveAt(index);
+                    }
+                }
+            }
+            tools.Add(ResponseTool.CreateFunctionTool(
+                functionName: tool.Name,
+                functionDescription: tool.Description,
+                functionParameters: BinaryData.FromString(schema.ToJsonString()),
                 strictModeEnabled: false));
         }
         return tools;
