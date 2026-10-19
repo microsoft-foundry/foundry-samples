@@ -45,6 +45,8 @@ azd ai connection create ghmcppat \
 
 > `<github_pat>` — a classic `ghp_...` or fine-grained `github_pat_...` token.
 
+For GitHub MCP, [create a fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) and grant only the repository access and permissions needed by the tools you plan to use. Avoid broader organization access unless the selected tools require it.
+
 #### Way A — standalone toolbox (`toolbox.yaml`)
 
 1. Write `toolbox.yaml` referencing the connection by name:
