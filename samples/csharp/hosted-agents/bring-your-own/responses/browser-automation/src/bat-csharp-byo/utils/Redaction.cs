@@ -44,10 +44,11 @@ public static class Redaction
             ? "Tool error: "
             : text.StartsWith("Tool call failed: ", StringComparison.Ordinal)
                 ? "Tool call failed: " : "";
+        text = text[prefix.Length..];
         JsonNode? value;
         try
         {
-            value = JsonNode.Parse(text[prefix.Length..]);
+            value = JsonNode.Parse(text);
         }
         catch (JsonException)
         {
@@ -73,7 +74,7 @@ public static class Redaction
         }
         text = PrivateSections.Replace(
             text, match => $"### {match.Groups[1].Value}\nContent omitted for privacy.\n");
-        return Redact(text);
+        return prefix + Redact(text);
     }
 
     private static void SanitizeJson(JsonNode node, IReadOnlyList<string> liveViewUrls)

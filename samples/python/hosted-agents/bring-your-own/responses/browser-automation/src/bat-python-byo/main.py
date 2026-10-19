@@ -195,12 +195,17 @@ async def _create_session(
     )
     _last_session = name
     result.session_name = name
-    result.output = json.dumps({
+    summary = {
         "status": "created",
         "session": name,
         "browserSessionId": result.browser_session_id,
         "result": result.output,
+    }
+    result.public_output = json.dumps({
+        **summary,
+        "result": result.public_output if result.public_output is not None else result.output,
     }, ensure_ascii=False)
+    result.output = json.dumps(summary, ensure_ascii=False)
     return result
 
 
@@ -259,18 +264,24 @@ async def _handle_tool_call(
             if reference != "all":
                 return await _close_session(reference)
             results = {}
+            public_results = {}
             is_error = False
             for session_name in list(_active_sessions):
                 result = await _close_session(session_name)
                 results[session_name] = result.output
+                public_results[session_name] = (
+                    result.public_output if result.public_output is not None else result.output
+                )
                 is_error = is_error or result.is_error
+            summary = {
+                "status": "close_failed" if is_error else "ended_all",
+                "results": results,
+                "remaining": list(_active_sessions),
+            }
             return ToolboxCallResult(
-                output=json.dumps({
-                    "status": "close_failed" if is_error else "ended_all",
-                    "results": results,
-                    "remaining": list(_active_sessions),
-                }),
+                output=json.dumps(summary),
                 is_error=is_error,
+                public_output=json.dumps({**summary, "results": public_results}),
             )
 
         short_name = name.rsplit("___", maxsplit=1)[-1]
@@ -376,11 +387,16 @@ async def _run_agent_loop(input_items: list[dict], used_sessions: set[str]):
                         f"[Live View]({result.live_view_url})\n\n"
                     )
                 output = result.output
+                public_output = (
+                    result.public_output if result.public_output is not None else output
+                )
                 if result.is_error:
                     output = f"Tool error: {output}"
+                    public_output = f"Tool error: {public_output}"
             except Exception as exc:
                 logger.exception("Tool call failed: %s", call.name)
                 output = f"Tool call failed: {exc}"
+                public_output = output
 
             input_items.append({
                 "type": "function_call",
@@ -397,7 +413,7 @@ async def _run_agent_loop(input_items: list[dict], used_sessions: set[str]):
             yield "function_call_output", {
                 "call_id": call.call_id,
                 "output": public_tool_output(
-                    call.name, output, failed, live_view_urls,
+                    call.name, public_output, failed, live_view_urls,
                 ),
             }
             if session_text:

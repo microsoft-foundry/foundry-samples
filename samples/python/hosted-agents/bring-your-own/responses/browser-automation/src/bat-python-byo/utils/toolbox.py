@@ -10,6 +10,8 @@ import httpx
 from azure.core.credentials import TokenCredential
 from azure.identity import get_bearer_token_provider
 
+from utils.utils import public_tool_output
+
 
 @dataclass
 class ToolboxCallResult:
@@ -18,6 +20,7 @@ class ToolboxCallResult:
     live_view_url: str | None = None
     is_error: bool = False
     session_name: str | None = None
+    public_output: str | None = None
 
 
 class ToolboxClient:
@@ -173,10 +176,20 @@ class ToolboxClient:
                 else:
                     sanitized_items.append(text)
             output = "\n".join(sanitized_items)
+            text_items = sanitized_items
 
+        is_error = bool(result.get("isError"))
+        live_view_urls = [live_view_url] if live_view_url else []
+        public_output = "\n".join(
+            public_tool_output(tool_name, text, is_error, live_view_urls)
+            for text in text_items if text
+        ) if any(text_items) else public_tool_output(
+            tool_name, output, is_error, live_view_urls
+        )
         return ToolboxCallResult(
             output=output,
             browser_session_id=browser_session_id,
             live_view_url=live_view_url,
-            is_error=bool(result.get("isError")),
+            is_error=is_error,
+            public_output=public_output,
         )

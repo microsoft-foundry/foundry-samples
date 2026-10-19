@@ -229,10 +229,13 @@ public class BrowserAutomationHandler : ResponseHandler
                 var output = result.IsError
                     ? $"Tool error: {result.Output}"
                     : result.Output;
+                var publicOutput = result.PublicOutput ?? result.Output;
+                if (result.IsError)
+                    publicOutput = $"Tool error: {publicOutput}";
                 if (result.LiveViewUrl is { } liveViewUrl)
                     liveViewUrls.Add(liveViewUrl);
-                var publicOutput = Redaction.PublicToolOutput(
-                    call.FunctionName, output, result.IsError, liveViewUrls);
+                publicOutput = Redaction.PublicToolOutput(
+                    call.FunctionName, publicOutput, result.IsError, liveViewUrls);
                 foreach (var streamEvent in stream.OutputItemFunctionCallOutput(
                              call.CallId,
                              BinaryData.FromObjectAsJson(publicOutput)))
@@ -410,16 +413,18 @@ public class BrowserAutomationHandler : ResponseHandler
         ActiveSessions[name] = new BrowserSessionState(
             result.BrowserSessionId, result.LiveViewUrl);
         _lastSession = name;
+        string WrapResult(string output) => JsonSerializer.Serialize(new
+        {
+            status = "created",
+            session = name,
+            browserSessionId = result.BrowserSessionId,
+            result = output,
+        });
         return result with
         {
             SessionName = name,
-            Output = JsonSerializer.Serialize(new
-            {
-                status = "created",
-                session = name,
-                browserSessionId = result.BrowserSessionId,
-                result = result.Output,
-            }),
+            Output = WrapResult(result.Output),
+            PublicOutput = WrapResult(result.PublicOutput ?? result.Output),
         };
     }
 
@@ -484,20 +489,24 @@ public class BrowserAutomationHandler : ResponseHandler
             if (reference != "all")
                 return await CloseSessionAsync(reference, new(), cancellationToken);
             var results = new Dictionary<string, string>();
+            var publicResults = new Dictionary<string, string>();
             var isError = false;
             foreach (var name in ActiveSessions.Keys.ToList())
             {
                 var result = await CloseSessionAsync(name, new(), cancellationToken);
                 results[name] = result.Output;
+                publicResults[name] = result.PublicOutput ?? result.Output;
                 isError |= result.IsError;
             }
+            string SummarizeResults(Dictionary<string, string> outputs) => JsonSerializer.Serialize(new
+            {
+                status = isError ? "close_failed" : "ended_all",
+                results = outputs,
+                remaining = ActiveSessions.Keys.ToList(),
+            });
             return new ToolboxCallResult(
-                JsonSerializer.Serialize(new
-                {
-                    status = isError ? "close_failed" : "ended_all",
-                    results,
-                    remaining = ActiveSessions.Keys.ToList(),
-                }), null, null, isError);
+                SummarizeResults(results), null, null, isError,
+                PublicOutput: SummarizeResults(publicResults));
         }
 
         var shortName = functionName.Split("___").Last();

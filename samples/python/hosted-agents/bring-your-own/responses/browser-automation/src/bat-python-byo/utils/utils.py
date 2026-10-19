@@ -62,8 +62,9 @@ def public_tool_output(
              if text.startswith(item)),
             "",
         )
+        text = text[len(prefix):]
         try:
-            value = json.loads(text[len(prefix):])
+            value = json.loads(text)
         except json.JSONDecodeError:
             value = None
         if isinstance(value, (dict, list)):
@@ -81,6 +82,6 @@ def public_tool_output(
             lambda match: f"### {match[1]}\nContent omitted for privacy.\n",
             text,
         )
-        return redact(text)
+        return prefix + redact(text)
 
     return sanitize_text(output)
