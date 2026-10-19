@@ -24,15 +24,14 @@ pyautogui.PAUSE = 0.05
 INSTRUCTIONS = """\
 You are a Windows desktop computer-use agent.
 Calculator and Notepad are open on the desktop:
-1. Use Calculator to compute 128 * 4 (result: 512).
-2. Click inside the Notepad window and type:
-   "Foundry CUA Desktop Check: 128 * 4 = 512"
-3. Once the note is typed in Notepad, summarize what you completed.
+1. Click the Calculator window to focus it, compute 347 * 29, and press Ctrl+C to copy the result from Calculator.
+2. Click inside the Notepad text area, type "Foundry CUA Desktop Check: 347 * 29 = ", and paste (Ctrl+V) or type the result shown in Calculator.
+3. Once the full line is visible in Notepad, summarize what you completed and state the calculated result.
 """
 
 PROMPT = (
-    "Compute 128 * 4 in Calculator, then click into Notepad and type "
-    "'Foundry CUA Desktop Check: 128 * 4 = 512'."
+    "Use Calculator to compute 347 * 29, copy the result from Calculator, "
+    "and write 'Foundry CUA Desktop Check: 347 * 29 = <result>' in Notepad."
 )
 
 KEY_MAP = {
