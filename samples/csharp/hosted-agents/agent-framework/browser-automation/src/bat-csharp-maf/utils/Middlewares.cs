@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Agents.AI;
@@ -13,7 +14,14 @@ public static class Middlewares
     private static readonly ILogger Logger =
         LoggerFactory.Create(builder => builder.AddConsole())
             .CreateLogger("Middlewares");
-    private static string? _liveViewUrl;
+    private const string LiveViewStateKey = "BrowserAutomation.LiveViewState";
+    private const string LiveViewUrlsKey = "BrowserAutomation.LiveViewUrls";
+
+    private sealed class LiveViewRequestState(ConcurrentDictionary<string, string> urls)
+    {
+        public ConcurrentDictionary<string, string> Urls { get; } = urls;
+        public ConcurrentQueue<KeyValuePair<string, string>> Pending { get; } = new();
+    }
 
     public static async ValueTask<object?> FunctionInvocationMiddleware(
         AIAgent agent,
@@ -24,31 +32,38 @@ public static class Middlewares
         var functionName = context.Function.Name;
         Logger.LogInformation("[tool] name={Name}", functionName);
 
+        var isClose = functionName.EndsWith(
+            "close_browser_session",
+            StringComparison.OrdinalIgnoreCase);
+        var isCreate = functionName.EndsWith(
+            "create_browser_session",
+            StringComparison.OrdinalIgnoreCase);
+        if (!isCreate && !isClose)
+            return await next(context, cancellationToken);
+
+        if (context.Options?.AdditionalProperties?.TryGetValue(LiveViewStateKey, out var value) != true
+            || value is not LiveViewRequestState state)
+            throw new InvalidOperationException("Browser tools require live-view response middleware.");
+
         var result = await next(context, cancellationToken);
-
-        if (functionName.EndsWith(
-                "close_browser_session",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            Interlocked.Exchange(ref _liveViewUrl, null);
-            return result;
-        }
-
-        if (!functionName.EndsWith(
-                "create_browser_session",
-                StringComparison.OrdinalIgnoreCase))
-            return result;
-
         var serializedResult = SerializeResult(result);
-        Logger.LogInformation(
-            "[tool-result] name={Name} type={ResultType} response={Response}",
-            functionName,
-            result?.GetType().FullName ?? "<null>",
-            serializedResult);
 
         try
         {
             using var document = JsonDocument.Parse(serializedResult);
+            if (ContainsToolError(document.RootElement))
+                return result;
+
+            if (isClose)
+            {
+                if (context.Arguments.TryGetValue("browserSessionId", out var reference)
+                    && reference?.ToString() is { Length: > 0 } closedSessionId)
+                    state.Urls.TryRemove(closedSessionId, out _);
+                else
+                    Logger.LogWarning("[browser-session] close call did not identify a browserSessionId");
+                return result;
+            }
+
             if (!TryExtractBrowserSession(
                     document.RootElement,
                     out var browserSessionId,
@@ -60,12 +75,14 @@ public static class Middlewares
             }
 
             if (!string.IsNullOrEmpty(liveViewUrl))
-                Interlocked.Exchange(ref _liveViewUrl, liveViewUrl);
+            {
+                state.Urls[browserSessionId] = liveViewUrl;
+                state.Pending.Enqueue(new(browserSessionId, liveViewUrl));
+            }
 
             Logger.LogInformation(
-                "[browser-session] id={BrowserSessionId} liveViewUrl={LiveViewUrl}",
-                browserSessionId,
-                liveViewUrl ?? "<missing>");
+                "[browser-session] id={BrowserSessionId}",
+                browserSessionId);
 
             return JsonSerializer.Serialize(new
             {
@@ -77,7 +94,7 @@ public static class Middlewares
         {
             Logger.LogWarning(
                 exception,
-                "[browser-session] failed to parse create result");
+                "[browser-session] failed to parse browser result");
             return result;
         }
     }
@@ -89,21 +106,21 @@ public static class Middlewares
         AIAgent innerAgent,
         CancellationToken cancellationToken)
     {
+        session ??= await innerAgent.CreateSessionAsync(cancellationToken);
+        var (runOptions, state) = PrepareLiveViewState(session, options);
         var response = await innerAgent.RunAsync(
             messages,
             session,
-            options,
+            runOptions,
             cancellationToken);
 
-        var liveViewUrl = Interlocked.Exchange(ref _liveViewUrl, null);
-        if (!string.IsNullOrEmpty(liveViewUrl))
+        cancellationToken.ThrowIfCancellationRequested();
+        var footer = FormatLiveViewFooter(state);
+        if (footer is not null)
         {
-            Logger.LogInformation(
-                "[live-view] injecting non-streaming response url={LiveViewUrl}",
-                liveViewUrl);
             response.Messages.Add(new ChatMessage(
                 ChatRole.Assistant,
-                $"\n\n🔴 [Browser Live View]({liveViewUrl})"));
+                footer));
         }
         return response;
     }
@@ -116,39 +133,104 @@ public static class Middlewares
             AIAgent innerAgent,
             [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        session ??= await innerAgent.CreateSessionAsync(cancellationToken);
+        var (runOptions, state) = PrepareLiveViewState(session, options);
         await foreach (var update in innerAgent.RunStreamingAsync(
                            messages,
                            session,
-                           options,
+                           runOptions,
                            cancellationToken))
         {
-            var liveViewUrl = Interlocked.Exchange(ref _liveViewUrl, null);
-            if (!string.IsNullOrEmpty(liveViewUrl))
-            {
-                Logger.LogInformation(
-                    "[live-view] injecting streaming response url={LiveViewUrl}",
-                    liveViewUrl);
-                yield return new AgentResponseUpdate(
-                    ChatRole.Assistant,
-                    [new TextContent(
-                        $"🔴 Created Browser Session: [Live View]({liveViewUrl})\n\n")]);
-            }
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var notice in GetCreationNotices(state))
+                yield return notice;
             yield return update;
         }
 
-        var finalLiveViewUrl = Interlocked.Exchange(ref _liveViewUrl, null);
-        if (!string.IsNullOrEmpty(finalLiveViewUrl))
+        cancellationToken.ThrowIfCancellationRequested();
+        foreach (var notice in GetCreationNotices(state))
+            yield return notice;
+        var footer = FormatLiveViewFooter(state);
+        if (footer is not null)
         {
-            Logger.LogInformation(
-                "[live-view] appending final streaming response url={LiveViewUrl}",
-                finalLiveViewUrl);
             yield return new AgentResponseUpdate(
                 ChatRole.Assistant,
-                [new TextContent(
-                    $"\n\n🔴 [Browser Live View]({finalLiveViewUrl})")])
+                [new TextContent(footer)])
             {
                 FinishReason = ChatFinishReason.Stop,
             };
+        }
+    }
+
+    private static (AgentRunOptions Options, LiveViewRequestState State) PrepareLiveViewState(
+        AgentSession session, AgentRunOptions? options)
+    {
+        ConcurrentDictionary<string, string> urls;
+        lock (session.StateBag)
+        {
+            urls = session.StateBag.GetValue<ConcurrentDictionary<string, string>>(LiveViewUrlsKey)
+                ?? new ConcurrentDictionary<string, string>();
+            session.StateBag.SetValue(LiveViewUrlsKey, urls);
+        }
+        var state = new LiveViewRequestState(urls);
+        var runOptions = options?.Clone() ?? new AgentRunOptions();
+        runOptions.AdditionalProperties ??= new();
+        runOptions.AdditionalProperties[LiveViewStateKey] = state;
+        return (runOptions, state);
+    }
+
+    private static IEnumerable<AgentResponseUpdate> GetCreationNotices(LiveViewRequestState state)
+    {
+        while (state.Pending.TryDequeue(out var browser))
+        {
+            if (state.Urls.TryGetValue(browser.Key, out var activeUrl) && activeUrl == browser.Value)
+                yield return new AgentResponseUpdate(
+                    ChatRole.Assistant,
+                    [new TextContent(
+                        $"🔴 Created Browser Session: [Live View]({browser.Value})\n\n")]);
+        }
+    }
+
+    private static string? FormatLiveViewFooter(LiveViewRequestState state)
+    {
+        var browsers = state.Urls.ToArray().OrderBy(pair => pair.Key, StringComparer.Ordinal).ToList();
+        return browsers.Count switch
+        {
+            0 => null,
+            1 => $"\n\n🔴 [Browser Live View]({browsers[0].Value})\n",
+            _ => "\n\n---\n\n**Active Browser Sessions:**\n\n"
+                + string.Join("\n", browsers.Select(browser =>
+                    $"- **{browser.Key}**: [Live View]({browser.Value})")) + "\n",
+        };
+    }
+
+    private static bool ContainsToolError(JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                return element.EnumerateObject().Any(property =>
+                    (property.Name.Equals("isError", StringComparison.OrdinalIgnoreCase)
+                        && property.Value.ValueKind == JsonValueKind.True)
+                    || ContainsToolError(property.Value));
+            case JsonValueKind.Array:
+                return element.EnumerateArray().Any(ContainsToolError);
+            case JsonValueKind.String:
+                var text = element.GetString()?.TrimStart();
+                if (string.IsNullOrEmpty(text) || (text[0] != '{' && text[0] != '['))
+                    return false;
+                try
+                {
+                    using var nested = JsonDocument.Parse(text);
+                    return ContainsToolError(nested.RootElement);
+                }
+                catch (JsonException exception)
+                {
+                    Logger.LogDebug(exception, "[browser-session] result text was not JSON");
+                    return false;
+                }
+            default:
+                return false;
         }
     }
 
