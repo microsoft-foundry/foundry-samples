@@ -5,9 +5,11 @@ desktop through screenshots, mouse actions, and keyboard input using PyAutoGUI.
 """
 
 import base64
+import ctypes
 import io
 import subprocess
 import time
+from pathlib import Path
 from typing import Any
 
 import dotenv
@@ -23,15 +25,15 @@ pyautogui.PAUSE = 0.05
 
 INSTRUCTIONS = """\
 You are a Windows desktop computer-use agent.
-Calculator and Notepad are open on the desktop:
-1. Click the Calculator window to focus it, compute 347 * 29, and press Ctrl+C to copy the result from Calculator.
-2. Click inside the Notepad text area, type "Foundry CUA Desktop Check: 347 * 29 = ", and paste (Ctrl+V) or type the result shown in Calculator.
-3. Once the full line is visible in Notepad, summarize what you completed and state the calculated result.
+Calculator (on the left) and Notepad (on the right, with a pre-created calculation_result_<timestamp>.txt file already open) are visible on the desktop:
+1. Click the Calculator window, compute 347 * 29, press Ctrl+C to copy the result, and press Alt+F4 to close Calculator.
+2. Click inside the Notepad text editor, type "Foundry CUA Desktop Check: 347 * 29 = ", press Ctrl+V to paste the result, and press Ctrl+S to save the file directly (no Save As dialog is needed).
+3. Once saved, summarize what you completed and state the calculated result.
 """
 
 PROMPT = (
-    "Use Calculator to compute 347 * 29, copy the result from Calculator, "
-    "and write 'Foundry CUA Desktop Check: 347 * 29 = <result>' in Notepad."
+    "Compute 347 * 29 in Calculator, copy the result, close Calculator, "
+    "then write 'Foundry CUA Desktop Check: 347 * 29 = <result>' in Notepad and save the file (Ctrl+S)."
 )
 
 KEY_MAP = {
@@ -117,15 +119,41 @@ def take_desktop_screenshot() -> str:
     return base64.b64encode(buffer.getvalue()).decode("ascii")
 
 
+def launch_side_by_side(output_file: Path) -> None:
+    """Close prior instances and open Calculator (left) and Notepad (right) with `output_file`."""
+    subprocess.run(
+        ["powershell", "-NoProfile", "-Command",
+         "Get-Process CalculatorApp,Notepad -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.Id -Force }; "
+         "Remove-Item \"$env:LOCALAPPDATA\\Packages\\Microsoft.WindowsNotepad_*\\LocalState\\TabState\\*\" -Force -ErrorAction SilentlyContinue"],
+        check=False,
+    )
+    output_file.write_text("", encoding="utf-8")
+    subprocess.Popen(["calc.exe"])
+    subprocess.Popen(["notepad.exe", str(output_file)])
+    time.sleep(1.5)
+
+    user32 = ctypes.windll.user32
+    calc_hwnd = user32.FindWindowW("ApplicationFrameWindow", "Calculator") or user32.FindWindowW(None, "Calculator")
+    notepad_hwnd = user32.FindWindowW("Notepad", None)
+
+    if calc_hwnd:
+        user32.ShowWindow(calc_hwnd, 9)  # SW_RESTORE
+        user32.SetWindowPos(calc_hwnd, -1, 80, 80, 420, 560, 0x0040)  # HWND_TOPMOST | SWP_SHOWWINDOW
+    if notepad_hwnd:
+        user32.ShowWindow(notepad_hwnd, 9)  # SW_RESTORE
+        user32.SetWindowPos(notepad_hwnd, -1, 540, 80, 760, 560, 0x0040)  # HWND_TOPMOST | SWP_SHOWWINDOW
+    time.sleep(0.3)
+
+
 def main() -> None:
     openai_client, model, extra_body = create_agent_and_client(
         agent_name="foundry-cua-desktop-agent",
         instructions=INSTRUCTIONS,
     )
 
-    subprocess.Popen(["calc.exe"])
-    subprocess.Popen(["notepad.exe"])
-    time.sleep(1.5)
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    output_file = Path(__file__).resolve().parent / f"calculation_result_{timestamp}.txt"
+    launch_side_by_side(output_file)
 
     run_cua_loop(
         openai_client=openai_client,
@@ -136,6 +164,9 @@ def main() -> None:
         take_screenshot=take_desktop_screenshot,
         extra_body=extra_body,
     )
+
+    if output_file.exists():
+        print(f"\nSaved file ({output_file.name}): {output_file.read_text(encoding='utf-8').strip()!r}")
 
 
 if __name__ == "__main__":

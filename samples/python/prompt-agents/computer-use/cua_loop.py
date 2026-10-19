@@ -57,6 +57,24 @@ def create_agent_and_client(
     return project_client.get_openai_client(), model, extra_body
 
 
+def build_screenshot_output(openai_client: OpenAI, screenshot_b64: str) -> dict[str, str]:
+    """Build `computer_screenshot` output using a data URI or uploaded file ID for larger screenshots."""
+    if len(screenshot_b64) <= 64_000:
+        return {
+            "type": "computer_screenshot",
+            "image_url": f"data:image/png;base64,{screenshot_b64}",
+        }
+
+    uploaded = openai_client.files.create(
+        file=("screenshot.png", base64.b64decode(screenshot_b64), "image/png"),
+        purpose="assistants",
+    )
+    return {
+        "type": "computer_screenshot",
+        "file_id": uploaded.id,
+    }
+
+
 def run_cua_loop(
     openai_client: OpenAI,
     model: str,
@@ -74,6 +92,7 @@ def run_cua_loop(
     print(f"\nUser Prompt: {prompt}\n")
     response = openai_client.responses.create(
         instructions=instructions,
+        reasoning={"effort": "low"},
         input=prompt,
         **request_kwargs,
     )
@@ -99,34 +118,17 @@ def run_cua_loop(
             if action_dict.get("type") != "screenshot":
                 time.sleep(0.2)
 
-        # Capture the updated screen state and send it back in `computer_call_output`.
-        # Small screenshots are sent inline as a data URI; large desktop screenshots are
-        # uploaded via the Files API to stay under the 65 KB URI limit.
-        screenshot_b64 = take_screenshot()
-        if len(screenshot_b64) <= 60_000:
-            screenshot_output = {
-                "type": "computer_screenshot",
-                "image_url": f"data:image/png;base64,{screenshot_b64}",
-            }
-        else:
-            uploaded = openai_client.files.create(
-                file=("screenshot.png", base64.b64decode(screenshot_b64), "image/png"),
-                purpose="assistants",
-            )
-            screenshot_output = {
-                "type": "computer_screenshot",
-                "file_id": uploaded.id,
-            }
-
+        # Capture the updated screen state and send it back in `computer_call_output`
         call_output: dict[str, Any] = {
             "type": "computer_call_output",
             "call_id": call.call_id,
-            "output": screenshot_output,
+            "output": build_screenshot_output(openai_client, take_screenshot()),
         }
 
         response = openai_client.responses.create(
             previous_response_id=response.id,
             instructions=instructions,
+            reasoning={"effort": "low"},
             input=[call_output],
             **request_kwargs,
         )
