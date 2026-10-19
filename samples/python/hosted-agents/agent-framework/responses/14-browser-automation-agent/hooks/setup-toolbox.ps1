@@ -35,8 +35,8 @@ $token = az account get-access-token --resource "https://ai.azure.com" --query a
 $toolboxBody = @{
     tools = @(
         @{
-            type = "browser_automation_preview"
-            browser_automation_preview = @{
+            type = "browser_automation"
+            browser_automation = @{
                 connection = @{
                     project_connection_id = $connectionId
                 }

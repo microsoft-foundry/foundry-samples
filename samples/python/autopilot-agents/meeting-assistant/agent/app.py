@@ -32,7 +32,6 @@ from pydantic import ValidationError
 from .workiq import (
     WORKIQ_ENDPOINT, WORKIQ_SCOPE, MeetingWorkIQ, WorkIQError, WorkIQTransportDiagnostics,
 )
-from .hosting import MeetingActivityHost
 from .meeting_analysis import MeetingAnalysis
 from .meeting_lifecycle import (
     MeetingLifecycle, MeetingState, RecordingAvailable, utc_time,
@@ -294,7 +293,8 @@ def register_handlers(agent: AgentApplication[TurnState], handlers: MeetingHandl
 
 def build_app() -> ActivityAgentServerHost:
     settings = Settings.from_env()
-    host = MeetingActivityHost(
+    host = ActivityAgentServerHost(
+        digital_worker=True,
         configure_observability=partial(
             configure_observability,
             instrumentation_options={"openai_agents": {"enabled": False}},

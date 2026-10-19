@@ -9,11 +9,11 @@ services:
   ai-project:
     host: azure.ai.project
     deployments:
-      - name: gpt-5.4-mini
+      - name: gpt-6-sol
         model:
           format: OpenAI
-          name: gpt-5.4-mini
-          version: '2026-03-17'
+          name: gpt-6-sol
+          version: '2026-09-22'
         sku:
           name: GlobalStandard
           capacity: 10
@@ -40,7 +40,7 @@ services:
       - protocol: responses
         version: 2.0.0
     env:
-      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-5.4-mini}
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-6-sol}
       TOOLBOX_NAME: browser-automation-tools
     container:
       resources:
@@ -63,5 +63,3 @@ hooks:
     posix:
       shell: sh
       run: hooks/postdeploy.sh
-infra:
-  provider: microsoft.foundry

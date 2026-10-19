@@ -1,102 +1,36 @@
 ---
 name: azure-playwright-browser-automation
-description: Automates browser interactions for web testing, form filling, screenshots, and data extraction using Playwright CLI connected to a remote Azure Playwright Service browser.
-allowed-tools: run_playwright_cli, create_session, close_browser_session, get_live_view_url
+description: Automates browser interactions with the Azure Playwright browser tools discovered from Foundry Toolbox.
 ---
 
-# Browser automation with Playwright CLI and Azure Playwright Service
+# Azure Playwright browser automation
 
-This skill is the operational reference for browser tasks. The base prompt owns
-the non-negotiable lifecycle rules; this skill provides the concrete Playwright
-CLI command patterns.
+## Start and reuse a session
 
-## Remote browser connection
+1. Call the tool ending in `create_browser_session`.
+2. Keep the returned `browserSessionId`.
+3. Pass that ID to every browser tool until the session is closed.
+4. Reuse the active session for follow-up work.
 
-1. Reuse an active browser session for follow-up browser work in the same hosted
-   agent session whenever one is available. If no active browser is available,
-   call `create_session` with no arguments.
-2. After `create_session` returns, call `get_live_view_url`. The server injects
-   the URL directly into the response — do NOT repeat or output it yourself.
-   Do not include the raw CDP URL in user-facing text.
-3. Call `run_playwright_cli` with `sessionId='browser'` and the command:
+The live-view URL is delivered directly to the user. Do not repeat or modify it.
 
-   ```text
-   open about:blank
-   ```
+## Typical workflow
 
-   The CDP URL is injected automatically by the server -- do NOT pass it.
-   This must be a standalone handshake command. Do not combine it with target
-   navigation, `eval`, `snapshot`, or any other browser operation.
-4. Run all subsequent commands with the same `sessionId` (`browser`):
+1. `browser_navigate` to the target URL.
+2. `browser_snapshot` to inspect the accessibility tree.
+3. Use refs or unique selectors with interaction tools such as:
+   - `browser_click`
+   - `browser_type`
+   - `browser_fill_form`
+   - `browser_select_option`
+   - `browser_press_key`
+4. Take a fresh snapshot after page-changing actions.
+5. Use `browser_evaluate` only when the task genuinely requires page-side JavaScript.
 
-   ```text
-   goto https://example.com
-   snapshot
-   ```
-
-   Use `goto <url>` for target navigation after the handshake; do not use
-   `open <url>` for normal page navigation.
-   If a follow-up command says the local session is not open, reconnect with
-   `command: open about:blank`. Do not call `create_session` for this recovery.
-5. Keep the browser session open after successful work so follow-up tasks can
-   continue in the same live browser. Call `close_browser_session` only when the
-   user explicitly asks to close the browser, when the session is unusable, or
-   before replacing it with a fresh remote browser.
-
-If the initial `open about:blank` command fails, do not retry repeatedly. Call
-`close_browser_session`, then call `create_session` again to create a fresh
-remote browser.
-
-## Common commands
-
-Pass only the arguments shown below to `run_playwright_cli.command`; do not
-include `playwright-cli` or `-s=<sessionId>`.
-
-```bash
-# Navigation
-open about:blank
-goto https://playwright.dev
-go-back
-go-forward
-reload
-
-# Page state
-snapshot
-screenshot
-
-# Interactions
-click e3
-dblclick e7
-fill e5 "user@example.com"
-fill e5 "search text" --submit
-type "search query"
-press Enter
-hover e4
-select e9 "option-value"
-check e12
-uncheck e12
-
-# Date/calendar fields - use fill with the value format the field expects
-fill e8 "2026-06-15"
-fill e8 "06/15/2026"
-
-# Tabs
-tab-list
-tab-new https://example.com/other
-tab-select 0
-tab-close
-
-# Extraction and diagnostics
-eval "document.title"
-eval "JSON.stringify([...document.querySelectorAll('a')].map(a => a.href))"
-console
-```
-
-After most commands, Playwright CLI emits page status and a snapshot. Use refs
-from the snapshot, such as `e15`, for subsequent interactions.
+Use `browser_tabs` for tab management, `browser_take_screenshot` for visual evidence, and `browser_network_requests` or `browser_console_messages` for diagnostics.
 
 ## Cleanup
 
-Do not close a healthy remote browser at the end of a normal task. When the user
-asks to close the browser, or when replacing a broken session, call
-`close_browser_session` with just `sessionId='browser'`.
+Keep sessions open after successful work and while waiting for user input, approval, CAPTCHA, MFA, or manual browser interaction. Resume in the same browser with a fresh snapshot when the user replies.
+
+Call `close_browser_session` only when the user explicitly requests it. If a session becomes unusable, report the problem instead of silently closing it.

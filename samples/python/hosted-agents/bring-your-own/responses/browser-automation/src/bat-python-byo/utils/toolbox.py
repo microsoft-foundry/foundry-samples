@@ -1,116 +1,185 @@
 # Copyright (c) Microsoft. All rights reserved.
 
-"""Toolbox MCP client for browser session lifecycle management."""
-
-from __future__ import annotations
-
 import json
-import logging
+import threading
+import uuid
+from dataclasses import dataclass
+from typing import Any
 
 import httpx
+from azure.core.credentials import TokenCredential
+from azure.identity import get_bearer_token_provider
 
-logger = logging.getLogger(__name__)
+
+@dataclass
+class ToolboxCallResult:
+    output: str
+    browser_session_id: str | None = None
+    live_view_url: str | None = None
+    is_error: bool = False
+    session_name: str | None = None
 
 
 class ToolboxClient:
-    """Lightweight MCP client for Foundry Toolbox browser session management."""
-
-    def __init__(self, endpoint: str, token_provider):
-        self.endpoint = endpoint
-        self._get_token = token_provider
+    def __init__(
+        self,
+        endpoint: str,
+        credential: TokenCredential,
+        api_version: str = "v1",
+    ) -> None:
+        self._endpoint = endpoint
+        self._token_provider = get_bearer_token_provider(
+            credential, "https://ai.azure.com/.default"
+        )
+        self._api_version = api_version
         self._session_id: str | None = None
-        self._req_id = 0
+        self._tools: list[dict[str, Any]] | None = None
         self._initialized = False
-        self._tool_names: dict[str, str] = {}  # suffix -> full name
+        self._lock = threading.RLock()
 
-    def _headers(self) -> dict:
-        h = {
+    def _headers(self) -> dict[str, str]:
+        token = self._token_provider()
+        headers = {
+            "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self._get_token()}",
         }
         if self._session_id:
-            h["mcp-session-id"] = self._session_id
-        return h
+            headers["Mcp-Session-Id"] = self._session_id
+        return headers
 
-    def _next_id(self) -> int:
-        self._req_id += 1
-        return self._req_id
+    def _post(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
+        payload = {
+            "jsonrpc": "2.0",
+            "id": str(uuid.uuid4()),
+            "method": method,
+            "params": params,
+        }
+        response = httpx.post(
+            self._endpoint,
+            headers=self._headers(),
+            json=payload,
+            params={"api-version": self._api_version},
+            timeout=120,
+        )
+        response.raise_for_status()
+        if session_id := response.headers.get("mcp-session-id"):
+            self._session_id = session_id
 
-    def initialize(self) -> str:
-        """Send MCP initialize + initialized notification, then discover tools."""
-        if self._initialized:
-            return "already-initialized"
-        with httpx.Client(timeout=60) as client:
-            resp = client.post(
-                self.endpoint,
-                headers=self._headers(),
-                json={
-                    "jsonrpc": "2.0",
-                    "id": self._next_id(),
-                    "method": "initialize",
-                    "params": {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {},
-                        "clientInfo": {"name": "browser-automation-agent", "version": "1.0.0"},
+        body = response.json()
+        if error := body.get("error"):
+            raise RuntimeError(
+                f"MCP {method} failed: {json.dumps(error, ensure_ascii=False)}"
+            )
+        return body.get("result", {})
+
+    def initialize(self) -> None:
+        with self._lock:
+            if self._initialized:
+                return
+            self._post(
+                "initialize",
+                {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "browser-automation-byo",
+                        "version": "1.0.0",
                     },
                 },
             )
-            resp.raise_for_status()
-            sid = resp.headers.get("mcp-session-id")
-            if sid and sid != "None":
-                self._session_id = sid
-            data = resp.json()
-            client.post(
-                self.endpoint,
-                headers=self._headers(),
-                json={"jsonrpc": "2.0", "method": "notifications/initialized"},
-            )
-            # Discover available tools
-            list_resp = client.post(
-                self.endpoint,
-                headers=self._headers(),
-                json={"jsonrpc": "2.0", "id": self._next_id(), "method": "tools/list", "params": {}},
-            )
-            list_resp.raise_for_status()
-            tools = list_resp.json().get("result", {}).get("tools", [])
-            for t in tools:
-                name = t.get("name", "")
-                # Map the suffix (e.g. "create_session") to the full prefixed name
-                parts = name.split("___", 1)
-                suffix = parts[1] if len(parts) == 2 else name
-                self._tool_names[suffix] = name
-            logger.info("Toolbox tools discovered: %s", list(self._tool_names.values()))
-            self._initialized = True
-            return data.get("result", {}).get("serverInfo", {}).get("name", "unknown")
-
-    def call_tool(self, name: str, arguments: dict) -> dict:
-        """Call a Toolbox tool and return the parsed JSON result.
-
-        The name can be either a suffix (e.g. 'create_session') which will be
-        resolved via tools/list, or a full tool name.
-        """
-        self.initialize()
-        # Resolve suffix to full name if needed
-        if "___" not in name and name in self._tool_names:
-            name = self._tool_names[name]
-        with httpx.Client(timeout=120) as client:
-            resp = client.post(
-                self.endpoint,
+            response = httpx.post(
+                self._endpoint,
                 headers=self._headers(),
                 json={
                     "jsonrpc": "2.0",
-                    "id": self._next_id(),
-                    "method": "tools/call",
-                    "params": {"name": name, "arguments": arguments},
+                    "method": "notifications/initialized",
                 },
+                params={"api-version": self._api_version},
+                timeout=120,
             )
-            resp.raise_for_status()
-            result = resp.json().get("result", {})
-            content = result.get("content", [])
-            for c in content:
-                if isinstance(c, dict) and c.get("type") == "text" and c.get("text"):
-                    try:
-                        return json.loads(c["text"])
-                    except (json.JSONDecodeError, TypeError):
-                        return {"text": c["text"]}
-            return result
+            response.raise_for_status()
+            self._initialized = True
+
+    def list_tools(self) -> list[dict[str, Any]]:
+        with self._lock:
+            if self._tools is None:
+                self.initialize()
+                self._tools = self._post("tools/list", {}).get("tools", [])
+            return self._tools
+
+    def response_tools(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "type": "function",
+                "name": tool["name"],
+                "description": tool.get("description", ""),
+                "parameters": tool.get(
+                    "inputSchema",
+                    {"type": "object", "properties": {}},
+                ),
+                "strict": False,
+            }
+            for tool in self.list_tools()
+        ]
+
+    def call_tool(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+    ) -> ToolboxCallResult:
+        with self._lock:
+            self.initialize()
+            result = self._post(
+                "tools/call",
+                {"name": tool_name, "arguments": arguments},
+            )
+        content = result.get("content", [])
+        text_items = [
+            item.get("text", "")
+            for item in content
+            if item.get("type") == "text"
+        ]
+        output = "\n".join(item for item in text_items if item)
+        if not output:
+            output = json.dumps(result, ensure_ascii=False)
+
+        browser_session_id = None
+        live_view_url = None
+        for text in text_items:
+            try:
+                value = json.loads(text)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(value, dict):
+                browser_session_id = (
+                    browser_session_id or value.get("browserSessionId")
+                )
+                live_view_url = live_view_url or value.get("liveViewUrl")
+
+        if live_view_url:
+            sanitized_items = []
+            for text in text_items:
+                try:
+                    value = json.loads(text)
+                except json.JSONDecodeError:
+                    sanitized_items.append(text)
+                    continue
+                if isinstance(value, dict):
+                    value.pop("liveViewUrl", None)
+                    value.setdefault(
+                        "note",
+                        "The live view link is delivered directly to the user.",
+                    )
+                    sanitized_items.append(
+                        json.dumps(value, ensure_ascii=False)
+                    )
+                else:
+                    sanitized_items.append(text)
+            output = "\n".join(sanitized_items)
+
+        return ToolboxCallResult(
+            output=output,
+            browser_session_id=browser_session_id,
+            live_view_url=live_view_url,
+            is_error=bool(result.get("isError")),
+        )

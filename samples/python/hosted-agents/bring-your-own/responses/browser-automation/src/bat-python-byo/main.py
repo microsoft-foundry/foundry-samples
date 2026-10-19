@@ -1,16 +1,11 @@
 # Copyright (c) Microsoft. All rights reserved.
 
-"""Browser Automation — Bring Your Own Responses agent with Playwright via Toolbox.
-
-Hosted agent that automates browser interactions using playwright-cli via
-Foundry Toolbox MCP. Supports multiple concurrent browser sessions with
-lazy initialization — sessions are only created when the model first needs
-to interact with a browser.
-
-Required environment variables:
-    FOUNDRY_PROJECT_ENDPOINT: Foundry project endpoint (auto-injected in hosted containers)
-    AZURE_AI_MODEL_DEPLOYMENT_NAME: Model deployment name (declared in agent.manifest.yaml)
-"""
+import asyncio
+import json
+import logging
+import os
+from copy import deepcopy
+from dataclasses import dataclass
 
 from azure.ai.agentserver.responses import (
     CreateResponse,
@@ -20,285 +15,353 @@ from azure.ai.agentserver.responses import (
     ResponsesServerOptions,
 )
 from azure.ai.agentserver.responses.models import get_input_expanded
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from azure.ai.projects import AIProjectClient
-import asyncio
-import json
-import logging
-import os
-
+from azure.identity import DefaultAzureCredential
 from dotenv import load_dotenv
 
-from utils.toolbox import ToolboxClient
-from utils.browser import BrowserSession
-from utils.skills import load_skill, list_skills
-from utils.constants import SYSTEM_PROMPT, TOOLS, AZURE_AI_SCOPE
-from utils.utils import redact as _redact
+from utils.constants import LOAD_SKILL_TOOL, SESSION_TOOLS, SYSTEM_PROMPT
+from utils.skills import list_skills, load_skill
+from utils.toolbox import ToolboxCallResult, ToolboxClient
+from utils.utils import redact
 
 load_dotenv(override=False)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# ── Configuration ─────────────────────────────────────────────────────────────
-
 _endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
 _model = os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"]
-
-_TOOLBOX_NAME = "browser-automation-tools"
-TOOLBOX_ENDPOINT = f"{_endpoint.rstrip('/')}/toolboxes/{_TOOLBOX_NAME}/mcp?api-version=v1"
+_toolbox_name = os.getenv("TOOLBOX_NAME", "browser-automation-tools")
 
 _credential = DefaultAzureCredential()
 _project_client = AIProjectClient(endpoint=_endpoint, credential=_credential)
 _responses_client = _project_client.get_openai_client().responses
-_token_provider = get_bearer_token_provider(_credential, AZURE_AI_SCOPE)
-_toolbox = ToolboxClient(TOOLBOX_ENDPOINT, _token_provider)
+_toolbox = ToolboxClient(
+    f"{_endpoint.rstrip('/')}/toolboxes/{_toolbox_name}/mcp",
+    _credential,
+)
+_tools: list[dict] | None = None
 
-# ── Multi-session state ───────────────────────────────────────────────────────
 
-_sessions: dict[str, dict] = {}  # name -> {"browser": BrowserSession, "live_view_url": str}
+@dataclass(frozen=True)
+class BrowserSessionState:
+    browser_session_id: str
+    live_view_url: str | None
+
+
+_active_sessions: dict[str, BrowserSessionState] = {}
 _last_session: str | None = None
-_used_sessions: set[str] = set()  # sessions touched in current request
+_session_lock = asyncio.Lock()
 
 
-async def _create_session(name: str) -> dict:
-    """Create a browser session: Toolbox create -> playwright-cli attach."""
-    global _last_session
-    if name in _sessions:
-        return {"status": "already_exists", "session": name, "live_view_url": _sessions[name].get("live_view_url")}
-
-    loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(
-        None, _toolbox.call_tool, "create_session", {}
-    )
-    cdp_url = result.get("cdp_url") or ""
-    live_view_url = result.get("live_view_url") or ""
-
-    if not cdp_url:
-        logger.error("No CDP URL from Toolbox: %s", result)
-        return {"error": "No CDP URL returned from Toolbox"}
-
-    browser = BrowserSession(session_id=name)
-    connect_result = await browser.connect(cdp_url)
-    if not connect_result.get("success"):
-        err = connect_result.get("stderr") or connect_result.get("error") or "unknown"
-        return {"error": f"Browser connect failed: {err}"}
-
-    _sessions[name] = {"browser": browser, "live_view_url": live_view_url}
-    _last_session = name
-    logger.info("Session '%s' created (live_view: %s)", name, bool(live_view_url))
-    return {"status": "created", "session": name, "live_view_url": live_view_url}
-
-
-async def _kill_session(name: str) -> dict:
-    """Kill a browser session or all sessions."""
-    global _last_session
-    if name == "all":
-        killed = list(_sessions.keys())
-        for sn in killed:
-            try:
-                await _sessions[sn]["browser"].close()
-            except Exception:
-                pass
-        _sessions.clear()
-        _last_session = None
-        return {"status": "killed_all", "sessions": killed}
-    if name not in _sessions:
-        return {"error": f"Session '{name}' not found. Available: {list(_sessions.keys())}"}
-    try:
-        await _sessions[name]["browser"].close()
-    except Exception:
-        pass
-    del _sessions[name]
-    if _last_session == name:
-        _last_session = next(iter(_sessions), None)
-    return {"status": "killed", "session": name, "remaining": list(_sessions.keys())}
-
-
-# ── Agentic loop ──────────────────────────────────────────────────────────────
-
-
-async def _handle_tool_call(call) -> str:
-    """Execute a single tool call and return JSON result string."""
-    global _last_session
-    name = getattr(call, "name", "")
-    args = json.loads(call.arguments or "{}")
-
-    try:
-        if name == "load_skill":
-            result = load_skill(args.get("name", ""))
-
-        elif name == "create_session":
-            result = await _create_session(args.get("name", f"session-{len(_sessions)+1}"))
-
-        elif name == "end_session":
-            result = await _kill_session(args.get("name", ""))
-
-        elif name == "run_browser":
-            sess_name = args.get("session") or _last_session
-            # Lazy session creation — create default on first use
-            if not _sessions:
-                create_result = await _create_session("default")
-                if create_result.get("error"):
-                    return json.dumps(create_result)
-                sess_name = "default"
-            elif not sess_name or sess_name not in _sessions:
-                return json.dumps({"error": f"Session '{sess_name}' not found. Available: {list(_sessions.keys())}"})
-
-            browser = _sessions[sess_name]["browser"]
-            command = args.get("command", "")
-            cmd_args = args.get("args") or []
-            _last_session = sess_name
-            _used_sessions.add(sess_name)
-            result = await browser.run(command, cmd_args)
-
-        elif name == "run_parallel":
-            tasks = args.get("tasks", [])
-            if not tasks:
-                return json.dumps({"error": "No tasks provided"})
-
-            # Ensure default session exists for tasks without explicit session
-            if not _sessions:
-                create_result = await _create_session("default")
-                if create_result.get("error"):
-                    return json.dumps(create_result)
-
-            async def _run_one(task: dict) -> dict:
-                sess = task.get("session") or _last_session or "default"
-                if sess not in _sessions:
-                    return {"session": sess, "error": f"Session '{sess}' not found"}
-                _used_sessions.add(sess)
-                browser = _sessions[sess]["browser"]
-                r = await browser.run(task.get("command", ""), task.get("args") or [])
-                return {"session": sess, "command": task.get("command", ""), **r}
-
-            results = await asyncio.gather(*[_run_one(t) for t in tasks], return_exceptions=True)
-            output = []
-            for r in results:
-                if isinstance(r, Exception):
-                    output.append({"error": str(r)})
-                else:
-                    output.append(r)
-            result = {"parallel_results": output}
-
-        elif name == "list_sessions":
-            info = {}
-            for sname, s in _sessions.items():
-                info[sname] = {"live_view_url": s.get("live_view_url"), "connected": s["browser"]._connected}
-            result = {"sessions": info, "default": _last_session}
-
-        else:
-            result = {"error": f"Unknown tool: {name}"}
-
-    except Exception as e:
-        logger.error("Tool '%s' failed: %s", name, e)
-        result = {"error": str(e)}
-
-    return json.dumps(result)
-
-
-async def _run_agent_loop_streaming(input_items: list[dict]):
-    """Generator version of the agent loop that yields (verbose_log, final_reply) tuples.
-
-    Yields ("log", text) for intermediate tool progress.
-    Yields ("reply", text) for the final model response.
-    """
-    system = SYSTEM_PROMPT.format(skills=", ".join(list_skills()))
-
-    if _sessions:
-        input_items.insert(-1, {
-            "role": "user",
-            "content": f"[Active sessions: {list(_sessions.keys())}, default: {_last_session}]"
-        })
-
-    while True:
-        response = await asyncio.get_running_loop().run_in_executor(
-            None,
-            lambda: _responses_client.create(
-                model=_model,
-                instructions=system,
-                input=input_items,
-                tools=TOOLS,
-                store=False,
-            ),
-        )
-
-        tool_calls = [
-            item for item in response.output
-            if getattr(item, "type", None) == "function_call"
-        ]
-
-        if not tool_calls:
-            yield ("reply", response.output_text or "(No response)")
-            return
-
-        for tc in tool_calls:
-            name = getattr(tc, "name", "")
-            args = json.loads(tc.arguments or "{}")
-
-            # Track sessions before tool call to detect lazy creation
-            sessions_before = set(_sessions.keys())
-
-            result_text = await _handle_tool_call(tc)
-
-            # Detect new sessions (covers both explicit create_session and lazy creation via run_browser/run_parallel)
-            new_sessions = set(_sessions.keys()) - sessions_before
-            for new_sess in new_sessions:
-                url = _sessions[new_sess].get("live_view_url", "")
-                if url:
-                    yield ("session", f"🌐 Created **{new_sess}** → [Live View]({url})\n")
-                else:
-                    yield ("session", f"🌐 Created **{new_sess}** (session ready)\n")
-
-            # Yield verbose progress log
-            log_entry = _format_tool_log(name, args, result_text)
-            if log_entry:
-                yield log_entry
-
-            input_items.append({
-                "type": "function_call",
-                "id": tc.id,
-                "call_id": tc.call_id,
-                "name": tc.name,
-                "arguments": tc.arguments if isinstance(tc.arguments, str) else json.dumps(tc.arguments),
-            })
-            input_items.append({
-                "type": "function_call_output",
-                "call_id": tc.call_id,
-                "output": result_text,
-            })
-
-
-def _format_tool_log(name: str, args: dict, result_text: str) -> tuple[str, str] | None:
-    """Format a verbose log entry for a tool call. Returns (kind, text) or None."""
-    if name == "end_session":
-        sess_name = args.get("name", "?")
-        try:
-            result = json.loads(result_text)
-            if result.get("status") == "killed_all":
-                return ("log", f"🔴 Ended ALL sessions\n")
-            elif result.get("status") == "killed":
-                return ("log", f"🔴 Ended **{sess_name}**\n")
-        except (json.JSONDecodeError, TypeError):
-            pass
-        return ("log", f"🔴 End {sess_name}\n")
-    elif name == "run_browser":
-        sess = args.get("session") or _last_session or "?"
-        cmd = args.get("command", "")
-        cmd_args = args.get("args") or []
-        safe_args = [_redact(a) for a in cmd_args[:2]]
-        return ("log", f"🔧 [{sess}] `{cmd} {' '.join(safe_args)}`\n")
-    elif name == "run_parallel":
-        tasks = args.get("tasks") or []
-        return ("log", f"⚡ Running {len(tasks)} tasks in parallel\n")
-    elif name == "load_skill":
-        return ("log", f"📖 Loading skill: {args.get('name', '?')}\n")
-    elif name == "list_sessions":
-        return ("log", f"📋 Listed sessions\n")
+def _get_input_text(request: CreateResponse) -> str | None:
+    value = request.get("input")
+    if isinstance(value, str):
+        return value
+    for item in get_input_expanded(request):
+        content = item.get("content")
+        if isinstance(content, str):
+            return content
+        for part in content or []:
+            if text := part.get("text"):
+                return text
     return None
 
 
-# ── Responses protocol handler ────────────────────────────────────────────────
+def _build_input(current_input: str, history: list) -> list[dict]:
+    input_items = []
+    for item in history:
+        for content in item.get("content") or []:
+            text = content.get("text")
+            if content.get("type") == "output_text" and text:
+                input_items.append({"role": "assistant", "content": text})
+            elif content.get("type") == "input_text" and text:
+                input_items.append({"role": "user", "content": text})
+    if _active_sessions:
+        input_items.append({
+            "role": "user",
+            "content": (
+                "[Active sessions: "
+                + json.dumps({
+                    name: state.browser_session_id
+                    for name, state in _active_sessions.items()
+                })
+                + f", default: {_last_session}]"
+            ),
+        })
+    input_items.append({"role": "user", "content": current_input})
+    return input_items
+
+
+def _session_info() -> dict:
+    return {
+        "sessions": {
+            name: {"browserSessionId": state.browser_session_id, "connected": True}
+            for name, state in _active_sessions.items()
+        },
+        "default": _last_session,
+    }
+
+
+def _resolve_session(reference: str | None) -> tuple[str, BrowserSessionState]:
+    if reference is not None and not isinstance(reference, str):
+        raise ValueError("Session name or browserSessionId must be a string.")
+    name = reference or _last_session
+    if name is not None and name in _active_sessions:
+        return name, _active_sessions[name]
+    for session_name, state in _active_sessions.items():
+        if state.browser_session_id == name:
+            return session_name, state
+    raise ValueError(
+        f"Session '{name}' not found. Available: {list(_active_sessions)}"
+    )
+
+
+async def _browser_tool(short_name: str) -> dict:
+    tools = await asyncio.to_thread(_toolbox.response_tools)
+    matches = [
+        tool for tool in tools
+        if tool["name"].rsplit("___", maxsplit=1)[-1] == short_name
+    ]
+    if len(matches) != 1:
+        raise RuntimeError(f"Expected one discovered {short_name} tool.")
+    return matches[0]
+
+
+async def _create_session(
+    name: str | None,
+    arguments: dict | None = None,
+    tool_name: str | None = None,
+) -> ToolboxCallResult:
+    global _last_session
+    if name is None:
+        number = 1
+        while f"session-{number}" in _active_sessions:
+            number += 1
+        name = f"session-{number}"
+    if not isinstance(name, str) or not name.strip() or name == "all":
+        raise ValueError("A non-empty session name other than 'all' is required.")
+    if name in _active_sessions:
+        state = _active_sessions[name]
+        return ToolboxCallResult(
+            output=json.dumps({
+                "status": "already_exists",
+                "session": name,
+                "browserSessionId": state.browser_session_id,
+            }),
+            browser_session_id=state.browser_session_id,
+            session_name=name,
+        )
+    if tool_name is None:
+        tool_name = (await _browser_tool("create_browser_session"))["name"]
+    result = await asyncio.to_thread(
+        _toolbox.call_tool, tool_name, arguments or {}
+    )
+    if result.is_error:
+        return result
+    if not result.browser_session_id:
+        raise RuntimeError("Browser creation returned no browserSessionId.")
+    _active_sessions[name] = BrowserSessionState(
+        result.browser_session_id, result.live_view_url
+    )
+    _last_session = name
+    result.session_name = name
+    result.output = json.dumps({
+        "status": "created",
+        "session": name,
+        "browserSessionId": result.browser_session_id,
+        "result": result.output,
+    }, ensure_ascii=False)
+    return result
+
+
+async def _close_session(
+    reference: str | None,
+    arguments: dict | None = None,
+    tool_name: str | None = None,
+) -> ToolboxCallResult:
+    global _last_session
+    name, state = _resolve_session(reference)
+    tool = await _browser_tool("close_browser_session")
+    tool_name = tool_name or tool["name"]
+    properties = tool["parameters"].get("properties", {})
+    session_parameter = next(
+        key for key in ("browserSessionId", "browser_session_id")
+        if key in properties
+    )
+    close_arguments = dict(arguments or {})
+    close_arguments[session_parameter] = state.browser_session_id
+    result = await asyncio.to_thread(
+        _toolbox.call_tool, tool_name, close_arguments
+    )
+    result.session_name = name
+    if not result.is_error:
+        del _active_sessions[name]
+        if _last_session == name:
+            _last_session = next(iter(_active_sessions), None)
+    return result
+
+
+async def _handle_tool_call(
+    call: object, used_sessions: set[str] | None = None
+) -> ToolboxCallResult:
+    global _last_session
+    name = getattr(call, "name", "")
+    arguments = json.loads(getattr(call, "arguments", "") or "{}")
+    logger.info("[tool] name=%s arguments=%s", name, redact(json.dumps(arguments)))
+
+    if name == "load_skill":
+        skill_name = arguments.get("skill_name", "")
+        return ToolboxCallResult(
+            output=json.dumps(load_skill(skill_name), ensure_ascii=False)
+        )
+
+    async with _session_lock:
+        if name == "list_sessions":
+            return ToolboxCallResult(output=json.dumps(_session_info()))
+        if name == "create_session":
+            if not isinstance(arguments["name"], str):
+                raise ValueError("Session name must be a string.")
+            return await _create_session(arguments["name"])
+        if name == "end_session":
+            reference = arguments["name"]
+            if not isinstance(reference, str) or not reference.strip():
+                raise ValueError("A non-empty session name is required.")
+            if reference != "all":
+                return await _close_session(reference)
+            results = {}
+            is_error = False
+            for session_name in list(_active_sessions):
+                result = await _close_session(session_name)
+                results[session_name] = result.output
+                is_error = is_error or result.is_error
+            return ToolboxCallResult(
+                output=json.dumps({
+                    "status": "close_failed" if is_error else "ended_all",
+                    "results": results,
+                    "remaining": list(_active_sessions),
+                }),
+                is_error=is_error,
+            )
+
+        short_name = name.rsplit("___", maxsplit=1)[-1]
+        if short_name == "create_browser_session":
+            return await _create_session(None, arguments, name)
+        browser_tools = await asyncio.to_thread(_toolbox.response_tools)
+        tool = next(
+            (tool for tool in browser_tools if tool["name"] == name), None
+        )
+        if tool is None:
+            raise ValueError(f"Unknown browser tool: {name}")
+        properties = tool["parameters"].get("properties", {})
+        session_parameter = next(
+            (key for key in ("browserSessionId", "browser_session_id")
+             if key in properties),
+            None,
+        )
+        if session_parameter is None:
+            return await asyncio.to_thread(_toolbox.call_tool, name, arguments)
+
+        reference = arguments.get(session_parameter)
+        if reference is not None and not isinstance(reference, str):
+            raise ValueError("Session name or browserSessionId must be a string.")
+        created = None
+        if not reference and not _active_sessions and short_name != "close_browser_session":
+            created = await _create_session("default")
+            if created.is_error:
+                return created
+        session_name, state = _resolve_session(reference)
+        arguments[session_parameter] = state.browser_session_id
+        if short_name == "close_browser_session":
+            return await _close_session(session_name, arguments, name)
+
+        _last_session = session_name
+        if used_sessions is not None:
+            used_sessions.add(session_name)
+        result = await asyncio.to_thread(_toolbox.call_tool, name, arguments)
+        result.session_name = session_name
+        if created is not None:
+            result.live_view_url = created.live_view_url
+        return result
+
+
+async def _get_tools() -> list[dict]:
+    global _tools
+    if _tools is None:
+        browser_tools = await asyncio.to_thread(_toolbox.response_tools)
+        browser_tools = deepcopy(browser_tools)
+        for tool in browser_tools:
+            parameters = tool["parameters"]
+            for key in ("browserSessionId", "browser_session_id"):
+                property_schema = parameters.get("properties", {}).get(key)
+                if property_schema is not None:
+                    property_schema["description"] = (
+                        "Friendly session name or service browserSessionId. "
+                        "Omit to use the default browser session."
+                    )
+                    parameters["required"] = [
+                        required for required in parameters.get("required", [])
+                        if required != key
+                    ]
+        _tools = [LOAD_SKILL_TOOL, *SESSION_TOOLS, *browser_tools]
+    return _tools
+
+
+async def _run_agent_loop(input_items: list[dict], used_sessions: set[str]):
+    instructions = SYSTEM_PROMPT.format(skills=", ".join(list_skills()))
+    tools = await _get_tools()
+
+    for _ in range(20):
+        response = await asyncio.to_thread(
+            _responses_client.create,
+            model=_model,
+            instructions=instructions,
+            input=input_items,
+            tools=tools,
+            store=False,
+        )
+        tool_calls = [
+            item
+            for item in response.output
+            if getattr(item, "type", None) == "function_call"
+        ]
+        if not tool_calls:
+            yield "reply", response.output_text or "(No response)"
+            return
+
+        for call in tool_calls:
+            try:
+                result = await _handle_tool_call(call, used_sessions)
+                if result.live_view_url:
+                    yield (
+                        "session",
+                        f"🔴 Created **{result.session_name}**: "
+                        f"[Live View]({result.live_view_url})\n",
+                    )
+                output = result.output
+                if result.is_error:
+                    output = f"Tool error: {output}"
+            except Exception as exc:
+                logger.exception("Tool call failed: %s", call.name)
+                output = f"Tool call failed: {exc}"
+
+            input_items.append({
+                "type": "function_call",
+                "id": call.id,
+                "call_id": call.call_id,
+                "name": call.name,
+                "arguments": call.arguments,
+            })
+            input_items.append({
+                "type": "function_call_output",
+                "call_id": call.call_id,
+                "output": output,
+            })
+
+            yield "log", f"🔧 `{call.name}`\n"
+
+    yield "reply", "Tool-call limit reached before the task completed."
+
 
 app = ResponsesAgentServerHost(
     options=ResponsesServerOptions(
@@ -308,141 +371,70 @@ app = ResponsesAgentServerHost(
 )
 
 
-def _get_input_text(request: CreateResponse) -> str | None:
-    """Extract plain text from a CreateResponse input."""
-    inp = request.get("input")
-    if isinstance(inp, str):
-        return inp
-    items = get_input_expanded(request)
-    for item in items:
-        content = item.get("content")
-        if content is None:
-            continue
-        if isinstance(content, str):
-            return content
-        if isinstance(content, list):
-            for part in content:
-                text = part.get("text")
-                if text:
-                    return text
-    return None
-
-
-def _build_input(current_input: str, history: list) -> list[dict]:
-    """Build Responses API input from conversation history and current message."""
-    input_items = []
-    for item in history:
-        for content in item.get("content") or []:
-            text = content.get("text")
-            if content.get("type") == "output_text" and text:
-                input_items.append({"role": "assistant", "content": text})
-            elif content.get("type") == "input_text" and text:
-                input_items.append({"role": "user", "content": text})
-    input_items.append({"role": "user", "content": current_input})
-    return input_items
-
-
 @app.response_handler
 async def handler(
     request: CreateResponse,
     context: ResponseContext,
     cancellation_signal: asyncio.Event,
 ):
-    """Handle browser automation requests with tool-calling loop and verbose streaming."""
     stream = ResponseEventStream(
         response_id=context.response_id,
         request=request,
     )
-
     yield stream.emit_created()
     yield stream.emit_in_progress()
 
     user_input = _get_input_text(request) or ""
-    if not user_input:
-        message_item = stream.add_output_item_message()
-        yield message_item.emit_added()
-        for event in message_item.text_content("No input provided."):
-            yield event
-        yield message_item.emit_done()
-        yield stream.emit_completed()
-        return
-
-    # Check for /verbose flag in user input
     verbose_mode = user_input.strip().startswith("/verbose")
     if verbose_mode:
         user_input = user_input.replace("/verbose", "", 1).strip()
 
-    try:
-        history = await context.get_history()
-    except Exception as exc:
-        logger.warning("get_history failed; continuing without history: %s", exc)
-        history = []
-
-    input_items = _build_input(user_input, history)
-    _used_sessions.clear()
-    logger.info("Processing request %s (sessions: %s)", context.response_id, list(_sessions.keys()))
-
     message_item = stream.add_output_item_message()
     yield message_item.emit_added()
-
     text_content = message_item.add_text_content()
     yield text_content.emit_added()
 
-    # Stream verbose tool logs as they happen
-    verbose_text = ""
-    final_reply = ""
+    if not user_input:
+        yield text_content.emit_delta("No input provided.")
+    else:
+        try:
+            history = await context.get_history()
+        except Exception as exc:
+            logger.warning("get_history failed; continuing without history: %s", exc)
+            history = []
 
-    try:
-        async for kind, text in _run_agent_loop_streaming(input_items):
+        input_items = _build_input(user_input, history)
+        used_sessions: set[str] = set()
+        final_reply = ""
+        async for kind, text in _run_agent_loop(input_items, used_sessions):
             if cancellation_signal.is_set():
-                yield text_content.emit_delta("⚠️ Cancelled.\n")
+                final_reply = "Request was cancelled."
                 break
-            if kind == "session":
-                # Always show session events (live view URL)
+            if kind == "session" or (kind == "log" and verbose_mode):
                 yield text_content.emit_delta(text)
-                verbose_text += text
-            elif kind == "log":
-                if verbose_mode:
-                    # Show tool action logs in verbose mode
-                    yield text_content.emit_delta(text)
-                    verbose_text += text
-                else:
-                    # Heartbeat: emit empty delta to keep SSE connection alive
-                    yield text_content.emit_delta("")
             elif kind == "reply":
                 final_reply = text
-    except asyncio.TimeoutError:
-        final_reply = "Request timed out. Please retry with a simpler prompt."
-    except asyncio.CancelledError:
-        final_reply = "Request was cancelled."
-    except Exception as exc:
-        logger.exception("Agent loop failed: %s", exc)
-        final_reply = f"Agent error: {exc}"
 
-    # Emit final reply
-    if verbose_text:
-        yield text_content.emit_delta("\n---\n\n")
-
-    yield text_content.emit_delta(final_reply)
-
-    # Append active session live view links at the end for easy access
-    if _sessions:
-        links = []
-        for name, s in _sessions.items():
-            url = s.get("live_view_url", "")
-            if url:
-                links.append(f"- **{name}**: [Live View]({url})")
-            else:
-                links.append(f"- **{name}**: (no live view)")
-        footer = "\n\n---\n**Active Sessions:**\n" + "\n".join(links)
-        if _used_sessions:
-            footer += f"\n\n_Used Sessions in this response: {', '.join(_used_sessions)}_"
-        yield text_content.emit_delta(footer + "\n")
+        yield text_content.emit_delta(final_reply)
+        links = [
+            f"- **{name}**: "
+            + (f"[Live View]({state.live_view_url})"
+               if state.live_view_url else "(no live view)")
+            for name, state in _active_sessions.items()
+        ]
+        if links:
+            yield text_content.emit_delta(
+                "\n\n---\n**Active Browser Sessions:**\n" + "\n".join(links)
+            )
+            if used_sessions:
+                yield text_content.emit_delta(
+                    "\n\n_Used Sessions in this response: "
+                    + ", ".join(sorted(used_sessions)) + "_"
+                )
 
     yield text_content.emit_text_done()
     yield text_content.emit_done()
     yield message_item.emit_done()
-
     yield stream.emit_completed()
 
 

@@ -1,30 +1,14 @@
 # Form Filler Skill
 
-You are filling out a web form. The browser is already connected.
+1. Create or reuse a browser session and preserve its `browserSessionId`.
+2. Use the discovered navigation tool to open the form.
+3. Take a browser snapshot and identify every required field.
+4. Prefer the discovered form-fill tool when filling several fields; otherwise use the discovered type, select, check, and click tools as appropriate.
+5. Take a fresh snapshot after navigation, dialogs, or any page-changing action.
+6. For date pickers, open the picker, snapshot its UI, navigate to the requested month and day, and verify the selected date. If the picker does not open, try entering the date in the format expected by the field.
+7. If a field rejects input, try clicking it first, clearing and refilling it, or using the correct format. Never skip required fields.
+8. After filling all required values, click Next, Continue, or Submit as requested. Snapshot after submission and repeat for every page in the form.
+9. Verify the final result. Report OTP, CAPTCHA, authentication, approval, or missing user data as a blocker without fabricating values.
+10. Keep the named browser open while waiting and after completion. Resume in that same browser after the user replies. Close only on explicit user request.
 
-## Workflow
-
-1. **Snapshot** the page to see current form state.
-2. **Identify** all visible form fields and their current values.
-3. **Fill** each field using the appropriate command:
-   - Text inputs: `fill <ref> "value"`
-   - Dropdowns: `select <ref> "value"`
-   - Checkboxes: `check <ref>` or `uncheck <ref>`
-   - Radio buttons: `click <ref>`
-4. **Date pickers** — follow these steps carefully:
-   - Click the date input field to open the picker
-   - Snapshot to see the picker UI
-   - Navigate months if needed (click prev/next arrows)
-   - Click the specific day number
-   - Snapshot to confirm the date was set
-   - If the picker doesn't open, try `fill <ref> "YYYY-MM-DD"` directly
-5. **After filling all fields**, ALWAYS click the Next/Continue/Submit button.
-6. **Snapshot** after submission to verify success or see the next page.
-7. **Repeat** for multi-page forms until fully complete.
-
-## Rules
-
-- Never skip required fields.
-- If a field rejects input, try: click it first, use a different format, or clear and re-fill.
-- Always snapshot between major actions to verify state.
-- Do NOT stop mid-form. Complete the entire submission flow.
+Use the requested session name in `browserSessionId`, or omit it for the default. Use only browser tool names and schemas returned by MCP discovery.

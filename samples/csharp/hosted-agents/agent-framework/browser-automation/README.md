@@ -1,312 +1,128 @@
-# What this sample demonstrates
+# Browser Automation Agent (C#, Agent Framework)
 
-An [Agent Framework](https://github.com/microsoft/agent-framework) hosted browser automation agent using **Foundry Toolbox** and the **Browser Automation tool** (Azure Playwright Service), hosted using the **Responses protocol**. The agent connects to a remote Chromium browser via Foundry Toolbox and runs Playwright CLI commands against it for general browsing, web scraping, and form filling.
+This sample hosts a C# Agent Framework agent over the Responses protocol and gives it the GA Azure Playwright browser tools through a Foundry Toolbox MCP connection.
 
-## How It Works
+## What this sample demonstrates
 
-### Solution Overview
+- Runtime browser-tool discovery through Foundry Toolbox MCP
+- Browser-session reuse through `browserSessionId`
+- Exact live-view URL delivery outside model-generated text
+- Browser lifecycle, scraping, and form-filling guidance through prompts and skills
+- Automated Playwright workspace, connection, toolbox, and RBAC setup
 
-When a user asks for browser work, the agent:
+No browser tool schema is hardcoded in the application, and no local browser CLI or CDP attachment is required.
 
-1. On startup, connects to a Foundry Toolbox MCP endpoint via `AddFoundryToolboxes` (automatic tool discovery).
-2. The model calls `create_session` from the Toolbox to provision a remote Chromium browser via Azure Playwright Service.
-3. Function invocation middleware intercepts the `create_session` result, stores the CDP URL and live view URL server-side (the model never sees the raw URLs).
-4. Streaming middleware injects the live view URL into the SSE response so the user can watch the browser in real time.
-5. Uses `run_playwright_cli` to invoke Playwright CLI commands against the remote browser.
-6. Calls `close_browser_session` to detach Playwright CLI state and end the remote browser when done.
+## How it works
 
-```mermaid
-flowchart TD
-    user["User"] --> agent["Foundry hosted agent"]
-    agent --> framework["Agent Framework<br/>AddFoundryToolboxes"]
-    framework --> toolbox["Foundry Toolbox MCP<br/>create_session"]
-    toolbox --> browser["Azure Playwright Service<br/>remote Chromium"]
-    agent --> middleware["Middleware pipeline"]
-    middleware --> invoke["Function middleware<br/>stores browser URLs server-side"]
-    middleware --> stream["Streaming middleware<br/>injects live_view_url"]
-    agent --> tools["Local browser tools"]
-    tools --> cli["Playwright CLI"]
-    cli --> browser
-```
+1. Deployment hooks provision or reuse an Azure Playwright workspace.
+2. The hooks create a Foundry project connection targeting the workspace's GA MCP endpoint and publish a Toolbox with a `browser_automation` tool.
+3. `AddFoundryToolboxes` discovers the browser tools at runtime.
+4. The model calls the discovered `create_browser_session` tool and passes its `browserSessionId` to subsequent browser calls.
+5. Middleware removes `liveViewUrl` from model-visible tool output and streams the exact URL directly to the user.
 
-### Agent Hosting
-
-The agent is hosted using the [Agent Framework](https://github.com/microsoft/agent-framework) with `AddFoundryResponses` and `AddFoundryToolboxes`, which provisions a REST API endpoint compatible with the OpenAI Responses protocol and automatically discovers toolbox tools via MCP.
-
-### Prompt-Guided Behavior
-
-The agent reads a single base prompt from `prompts/base.md`. That prompt contains the browser lifecycle, safety, web extraction, and form-filling guidance used at runtime.
-
-See [Program.cs](src/browser-automation-csharp-maf-sample-foundry/Program.cs) for the full implementation.
-
-## Repository layout
+## Key files
 
 | Path | Purpose |
 | --- | --- |
-| `Program.cs` | Agent wiring — config, middleware pipeline, hosting setup. |
-| `utils/Middlewares.cs` | Function invocation middleware (logging + `create_session` interception) and streaming middleware (live view URL injection). |
-| `utils/Tools.cs` | Tool factory methods (`run_playwright_cli`, `close_browser_session`, `get_live_view_url`) and URL storage accessors. |
-| `utils/BrowserSession.cs` | Playwright CLI subprocess runner with redaction and logging. |
-| `utils/ToolboxScopedCredential.cs` | Token credential wrapper that overrides the toolbox auth scope. |
-| `prompts/base.md` | Browser lifecycle, safety, cleanup, web extraction, and form-filling rules. |
-| `skills/azure-playwright-browser-automation/SKILL.md` | Playwright CLI operational reference for remote Azure Playwright Service sessions. |
+| `src/bat-csharp-maf/Program.cs` | Builds and hosts the Agent Framework agent. |
+| `src/bat-csharp-maf/utils/Middlewares.cs` | Logs calls and injects exact live-view links. |
+| `src/bat-csharp-maf/prompts/base.md` | Browser lifecycle and automation behavior. |
+| `src/bat-csharp-maf/skills/` | Browser automation procedures loaded by the agent. |
+| `hooks/setup-toolbox.*` | Publishes the GA browser automation toolbox. |
+| `infra-modules/playwright-connection.bicep` | Creates the GA MCP project connection. |
 
 ## Prerequisites
 
-- An Azure AI Foundry project with a deployed chat model (e.g., `gpt-4.1`).
-- Azure CLI installed and authenticated (`az login`).
-- Docker, if you want to build the container locally.
-- .NET 10 SDK for local development.
+- An Azure AI Foundry project with a deployed chat model
+- Azure CLI and Azure Developer CLI
+- .NET 10 SDK for local development
+- Docker for local container builds
 
-> **Note:** You do not need a pre-existing Azure Playwright workspace if your identity can create
-> `Microsoft.LoadTestService/playwrightWorkspaces` resources in the target resource group. In a
-> restricted project, set `PLAYWRIGHT_SERVICE_RESOURCE_ID` to an existing workspace instead. The
-> deployment hooks create the connection and toolbox, then assign runtime roles during
-> `azd provision` and `azd deploy`. See [Deployment hooks](#deployment-hooks) below.
-
-For hosted-agent setup, see [Deploy hosted agents with azd](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent?pivots=azd).
+The provisioning hook can create a Playwright workspace when the current identity has permission. Set `PLAYWRIGHT_SERVICE_RESOURCE_ID` to reuse an existing workspace.
 
 ## Configuration
 
-This sample uses two kinds of configuration:
+For local development, copy `.env.example` to `.env` or set:
 
-- **Runtime environment variables** are read by the C# agent process. Use these for local runs, or set them in the hosted agent environment when deploying.
-- **`azd` provisioning parameters** are read by `azd provision` from the azd environment. Use these only when you want this sample to create the Playwright connection and toolbox for you.
-
-### Runtime environment variables
-
-For local development, copy `.env.example` to `.env` or set these values in your shell. The app loads `.env` when it starts.
-
-```bash
-export FOUNDRY_PROJECT_ENDPOINT="https://<account>.services.ai.azure.com/api/projects/<project>"
-export AZURE_AI_MODEL_DEPLOYMENT_NAME="gpt-4.1"
+```dotenv
+FOUNDRY_PROJECT_ENDPOINT=https://<account>.services.ai.azure.com/api/projects/<project>
+AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-4.1
+TOOLBOX_NAME=browser-automation-tools
 ```
 
-Or in PowerShell:
+Run `az login` before starting locally so `DefaultAzureCredential` can authenticate model and Toolbox calls.
 
-```powershell
-$env:FOUNDRY_PROJECT_ENDPOINT="https://<account>.services.ai.azure.com/api/projects/<project>"
-$env:AZURE_AI_MODEL_DEPLOYMENT_NAME="gpt-4.1"
-```
+## Option 1: Azure Developer CLI
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `FOUNDRY_PROJECT_ENDPOINT` | Required locally; provided by hosted agent runtime when deployed | Foundry project endpoint used for model and Toolbox MCP calls. |
-| `AZURE_AI_MODEL_DEPLOYMENT_NAME` | Required | Model deployment name. For hosted deployment, this is set from the model deployment selected during `azd ai agent init`; for local runs, set it in your shell or `.env` file. |
-| `TOOLBOX_NAME` | `browser-automation-tools` | Foundry Toolbox name provisioned by the `postprovision` hook. This is fixed and should not be changed. |
-| `BROWSER_AGENT_PLAYWRIGHT_CLI_TIMEOUT_SECONDS` | `180` | Optional timeout for each Playwright CLI command. |
-| `BROWSER_AGENT_MCP_TIMEOUT_SECONDS` | `120` | Optional timeout for Toolbox MCP calls. |
-
-The Toolbox endpoint is resolved as `<FOUNDRY_PROJECT_ENDPOINT>/toolboxes/browser-automation-tools/mcp?api-version=v1` and authenticated with the hosted agent identity.
-
-## Option 1: Azure Developer CLI (`azd`)
-
-### Prerequisites
-
-1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
-2. Install the Foundry extension:
-
-   ```bash
-   azd ext install microsoft.foundry
-   ```
-
-3. Authenticate:
-
-   ```bash
-   azd auth login
-   ```
-
-### Initialize the agent project
-
-No cloning required. Create a new folder and initialize from the manifest:
+Initialize from a directory outside the sample:
 
 ```bash
-mkdir browser-automation-agent && cd browser-automation-agent
-azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/browser-automation/azure.yaml
-```
-
-> [!NOTE]
-> **Linux/macOS:** After `azd ai agent init`, run `chmod +x hooks/*.sh` to make the hook scripts executable. `azd ai agent init` downloads files via the GitHub API, which does not preserve file permissions.
-
-Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
-
-### Provision Azure resources (if needed)
-
-If you don't already have a Foundry project and model deployment, provision them:
-
-```bash
+azd ai agent init -t ./browser-automation/azure.yaml
 azd provision
 ```
 
-The `postprovision` hook runs interactively and handles Playwright workspace connection and toolbox creation automatically (see [Deployment hooks](#deployment-hooks) below).
+The `postprovision` hook creates or reuses the Playwright workspace, creates the GA MCP connection, and publishes the `browser_automation` toolbox.
 
-### Run the agent locally
+Run and invoke locally:
 
 ```bash
 azd ai agent run
-```
-
-The agent host will start on `http://localhost:8088`.
-
-### Invoke the local agent
-
-In a separate terminal, send a browser-automation request:
-
-```bash
 azd ai agent invoke --local --new-session "Open https://example.com and report the page title."
-azd ai agent invoke --local "Now take a screenshot of the page."
+azd ai agent invoke --local "Follow the first link using the same browser session."
 ```
 
-The second invoke reuses the saved session and browser context.
-
-### Deploy to Foundry
-
-Once the toolbox is set up (see [Provision Azure resources](#provision-azure-resources-if-needed) above), deploy to Microsoft Foundry:
+Deploy and invoke:
 
 ```bash
 azd deploy
-```
-
-> [!NOTE]
-> This sample is supported in container deployments only. The container image installs Playwright CLI, which this browser automation sample needs at runtime.
-
-For the full deployment guide, see [Deploy a hosted agent](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/deploy-hosted-agent).
-
-### Invoke the deployed agent
-
-```bash
 azd ai agent invoke --new-session "Open https://example.com and report the page title."
 ```
 
-## Option 2: VS Code (Foundry Toolkit)
+The `postdeploy` hook assigns the browser role required by the configured project or hosted-agent identity.
 
-### Prerequisites
+## Option 2: VS Code
 
-1. **VS Code** with the **[Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)** extension installed.
-2. [C# Dev Kit](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csdevkit) extension.
-3. Command Palette (`Ctrl+Shift+P`) → **C#: Check Workspace Requirements** to confirm the toolchain is ready.
-
-### Run and debug the agent
-
-The agent shells out to the Playwright CLI, so install it once before running:
+Install the Foundry Toolkit and C# Dev Kit extensions. After initializing the sample, press **F5** to run the agent and open Agent Inspector. To run manually:
 
 ```bash
-npm install -g @playwright/cli@latest
-playwright-cli install --skills
+cd src/bat-csharp-maf
+dotnet restore
+dotnet run
 ```
 
-Then press **F5** to start the agent. The agent starts and the **Agent Inspector** opens automatically. Chat with the agent in the Inspector.
+Use **Foundry Toolkit: Deploy Hosted Agent** to deploy from VS Code.
 
-### Or run manually, then open the Inspector
+## Browser lifecycle
 
-1. Set the runtime environment variables (see [Configuration](#configuration)) and sign in to Azure with the Azure CLI (`az login`).
-2. Install dependencies and start the agent:
+Browser tools come from MCP `tools/list`. The agent creates a browser with the discovered tool ending in `create_browser_session`, reuses its `browserSessionId` for later calls and requests, and closes it with the discovered tool ending in `close_browser_session`.
 
-   ```bash
-   dotnet restore browser-automation.csproj
-   npm install -g @playwright/cli@latest
-   playwright-cli install --skills
-   dotnet run --project browser-automation.csproj
-   ```
+Live-view URLs are emitted by middleware so their signed fragments remain unchanged.
 
-   The agent listens on `http://localhost:8088`.
-3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
+Keep the browser open after successful tasks and while waiting for user input, approval, CAPTCHA, MFA, or manual browser steps. A completed response is not a request to close the browser. Resume in the same session after the user replies, and close only when the user explicitly asks.
 
-### Deploy to Foundry
+This is an agent behavior policy, not an indefinite browser-lifetime guarantee. Hosted compute and browser-service idle limits still apply.
 
-Complete the toolbox setup in [Provision Azure resources](#provision-azure-resources-if-needed), then:
+## CI and non-interactive provisioning
 
-1. Open the Command Palette (`Ctrl+Shift+P`) and run **Foundry Toolkit: Deploy Hosted Agent**. The extension opens a **Deploy Hosted Agent** wizard and reads `agent.yaml` to auto-populate settings.
-2. If prompted, complete **Foundry Project Setup** to select subscription and project.
-3. On the **Basics** tab, choose **Container** deployment and confirm the agent name. Code deployment does not install the Playwright CLI runtime dependency.
-4. On **Review + Deploy**, confirm runtime details, pick **CPU and Memory** size, and click **Deploy**.
-5. After deployment, invoke the agent in the Agent Playground and stream live logs from the **Logs** tab.
-
-## Deployment hooks
-
-This sample uses `azd` hooks to automate Playwright workspace setup:
-
-### `postprovision` — Connection & Toolbox setup
-
-After `azd provision` completes, the `postprovision` hook runs interactively and:
-
-1. **Prompts for a Playwright workspace** — provide an existing ARM resource ID, or leave empty to create a new one.
-2. **Selects a region** (for new workspaces) — dynamically fetches available regions from the Azure RP.
-3. **Selects an authentication type:**
-   - **Project Managed Identity** (recommended) — the Foundry project's MSI authenticates to the workspace.
-   - **Agent Identity** — the hosted agent's identity authenticates.
-   - **API Key** (existing workspaces only, interactive mode only) — uses an access token you provide. Not supported in CI/non-interactive flows because the token must be entered interactively.
-4. **Deploys a Bicep template** that creates the workspace (if new) and the Playwright project connection.
-5. **Creates the `browser-automation-tools` toolbox** via the Foundry data-plane API and sets it as the default version.
-
-### `postdeploy` — RBAC role assignment
-
-After `azd deploy` completes, the `postdeploy` hook:
-
-1. Determines the correct principal ID based on the configured auth type:
-   - **Project Managed Identity** → project's system-assigned identity
-   - **Agent Identity** → the deployed agent's instance identity
-2. Assigns the **Playwright Workspace Contributor** role on the Playwright workspace.
-3. Retries up to 3 times with a graceful warning if the assignment fails (e.g., due to Entra propagation delays).
-
-> **Note:** API Key authentication does not require a role assignment.
-
-#### Non-interactive / CI usage
-
-For CI pipelines or `azd provision --no-prompt`, pre-set the required values so the hooks skip interactive prompts:
+Set at least one of the following before `azd provision --no-prompt`:
 
 ```bash
-# Use an existing Playwright workspace
-azd env set PLAYWRIGHT_SERVICE_RESOURCE_ID "/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.LoadTestService/playwrightWorkspaces/{name}"
-azd env set PLAYWRIGHT_AUTH_TYPE "ProjectManagedIdentity"   # or AgenticIdentityToken
+azd env set PLAYWRIGHT_SERVICE_RESOURCE_ID "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.LoadTestService/playwrightWorkspaces/<name>"
+azd env set PLAYWRIGHT_AUTH_TYPE "ProjectManagedIdentity"
+```
 
-# Or create a new workspace (omit PLAYWRIGHT_SERVICE_RESOURCE_ID)
+To create a workspace instead:
+
+```bash
 azd env set PLAYWRIGHT_REGION "eastus"
 azd env set PLAYWRIGHT_AUTH_TYPE "ProjectManagedIdentity"
 ```
 
-> **⚠️ Warning:** If neither `PLAYWRIGHT_SERVICE_RESOURCE_ID` nor `PLAYWRIGHT_REGION` is set:
-> - **PowerShell (Windows):** prompts time out after 60 seconds and default to creating a new workspace in **eastus**.
-> - **sh (Linux/macOS):** prompts will **wait indefinitely** for input, blocking the pipeline.
->
-> Always pre-set at least one of these variables in CI to avoid surprises or hanging builds.
-
-| Variable | Required | Description |
-| --- | --- | --- |
-| `PLAYWRIGHT_SERVICE_RESOURCE_ID` | No | ARM resource ID of an existing workspace. Omit to create a new one. |
-| `PLAYWRIGHT_REGION` | When creating new | Region for the new workspace (e.g., `eastus`). Defaults to `eastus` if not set. |
-| `PLAYWRIGHT_AUTH_TYPE` | No | `ProjectManagedIdentity` (default) or `AgenticIdentityToken`. `ApiKey` is interactive-only. |
-
-Creating a workspace requires `Microsoft.LoadTestService/playwrightWorkspaces/write` in the target
-resource group. If you do not have that permission, an existing workspace ID is required.
-
-### Option 1: Let hooks provision everything (recommended)
-
-Use this path for a fully automated setup. Just run:
-
-```bash
-azd provision   # Hook prompts for Playwright details, creates connection + toolbox
-azd deploy      # Hook assigns RBAC to the identity
-```
+Supported authentication values are `ProjectManagedIdentity`, `AgenticIdentityToken`, and interactive `ApiKey`.
 
 ## Customize the sample
 
-- Change prompt behavior in `prompts/base.md`.
-- Add deeper procedural knowledge as skills under `skills/`.
-- Add new tools in `utils/Tools.cs`.
-- Modify middleware logic in `utils/Middlewares.cs`.
-
-## Guidance
-
-This sample is intended as a starting point, not a production-ready browser automation platform. Before using it in production, review authentication, network access, data handling, secret management, logging, browser permissions, and approval flows for state-changing actions.
-
-The `run_playwright_cli` tool intentionally invokes only `playwright-cli` with a named session and optional `PLAYWRIGHT_MCP_CDP_ENDPOINT`; it does not expose general shell execution.
-
-The default hosted container resources (`cpu: "0.25"`, `memory: "0.5Gi"`) are minimal. Increase them in `azure.yaml` for multi-step scraping, longer QA sessions, or data-heavy browser automation.
-
-Useful references:
-
-- [Hosted agents in Microsoft Foundry](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents)
-- [Agent Framework overview](https://learn.microsoft.com/en-gb/agent-framework/overview/?pivots=programming-language-csharp)
-- [Agent Framework skills](https://learn.microsoft.com/en-gb/agent-framework/agents/skills?pivots=programming-language-csharp)
-- [Playwright CLI](https://github.com/microsoft/playwright-cli)
+- Change agent behavior in `prompts/base.md`.
+- Add procedures under `skills/`.
+- Adjust live-view and browser-session handling in `utils/Middlewares.cs`.
+- Change hosted resources in `azure.yaml`.
