@@ -1,10 +1,10 @@
-"""Shared Azure AI Foundry Prompt Agent + GA `computer` tool loop.
+"""Shared Azure AI Foundry Prompt Agent + OpenAI Computer Tool (GA `computer`) loop.
 
-Shows the four core steps of a Computer Use Agent (CUA) in Azure AI Foundry:
+Shows the four core steps of using the OpenAI Computer Tool in Azure AI Foundry:
 1. Define a Prompt Agent with `PromptAgentDefinition` and `ComputerTool()` (`{"type": "computer"}`).
 2. Send the user prompt to the Responses API.
 3. Execute each action in `computer_call.actions` (`click`, `double_click`, `drag`, `scroll`, `type`, `keypress`, `wait`).
-4. Return a base64 PNG screenshot in `computer_call_output` until the agent finishes.
+4. Return a PNG screenshot in `computer_call_output` until the agent finishes.
 """
 
 import base64

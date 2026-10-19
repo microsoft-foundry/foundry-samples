@@ -1,7 +1,7 @@
-"""Example 1: Browser Automation with Azure AI Foundry Prompt Agent + Playwright.
+"""Example 1: Browser Automation with Azure AI Foundry Prompt Agent + OpenAI Computer Tool + Playwright.
 
 Opens a local interactive Sprint Task Board (`task_board.html`) and lets the Prompt Agent
-complete 4 browser interactions using the GA `computer` tool:
+complete 4 browser interactions using the OpenAI Computer Tool (GA `computer`):
 1. `double_click` a task card to inspect details
 2. `drag` the task card from "In Progress" to "Done"
 3. `scroll` the checklist panel to reveal the sign-off code

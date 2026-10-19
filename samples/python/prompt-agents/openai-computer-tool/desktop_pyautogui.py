@@ -1,7 +1,8 @@
-"""Example 2: Windows Desktop Automation with Azure AI Foundry Prompt Agent + PyAutoGUI.
+"""Example 2: Windows Desktop Automation with Azure AI Foundry Prompt Agent + OpenAI Computer Tool + PyAutoGUI.
 
 Launches Windows Calculator and Notepad and lets the Prompt Agent interact with the
-desktop through screenshots, mouse actions, and keyboard input using PyAutoGUI.
+desktop using the OpenAI Computer Tool (GA `computer`) through screenshots, mouse actions,
+and keyboard input with PyAutoGUI.
 """
 
 import base64
