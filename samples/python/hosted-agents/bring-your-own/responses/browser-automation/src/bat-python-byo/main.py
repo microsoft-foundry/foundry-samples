@@ -22,7 +22,7 @@ from dotenv import load_dotenv
 from utils.constants import LOAD_SKILL_TOOL, SESSION_TOOLS, SYSTEM_PROMPT
 from utils.skills import list_skills, load_skill
 from utils.toolbox import ToolboxCallResult, ToolboxClient
-from utils.utils import redact
+from utils.utils import public_tool_output, redact
 
 load_dotenv(override=False)
 
@@ -360,13 +360,20 @@ async def _run_agent_loop(input_items: list[dict], used_sessions: set[str]):
 
         for call in tool_calls:
             yield "function_call", call
+            failed = True
             session_text = None
+            live_view_urls = [
+                state.live_view_url for state in _active_sessions.values()
+                if state.live_view_url
+            ]
             try:
                 result = await _handle_tool_call(call, used_sessions)
+                failed = result.is_error
                 if result.live_view_url:
+                    live_view_urls.append(result.live_view_url)
                     session_text = (
-                        f"🔴 Created **{result.session_name}**: "
-                        f"[Live View]({result.live_view_url})\n"
+                        f"**{result.session_name or 'Browser session'}**: "
+                        f"[Live View]({result.live_view_url})\n\n"
                     )
                 output = result.output
                 if result.is_error:
@@ -387,10 +394,14 @@ async def _run_agent_loop(input_items: list[dict], used_sessions: set[str]):
                 "call_id": call.call_id,
                 "output": output,
             })
-            yield "function_call_output", input_items[-1]
-
+            yield "function_call_output", {
+                "call_id": call.call_id,
+                "output": public_tool_output(
+                    call.name, output, failed, live_view_urls,
+                ),
+            }
             if session_text:
-                yield "session", session_text
+                yield "chat", session_text
             yield "log", f"🔧 `{call.name}`\n"
 
     yield "reply", "Tool-call limit reached before the task completed."
@@ -443,7 +454,7 @@ async def handler(
                 for event in stream.output_item_function_call(
                     name=value.name,
                     call_id=value.call_id,
-                    arguments=value.arguments,
+                    arguments=value.arguments if value.name == "load_skill" else "{}",
                 ):
                     yield event
             elif kind == "function_call_output":
@@ -451,30 +462,27 @@ async def handler(
                     call_id=value["call_id"], output=value["output"]
                 ):
                     yield event
-            elif kind == "session" or (kind == "log" and verbose_mode):
+            elif kind == "chat" or (kind == "log" and verbose_mode):
                 for event in stream.output_item_message(value):
                     yield event
             elif kind == "reply":
                 final_reply = value
 
-        links = [
-            f"- **{name}**: "
-            + (f"[Live View]({state.live_view_url})"
-               if state.live_view_url else "(no live view)")
-            for name, state in _active_sessions.items()
-        ]
-        if links:
-            final_reply += (
-                "\n\n---\n**Active Browser Sessions:**\n" + "\n".join(links)
-            )
-            if used_sessions:
-                final_reply += (
-                    "\n\n_Used Sessions in this response: "
-                    + ", ".join(sorted(used_sessions)) + "_"
-                )
+        if cancellation_signal.is_set():
+            yield stream.emit_incomplete()
+            return
         for event in stream.output_item_message(final_reply):
             yield event
-
+        links = [
+            f"- **{name}**: [Live View]({state.live_view_url})"
+            for name, state in _active_sessions.items()
+            if state.live_view_url
+        ]
+        if links:
+            for event in stream.output_item_message(
+                "\n\n---\n\n**Active Browser Sessions:**\n\n" + "\n".join(links) + "\n"
+            ):
+                yield event
     yield stream.emit_completed()
 
 

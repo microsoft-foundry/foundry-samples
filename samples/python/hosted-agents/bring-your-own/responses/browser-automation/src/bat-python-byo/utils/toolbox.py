@@ -166,10 +166,7 @@ class ToolboxClient:
                     continue
                 if isinstance(value, dict):
                     value.pop("liveViewUrl", None)
-                    value.setdefault(
-                        "note",
-                        "The live view link is delivered directly to the user.",
-                    )
+                    value["note"] = "Live-view URL omitted from model-visible tool output."
                     sanitized_items.append(
                         json.dumps(value, ensure_ascii=False)
                     )

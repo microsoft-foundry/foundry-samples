@@ -5,6 +5,8 @@ requiredVersions:
   extensions:
     azure.ai.agents: '>=1.0.0-beta.9'
 name: bat-python-maf
+metadata:
+  template: browser-agent-python-maf
 services:
   ai-project:
     host: azure.ai.project

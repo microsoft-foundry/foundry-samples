@@ -138,7 +138,7 @@ public sealed class ToolboxClient
                                 property => property.Name,
                                 property => property.Value.Clone());
                         values["note"] = JsonSerializer.SerializeToElement(
-                            "The live view link is delivered directly to the user.");
+                            "Live-view URL omitted from model-visible tool output.");
                         sanitized.Add(JsonSerializer.Serialize(values));
                     }
                     else

@@ -12,6 +12,10 @@ This sample hosts a C# Agent Framework agent over the Responses protocol and giv
 
 No browser tool schema is hardcoded in the application, and no local browser CLI or CDP attachment is required.
 
+## Template telemetry
+
+The top-level `metadata.template` in `azure.yaml` identifies this sample as `browser-agent-csharp-maf` for azd telemetry. Keep it in the initialized project's root `azure.yaml` as well. Named telemetry dashboards also need a `Templates` lookup entry whose name is `browser-agent-csharp-maf` and whose hash is SHA256 of that identifier; adding sample metadata does not update the shared lookup or attribute older events.
+
 ## How it works
 
 1. Deployment hooks provision or reuse an Azure Playwright workspace.

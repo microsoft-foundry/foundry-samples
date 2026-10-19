@@ -2,6 +2,10 @@
 
 This sample hosts a Python Agent Framework agent over the Responses protocol and gives it the GA Azure Playwright browser tools through a Foundry Toolbox MCP connection.
 
+## Template telemetry
+
+The top-level `metadata.template` in `azure.yaml` identifies this sample as `browser-agent-python-maf` for azd telemetry. Keep it in the initialized project's root `azure.yaml` as well. Named telemetry dashboards also need a `Templates` lookup entry whose name is `browser-agent-python-maf` and whose hash is SHA256 of that identifier; adding sample metadata does not update the shared lookup or attribute older events.
+
 ## How it works
 
 1. The deployment hooks provision or reuse an Azure Playwright workspace.

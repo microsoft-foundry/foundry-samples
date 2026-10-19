@@ -211,12 +211,15 @@ public class BrowserAutomationHandler : ResponseHandler
             foreach (var call in calls)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                var isBrowserTool = call.FunctionName != "load_skill";
                 foreach (var streamEvent in stream.OutputItemFunctionCall(
                              call.FunctionName,
                              call.CallId,
-                             call.FunctionArguments.ToString()))
+                             isBrowserTool ? "{}" : call.FunctionArguments.ToString()))
                     yield return streamEvent;
 
+                var liveViewUrls = ActiveSessions.Values
+                    .Select(state => state.LiveViewUrl).OfType<string>().ToList();
                 var result = await HandleToolCallAsync(
                     call.FunctionName,
                     call.FunctionArguments,
@@ -226,15 +229,19 @@ public class BrowserAutomationHandler : ResponseHandler
                 var output = result.IsError
                     ? $"Tool error: {result.Output}"
                     : result.Output;
+                if (result.LiveViewUrl is { } liveViewUrl)
+                    liveViewUrls.Add(liveViewUrl);
+                var publicOutput = Redaction.PublicToolOutput(
+                    call.FunctionName, output, result.IsError, liveViewUrls);
                 foreach (var streamEvent in stream.OutputItemFunctionCallOutput(
                              call.CallId,
-                             BinaryData.FromObjectAsJson(output)))
+                             BinaryData.FromObjectAsJson(publicOutput)))
                     yield return streamEvent;
                 if (result.LiveViewUrl is not null)
                 {
                     foreach (var streamEvent in stream.OutputItemMessage(
-                                 $"🔴 Created **{result.SessionName}**: "
-                                 + $"[Live View]({result.LiveViewUrl})\n"))
+                                 $"**{result.SessionName ?? "Browser session"}**: "
+                                 + $"[Live View]({result.LiveViewUrl})\n\n"))
                         yield return streamEvent;
                 }
                 if (verbose)
@@ -254,26 +261,21 @@ public class BrowserAutomationHandler : ResponseHandler
             }
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrEmpty(finalReply))
             finalReply = "Tool-call limit reached before the task completed.";
+        foreach (var streamEvent in stream.OutputItemMessage(finalReply))
+            yield return streamEvent;
         var links = ActiveSessions
-            .Select(pair =>
-                $"- **{pair.Key}**: "
-                + (string.IsNullOrEmpty(pair.Value.LiveViewUrl)
-                    ? "(no live view)"
-                    : $"[Live View]({pair.Value.LiveViewUrl})"))
+            .Where(pair => !string.IsNullOrEmpty(pair.Value.LiveViewUrl))
+            .Select(pair => $"- **{pair.Key}**: [Live View]({pair.Value.LiveViewUrl})")
             .ToList();
         if (links.Count > 0)
         {
-            finalReply += "\n\n---\n**Active Browser Sessions:**\n"
-                + string.Join("\n", links);
-            if (usedSessions.Count > 0)
-                finalReply += "\n\n_Used Sessions in this response: "
-                    + string.Join(", ", usedSessions.Order())
-                    + "_";
+            foreach (var streamEvent in stream.OutputItemMessage(
+                         "\n\n---\n\n**Active Browser Sessions:**\n\n" + string.Join("\n", links) + "\n"))
+                yield return streamEvent;
         }
-        foreach (var streamEvent in stream.OutputItemMessage(finalReply))
-            yield return streamEvent;
         cancellationToken.ThrowIfCancellationRequested();
         yield return stream.EmitCompleted();
     }
