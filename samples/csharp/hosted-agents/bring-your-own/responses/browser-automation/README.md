@@ -75,7 +75,3 @@ For example: "Open session1 for the form and session2 for research", then "Conti
 Browsers stay open after tasks and while waiting for input, CAPTCHA, MFA, or approval. Only an explicit user close request should invoke `end_session` or the discovered close tool; `end_session` accepts a name or `all`. Failed service closes leave the session tracked so the user can retry.
 
 This preserves application behavior, not an indefinite browser-lifetime guarantee. Hosted compute and browser-service idle limits still apply; the named session registry is in process memory.
-
-## Template telemetry
-
-The top-level `metadata.template` in `azure.yaml` identifies this sample as `browser-agent-csharp-byo` for azd telemetry. Keep it in the initialized project's root `azure.yaml` as well. Named telemetry dashboards also need a `Templates` lookup entry whose name is `browser-agent-csharp-byo` and whose hash is SHA256 of that identifier; adding sample metadata does not update the shared lookup or attribute older events.

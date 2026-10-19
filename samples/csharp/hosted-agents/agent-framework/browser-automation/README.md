@@ -12,16 +12,12 @@ This sample hosts a C# Agent Framework agent over the Responses protocol and giv
 
 No browser tool schema is hardcoded in the application, and no local browser CLI or CDP attachment is required.
 
-## Template telemetry
-
-The top-level `metadata.template` in `azure.yaml` identifies this sample as `browser-agent-csharp-maf` for azd telemetry. Keep it in the initialized project's root `azure.yaml` as well. Named telemetry dashboards also need a `Templates` lookup entry whose name is `browser-agent-csharp-maf` and whose hash is SHA256 of that identifier; adding sample metadata does not update the shared lookup or attribute older events.
-
 ## How it works
 
 1. Deployment hooks provision or reuse an Azure Playwright workspace.
 2. The hooks create a Foundry project connection targeting the workspace's GA MCP endpoint and publish a Toolbox with a `browser_automation` tool.
 3. `AddFoundryToolboxes` discovers the browser tools at runtime.
-4. The model calls the discovered `create_browser_session` tool and passes its `browserSessionId` to subsequent browser calls.
+4. The model uses the discovered create-session tool and passes its `browserSessionId` to subsequent browser calls.
 5. Middleware removes `liveViewUrl` from model-visible tool output and streams the exact URL directly to the user.
 
 ## Key files
@@ -98,7 +94,7 @@ Use **Foundry Toolkit: Deploy Hosted Agent** to deploy from VS Code.
 
 ## Browser lifecycle
 
-Browser tools come from MCP `tools/list`. The agent creates a browser with the discovered tool ending in `create_browser_session`, reuses its `browserSessionId` for later calls and requests, and closes it with the discovered tool ending in `close_browser_session`.
+Agent Framework discovers the browser tools through MCP `tools/list`. The agent uses the discovered tools to create and close sessions, reusing the returned `browserSessionId` for later calls and requests.
 
 Live-view URLs are emitted by middleware so their signed fragments remain unchanged.
 

@@ -93,8 +93,9 @@ public static class Constants
         - NEVER close browsers on your own. Completing a response or finishing
           several forms does not authorize closing them.
         - If the user asks to kill, close, stop, or end a browser, honor that
-          immediately with end_session or the discovered close_browser_session
-          tool. Do not create another browser or run unrelated commands first.
+          immediately with end_session or the discovered tool whose name ends in
+          close_browser_session. Use its exact discovered name, including any
+          Toolbox prefix. Do not create another browser or run unrelated commands first.
           end_session accepts 'all'.
         - The application displays exact live-view links separately in chat.
           Never construct links or copy them into your final answer.

@@ -123,10 +123,6 @@ Browsers stay open after tasks and while waiting for input, CAPTCHA, MFA, or app
 
 This preserves application behavior, not an indefinite browser-lifetime guarantee. Hosted compute and browser-service idle limits still apply; the named session registry is in process memory.
 
-## Template telemetry
-
-The top-level `metadata.template` in `azure.yaml` identifies this sample as `browser-agent-python-byo` for azd telemetry. Keep it in the initialized project's root `azure.yaml` as well. Named telemetry dashboards also need a `Templates` lookup entry whose name is `browser-agent-python-byo` and whose hash is SHA256 of that identifier; adding sample metadata does not update the shared lookup or attribute older events.
-
 ## CI and non-interactive provisioning
 
 Set at least one of the following before `azd provision --no-prompt`:
