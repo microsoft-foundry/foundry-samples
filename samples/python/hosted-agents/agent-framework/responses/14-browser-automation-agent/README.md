@@ -8,7 +8,7 @@ This sample hosts a Python Agent Framework agent over the Responses protocol and
 2. They create a Foundry project connection targeting `https://<region>.mcp.playwright.microsoft.com/playwrightworkspaces/<id>/mcp`.
 3. They publish a Toolbox containing a `browser_automation` tool.
 4. Agent Framework connects to the Toolbox MCP endpoint and discovers browser tools dynamically.
-5. The model calls `create_browser_session`, then passes the returned `browserSessionId` to the other discovered browser tools.
+5. The model uses the discovered create-session tool, then passes the returned `browserSessionId` to the other browser tools.
 6. Middleware removes `liveViewUrl` from model-visible tool output and streams the exact link directly to the user.
 
 No browser tool schema is hardcoded in this sample, and no local browser CLI or CDP attachment is required.
@@ -74,7 +74,7 @@ On Linux or macOS, make the generated hook scripts executable before provisionin
 
 ## Browser lifecycle
 
-The agent discovers the available tool names and schemas from MCP `tools/list`. It creates a session with the tool ending in `create_browser_session`, reuses the returned `browserSessionId`, and closes it with the tool ending in `close_browser_session`. Live-view URLs are emitted by application code so their signed fragments are not changed by the model.
+Agent Framework discovers the browser tools through MCP `tools/list`. The agent uses the discovered tools to create and close sessions, reusing the returned `browserSessionId` for follow-up work. Live-view URLs are emitted by application code so their signed fragments are not changed by the model.
 
 Keep the browser open after successful tasks and while waiting for user input, approval, CAPTCHA, MFA, or manual browser steps. A completed response is not a request to close the browser. Resume in the same session after the user replies, and close only when the user explicitly asks.
 

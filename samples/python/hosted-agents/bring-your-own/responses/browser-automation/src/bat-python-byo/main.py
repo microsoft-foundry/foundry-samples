@@ -22,7 +22,7 @@ from dotenv import load_dotenv
 from utils.constants import LOAD_SKILL_TOOL, SESSION_TOOLS, SYSTEM_PROMPT
 from utils.skills import list_skills, load_skill
 from utils.toolbox import ToolboxCallResult, ToolboxClient
-from utils.utils import redact
+from utils.utils import public_tool_output, redact
 
 load_dotenv(override=False)
 
@@ -70,7 +70,36 @@ def _get_input_text(request: CreateResponse) -> str | None:
 
 def _build_input(current_input: str, history: list) -> list[dict]:
     input_items = []
+    call_ids = {
+        item["call_id"] for item in history
+        if item.get("type") == "function_call"
+    }
+    output_ids = {
+        item["call_id"] for item in history
+        if item.get("type") == "function_call_output"
+    }
+    paired_ids = call_ids & output_ids
     for item in history:
+        item_type = item.get("type")
+        if item_type in ("function_call", "function_call_output"):
+            call_id = item["call_id"]
+            if call_id not in paired_ids:
+                logger.warning("Skipping unmatched tool history item: %s", call_id)
+                continue
+            if item_type == "function_call":
+                input_items.append({
+                    "type": item_type,
+                    "call_id": call_id,
+                    "name": item["name"],
+                    "arguments": item["arguments"],
+                })
+            else:
+                input_items.append({
+                    "type": item_type,
+                    "call_id": call_id,
+                    "output": item["output"],
+                })
+            continue
         for content in item.get("content") or []:
             text = content.get("text")
             if content.get("type") == "output_text" and text:
@@ -166,12 +195,17 @@ async def _create_session(
     )
     _last_session = name
     result.session_name = name
-    result.output = json.dumps({
+    summary = {
         "status": "created",
         "session": name,
         "browserSessionId": result.browser_session_id,
         "result": result.output,
+    }
+    result.public_output = json.dumps({
+        **summary,
+        "result": result.public_output if result.public_output is not None else result.output,
     }, ensure_ascii=False)
+    result.output = json.dumps(summary, ensure_ascii=False)
     return result
 
 
@@ -230,18 +264,24 @@ async def _handle_tool_call(
             if reference != "all":
                 return await _close_session(reference)
             results = {}
+            public_results = {}
             is_error = False
             for session_name in list(_active_sessions):
                 result = await _close_session(session_name)
                 results[session_name] = result.output
+                public_results[session_name] = (
+                    result.public_output if result.public_output is not None else result.output
+                )
                 is_error = is_error or result.is_error
+            summary = {
+                "status": "close_failed" if is_error else "ended_all",
+                "results": results,
+                "remaining": list(_active_sessions),
+            }
             return ToolboxCallResult(
-                output=json.dumps({
-                    "status": "close_failed" if is_error else "ended_all",
-                    "results": results,
-                    "remaining": list(_active_sessions),
-                }),
+                output=json.dumps(summary),
                 is_error=is_error,
+                public_output=json.dumps({**summary, "results": public_results}),
             )
 
         short_name = name.rsplit("___", maxsplit=1)[-1]
@@ -330,20 +370,33 @@ async def _run_agent_loop(input_items: list[dict], used_sessions: set[str]):
             return
 
         for call in tool_calls:
+            yield "function_call", call
+            failed = True
+            session_text = None
+            live_view_urls = [
+                state.live_view_url for state in _active_sessions.values()
+                if state.live_view_url
+            ]
             try:
                 result = await _handle_tool_call(call, used_sessions)
+                failed = result.is_error
                 if result.live_view_url:
-                    yield (
-                        "session",
-                        f"🔴 Created **{result.session_name}**: "
-                        f"[Live View]({result.live_view_url})\n",
+                    live_view_urls.append(result.live_view_url)
+                    session_text = (
+                        f"**{result.session_name or 'Browser session'}**: "
+                        f"[Live View]({result.live_view_url})\n\n"
                     )
                 output = result.output
+                public_output = (
+                    result.public_output if result.public_output is not None else output
+                )
                 if result.is_error:
                     output = f"Tool error: {output}"
+                    public_output = f"Tool error: {public_output}"
             except Exception as exc:
                 logger.exception("Tool call failed: %s", call.name)
                 output = f"Tool call failed: {exc}"
+                public_output = output
 
             input_items.append({
                 "type": "function_call",
@@ -357,7 +410,14 @@ async def _run_agent_loop(input_items: list[dict], used_sessions: set[str]):
                 "call_id": call.call_id,
                 "output": output,
             })
-
+            yield "function_call_output", {
+                "call_id": call.call_id,
+                "output": public_tool_output(
+                    call.name, public_output, failed, live_view_urls,
+                ),
+            }
+            if session_text:
+                yield "chat", session_text
             yield "log", f"🔧 `{call.name}`\n"
 
     yield "reply", "Tool-call limit reached before the task completed."
@@ -389,13 +449,9 @@ async def handler(
     if verbose_mode:
         user_input = user_input.replace("/verbose", "", 1).strip()
 
-    message_item = stream.add_output_item_message()
-    yield message_item.emit_added()
-    text_content = message_item.add_text_content()
-    yield text_content.emit_added()
-
     if not user_input:
-        yield text_content.emit_delta("No input provided.")
+        for event in stream.output_item_message("No input provided."):
+            yield event
     else:
         try:
             history = await context.get_history()
@@ -406,35 +462,43 @@ async def handler(
         input_items = _build_input(user_input, history)
         used_sessions: set[str] = set()
         final_reply = ""
-        async for kind, text in _run_agent_loop(input_items, used_sessions):
+        async for kind, value in _run_agent_loop(input_items, used_sessions):
             if cancellation_signal.is_set():
-                final_reply = "Request was cancelled."
-                break
-            if kind == "session" or (kind == "log" and verbose_mode):
-                yield text_content.emit_delta(text)
+                yield stream.emit_incomplete()
+                return
+            if kind == "function_call":
+                for event in stream.output_item_function_call(
+                    name=value.name,
+                    call_id=value.call_id,
+                    arguments=value.arguments if value.name == "load_skill" else "{}",
+                ):
+                    yield event
+            elif kind == "function_call_output":
+                for event in stream.output_item_function_call_output(
+                    call_id=value["call_id"], output=value["output"]
+                ):
+                    yield event
+            elif kind == "chat" or (kind == "log" and verbose_mode):
+                for event in stream.output_item_message(value):
+                    yield event
             elif kind == "reply":
-                final_reply = text
+                final_reply = value
 
-        yield text_content.emit_delta(final_reply)
+        if cancellation_signal.is_set():
+            yield stream.emit_incomplete()
+            return
+        for event in stream.output_item_message(final_reply):
+            yield event
         links = [
-            f"- **{name}**: "
-            + (f"[Live View]({state.live_view_url})"
-               if state.live_view_url else "(no live view)")
+            f"- **{name}**: [Live View]({state.live_view_url})"
             for name, state in _active_sessions.items()
+            if state.live_view_url
         ]
         if links:
-            yield text_content.emit_delta(
-                "\n\n---\n**Active Browser Sessions:**\n" + "\n".join(links)
-            )
-            if used_sessions:
-                yield text_content.emit_delta(
-                    "\n\n_Used Sessions in this response: "
-                    + ", ".join(sorted(used_sessions)) + "_"
-                )
-
-    yield text_content.emit_text_done()
-    yield text_content.emit_done()
-    yield message_item.emit_done()
+            for event in stream.output_item_message(
+                "\n\n---\n\n**Active Browser Sessions:**\n\n" + "\n".join(links) + "\n"
+            ):
+                yield event
     yield stream.emit_completed()
 
 

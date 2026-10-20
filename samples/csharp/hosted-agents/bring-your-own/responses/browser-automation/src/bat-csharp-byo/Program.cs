@@ -83,28 +83,22 @@ public class BrowserAutomationHandler : ResponseHandler
         }
     }
 
-    public override IAsyncEnumerable<ResponseStreamEvent> CreateAsync(
-        CreateResponse request,
-        ResponseContext context,
-        CancellationToken cancellationToken) =>
-        new TextResponse(
-            context,
-            request,
-            createTextStream: ct => ProcessAsync(
-                request,
-                context,
-                ct));
-
-    private async IAsyncEnumerable<string> ProcessAsync(
+    public override async IAsyncEnumerable<ResponseStreamEvent> CreateAsync(
         CreateResponse request,
         ResponseContext context,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        var stream = new ResponseEventStream(context, request);
+        yield return stream.EmitCreated();
+        yield return stream.EmitInProgress();
+
         var userInput = await context.GetInputTextAsync(
             cancellationToken: cancellationToken) ?? "";
         if (string.IsNullOrWhiteSpace(userInput))
         {
-            yield return "No input provided.";
+            foreach (var streamEvent in stream.OutputItemMessage("No input provided."))
+                yield return streamEvent;
+            yield return stream.EmitCompleted();
             yield break;
         }
 
@@ -118,12 +112,48 @@ public class BrowserAutomationHandler : ResponseHandler
                 StringComparison.OrdinalIgnoreCase).TrimStart();
 
         var inputItems = new List<ResponseItem>();
+        IReadOnlyList<OutputItem> history = [];
         try
         {
-            var history = await context.GetHistoryAsync(cancellationToken);
-            foreach (var item in history.OfType<OutputItemMessage>())
+            history = await context.GetHistoryAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogWarning(
+                "get_history failed; continuing without: {Error}",
+                exception.Message);
+        }
+
+        var callIds = history.OfType<OutputItemFunctionToolCall>()
+            .Select(item => item.CallId).ToHashSet();
+        var outputIds = history.OfType<OutputItemFunctionToolCallOutput>()
+            .Select(item => item.CallId).ToHashSet();
+        foreach (var item in history)
+        {
+            if (item is OutputItemFunctionToolCall call)
             {
-                foreach (var content in item.Content ?? [])
+                if (outputIds.Contains(call.CallId))
+                    inputItems.Add(ResponseItem.CreateFunctionCallItem(
+                        call.CallId,
+                        call.Name,
+                        BinaryData.FromString(call.Arguments)));
+                else
+                    _logger.LogWarning(
+                        "Skipping unmatched tool history item: {CallId}", call.CallId);
+            }
+            else if (item is OutputItemFunctionToolCallOutput output)
+            {
+                if (callIds.Contains(output.CallId))
+                    inputItems.Add(ResponseItem.CreateFunctionCallOutputItem(
+                        output.CallId,
+                        output.Output.ToObjectFromJson<string>()));
+                else
+                    _logger.LogWarning(
+                        "Skipping unmatched tool history item: {CallId}", output.CallId);
+            }
+            else if (item is OutputItemMessage message)
+            {
+                foreach (var content in message.Content ?? [])
                 {
                     if (content is MessageContentOutputTextContent
                         { Text: { } assistantText })
@@ -136,12 +166,6 @@ public class BrowserAutomationHandler : ResponseHandler
                             ResponseItem.CreateUserMessageItem(userText));
                 }
             }
-        }
-        catch (Exception exception)
-        {
-            _logger.LogWarning(
-                "get_history failed; continuing without: {Error}",
-                exception.Message);
         }
 
         if (!ActiveSessions.IsEmpty)
@@ -186,18 +210,49 @@ public class BrowserAutomationHandler : ResponseHandler
 
             foreach (var call in calls)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                var isBrowserTool = call.FunctionName != "load_skill";
+                foreach (var streamEvent in stream.OutputItemFunctionCall(
+                             call.FunctionName,
+                             call.CallId,
+                             isBrowserTool ? "{}" : call.FunctionArguments.ToString()))
+                    yield return streamEvent;
+
+                var liveViewUrls = ActiveSessions.Values
+                    .Select(state => state.LiveViewUrl).OfType<string>().ToList();
                 var result = await HandleToolCallAsync(
                     call.FunctionName,
                     call.FunctionArguments,
                     usedSessions,
                     cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                var output = result.IsError
+                    ? $"Tool error: {result.Output}"
+                    : result.Output;
+                var publicOutput = result.PublicOutput ?? result.Output;
+                if (result.IsError)
+                    publicOutput = $"Tool error: {publicOutput}";
+                if (result.LiveViewUrl is { } liveViewUrl)
+                    liveViewUrls.Add(liveViewUrl);
+                publicOutput = Redaction.PublicToolOutput(
+                    call.FunctionName, publicOutput, result.IsError, liveViewUrls);
+                foreach (var streamEvent in stream.OutputItemFunctionCallOutput(
+                             call.CallId,
+                             BinaryData.FromObjectAsJson(publicOutput)))
+                    yield return streamEvent;
                 if (result.LiveViewUrl is not null)
                 {
-                    yield return $"🔴 Created **{result.SessionName}**: "
-                        + $"[Live View]({result.LiveViewUrl})\n";
+                    foreach (var streamEvent in stream.OutputItemMessage(
+                                 $"**{result.SessionName ?? "Browser session"}**: "
+                                 + $"[Live View]({result.LiveViewUrl})\n\n"))
+                        yield return streamEvent;
                 }
                 if (verbose)
-                    yield return $"🔧 `{call.FunctionName}`\n";
+                {
+                    foreach (var streamEvent in stream.OutputItemMessage(
+                                 $"🔧 `{call.FunctionName}`\n"))
+                        yield return streamEvent;
+                }
 
                 inputItems.Add(ResponseItem.CreateFunctionCallItem(
                     call.CallId,
@@ -205,32 +260,27 @@ public class BrowserAutomationHandler : ResponseHandler
                     call.FunctionArguments));
                 inputItems.Add(ResponseItem.CreateFunctionCallOutputItem(
                     call.CallId,
-                    result.IsError
-                        ? $"Tool error: {result.Output}"
-                        : result.Output));
+                    output));
             }
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrEmpty(finalReply))
             finalReply = "Tool-call limit reached before the task completed.";
-        yield return finalReply;
-
+        foreach (var streamEvent in stream.OutputItemMessage(finalReply))
+            yield return streamEvent;
         var links = ActiveSessions
-            .Select(pair =>
-                $"- **{pair.Key}**: "
-                + (string.IsNullOrEmpty(pair.Value.LiveViewUrl)
-                    ? "(no live view)"
-                    : $"[Live View]({pair.Value.LiveViewUrl})"))
+            .Where(pair => !string.IsNullOrEmpty(pair.Value.LiveViewUrl))
+            .Select(pair => $"- **{pair.Key}**: [Live View]({pair.Value.LiveViewUrl})")
             .ToList();
         if (links.Count > 0)
         {
-            yield return "\n\n---\n**Active Browser Sessions:**\n"
-                + string.Join("\n", links);
-            if (usedSessions.Count > 0)
-                yield return "\n\n_Used Sessions in this response: "
-                    + string.Join(", ", usedSessions.Order())
-                    + "_";
+            foreach (var streamEvent in stream.OutputItemMessage(
+                         "\n\n---\n\n**Active Browser Sessions:**\n\n" + string.Join("\n", links) + "\n"))
+                yield return streamEvent;
         }
+        cancellationToken.ThrowIfCancellationRequested();
+        yield return stream.EmitCompleted();
     }
 
     private async Task<ToolboxCallResult> HandleToolCallAsync(
@@ -283,7 +333,7 @@ public class BrowserAutomationHandler : ResponseHandler
                 SessionGate.Release();
             }
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             _logger.LogError(
                 exception,
@@ -363,16 +413,18 @@ public class BrowserAutomationHandler : ResponseHandler
         ActiveSessions[name] = new BrowserSessionState(
             result.BrowserSessionId, result.LiveViewUrl);
         _lastSession = name;
+        string WrapResult(string output) => JsonSerializer.Serialize(new
+        {
+            status = "created",
+            session = name,
+            browserSessionId = result.BrowserSessionId,
+            result = output,
+        });
         return result with
         {
             SessionName = name,
-            Output = JsonSerializer.Serialize(new
-            {
-                status = "created",
-                session = name,
-                browserSessionId = result.BrowserSessionId,
-                result = result.Output,
-            }),
+            Output = WrapResult(result.Output),
+            PublicOutput = WrapResult(result.PublicOutput ?? result.Output),
         };
     }
 
@@ -437,20 +489,24 @@ public class BrowserAutomationHandler : ResponseHandler
             if (reference != "all")
                 return await CloseSessionAsync(reference, new(), cancellationToken);
             var results = new Dictionary<string, string>();
+            var publicResults = new Dictionary<string, string>();
             var isError = false;
             foreach (var name in ActiveSessions.Keys.ToList())
             {
                 var result = await CloseSessionAsync(name, new(), cancellationToken);
                 results[name] = result.Output;
+                publicResults[name] = result.PublicOutput ?? result.Output;
                 isError |= result.IsError;
             }
+            string SummarizeResults(Dictionary<string, string> outputs) => JsonSerializer.Serialize(new
+            {
+                status = isError ? "close_failed" : "ended_all",
+                results = outputs,
+                remaining = ActiveSessions.Keys.ToList(),
+            });
             return new ToolboxCallResult(
-                JsonSerializer.Serialize(new
-                {
-                    status = isError ? "close_failed" : "ended_all",
-                    results,
-                    remaining = ActiveSessions.Keys.ToList(),
-                }), null, null, isError);
+                SummarizeResults(results), null, null, isError,
+                PublicOutput: SummarizeResults(publicResults));
         }
 
         var shortName = functionName.Split("___").Last();
