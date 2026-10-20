@@ -58,6 +58,15 @@ The sample manifest declares three authenticated connections: `ghmcppat` (GitHub
 
 To create the Language resource and get its MCP URL:
 
+Alternatively, with the Azure CLI:
+
+```bash
+az cognitiveservices account create -n <language-service> -g <resource-group> -l <location> \
+  --kind TextAnalytics --sku S --custom-domain <language-service> --yes
+```
+
+Portal steps:
+
 1. In the [Azure portal](https://portal.azure.com/), select **Create a resource**, search for **Language service**, and select the Microsoft offering. Alternatively, [open the Language resource creation page directly](https://portal.azure.com/#create/Microsoft.CognitiveServicesTextAnalytics), as linked in the [official resource creation instructions](https://learn.microsoft.com/en-us/azure/ai-services/language-service/language-detection/quickstart#create-an-azure-resource).
 2. If the **Select additional features** page appears, select **Continue to create your resource**. Choose your subscription, resource group, region, resource name, and pricing tier; accept the required terms, then select **Review + create** > **Create**.
 3. After deployment, select **Go to resource** > **Keys and Endpoint** and copy the custom-subdomain endpoint, such as `https://<language-service>.cognitiveservices.azure.com/`.
@@ -81,10 +90,13 @@ No cloning required. Create a new folder and initialize from the manifest:
 mkdir my-toolbox-agent
 cd my-toolbox-agent
 
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/azure.yaml
+cd agent-framework-agent-with-foundry-toolbox-responses
 ```
 
-Follow the prompts to configure your Foundry project and model deployment, and enter the PAT and Language MCP URL prepared above when prompted. If you don't have an existing Foundry project, `azd ai agent init` will guide you through configuring a new one; `azd provision` creates its Azure resources.
+`-m/--manifest` is deprecated in favor of `-t/--template`. Initialization creates the azd project in a subdirectory named `agent-framework-agent-with-foundry-toolbox-responses`, and names the azd environment `agent-framework-agent-with-foundry-toolbox-responses-dev` unless you pass `-e <environment-name>`.
+
+Follow the prompts to choose an existing or new Foundry project (subscription, location, and project name), and enter the PAT and Language MCP URL prepared above when prompted. The model deployment is taken from `azure.yaml`; there is no model prompt. If you don't have an existing Foundry project, `azd ai agent init` will guide you through configuring a new one; `azd provision` creates its Azure resources.
 
 **Run every subsequent command from the initialized project directory containing `azure.yaml`.** If initialization reports a different output directory, change to that directory first. Selecting an active Foundry project for `azd ai` commands is not a substitute for being in the local azd project directory.
 
@@ -113,6 +125,15 @@ azd provision
 
 On the **Azure Language resource**, open **Access control (IAM)** > **Add role assignment** and grant **Cognitive Services Language Owner** to the Foundry **project's system-assigned managed identity**. Use the project identity, not the parent Foundry account identity or your own user identity. An administrator may need to perform this assignment.
 
+With the Azure CLI:
+
+```bash
+PROJECT_PRINCIPAL_ID=$(az resource show --ids "$(azd env get-value AZURE_AI_PROJECT_ID)" --query identity.principalId -o tsv)
+az role assignment create --assignee-object-id "$PROJECT_PRINCIPAL_ID" --assignee-principal-type ServicePrincipal \
+  --role "Cognitive Services Language Owner" \
+  --scope "$(az cognitiveservices account show -n <language-service> -g <resource-group> --query id -o tsv)"
+```
+
 For identity lookup commands and the required Language data actions, see the [managed-identity authorization guide](../../../SUPPORTED_TOOLBOX_SCENARIOS/tools/mcp-microsoft-entra.md#step-2--authorize-the-identity). Allow time for the role assignment to propagate before invoking the agent.
 
 #### Deploy and invoke the agent
@@ -125,6 +146,8 @@ azd ai agent invoke "What tools do you have?"
 ```
 
 The agent's `TOOLBOX_ENDPOINT` maps to `TOOLBOX_AGENT_TOOLS_MCP_ENDPOINT` produced by this toolbox deployment. After editing tools, connections, or agent code, run `azd deploy --all` again; the agent uses the new toolbox version without publishing it as the default or switching older agents.
+
+`foundrymcpconn` uses the caller's **user** Entra token. If you are signed in to `azd` as a service principal or managed identity, every request fails while listing tools with `User identity authentication for this tool is not supported for this caller. User identity authentication requires a delegated Microsoft Entra user context with user object ID and tenant ID.` Likewise, a missing or invalid `GITHUB_MCP_PAT` fails tool listing for the `github` source (`HTTP_400 ... Authorization header is badly formatted`). Because a single failing source fails the whole toolbox (see [Troubleshooting](#a-single-failing-mcp-source-can-fail-the-whole-agent)), sign in as a user and use a valid PAT, or remove those tool entries from `azure.yaml` and run `azd deploy --all` again.
 
 For the full deployment guide, see [Deploy a hosted agent](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/deploy-hosted-agent).
 
@@ -155,7 +178,7 @@ azd ai agent invoke --local "What tools do you have?"
 
 #### Set up the Python virtual environment
 
-- With Python 3.13 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
+- With Python 3.13 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment. Run these from `src/agent-framework-agent-with-foundry-toolbox-responses` (which contains `pyproject.toml` and `uv.lock`), not from the project root:
 
   ```bash
    pipx install uv==0.11.7
@@ -212,7 +235,7 @@ curl https://mcp.ai.azure.com/.well-known/oauth-protected-resource
 
 Use the `resource` value (`https://mcp.ai.azure.com`) as the audience.
 
-> For connector-backed MCP servers (for example Microsoft 365 / WorkIQ servers such as Outlook Mail), the audience is instead published in the Foundry Tools Catalog. Look it up with the helper scripts in [`scripts/`](src/agent-framework-agent-with-foundry-toolbox-responses/scripts/): run `./scripts/list-foundry-connectors.ps1 -ConnectorName <name>` (or `./scripts/list-foundry-connectors.sh -n <name>`) and read `AzureActiveDirectoryResourceId` (equivalently `resourceUri`) under `properties.x-ms-connection-parameters`. Run the script with no connector name to list every connector with its name, title, and auth type.
+> For connector-backed MCP servers (for example Microsoft 365 / WorkIQ servers such as Outlook Mail), the audience is instead published in the Foundry Tools Catalog. Look it up with the helper scripts in [`scripts/`](src/agent-framework-agent-with-foundry-toolbox-responses/scripts/): from `src/agent-framework-agent-with-foundry-toolbox-responses`, run `./scripts/list-foundry-connectors.ps1 -ConnectorName <name>` (or `./scripts/list-foundry-connectors.sh -n <name>`) and read `AzureActiveDirectoryResourceId` (equivalently `resourceUri`) under `properties.x-ms-connection-parameters`. Run the script with no connector name to list every connector with its name, title, and auth type.
 
 ## Troubleshooting
 
