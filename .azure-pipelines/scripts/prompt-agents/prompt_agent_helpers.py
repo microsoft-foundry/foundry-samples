@@ -292,7 +292,7 @@ def toolbox_absent(metadata: Path, context: dict) -> bool:
 
 def agent_absent(stderr: str, exit_code: int, name: str, endpoint: str) -> bool:
     """Fail closed unless azd reports an exact-target prompt GET with HTTP 404."""
-    if exit_code == 0:
+    if exit_code in (0, 124, 137):
         return False
     messages = [stderr]
     for line in stderr.splitlines():

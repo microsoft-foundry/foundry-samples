@@ -21,18 +21,27 @@ from these deployment pipelines.
 .azure-pipelines/
   hosted-agents-samples-ci.yml
   private-bicep-pr-ci.yml
+  prompt-agents-samples-ci.yml
   hosted-agent-tests/<language>/<full-sample-path>/
     test-spec.yml
     test-payload.txt
+  prompt-agent-tests/cli/<full-sample-path>/
+    test-spec.yml
   scripts/
     hosted-agents/
     bicep/
+    prompt-agents/
 ```
 
-Fixture paths preserve the complete path below `samples/<language>/hosted-agents/`.
+Fixture paths preserve the complete path below `samples/<language>/hosted-agents/`
+(under `hosted-agent-tests/<language>/`) or `samples/cli/prompt-agents/` (under
+`prompt-agent-tests/cli/`).
 The [test-spec reference](hosted-agent-tests/README.md) defines owners, turns,
-assertions, approvals, and supported evidence. Legacy payloads remain supported;
-`test-spec.yml` takes precedence when both exist.
+assertions, approvals, and supported evidence; the
+[prompt-agent runner docs](scripts/prompt-agents/README.md#azd-prompt-lifecycle)
+document the narrower `prompt` and `managed` profile capabilities (string inputs
+and `assistant_text` assertions only). Legacy payloads remain supported for
+hosted agents; `test-spec.yml` takes precedence when both exist.
 
 Both the GitHub policy and ADO runner use
 [`hosted_agent_fixture.py`](../.github/scripts/hosted_agent_fixture.py) and

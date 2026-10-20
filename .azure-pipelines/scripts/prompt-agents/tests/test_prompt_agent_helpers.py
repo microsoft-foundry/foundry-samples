@@ -44,6 +44,8 @@ class HelperTests(unittest.TestCase):
                    "RESPONSE 404: 404 Not Found\n")
         self.assertTrue(helpers.agent_absent(message, 1, name, endpoint))
         self.assertFalse(helpers.agent_absent(message, 0, name, endpoint))
+        self.assertFalse(helpers.agent_absent(message, 124, name, endpoint))
+        self.assertFalse(helpers.agent_absent(message, 137, name, endpoint))
         self.assertFalse(helpers.agent_absent(message, 1, "ci-prompt-other", endpoint))
         self.assertFalse(helpers.agent_absent(message.replace("404: 404", "403: 403"), 1, name, endpoint))
 
