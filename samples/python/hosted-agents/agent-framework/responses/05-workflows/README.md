@@ -4,8 +4,6 @@ An [Agent Framework](https://github.com/microsoft/agent-framework) workflow demo
 
 > This sample requires a more advanced model because the model needs to continue the conversation from an assistant message. Not all models perform well in this scenario. Tested with OpenAI's model `gpt-5.4`.
 
-> This sample requires a more advanced model because the model needs to continue the conversation from an assistant message. Not all models perform well in this scenario. Tested with OpenAI's model `gpt-5.4`.
-
 ## How it works
 
 The agent creates three specialized `Agent` instances sharing the same `FoundryChatClient`: a **writer** that generates slogans, a **legal reviewer** that ensures compliance, and a **formatter** that styles the output. Each agent is wrapped in an `AgentExecutor` with `context_mode="last_agent"` so it only sees the previous agent's output. The `WorkflowBuilder` wires them into a linear pipeline and limits the output to the formatter's result. The workflow is converted to a standard agent via `.as_agent()` and served via `ResponsesHostServer`. See [main.py](src/agent-framework-workflows-responses/main.py) for the implementation.
