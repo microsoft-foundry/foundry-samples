@@ -83,7 +83,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 mkdir my-toolbox-agent
 cd my-toolbox-agent
 
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment, and enter the PAT and Language MCP URL prepared above when prompted. If you don't have an existing Foundry project, `azd ai agent init` will guide you through configuring a new one; `azd provision` creates its Azure resources.
@@ -135,18 +135,6 @@ This GUID identifies the project's managed identity. It is not the project's Azu
 
 The assignment's **scope must be the Language service resource**, not the Foundry project. This grants Language API access without granting subscription-wide access. If **Add role assignment** is disabled or the assignment fails because you lack permission, ask an administrator to perform this step.
 
-**3. Wait for permissions to propagate**
-
-Allow several minutes for the assignment to propagate, then continue with deployment and invocation below. If the agent is already deployed, retry:
-
-```bash
-azd ai agent invoke "What tools do you have?"
-```
-
-Changing this role assignment does **not** require redeployment.
-
-If invocation fails with `language-mcp`, `HTTP_401`, and a message that a principal lacks `Microsoft.CognitiveServices/accounts/Language/mcp/action`, compare the principal ID in the error with the project's **Object (principal) ID** and verify the role was assigned on the correct Language resource. A failure from `language-mcp` can prevent discovery of **all** toolbox tools, even when the other sources succeed.
-
 For more background on the required Language data actions, see the [managed-identity authorization guide](../../../SUPPORTED_TOOLBOX_SCENARIOS/tools/mcp-microsoft-entra.md#step-2--authorize-the-identity).
 
 #### Deploy and invoke the agent
@@ -157,6 +145,8 @@ Deploy all services together so that the connections and toolbox are deployed be
 azd deploy --all
 azd ai agent invoke "What tools do you have?"
 ```
+
+If invocation fails with `language-mcp`, `HTTP_401`, and a message that a principal lacks `Microsoft.CognitiveServices/accounts/Language/mcp/action`, compare the principal ID in the error with the project's **Object (principal) ID** and verify the role was assigned on the correct Language resource. A failure from `language-mcp` can prevent discovery of **all** toolbox tools, even when the other sources succeed.
 
 The agent's `TOOLBOX_ENDPOINT` maps to `TOOLBOX_AGENT_TOOLS_MCP_ENDPOINT` produced by this toolbox deployment. After editing tools, connections, or agent code, run `azd deploy --all` again; the agent uses the new toolbox version without publishing it as the default or switching older agents.
 
