@@ -145,3 +145,5 @@ A single deploy wires together several pieces to produce a working Teams agent:
 
 4. **Azure Bot + Teams channel** *(foundry extension postdeploy).* An instance-identity bot (`<agent-name>-bot-uai`) whose `msaAppId` is the agent **instance** identity, configured with the agent endpoint and the Microsoft Teams channel.
 
+
+<!-- Temporary PR used to verify public Azure Pipelines PR event delivery. -->
