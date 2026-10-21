@@ -1,6 +1,6 @@
 # Web Research Email Digest
 
-An interactive Microsoft Copilot harness agent that researches current public information with
+An interactive GitHub Copilot harness agent that researches current public information with
 Microsoft Foundry Web Search and emails a concise, cited summary through Work IQ Mail.
 
 The sample deploys:

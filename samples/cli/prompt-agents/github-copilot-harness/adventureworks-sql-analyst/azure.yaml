@@ -62,7 +62,7 @@ services:
     description: Explore and analyze the AdventureWorksLT sample database through read-only Azure SQL connector tools.
     model: gpt-5.4-mini
     harness:
-      type: microsoft_copilot_preview
+      type: github_copilot_preview
     skills:
       - adventureworks-analysis
     instructions: |
@@ -79,7 +79,7 @@ services:
       instead of retrieving every row. State which tables you used and distinguish database facts
       from your interpretation. If a tool fails, report the tool error rather than inventing data.
     tools:
-      - type: microsoft_copilot_toolset_preview
+      - type: github_copilot_toolset_preview
         defaultConfig:
           enabled: false
         configs:

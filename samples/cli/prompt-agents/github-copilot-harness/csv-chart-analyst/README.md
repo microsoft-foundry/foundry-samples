@@ -1,13 +1,13 @@
 # CSV Chart Analyst
 
-A Microsoft Copilot harness Prompt Agent sample for a complete native file workflow: upload a CSV,
+A GitHub Copilot harness Prompt Agent sample for a complete native file workflow: upload a CSV,
 attach it to a request, analyze it in the harness workspace, generate a PNG, upload the output to
 Foundry Files, and download it through the client.
 
 One `azd up` creates:
 
 - a Microsoft Foundry project and `gpt-5.4-mini` deployment;
-- one Prompt Agent using `harness.type: microsoft_copilot_preview`;
+- one Prompt Agent using `harness.type: github_copilot_preview`;
 - native file-read, file-write, and shell capabilities with all other harness built-ins disabled;
   and
 - a post-deploy role assignment granting the Agent identity **Foundry User** at project scope.
@@ -110,7 +110,7 @@ through the project Files API, not the Code Interpreter Containers API.
 Portal attachment filtering and generated-file UI behavior can differ by rollout. This sample uses
 the included client and does not require the Portal file UI.
 
-The client sends `Foundry-Features: MicrosoftCopilot=V1Preview` for the Copilot harness
+The client sends `Foundry-Features: GitHubCopilot=V1Preview` for the Copilot harness
 preview endpoint. Review the preview API contract before adapting this client for production.
 
 ## Tear down

@@ -11,11 +11,11 @@ azd up
 azd ai agent invoke "How do I create a hosted agent with azd? Cite the Microsoft Learn docs."
 ```
 
-## Microsoft Copilot harness
+## GitHub Copilot harness
 
-To use the Microsoft Copilot harness, add this block to a separately named agent service in [`azure.yaml`](./azure.yaml):
+To use the GitHub Copilot harness, add this block to a separately named agent service in [`azure.yaml`](./azure.yaml):
 
 ```yaml
 harness:
-  type: microsoft_copilot_preview
+  type: github_copilot_preview
 ```

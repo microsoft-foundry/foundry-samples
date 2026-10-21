@@ -11,13 +11,13 @@ azd up
 azd ai agent invoke "Hi"
 ```
 
-## Microsoft Copilot harness
+## GitHub Copilot harness
 
-To use the Microsoft Copilot harness, add this block to the agent service in [`azure.yaml`](./azure.yaml):
+To use the GitHub Copilot harness, add this block to the agent service in [`azure.yaml`](./azure.yaml):
 
 ```yaml
 harness:
-  type: microsoft_copilot_preview
+  type: github_copilot_preview
 ```
 
 Create a separate agent name when testing both variants in the same project.

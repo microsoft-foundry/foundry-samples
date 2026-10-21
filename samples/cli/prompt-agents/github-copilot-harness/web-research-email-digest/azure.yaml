@@ -44,7 +44,7 @@ services:
     description: Research current topics on the public web and email concise, cited summaries.
     model: gpt-5.4-mini
     harness:
-      type: microsoft_copilot_preview
+      type: github_copilot_preview
     instructions: |
       You research current topics on the public web and email concise summaries to the signed-in user.
 
@@ -79,7 +79,7 @@ services:
       images, gradients, decorative banners, or emoji. Keep the HTML under 15 KB and include no scripts
       or external styles. Do not send, reply to, forward, move, or delete any other email.
     tools:
-      - type: microsoft_copilot_toolset_preview
+      - type: github_copilot_toolset_preview
         defaultConfig:
           enabled: false
       - type: web_search

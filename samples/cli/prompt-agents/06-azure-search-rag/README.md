@@ -25,6 +25,6 @@ azd up
 azd ai agent invoke "What does the documentation say about the return policy?"
 ```
 
-## Microsoft Copilot harness
+## GitHub Copilot harness
 
-The Microsoft Copilot harness accepts the `azure_ai_search` tool. To use it, add `harness.type: microsoft_copilot_preview` to a separately named agent service in [`azure.yaml`](./azure.yaml) and omit `toolChoice` (an explicit `tool_choice` is not supported on that harness).
+The GitHub Copilot harness accepts the `azure_ai_search` tool. To use it, add `harness.type: github_copilot_preview` to a separately named agent service in [`azure.yaml`](./azure.yaml) and omit `toolChoice` (an explicit `tool_choice` is not supported on that harness).
