@@ -67,8 +67,6 @@ To create the Language resource and get its MCP URL:
    https://<language-service>.cognitiveservices.azure.com/language/mcp?api-version=2025-11-15-preview
    ```
 
-**Do not choose Language Understanding**: that is the older LUIS service, which retired on March 31, 2026, and is not used by this sample. See the [LUIS retirement notice](https://learn.microsoft.com/en-us/previous-versions/azure/ai-services/luis/what-is-luis) and the [Azure Language MCP server documentation](https://learn.microsoft.com/en-us/azure/ai-services/language-service/concepts/foundry-tools-agents#azure-language-mcp-server-preview).
-
 This sample does **not** provision the external Azure Language resource or create a GitHub PAT. Keep the PAT out of source control and do not share it in logs or screenshots.
 
 This sample calls Azure Language using the Foundry **project's system-assigned managed identity**, not your signed-in user account. After provisioning, you must grant that identity the **Cognitive Services Language Owner** role on the **Language service resource** to invoke the Language MCP endpoint. You need permission to create Azure role assignments at that resource's scope (for example, **Role Based Access Control Administrator**, **User Access Administrator**, or **Owner**), or help from an administrator. Follow [Authorize the project managed identity](#authorize-the-project-managed-identity) below before invoking the agent.
