@@ -10,6 +10,8 @@ This agent uses the **Activity protocol** (Bot Framework / M365 Agents SDK), so 
 - `client.py` — GitHub Copilot SDK harness (session + `ask()`)
 - `tools.py` — the custom tool set (a to-do list); tasks are persisted to a JSON file under `$HOME` so they survive sandbox idle/recycle
 - `files.py` — attachment text extraction (PDF / DOCX / PPTX), inlined into the prompt by `main.py`
+- `pyproject.toml` — direct runtime dependencies and Python compatibility
+- `uv.lock` — reproducible dependency graph used by local and container workflows
 - `Dockerfile` — container definition
 
 ## Development workflow
@@ -17,6 +19,9 @@ This agent uses the **Activity protocol** (Bot Framework / M365 Agents SDK), so 
 The **Azure Developer CLI (`azd`)** manages the full lifecycle:
 
 ```bash
+cd src/github-copilot-activity
+uv sync --frozen
+cd ../..
 azd ai agent run                 # Run locally on http://localhost:8088
 azd deploy                       # Deploy to Foundry (creates the Azure Bot + Teams channel)
 ```
@@ -29,6 +34,8 @@ POST a synthetic activity to `http://localhost:8088/activity/messages` with a
 `serviceUrl` pointing at a local catcher.
 
 ## Microsoft Foundry Skill
+
+This project was built with the microsoft-foundry skill. Before working on or answering questions about Foundry agents, read the microsoft-foundry skill first.
 
 Install the **Microsoft Foundry Skill** for guided deployment, evaluation, and troubleshooting workflows.
 
