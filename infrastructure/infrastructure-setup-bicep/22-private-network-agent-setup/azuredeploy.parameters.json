@@ -1,0 +1,98 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "westus"
+    },
+    "aiServices": {
+      "value": "foundry"
+    },
+    "modelName": {
+      "value": "gpt-4.1"
+    },
+    "modelFormat": {
+      "value": "OpenAI"
+    },
+    "modelVersion": {
+      "value": "2025-04-14"
+    },
+    "modelSkuName": {
+      "value": "GlobalStandard"
+    },
+    "modelCapacity": {
+      "value": 30
+    },
+    "firstProjectName": {
+      "value": "project"
+    },
+    "projectDescription": {
+      "value": "A project for the AI Foundry account with network secured deployed Agent"
+    },
+    "displayName": {
+      "value": "project"
+    },
+    "peSubnetName": {
+      "value": "pe-subnet"
+    },
+    "existingVnetResourceId": {
+      "value": ""
+    },
+    "vnetName": {
+      "value": "agent-vnet-test"
+    },
+    "agentSubnetName": {
+      "value": "agent-subnet"
+    },
+    "aiSearchResourceId": {
+      "value": ""
+    },
+    "azureStorageAccountResourceId": {
+      "value": ""
+    },
+    "azureCosmosDBAccountResourceId": {
+      "value": ""
+    },
+    "createDependentResourcePrivateEndpoints": {
+      "value": true
+    },
+    "assignProjectStorageAndCosmosAccountRoles": {
+      "value": true
+    },
+    "assignContainerRoles": {
+      "value": true
+    },
+    "dnsZonesSubscriptionId": {
+      "value": ""
+    },
+    "existingDnsZones": {
+      "value": {
+        "privatelink.services.ai.azure.com": "",
+        "privatelink.openai.azure.com": "",
+        "privatelink.cognitiveservices.azure.com": "",
+        "privatelink.search.windows.net": "",
+        "privatelink.blob.core.windows.net": "",
+        "privatelink.documents.azure.com": ""
+      }
+    },
+    "dnsZoneNames": {
+      "value": [
+        "privatelink.services.ai.azure.com",
+        "privatelink.openai.azure.com",
+        "privatelink.cognitiveservices.azure.com",
+        "privatelink.search.windows.net",
+        "privatelink.blob.core.windows.net",
+        "privatelink.documents.azure.com"
+      ]
+    },
+    "vnetAddressPrefix": {
+      "value": ""
+    },
+    "agentSubnetPrefix": {
+      "value": ""
+    },
+    "peSubnetPrefix": {
+      "value": ""
+    }
+  }
+}
