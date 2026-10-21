@@ -117,7 +117,7 @@ To adopt the complete sample without copying the source directory first:
 
 ```bash
 mkdir uv-pyproject-agent && cd uv-pyproject-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/responses/uv-pyproject/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/responses/uv-pyproject/azure.yaml
 azd provision
 azd ai agent run
 ```

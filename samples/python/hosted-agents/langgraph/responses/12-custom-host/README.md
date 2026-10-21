@@ -86,7 +86,7 @@ Prerequisites:
 
    ```bash
    mkdir hosted-langgraph-custom-host && cd hosted-langgraph-custom-host
-   azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/responses/12-custom-host/azure.yaml
+   azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/responses/12-custom-host/azure.yaml
    ```
 
 3. Start the agent:

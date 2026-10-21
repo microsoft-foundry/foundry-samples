@@ -68,12 +68,12 @@ deploy, the agent card is served at:
 From an empty directory:
 
 ```bash
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/a2a/a2a-executor/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/a2a/a2a-executor/azure.yaml
 ```
 
 > [!NOTE]
 > If you've already cloned this repository, pass a local path to the manifest instead:
-> `azd ai agent init -m <path-to-repo>/samples/python/hosted-agents/langgraph/a2a/a2a-executor/azure.yaml`
+> `azd ai agent init -t <path-to-repo>/samples/python/hosted-agents/langgraph/a2a/a2a-executor/azure.yaml`
 
 This copies the agent source into `src/math-expert/` and
 wires it into `azure.yaml`. Add the caller next (see the

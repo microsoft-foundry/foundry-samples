@@ -15,15 +15,23 @@ Pick the tool that matches your workflow — both deploy the same sample image t
 
 #### Deploy with the Azure Developer CLI (`azd`)
 
-> **Prerequisites:** Install Azure Developer CLI (`azd`) 1.27.1 or later with the Foundry AI extension. Manifests that set service environment variables use the `env:` map and require `azure.ai.agents` 1.0.0-beta.9 or later; their `requiredVersions` blocks enforce these minimums. See [Set up azd for hosted agents](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent?pivots=azd) if you haven't already.
+> **Prerequisites:** Install Azure Developer CLI (`azd`) 1.34.2 or later and the Foundry extension bundle (`azd ext install microsoft.foundry`), with `azure.ai.agents` 1.0.0-beta.19 or later. If the agent extension is already installed, run `azd ext update azure.ai.agents`. These minimums support `--template` / `-t` and are declared in the samples' `requiredVersions` blocks. See [Set up azd for hosted agents](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent?pivots=azd).
 
 ```bash
 mkdir my-agent && cd my-agent
-azd ai agent init -m ../agent-framework/responses/01-basic/azure.yaml
+azd ai agent init -t "https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/01-basic/azure.yaml"
 azd up
 ```
 
 You'll have a running agent in minutes.
+
+`--template` (short form `-t`) accepts a local `azure.yaml` file or a public GitHub file URL. For example, on Windows:
+
+```powershell
+azd ai agent init -t "C:\path\to\sample\azure.yaml"
+```
+
+If you've already downloaded the sample, run `azd ai agent init` **without `-t`** from the sample directory containing `azure.yaml` to reuse its existing project configuration. Use `-t` from a new, empty directory when you want a separate workspace. The old `--manifest` / `-m` aliases remain compatible but are deprecated.
 
 #### Deploy with the Foundry Toolkit VS Code Extension
 
@@ -217,7 +225,7 @@ Every sample deploys the same way and supports two equivalent paths. Pick the on
 | | **Azure Developer CLI (`azd`)** | **Foundry Toolkit VS Code Extension** |
 | --- | --- | --- |
 | **Install** | [Install `azd`](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) + `azd ext install microsoft.foundry` | Install the Foundry Toolkit VS Code extension |
-| **Open the sample** | `azd ai agent init -m <azure.yaml>` — adopts the sample's `azure.yaml` and sets up env config | Clone the repo and open the sample folder in VS Code |
+| **Open the sample** | `azd ai agent init -t <azure.yaml>` — adopts the sample's `azure.yaml` and sets up env config | Clone the repo and open the sample folder in VS Code |
 | **Run locally** | `azd ai agent run` (or `python main.py`) | Same as `azd`/manual, then open **Foundry Toolkit: Open Agent Inspector** to chat with the running agent |
 | **Provision Azure resources** | `azd provision` (creates Foundry project, model deployment, ACR, App Insights if needed) | Guided dialog in **Foundry Toolkit: Deploy Hosted Agent** — reuses existing project or provisions a new one |
 | **Deploy to Foundry** | `azd deploy` (or `azd up` to provision + deploy) | **Foundry Toolkit: Deploy Hosted Agent** — builds image in ACR, registers the agent version, assigns RBAC |
@@ -229,7 +237,7 @@ Every sample deploys the same way and supports two equivalent paths. Pick the on
 mkdir my-agent && cd my-agent
 
 # Scaffold from the sample manifest — azd generates all the deployment files
-azd ai agent init -m ../agent-framework/responses/01-basic/azure.yaml
+azd ai agent init -t "https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/01-basic/azure.yaml"
 
 # Build, push, and deploy
 azd up
@@ -295,7 +303,7 @@ Here is a hosted agent sample with Invocations protocol that is compatible with 
 
 - **Azure subscription** with access to Microsoft Foundry
 - **One of the following deploy tools:**
-  - **Azure Developer CLI (`azd`) 1.27.1 or later** — [install](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent?pivots=azd), or
+  - **Azure Developer CLI (`azd`) 1.34.2 or later** — [install](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent?pivots=azd), or
   - **Foundry Toolkit VS Code Extension** — [install](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent?pivots=vscode)
 - **Python 3.12+**
 

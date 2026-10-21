@@ -102,7 +102,7 @@ from its public manifest with the Azure Developer CLI:
 ```bash
 mkdir voice-live-bridge-basic-python
 cd voice-live-bridge-basic-python
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/voice-agent-target-agent/basic/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/voice-agent-target-agent/basic/azure.yaml
 azd provision
 azd ai agent run
 ```

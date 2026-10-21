@@ -52,7 +52,7 @@ identity token acquired before the role assignment.
 mkdir resilient-workflow && cd resilient-workflow
 azd ext install microsoft.foundry
 azd auth login
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/23-resilient-workflow/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/23-resilient-workflow/azure.yaml
 cd agent-framework-resilient-workflow-responses
 ```
 

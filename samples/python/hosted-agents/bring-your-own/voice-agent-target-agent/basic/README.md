@@ -47,7 +47,7 @@ history mutation, or hosted-agent handoff.
 1. Python 3.13 or later.
 2. [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
    installed and available on `PATH`.
-3. Azure Developer CLI (`azd`) 1.27.1 or later with the Foundry extension.
+3. Azure Developer CLI (`azd`) 1.34.2 or later with the Foundry extension.
 4. Azure CLI authentication for local model access.
 5. A Foundry project and model deployment, or permission for `azd provision` to create them.
 
@@ -66,7 +66,7 @@ Initialize this sample from the public manifest:
 ```bash
 mkdir voice-live-bridge-basic-python
 cd voice-live-bridge-basic-python
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/voice-agent-target-agent/basic/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/voice-agent-target-agent/basic/azure.yaml
 ```
 
 Provision the declared Foundry project and model when needed, then run or deploy the hosted agent:

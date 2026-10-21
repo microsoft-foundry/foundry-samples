@@ -38,17 +38,25 @@ path (`azd` or the VS Code Foundry Toolkit) is listed under its option below.
 
 ### Prerequisites
 
-1. **Azure Developer CLI (`azd`) 1.27.1 or later** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
-2. Install the Foundry extension:
+1. **Azure Developer CLI (`azd`) 1.34.2 or later** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
+2. Install the Foundry extension bundle with **`azure.ai.agents` 1.0.0-beta.19 or later**:
 
    ```bash
    azd ext install microsoft.foundry
    ```
 
-   If the manifest defines service environment variables, use the `env:` map
-   rather than the legacy `environmentVariables` list. This requires `azd`
-   1.27.1+ and `azure.ai.agents` 1.0.0-beta.9+; declare both in
-   `requiredVersions`.
+   If the agent extension is already installed, run `azd ext update azure.ai.agents`.
+   These minimums support `--template` / `-t`; declare them in `azure.yaml`:
+
+   ```yaml
+   requiredVersions:
+     azd: '>=1.34.2'
+     extensions:
+       azure.ai.agents: '>=1.0.0-beta.19'
+   ```
+
+   Use the `env:` map for service environment variables rather than the legacy
+   `environmentVariables` list.
 
 3. Authenticate:
 
@@ -62,10 +70,14 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir my-agent && cd my-agent
-azd ai agent init -m {{URL to your sample's azure.yaml on GitHub}}
+azd ai agent init -t "{{URL to your sample's azure.yaml on GitHub}}"
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
+
+`--template` (short form `-t`) accepts a local `azure.yaml` path or a public GitHub file URL. Quote paths containing spaces. The old `--manifest` / `-m` aliases remain compatible but are deprecated.
+
+If the sample is already downloaded, run `azd ai agent init` without `-t` from the directory containing its `azure.yaml` to reuse the existing project configuration.
 
 ### Provision Azure resources (if needed)
 

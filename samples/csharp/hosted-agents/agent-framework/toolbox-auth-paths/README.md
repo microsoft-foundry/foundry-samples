@@ -115,7 +115,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir toolbox-auth-paths-agent && cd toolbox-auth-paths-agent
-azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/toolbox-auth-paths/azure.yaml
+azd ai agent init --deploy-mode container -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/toolbox-auth-paths/azure.yaml
 ```
 
 `azd ai agent init` prompts once for the `gh_pat` secret parameter. Follow the prompts to configure your Foundry project and model deployment.

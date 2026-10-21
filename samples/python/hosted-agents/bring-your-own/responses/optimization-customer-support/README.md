@@ -62,7 +62,7 @@ Same pattern as the hello-world sample:
 
 ### Prerequisites
 
-1. **Azure Developer CLI (`azd`)** v1.25.3+
+1. **Azure Developer CLI (`azd`)** v1.34.2+
    - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
    - Install the agent optimizer extension: `azd ext install azure.ai.agents`
    - Authenticate: `azd auth login`
@@ -87,7 +87,7 @@ See [`.env.example`](src/optimization-customer-support-python-responses/.env.exa
 ### Initialize the agent project
 
 ```bash
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/responses/optimization-customer-support/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/responses/optimization-customer-support/azure.yaml
 ```
 
 The interactive flow prompts for your Azure subscription, region, and model deployment settings. This adopts the sample's `azure.yaml` as your project manifest and configures the environment.

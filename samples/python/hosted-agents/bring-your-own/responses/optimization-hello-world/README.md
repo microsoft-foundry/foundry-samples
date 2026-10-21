@@ -40,7 +40,7 @@ This means the agent works identically with or without optimization — no featu
 
 ### Prerequisites
 
-1. **Azure Developer CLI (`azd`)** v1.25.3+
+1. **Azure Developer CLI (`azd`)** v1.34.2+
    - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
    - Install the agent optimizer extension: `azd ext install azure.ai.agents`
    - Authenticate: `azd auth login`
@@ -66,7 +66,7 @@ See [`.env.example`](src/optimization-hello-world-python-responses/.env.example)
 ### Initialize the agent project
 
 ```bash
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/responses/optimization-hello-world/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/responses/optimization-hello-world/azure.yaml
 ```
 
 The interactive flow prompts for your Azure subscription, region, and model deployment settings. This adopts the sample's `azure.yaml` as your project manifest and configures the environment.

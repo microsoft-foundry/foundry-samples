@@ -31,7 +31,7 @@ It shows how one hosted agent can call another.
 
 Each agent is self-contained (its `azure.yaml` sits next to its code),
 so you scaffold a fresh azd project from these manifests with
-`azd ai agent init -m <manifest>`. Because the caller's A2A connection must point
+`azd ai agent init -t <manifest>`. Because the caller's A2A connection must point
 at the executor's *live* endpoint, the executor is **provisioned and deployed
 first** — then the caller is added and pointed at the real endpoint.
 
@@ -41,7 +41,7 @@ From an **empty directory**:
 
 ```bash
 # Adopts the sample's azure.yaml + src/math-expert
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/a2a/a2a-executor/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/a2a/a2a-executor/azure.yaml
 
 # Provision the Foundry project and deploy the executor
 cd math-expert   # init roots the project in this subfolder
@@ -50,7 +50,7 @@ azd up
 
 > [!NOTE]
 > If you've already cloned this repository, pass a local path to the manifest instead:
-> `azd ai agent init -m <path-to-repo>/samples/python/hosted-agents/langgraph/a2a/a2a-executor/azure.yaml`
+> `azd ai agent init -t <path-to-repo>/samples/python/hosted-agents/langgraph/a2a/a2a-executor/azure.yaml`
 
 ### Step 2 — Capture the executor's A2A endpoint
 
@@ -72,7 +72,7 @@ $executorA2A   # copy this value
 
 ```bash
 # Run from inside the same project root (where azure.yaml is located) created in Step 1
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/a2a/a2a-caller/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/a2a/a2a-caller/azure.yaml
 ```
 
 At the `a2a_executor_endpoint` prompt, paste the `$executorA2A` value from

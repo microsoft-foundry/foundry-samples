@@ -41,6 +41,17 @@ def action(step):
 
 
 class PipelineTests(unittest.TestCase):
+    def test_agent_init_uses_template_option(self):
+        bodies = {match["label"]: match["body"] for match in BODIES.finditer(RUNNER)}
+        self.assertIn(
+            '--template "$REPO_ROOT/$SAMPLE_PATH/azure.yaml"',
+            bodies["STEP_SCAFFOLD_AGENT_PROJECT"],
+        )
+        self.assertIn(
+            'for flag in -- "--template" "--deploy-mode" "--runtime" "--entry-point"; do',
+            bodies["STEP_VERIFY_AZD_EXT_SUPPORTS_DEPLOY_MODE"],
+        )
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)

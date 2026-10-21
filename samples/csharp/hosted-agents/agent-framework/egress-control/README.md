@@ -58,7 +58,7 @@ The layered infrastructure in `azure.yaml` provisions the Foundry project first,
 
 ```bash
 mkdir my-dotnet-egress-agent && cd my-dotnet-egress-agent
-azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/egress-control/azure.yaml
+azd ai agent init --deploy-mode container -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/egress-control/azure.yaml
 azd provision
 ```
 

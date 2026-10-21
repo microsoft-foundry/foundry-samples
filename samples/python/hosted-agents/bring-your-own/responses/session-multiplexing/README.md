@@ -59,7 +59,7 @@ The agent is hosted using the [Azure AI AgentServer Responses SDK](https://pypi.
 Before running this sample, ensure you have:
 
 1. **Azure Developer CLI (`azd`)**
-   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.25 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
+   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.34.2 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
    - Authenticated: `azd auth login`
 
 1. **Azure CLI**
@@ -111,14 +111,14 @@ uv sync --frozen --python 3.12
 
 ```bash
 mkdir session-multiplexing-agent && cd session-multiplexing-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/responses/session-multiplexing/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/responses/session-multiplexing/azure.yaml
 azd provision
 azd ai agent run
 ```
 
 > [!NOTE]
 > If you've already cloned this repository, pass a local path to the manifest instead:
-> `azd ai agent init -m <path-to-repo>/samples/python/hosted-agents/bring-your-own/responses/session-multiplexing/azure.yaml`
+> `azd ai agent init -t <path-to-repo>/samples/python/hosted-agents/bring-your-own/responses/session-multiplexing/azure.yaml`
 
 The agent starts on `http://localhost:8088/`. Local requests do not include hosted protocol 2.0.0 platform context, so the handler fails closed until `get_request_context().user_id` and `get_request_context().call_id` are present.
 

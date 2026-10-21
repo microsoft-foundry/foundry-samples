@@ -72,7 +72,7 @@ is not required.
 
 #### Azure Developer CLI (`azd`)
 
-Install [Azure Developer CLI 1.27.1 or later](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
+Install [Azure Developer CLI 1.34.2 or later](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
 and the Foundry extension, then authenticate:
 
 ```bash
@@ -80,13 +80,13 @@ azd ext install microsoft.foundry
 azd auth login
 ```
 
-The manifest requires `azure.ai.agents` extension version `1.0.0-beta.9` or
+The manifest requires `azure.ai.agents` extension version `1.0.0-beta.19` or
 later. To initialize a new workspace from the sample:
 
 ```bash
 mkdir custom-store-agent
 cd custom-store-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/responses/13-custom-store/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/responses/13-custom-store/azure.yaml
 ```
 
 Follow the prompts to select or create the Foundry project and model deployment.

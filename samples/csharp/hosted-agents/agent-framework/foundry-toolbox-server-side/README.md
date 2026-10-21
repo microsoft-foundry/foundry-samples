@@ -34,7 +34,7 @@ To run this sample as provided, skip the table and continue with the [setup step
 
 ### Prerequisites
 
-1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.27.1 or later)
+1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.34.2 or later)
 2. Install the Foundry extension:
 
    ```bash
@@ -53,7 +53,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir foundry-toolbox-agent && cd foundry-toolbox-agent
-azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/foundry-toolbox-server-side/azure.yaml
+azd ai agent init --deploy-mode container -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/foundry-toolbox-server-side/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.

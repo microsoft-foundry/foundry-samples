@@ -33,7 +33,7 @@ For container deployment, the deploying identity needs permission to build or pu
 
 ### Prerequisites
 
-1. **Azure Developer CLI (`azd`) 1.25.3 or later** — [Install azd](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd).
+1. **Azure Developer CLI (`azd`) 1.34.2 or later** — [Install azd](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd).
 2. Install the Foundry extension:
 
    ```bash
@@ -53,7 +53,7 @@ No clone is required:
 ```bash
 mkdir harness-data-processing-responses
 cd harness-data-processing-responses
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/20-harness-data-processing/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/20-harness-data-processing/azure.yaml
 ```
 
 Choose an existing Foundry project and model deployment, or let the prompts configure a new project. The manifest defaults to direct code deployment. To initialize explicitly for container deployment, append `--deploy-mode container`.

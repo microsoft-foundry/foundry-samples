@@ -49,8 +49,8 @@ Values outside this range are rejected during provisioning/deployment.
 ## Prerequisites
 
 1. **Azure Developer CLI (`azd`)**
-   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.25 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
-   - This sample requires the **`azure.ai.agents` extension `>=1.0.0-beta.11`** (declared in [`azure.yaml`](azure.yaml) under `requiredVersions`)
+   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.34.2 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
+   - This sample requires the **`azure.ai.agents` extension `>=1.0.0-beta.19`** for `--template` / `-t` (declared in [`azure.yaml`](azure.yaml) under `requiredVersions`). If already installed, update it with `azd ext update azure.ai.agents`.
    - Authenticated: `azd auth login`
 2. **Azure CLI** — installed and authenticated: `az login`
 3. **Python 3.10 or higher** — verify with `python --version`
@@ -68,7 +68,7 @@ mkdir session-config-agent && cd session-config-agent
 
 # Initialize from the manifest — azd reads it, downloads the sample,
 # and adopts its azure.yaml as the project manifest
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/quickstart/hosted-agent-session-configuration/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/quickstart/hosted-agent-session-configuration/azure.yaml
 
 # Provision Azure resources (Foundry project, model deployment, App Insights)
 azd provision
@@ -79,7 +79,8 @@ azd ai agent run
 
 > [!NOTE]
 > If you've already cloned this repository, pass a local path to the manifest instead:
-> `azd ai agent init -m <path-to-repo>/samples/python/quickstart/hosted-agent-session-configuration/azure.yaml`
+> `azd ai agent init -t <path-to-repo>/samples/python/quickstart/hosted-agent-session-configuration/azure.yaml`
+> Or change into this sample's directory and run `azd ai agent init` without `-t` to reuse its existing `azure.yaml`.
 
 Invoke the local agent:
 

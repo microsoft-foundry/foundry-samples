@@ -39,7 +39,7 @@ The hosted agent can be developed and deployed to Microsoft Foundry using the [A
 Before running this sample, ensure you have:
 
 1. **Azure Developer CLI (`azd`)**
-   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.25 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
+   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.34.2 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
    - Authenticated: `azd auth login`
 
 2. **Azure CLI**
@@ -133,7 +133,7 @@ mkdir hello-world-agent && cd hello-world-agent
 
 # Initialize from the manifest — azd reads it, downloads the sample,
 # and adopts its azure.yaml as the project manifest and configures your environment
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/invocations/hello-world/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/invocations/hello-world/azure.yaml
 
 # Provision Azure resources (Foundry project, model deployment, App Insights)
 azd provision
@@ -144,7 +144,7 @@ azd ai agent run
 
 > [!NOTE]
 > If you've already cloned this repository, pass a local path to the manifest instead:
-> `azd ai agent init -m <path-to-repo>/samples/python/hosted-agents/bring-your-own/invocations/hello-world/azure.yaml`
+> `azd ai agent init -t <path-to-repo>/samples/python/hosted-agents/bring-your-own/invocations/hello-world/azure.yaml`
 
 > [!NOTE]
 > If you already have a Foundry project and model deployment, add `-p <project-id> -d <deployment-name>` to `azd ai agent init` to target existing resources. You can also skip provisioning entirely and configure env vars manually — see [Manual setup](#manual-setup).

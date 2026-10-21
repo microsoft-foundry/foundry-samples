@@ -66,7 +66,7 @@ See [main.py](src/toolbox-langgraph/main.py) for the full implementation.
 
 ### Prerequisites
 
-1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.27.1 or later)
+1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.34.2 or later)
 2. Install the Foundry extension:
 
    ```bash
@@ -89,7 +89,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir hosted-langgraph-agent && cd hosted-langgraph-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/responses/02-langgraph-toolbox/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/responses/02-langgraph-toolbox/azure.yaml
 ```
 
 ### Create the toolbox with `azd ai`

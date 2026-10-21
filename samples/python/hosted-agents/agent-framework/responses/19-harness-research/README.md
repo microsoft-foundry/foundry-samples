@@ -53,7 +53,7 @@ No clone is required:
 ```bash
 mkdir harness-research-responses
 cd harness-research-responses
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/19-harness-research/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/19-harness-research/azure.yaml
 ```
 
 Choose an existing Foundry project and model deployment, or let the prompts configure a new project. The manifest defaults to direct code deployment. To initialize explicitly for container deployment, append `--deploy-mode container`.

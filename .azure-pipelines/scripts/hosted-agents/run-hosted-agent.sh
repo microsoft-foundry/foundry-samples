@@ -162,9 +162,8 @@ azd version
 
 # Install the latest unified Foundry CLI extension. The verify
 # step below fails fast if the installed build doesn't expose the
-# --deploy-mode/--runtime/--entry-point flags the code arm needs.
-# The unified azure.yaml declares `requiredVersions.extensions:
-# microsoft.foundry`, matching the sample READMEs.
+# --template/--deploy-mode/--runtime/--entry-point flags the code arm needs.
+# The samples declare the azure.ai.agents minimum in requiredVersions.
 hosted_agent_retry_command "Install microsoft.foundry extension" \
   azd ext install microsoft.foundry
 
@@ -354,7 +353,7 @@ run_preflight() {
 
 agent_help="$PREFLIGHT_DIR/agent-init-help.log"
 run_preflight "azd ai agent init --help" "$agent_help" azd ai agent init --help
-for flag in -- "--deploy-mode" "--runtime" "--entry-point"; do
+for flag in -- "--template" "--deploy-mode" "--runtime" "--entry-point"; do
   if ! grep -q -- "$flag" "$agent_help"; then
     echo "##vso[task.logissue type=error]azd ai agent init does not expose '$flag' — extension is too old"
     echo "--- combined stdout/stderr ---"
@@ -363,7 +362,7 @@ for flag in -- "--deploy-mode" "--runtime" "--entry-point"; do
     exit 1
   fi
 done
-echo "PASS azd ai agent init exposes --deploy-mode / --runtime / --entry-point"
+echo "PASS azd ai agent init exposes --template / --deploy-mode / --runtime / --entry-point"
 
 toolbox_delete_help="$PREFLIGHT_DIR/toolbox-delete-help.log"
 run_preflight "azd ai toolbox delete --help" "$toolbox_delete_help" azd ai toolbox delete --help
@@ -489,7 +488,7 @@ fi
 # can echo the exact invocation before running it.
 AZD_ARGS=(
   ai agent init
-  -m "$REPO_ROOT/$SAMPLE_PATH/azure.yaml"
+  --template "$REPO_ROOT/$SAMPLE_PATH/azure.yaml"
   --project-id "$PROJECT_ID"
   --no-prompt
   --environment "$AZD_ENV_NAME"

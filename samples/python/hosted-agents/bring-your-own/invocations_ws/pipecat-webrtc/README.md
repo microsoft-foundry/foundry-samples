@@ -101,7 +101,7 @@ The server may also push `{ "type": "closed" }` if the peer connection is torn d
 1. **Python 3.12 or later** — `python --version`
 2. **uv 0.11.7 or later** — [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
 3. **Azure CLI** — installed and authenticated: `az login`
-4. **Azure Developer CLI (`azd`)** (only needed for the deploy step) — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.25 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
+4. **Azure Developer CLI (`azd`)** (only needed for the deploy step) — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.34.2 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
 5. **Azure resources**:
    - Azure Speech (any region) — for STT and TTS
    - Azure OpenAI deployment (e.g. `gpt-4o-mini`) — for the LLM agents

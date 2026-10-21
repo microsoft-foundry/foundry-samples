@@ -150,7 +150,7 @@ No cloning required. Create a new folder, initialize from the manifest, then pro
 ```bash
 mkdir hotel-booking-agent && cd hotel-booking-agent
 
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/voicelive/hotel-booking-invocations-voicelive/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/voicelive/hotel-booking-invocations-voicelive/azure.yaml
 
 azd provision
 azd ai agent run

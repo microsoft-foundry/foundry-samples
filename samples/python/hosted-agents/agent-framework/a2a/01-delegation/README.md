@@ -50,7 +50,7 @@ The two agents are set up in separate `azd` projects. Four steps:
 ```bash
 mkdir hosted-agent-a2a-executor && cd hosted-agent-a2a-executor
 
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/a2a/01-delegation/executor/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/a2a/01-delegation/executor/azure.yaml
 
 azd provision    # writes .env (FOUNDRY_PROJECT_ENDPOINT, AZURE_AI_MODEL_DEPLOYMENT_NAME)
 azd deploy
@@ -75,7 +75,7 @@ On success the script prints the executor's A2A endpoint URL — **copy it**, yo
 ```bash
 mkdir ../hosted-agent-a2a-caller && cd ../hosted-agent-a2a-caller
 
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/a2a/01-delegation/caller/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/a2a/01-delegation/caller/azure.yaml
 # Paste the A2A endpoint URL from step 2 when prompted for `a2a_executor_endpoint`.
 
 azd provision    # creates the RemoteA2A connection + a2a_preview toolbox from the manifest

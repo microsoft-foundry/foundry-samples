@@ -49,7 +49,7 @@ a request that supplies both `conversation` and `previous_response_id`.
 mkdir steering && cd steering
 azd ext install microsoft.foundry
 azd auth login
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/24-steering/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/24-steering/azure.yaml
 cd agent-framework-steering-responses
 ```
 

@@ -44,7 +44,7 @@ collide with shared toolboxes in the Foundry project.
 - Python 3.13+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
   installed and available on `PATH`
-- Azure Developer CLI (`azd`) 1.25 or later
+- Azure Developer CLI (`azd`) 1.34.2 or later
 - The Microsoft Foundry `azd` extension
 - An Azure subscription where you can create Foundry resources
 
@@ -62,7 +62,7 @@ Create a directory and initialize it from this sample:
 ```bash
 mkdir langgraph-toolbox-user-identity
 cd langgraph-toolbox-user-identity
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/responses/03-langgraph-toolbox-user-identity/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/responses/03-langgraph-toolbox-user-identity/azure.yaml
 ```
 
 Provision the Foundry layer, followed by the dependent

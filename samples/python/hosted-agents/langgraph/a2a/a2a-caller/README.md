@@ -73,7 +73,7 @@ in short:
 
 ```bash
 # 1. Scaffold + deploy the executor
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/a2a/a2a-executor/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/a2a/a2a-executor/azure.yaml
 cd math-expert
 azd up
 
@@ -82,7 +82,7 @@ endpoint=$(azd env get-value FOUNDRY_PROJECT_ENDPOINT)
 echo "$endpoint/agents/math-expert/endpoint/protocols/a2a/"
 
 # 3. Add the caller; paste the value above at the a2a_executor_endpoint prompt
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/a2a/a2a-caller/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/a2a/a2a-caller/azure.yaml
 azd up
 ```
 
@@ -90,7 +90,7 @@ Or in PowerShell:
 
 ```powershell
 # 1. Scaffold + deploy the executor
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/a2a/a2a-executor/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/a2a/a2a-executor/azure.yaml
 cd math-expert
 azd up
 
@@ -99,7 +99,7 @@ $endpoint = azd env get-value FOUNDRY_PROJECT_ENDPOINT
 "$endpoint/agents/math-expert/endpoint/protocols/a2a/"
 
 # 3. Add the caller; paste the value above at the a2a_executor_endpoint prompt
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/a2a/a2a-caller/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/a2a/a2a-caller/azure.yaml
 azd up
 ```
 

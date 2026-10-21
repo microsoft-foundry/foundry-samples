@@ -139,7 +139,7 @@ See the [full installation docs](https://learn.microsoft.com/azure/developer/azu
 #   azd ext uninstall azure.ai.toolboxes
 
 # Install the unified bundle (provides azd ai agent, connection, inspector,
-# project, routine, skill, and toolbox). Requires azd 1.27.1 or later.
+# project, routine, skill, and toolbox). Requires azd 1.34.2 or later.
 azd ext install microsoft.foundry
 ```
 

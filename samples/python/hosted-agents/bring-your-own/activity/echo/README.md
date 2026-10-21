@@ -39,7 +39,7 @@ Make sure the following are installed and available:
 
 | Requirement | Why you need it |
 |-------------|-----------------|
-| [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) | Provisions infrastructure and deploys the agent. Use **1.25 or later** (earlier versions have a container-registry resolution bug during remote build). Install the agent service target with `azd extension install azure.ai.agents`. |
+| [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) | Provisions infrastructure and deploys the agent. Use **1.34.2 or later** (earlier versions have a container-registry resolution bug during remote build). Install the agent service target with `azd extension install azure.ai.agents`. |
 | [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) | Authentication (`az login`). |
 | [Python 3.10+](https://www.python.org/downloads/) | The agent runtime (built inside the Docker image; also handy for local edits). |
 | [Docker](https://www.docker.com/products/docker-desktop/) | **Optional.** `azd deploy` uses a remote ACR build, so you don't need Docker unless you want to build the image locally. |

@@ -75,7 +75,7 @@ If you don't yet have a toolbox, see [`04-foundry-toolbox`](../04-foundry-toolbo
 ```bash
 mkdir my-claude-toolbox-agent && cd my-claude-toolbox-agent
 
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/25-claude-foundry-toolbox/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/25-claude-foundry-toolbox/azure.yaml
 ```
 
 Follow the prompts to select your existing Foundry project. Then set the environment variables for your existing deployment and toolbox:

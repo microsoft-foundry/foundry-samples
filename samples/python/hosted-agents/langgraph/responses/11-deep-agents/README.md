@@ -53,7 +53,7 @@ The extra `main.py` is the hosting adaptation that starts the Foundry Responses 
 
 ```bash
 mkdir hosted-langgraph-deep-agent && cd hosted-langgraph-deep-agent
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/responses/11-deep-agents/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/responses/11-deep-agents/azure.yaml
 azd up
 ```
 

@@ -60,7 +60,7 @@ If both modes are configured, the Foundry BYOK model takes precedence.
 ### Prerequisites
 
 1. [Azure Developer CLI (`azd`)](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
-   1.27.1 or later.
+   1.34.2 or later.
 2. Install the Foundry extension:
 
    ```bash
@@ -85,7 +85,7 @@ If both modes are configured, the Foundry BYOK model takes precedence.
 ```bash
 mkdir github-copilot-responses-voicelive
 cd github-copilot-responses-voicelive
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/voicelive/github-copilot-responses-voicelive/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/voicelive/github-copilot-responses-voicelive/azure.yaml
 ```
 
 Follow the prompts to select an existing Foundry project and model deployment or

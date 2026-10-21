@@ -45,7 +45,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir echo-agent && cd echo-agent
-azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/invocations-echo-agent/azure.yaml
+azd ai agent init --deploy-mode container -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/invocations-echo-agent/azure.yaml
 ```
 
 Follow the prompts to configure your project. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one (not required for this LLM-free sample, but useful for deployment).

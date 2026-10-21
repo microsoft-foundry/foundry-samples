@@ -126,7 +126,7 @@ mkdir foreground-background-agent && cd foreground-background-agent
 
 # Initialize from the manifest — azd reads it, downloads the sample,
 # and adopts its azure.yaml as the project manifest and configures your environment
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/voicelive/foreground-background-agents-responses-voicelive/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/voicelive/foreground-background-agents-responses-voicelive/azure.yaml
 
 # Provision Azure resources (Foundry project, model deployment, App Insights)
 azd provision
@@ -137,7 +137,7 @@ azd ai agent run
 
 > [!NOTE]
 > If you've already cloned this repository, pass a local path to the manifest instead:
-> `azd ai agent init -m <path-to-repo>/samples/python/hosted-agents/bring-your-own/voicelive/foreground-background-agents-responses-voicelive/azure.yaml`
+> `azd ai agent init -t <path-to-repo>/samples/python/hosted-agents/bring-your-own/voicelive/foreground-background-agents-responses-voicelive/azure.yaml`
 
 > [!NOTE]
 > If you already have a Foundry project and model deployment, add `-p <project-id> -d <deployment-name>` to `azd ai agent init` to target existing resources. You can also skip provisioning entirely and configure env vars manually — see [Manual setup](#manual-setup).

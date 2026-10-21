@@ -30,7 +30,7 @@ resource, or authentication prerequisites.
 
 ### `azd` CLI
 
-Use `azd` 1.27.1 or later and install the unified Foundry extension bundle with
+Use `azd` 1.34.2 or later and install the unified Foundry extension bundle with
 `azd ext install microsoft.foundry`.
 
 Each scenario guide provides the required `toolbox.yaml` or `azure.yaml` entries.

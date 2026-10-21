@@ -7,7 +7,7 @@ Multi-agent customer support handoff demo using LangGraph, served as a hosted ag
 1. Python 3.12 or later.
 2. [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
    installed and available on `PATH`.
-3. Azure Developer CLI (`azd`) 1.27.1 or later with the Foundry extension for
+3. Azure Developer CLI (`azd`) 1.34.2 or later with the Foundry extension for
    the `azd` workflow.
 4. Azure CLI authentication (`az login`) for local model access.
 
@@ -60,7 +60,7 @@ mkdir handoff-agent-sample && cd handoff-agent-sample
 
 # Initialize from the manifest — azd reads it, downloads the sample,
 # and adopts its azure.yaml as the project manifest and configures your environment
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/voicelive/handoff-langgraph-responses-voicelive/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/voicelive/handoff-langgraph-responses-voicelive/azure.yaml
 
 # Provision Azure resources (Foundry project, model deployment, App Insights)
 azd provision

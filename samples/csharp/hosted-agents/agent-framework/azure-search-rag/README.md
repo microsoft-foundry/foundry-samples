@@ -58,7 +58,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
 mkdir azure-search-rag-agent && cd azure-search-rag-agent
-azd ai agent init --deploy-mode container -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/azure-search-rag/azure.yaml
+azd ai agent init --deploy-mode container -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/csharp/hosted-agents/agent-framework/azure-search-rag/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, model deployment, or Azure AI Search service, `azd provision` creates them all for you.

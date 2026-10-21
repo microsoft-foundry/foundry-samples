@@ -259,9 +259,9 @@ az rest --method get --query "properties.redirectUrl" -o tsv \
    ```yaml
    # azure.yaml
    requiredVersions:
-     azd: '>=1.27.1'
+     azd: '>=1.34.2'
      extensions:
-       azure.ai.agents: '>=1.0.0-beta.9'
+       azure.ai.agents: '>=1.0.0-beta.19'
    name: my-agent-project
    services:
      agent-tools:

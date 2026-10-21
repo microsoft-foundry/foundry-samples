@@ -60,7 +60,7 @@ No cloning required. Create a new folder and initialize from the manifest:
 ```bash
 mkdir my-guardrail-agent && cd my-guardrail-agent
 
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/16-content-safety-guardrail/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/16-content-safety-guardrail/azure.yaml
 ```
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` guides you through creating one.

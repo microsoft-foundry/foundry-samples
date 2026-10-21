@@ -64,7 +64,7 @@ its output executor.
 
 ### Prerequisites
 
-1. [Azure Developer CLI (`azd`)](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) 1.27.1 or later.
+1. [Azure Developer CLI (`azd`)](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) 1.34.2 or later.
 2. Install the Foundry extension:
 
    ```bash
