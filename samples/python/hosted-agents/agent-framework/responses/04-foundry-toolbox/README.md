@@ -59,7 +59,7 @@ This sample connects to GitHub MCP, Azure Language MCP, and Microsoft Foundry MC
 
 #### Initialize the agent project
 
-No cloning required. Create a project folder, then initialize it from the sample manifest. The `--src` value keeps the agent code in the path declared by `azure.yaml`:
+No cloning required. Create a project folder, then initialize it from the sample's `azure.yaml`. With `--template`, `--src` is the destination of the whole azd project, so `--src .` initializes the current folder and keeps the sample's own `src/...` layout:
 
 ```bash
 mkdir my-toolbox-agent
@@ -67,14 +67,17 @@ cd my-toolbox-agent
 
 azd ai agent init \
   --template https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/azure.yaml \
-  --src src/agent-framework-agent-with-foundry-toolbox-responses
+  --src .
 ```
 
 Follow the prompts to select or create a Foundry project and model deployment, and to provide the GitHub PAT and Azure Language MCP endpoint if requested. If you are connecting to an existing Foundry project, pass `--model-deployment <existing-deployment-name>` to select its deployment directly. This also works around the current [existing-project model picker issue](https://github.com/Azure/azure-dev/issues/10519).
 
 Initialization creates the project in `my-toolbox-agent`: its root contains `azure.yaml` and the `.azure` environment, while the agent's Python files are under `src/agent-framework-agent-with-foundry-toolbox-responses`. Do not initialize again after it succeeds. Run `azd` commands from the initialized project root; run Python and `uv` commands from the source directory.
 
-After init creates or selects the Foundry project, grant its project managed identity **Cognitive Services Language Owner** on the Azure Language resource under **Access control (IAM)** before running `azd up`. See the [Microsoft Entra setup guide](../../../SUPPORTED_TOOLBOX_SCENARIOS/tools/mcp-microsoft-entra.md#step-2--authorize-the-identity) for role-assignment details.
+The project managed identity needs **Cognitive Services Language Owner** on the Azure Language resource (**Access control (IAM)**). See the [Microsoft Entra setup guide](../../../SUPPORTED_TOOLBOX_SCENARIOS/tools/mcp-microsoft-entra.md#step-2--authorize-the-identity) for role-assignment details. When to assign it depends on your project:
+
+- **Existing Foundry project:** assign the role to the project's managed identity before you run `azd up`.
+- **New Foundry project:** the identity doesn't exist until provisioning creates the project. Run `azd provision`, assign the role to the new project's managed identity, and then run `azd deploy --all`. Skip `azd up` in this case.
 
 #### Configure external dependencies
 
