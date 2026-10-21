@@ -34,6 +34,14 @@ See [main.py](src/agent-framework-agent-with-foundry-toolbox-responses/main.py) 
 
 ### Option 1: Azure Developer CLI (`azd`)
 
+#### Before you initialize
+
+This sample connects to GitHub MCP, Azure Language MCP, and Microsoft Foundry MCP. Before running `azd ai agent init`, prepare the GitHub PAT and Azure Language MCP endpoint; init can prompt for both values:
+
+1. **A GitHub personal access token** for GitHub MCP. [Create a fine-grained PAT](https://github.com/settings/personal-access-tokens/new) and limit repository access and permissions to what the GitHub MCP tools you plan to use require. Keep the token private.
+2. **An existing Azure Language resource** and its [Language MCP endpoint](https://learn.microsoft.com/azure/ai-services/language-service/concepts/foundry-tools-agents).
+3. **Access to the Microsoft Foundry project** with the account you use to authenticate with `azd`; the Foundry MCP connection uses your Entra token.
+
 #### Prerequisites
 
 1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.32.0 or later)
@@ -51,28 +59,38 @@ See [main.py](src/agent-framework-agent-with-foundry-toolbox-responses/main.py) 
 
 #### Initialize the agent project
 
-No cloning required. Create a new folder and initialize from the manifest:
+No cloning required. Create a project folder, then initialize it from the sample's `azure.yaml`. With `--template`, `--src` is the destination of the whole azd project, so `--src .` initializes the current folder and keeps the sample's own `src/...` layout:
 
 ```bash
-mkdir my-toolbox-agent && cd my-toolbox-agent
+mkdir my-toolbox-agent
+cd my-toolbox-agent
 
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/azure.yaml
+azd ai agent init \
+  --template https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/azure.yaml \
+  --src .
 ```
 
-Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one. Initializing also sets the selected project as the active project for the `azd ai` commands that follow.
+Follow the prompts to select or create a Foundry project and model deployment, and to provide the GitHub PAT and Azure Language MCP endpoint if requested. If you are connecting to an existing Foundry project, pass `--model-deployment <existing-deployment-name>` to select its deployment directly. This also works around the current [existing-project model picker issue](https://github.com/Azure/azure-dev/issues/10519).
+
+Initialization creates the project in `my-toolbox-agent`: its root contains `azure.yaml` and the `.azure` environment, while the agent's Python files are under `src/agent-framework-agent-with-foundry-toolbox-responses`. Do not initialize again after it succeeds. Run `azd` commands from the initialized project root; run Python and `uv` commands from the source directory.
+
+The project managed identity needs **Cognitive Services Language Owner** on the Azure Language resource (**Access control (IAM)**). See the [Microsoft Entra setup guide](../../../SUPPORTED_TOOLBOX_SCENARIOS/tools/mcp-microsoft-entra.md#step-2--authorize-the-identity) for role-assignment details. When to assign it depends on your project:
+
+- **Existing Foundry project:** assign the role to the project's managed identity before you run `azd up`.
+- **New Foundry project:** the identity doesn't exist until provisioning creates the project. Run `azd provision`, assign the role to the new project's managed identity, and then run `azd deploy --all`. Skip `azd up` in this case.
 
 #### Configure external dependencies
 
 `azure.yaml` declares `ghmcppat` (GitHub MCP, PAT), `langmcpconn` (Azure Language MCP, project managed identity), and `foundrymcpconn` (Foundry MCP, user Entra token). The toolbox depends on all three connections.
 
-Before `azd up`, supply a GitHub MCP PAT and the endpoint of an existing Azure Language resource in the azd environment:
+If you need to change a value entered during initialization, set it in the initialized project's azd environment:
 
 ```bash
 azd env set GITHUB_MCP_PAT "<your-GitHub-MCP-PAT>"
 azd env set AZURE_LANGUAGE_MCP_ENDPOINT "https://<language-service>.cognitiveservices.azure.com/language/mcp?api-version=2025-11-15-preview"
 ```
 
-Keep the PAT out of source control. Grant the project's managed identity access to the Azure Language resource; calls through the Foundry MCP connection require the calling user's access. For other tool types, consult the [tool type guides](#toolbox-tool-types) and edit the connection and toolbox services in `azure.yaml`. Changing `ghmcppat` from PAT to OAuth requires updating its auth configuration.
+Run these commands from the initialized project root. Keep the PAT out of source control. Calls through the Foundry MCP connection require the calling user's access. For other tool types, consult the [tool type guides](#toolbox-tool-types) and edit the connection and toolbox services in `azure.yaml`. Changing `ghmcppat` from PAT to OAuth requires updating its auth configuration.
 
 #### Provision and deploy
 
@@ -128,18 +146,19 @@ azd ai agent invoke "What tools do you have?"
 - With Python 3.13 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
   ```bash
-   pipx install uv==0.11.7
-   uv sync --frozen --python 3.13
+  cd src/agent-framework-agent-with-foundry-toolbox-responses
+  pipx install uv==0.11.7
+  uv sync --frozen --python 3.13
   ```
-- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
+- Open the initialized project root (the directory containing `azure.yaml`) in VS Code so the Foundry Toolkit can read the project configuration. Run `uv sync` from the source directory above, then select that directory's `.venv` with **Python: Select Interpreter**.
 
 #### Prepare remote dependencies
 
-Run `azd up` from the initialized project directory first. For F5 or standalone Python, set `TOOLBOX_ENDPOINT` in `.env` to the versioned endpoint available via `azd env get-value TOOLBOX_AGENT_TOOLS_MCP_ENDPOINT`. The VS Code deploy wizard deploys the agent only; use `azd deploy --all` when changing the toolbox or its connections.
+Run `azd up` from the initialized project root before local testing; it creates the remote connections and toolbox that `azd ai agent run` does not create. For F5 or standalone Python, create `.env` in the source directory and set `TOOLBOX_ENDPOINT` to the versioned endpoint returned by `azd env get-value TOOLBOX_AGENT_TOOLS_MCP_ENDPOINT` (run that command from the project root).
 
 #### Run and debug the agent
 
-Press **F5** to start the agent. The agent starts and the **Agent Inspector** opens automatically. Chat with the agent in the Inspector.
+Press **F5** from the initialized project opened in VS Code to start the agent. The agent starts and the **Agent Inspector** opens automatically. Chat with the agent in the Inspector.
 
 #### Or run manually, then open the Inspector
 
@@ -149,11 +168,13 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 
 #### Deploy to Foundry
 
-1. Open the Command Palette (`Ctrl+Shift+P`) and run **Foundry Toolkit: Deploy Hosted Agent**. The extension opens a **Deploy Hosted Agent** wizard and reads `agent.yaml` to auto-populate settings.
-2. If prompted, complete **Foundry Project Setup** to select subscription and project.
-3. On the **Basics** tab, choose deployment method (**Code** or **Container**) and confirm the agent name.
-4. On **Review + Deploy**, confirm runtime details, pick **CPU and Memory** size, and click **Deploy**.
-5. After deployment, invoke the agent in the Agent Playground and stream live logs from the **Logs** tab.
+This sample declares the connections, toolbox, and agent together in `azure.yaml`. From the initialized project root, deploy them together so the agent uses the current toolbox configuration:
+
+```bash
+azd deploy --all
+```
+
+The Foundry Toolkit deploy wizard deploys the agent only; it does not update the toolbox and its connections.
 
 
 ## Use GitHub Copilot for Azure
