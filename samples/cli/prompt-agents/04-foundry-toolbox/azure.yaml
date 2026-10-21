@@ -46,6 +46,9 @@ services:
       - type: microsoft_copilot_toolset_preview
         defaultConfig:
           enabled: false
+      - type: mcp
+        server_label: sample-toolbox
+        require_approval: never
     toolboxes:
       - sample-toolbox
 infra:
