@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: prompt-agent-mcp-tools
+services:
+  prompt-agent-mcp-tools:
+    host: azure.ai.agent
+    project: .
+    config:
+      promptAgent: {}
+      deployments:
+        - name: gpt-5.4-mini
+          model:
+            format: OpenAI
+            name: gpt-5.4-mini
+            version: '2026-03-17'
+          sku:
+            name: GlobalStandard
+            capacity: 10
+infra:
+  provider: microsoft.foundry
