@@ -78,8 +78,7 @@ The separate Foundry MCP connection needs no additional secret; it uses the call
 No cloning required. Create a new folder and initialize from the manifest:
 
 ```bash
-mkdir my-toolbox-agent
-cd my-toolbox-agent
+mkdir my-toolbox-agent && cd my-toolbox-agent
 
 azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/azure.yaml
 ```
