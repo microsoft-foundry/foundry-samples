@@ -7,7 +7,7 @@ requiredVersions:
     azure.ai.projects: '>=1.0.0-beta.14'
     azure.ai.toolboxes: '>=1.0.0-beta.11'
 
-name: prompt-agent-toolbox
+name: prompt-agent-with-toolbox
 services:
   ai-project:
     host: azure.ai.project
@@ -27,14 +27,14 @@ services:
     description: A curated toolbox with built-in web search.
     tools:
       - type: web_search
-  prompt-agent-toolbox:
+  prompt-agent-with-toolbox:
     host: azure.ai.agent
     project: .
     uses:
       - ai-project
       - sample-toolbox
     kind: prompt
-    name: prompt-agent-toolbox
+    name: prompt-agent-with-toolbox
     description: A prompt agent that uses a curated Foundry Toolbox.
     harness:
       type: microsoft_copilot_preview
