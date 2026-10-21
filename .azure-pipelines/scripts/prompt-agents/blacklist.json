@@ -1,0 +1,5 @@
+{
+  "samples/cli/prompt-agents/02-tools": "The azd text-only E2E runner cannot assert emitted function-call names and arguments.",
+  "samples/cli/prompt-agents/05-skills": "The E2E runner does not manage skill resource ownership and cleanup.",
+  "samples/cli/prompt-agents/06-azure-search-rag": "Requires a seeded CI Search index, runtime RBAC, and connection lifecycle support."
+}

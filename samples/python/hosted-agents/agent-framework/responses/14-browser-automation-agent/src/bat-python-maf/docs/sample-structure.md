@@ -1,57 +1,25 @@
 # Sample structure
 
-This sample demonstrates a Foundry-hosted browser automation agent with one
-shared runtime and one shared prompt.
-
-## Design goals
-
-- Keep one shared implementation for Foundry hosting, tools, Toolbox MCP wiring,
-  Playwright CLI execution, logging, and cleanup.
-- Keep browser lifecycle, safety, web extraction, and form-filling guidance in
-  one shared base prompt.
-- Keep skills for concrete operational references rather than broad personas.
+This sample hosts one Agent Framework browser agent over the Responses
+protocol. Browser operations are supplied by the GA Azure Playwright MCP
+server through a Foundry Toolbox.
 
 ## Layers
 
 | Layer | Path | Purpose |
 | --- | --- | --- |
-| Runtime code | `main.py`, `utils/` | Builds the Agent Framework agent, hosts Responses, wires tools, reads prompts, and logs tool use. |
-| Base prompt | `prompts/base.md` | Browser lifecycle, tool, safety, cleanup, web extraction, and form-filling rules. |
-| Skill | `skills/azure-playwright-browser-automation/SKILL.md` | Operational Playwright CLI reference for Azure Playwright Service sessions. |
-| Toolbox MCP | Foundry Toolbox | Governed remote MCP endpoint that provides `create_session`. |
-| Deployment | `agent.yaml`, `agent.manifest.yaml`, `Dockerfile` | Foundry hosted-agent, Playwright workspace connection, and container configuration. |
+| Runtime | `main.py`, `utils/` | Builds and hosts the agent, connects the Toolbox MCP server, logs calls, and injects exact live-view links. |
+| Prompt | `prompts/base.md` | Defines browser-session lifecycle and safe automation behavior. |
+| Skill | `skills/azure-playwright-browser-automation/SKILL.md` | Operational guidance for the dynamically discovered browser tools. |
+| Toolbox | Foundry Toolbox | Discovers browser tools with `tools/list` and forwards calls with `tools/call`. |
+| Deployment | `azure.yaml`, `hooks/`, `infra-modules/` | Provisions the Playwright workspace, GA MCP connection, toolbox, hosted agent, and RBAC. |
 
-The Docker image installs `@playwright/cli` and runs
-`playwright-cli install --skills`. The sample also keeps an Agent Framework skill
-under `skills/` so the hosted agent has explicit instructions for the Azure
-Playwright Service lifecycle.
+The browser tool schemas are not defined in the application. Agent Framework
+loads them from the Toolbox MCP endpoint. `create_browser_session` returns a
+`browserSessionId` for subsequent calls and a `liveViewUrl`; middleware removes
+the URL from model-visible output and writes the exact link directly to the
+Responses stream.
 
-`agent.manifest.yaml` is the source manifest used by `azd ai agent init`.
-`agent.yaml` is the hosted-agent definition used by deployment and the Foundry
-Toolkit. Keep model defaults, environment variables, and resource settings
-aligned if you edit both files.
-
-## Prompt composition
-
-At startup, the agent reads:
-
-```text
-prompts/base.md
-```
-
-The base prompt includes the general browser automation, structured web
-extraction, and form-filling guidance so the deployed sample behaves as one
-browser automation agent without runtime prompt selection.
-
-## Why not generic scraping/form-filling skills?
-
-Skills are most useful when they contain repeatable procedural knowledge. A
-generic "web scraping" skill often becomes broad advice that is hard to maintain
-and easy to overstate. This sample keeps broad task guidance in the base prompt
-and keeps the skill focused on the concrete browser automation workflow.
-
-## Adding deeper domain behavior
-
-If a use case has a real repeatable procedure, add a new skill under `skills/`.
-Keep the base browser lifecycle rules in `prompts/base.md`; do not duplicate
-them into every skill.
+The base prompt contains general browser behavior. Add a skill only for
+repeatable domain-specific procedures, and keep tool names aligned with the
+schemas returned by MCP discovery.

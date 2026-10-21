@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Preview meeting agenda reminders and transcript-grounded agenda closure."
 requires-python = ">=3.11"
 dependencies = [
-    "azure-ai-agentserver-activity==1.0.0b3",
+    "azure-ai-agentserver-activity==1.0.0b4",
     "azure-ai-agentserver-core==2.2.0b1",
     "azure-ai-projects==2.5.0",
     "azure-identity==1.25.3",

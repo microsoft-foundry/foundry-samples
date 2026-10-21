@@ -1,0 +1,18 @@
+version: 1
+sample:
+  owner: zhihuan
+  experiences: [azd]
+tests:
+  - name: microsoft-learn-documentation-answer
+    turns:
+      - input: >-
+          Use the Microsoft Learn MCP server to find the official documentation
+          for Azure Developer CLI. Explain briefly what azd does and include
+          the official documentation URL.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: Azure Developer CLI
+          - source: assistant_text
+            type: regex
+            value: 'https://learn\.microsoft\.com/(?:[a-z]{2}-[a-z]{2}/)?azure/developer/azure-developer-cli(?:/|[?#\s)]|$)'

@@ -104,7 +104,7 @@ For the full deployment guide, see [Azure AI Foundry hosted agents](https://aka.
 
 ### Set up the Python virtual environment
 
-- With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
+- With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/how-to/install-pipx.html), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
   ```bash
   cd src/langgraph-chat-invocations
