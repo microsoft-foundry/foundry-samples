@@ -11,11 +11,7 @@ import io
 import time
 from typing import Any
 
-import pyautogui
 from PIL import Image
-
-pyautogui.FAILSAFE = True
-pyautogui.PAUSE = 0.05
 
 KEY_MAP = {
     "ENTER": "enter",
@@ -44,8 +40,18 @@ KEY_MAP = {
 }
 
 
+def _get_pyautogui() -> Any:
+    """Import and configure `pyautogui` lazily so headless CI compile/import checks succeed."""
+    import pyautogui
+
+    pyautogui.FAILSAFE = True
+    pyautogui.PAUSE = 0.05
+    return pyautogui
+
+
 def handle_pyautogui_action(action: dict[str, Any]) -> None:
     """Execute a single OpenAI Computer Tool `computer_call` action locally with PyAutoGUI."""
+    pyautogui = _get_pyautogui()
     match action["type"]:
         case "screenshot":
             pass
@@ -102,6 +108,7 @@ def handle_pyautogui_action(action: dict[str, Any]) -> None:
 
 def take_desktop_screenshot() -> str:
     """Capture a desktop screenshot scaled to `pyautogui.size()` logical coordinates."""
+    pyautogui = _get_pyautogui()
     image = pyautogui.screenshot()
     screen_size = pyautogui.size()
     if image.size != screen_size:

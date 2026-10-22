@@ -1,98 +1,46 @@
-"""Calculator + Notepad desktop scenario for the OpenAI Computer Tool Prompt Agent."""
+"""Calculator + Notepad desktop scenario for the OpenAI Computer Tool Prompt Agent.
 
-import ctypes
-import subprocess
+The agent opens both Calculator and Notepad itself by using Windows Search
+(clicking the Windows Start/Search button or pressing the Windows key, typing the
+app name, and pressing Enter), then saves the calculation result in Notepad to
+`calculation_result_<timestamp>.txt`.
+"""
+
 import time
 from pathlib import Path
 
-from utils import SRC_DIR, handle_pyautogui_action, run_cua_loop, take_desktop_screenshot
-
-DEFAULT_CALCULATOR_PROMPT = (
-    "Calculator (on the left) and Notepad (on the right, with a pre-created calculation_result_<timestamp>.txt "
-    "file already open) are visible on the desktop. "
-    "1) Click the Calculator window, compute 347 * 29, press Ctrl+C to copy the result, and press Alt+F4 to close Calculator. "
-    "2) Click inside the Notepad text editor, type 'Foundry CUA Desktop Check: 347 * 29 = ', press Ctrl+V to paste the result, "
-    "and press Ctrl+S to save the file directly. "
-    "3) Once saved, summarize what you completed and state the calculated result."
-)
+from utils import handle_pyautogui_action, run_cua_loop, take_desktop_screenshot
 
 
-def _find_window_by_title_substring(substring: str, class_name: str | None = None) -> int:
-    """Find a visible top-level window whose title contains `substring`."""
-    user32 = ctypes.windll.user32
-    found_hwnd = 0
-
-    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
-    def enum_proc(hwnd: int, _lparam: int) -> bool:
-        nonlocal found_hwnd
-        if not user32.IsWindowVisible(hwnd):
-            return True
-        if class_name:
-            cls_buf = ctypes.create_unicode_buffer(256)
-            user32.GetClassNameW(hwnd, cls_buf, 256)
-            if cls_buf.value != class_name:
-                return True
-        length = user32.GetWindowTextLengthW(hwnd)
-        if length <= 0:
-            return True
-        title_buf = ctypes.create_unicode_buffer(length + 1)
-        user32.GetWindowTextW(hwnd, title_buf, length + 1)
-        if substring.lower() in title_buf.value.lower():
-            found_hwnd = hwnd
-            return False
-        return True
-
-    user32.EnumWindows(enum_proc, 0)
-    return found_hwnd
-
-
-def launch_side_by_side(output_file: Path) -> None:
-    """Open Calculator (left) and Notepad (right) with `output_file` without terminating existing user apps."""
-    output_file.write_text("", encoding="utf-8")
-    subprocess.Popen(["calc.exe"])
-    subprocess.Popen(["notepad.exe", str(output_file)])
-
-    user32 = ctypes.windll.user32
-    calc_hwnd = 0
-    notepad_hwnd = 0
-    for _ in range(25):
-        time.sleep(0.2)
-        if not calc_hwnd:
-            calc_hwnd = (
-                user32.FindWindowW("ApplicationFrameWindow", "Calculator")
-                or user32.FindWindowW(None, "Calculator")
-            )
-        if not notepad_hwnd:
-            notepad_hwnd = _find_window_by_title_substring(output_file.name, class_name="Notepad")
-        if calc_hwnd and notepad_hwnd:
-            break
-
-    topmost = ctypes.c_void_p(-1)
-    if calc_hwnd:
-        user32.ShowWindow(calc_hwnd, 9)  # SW_RESTORE
-        user32.MoveWindow(calc_hwnd, 80, 80, 420, 560, True)
-        user32.SetWindowPos(calc_hwnd, topmost, 80, 80, 420, 560, 0x0040)
-    if notepad_hwnd:
-        user32.ShowWindow(notepad_hwnd, 9)  # SW_RESTORE
-        user32.MoveWindow(notepad_hwnd, 540, 80, 760, 560, True)
-        user32.SetWindowPos(notepad_hwnd, topmost, 540, 80, 760, 560, 0x0040)
-    time.sleep(0.4)
+def build_calculator_prompt(output_file: Path) -> str:
+    """Build the default Calculator + Notepad task prompt with the target output file path."""
+    return (
+        "On the Windows desktop: "
+        "1) Open Windows Search (click the Start/Search button on the taskbar or press the WIN key), "
+        "search for 'Calculator', and press Enter to open it. "
+        "2) In Calculator, compute 347 * 29, press Ctrl+C to copy the result, and press Alt+F4 to close Calculator. "
+        "3) Open Windows Search again, search for 'Notepad', and press Enter to open it. "
+        "4) In a clean Notepad tab (press Ctrl+N if needed), type 'Foundry CUA Desktop Check: 347 * 29 = ' "
+        "and press Ctrl+V to paste the copied result. "
+        f"5) Save the file in Notepad (press Ctrl+Shift+S or Ctrl+S, type the full path '{output_file}', and press Enter). "
+        "6) Once saved, summarize what you completed and state the calculated result."
+    )
 
 
 def run_calculator_scenario(prompt: str | None = None) -> Path:
-    """Launch Calculator + Notepad and execute the user prompt via the provisioned Prompt Agent."""
-    task_prompt = prompt or DEFAULT_CALCULATOR_PROMPT
+    """Execute the Calculator + Notepad scenario where the agent opens both apps via Windows Search and saves the file."""
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    output_file = SRC_DIR / f"calculation_result_{timestamp}.txt"
-    launch_side_by_side(output_file)
+    output_file = Path(__file__).resolve().parent.parent / f"calculation_result_{timestamp}.txt"
+    task_prompt = prompt or build_calculator_prompt(output_file)
 
     run_cua_loop(
         prompt=task_prompt,
         handle_action=handle_pyautogui_action,
         take_screenshot=take_desktop_screenshot,
-        max_turns=10,
+        max_turns=20,
     )
 
     if output_file.exists():
         print(f"\nSaved file ({output_file.name}): {output_file.read_text(encoding='utf-8').strip()!r}")
     return output_file
+
