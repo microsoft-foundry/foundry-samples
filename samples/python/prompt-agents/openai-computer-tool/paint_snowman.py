@@ -80,6 +80,7 @@ def main() -> None:
         prompt=args.prompt,
         handle_action=handle_pyautogui_action,
         take_screenshot=take_desktop_screenshot,
+        max_turns=15,
     )
 
     if canvas_file.exists():

@@ -46,6 +46,7 @@ def get_model_deployment_name() -> str:
     return (
         os.environ.get("AZURE_AI_MODEL_DEPLOYMENT_NAME")
         or os.environ.get("MODEL_DEPLOYMENT_NAME")
+        or os.environ.get("FOUNDRY_MODEL")
         or "gpt-5.4"
     )
 
@@ -67,8 +68,9 @@ def get_openai_client_and_agent_ref(
     api_key = os.environ.get("OPENAI_API_KEY")
 
     if api_key:
+        base_url = os.environ.get("OPENAI_BASE_URL", f"{endpoint}/openai/v1").rstrip("/")
         openai_client = OpenAI(
-            base_url=f"{endpoint}/openai/v1",
+            base_url=base_url,
             api_key=api_key,
             default_headers={"api-key": api_key},
         )
