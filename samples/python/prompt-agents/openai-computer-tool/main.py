@@ -34,19 +34,37 @@ DEFAULT_PROMPT = (
 )
 
 
+def _find_window_by_title_substring(substring: str, class_name: str | None = None) -> int:
+    """Find a visible top-level window whose title contains `substring`."""
+    user32 = ctypes.windll.user32
+    found_hwnd = 0
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    def enum_proc(hwnd: int, _lparam: int) -> bool:
+        nonlocal found_hwnd
+        if not user32.IsWindowVisible(hwnd):
+            return True
+        if class_name:
+            cls_buf = ctypes.create_unicode_buffer(256)
+            user32.GetClassNameW(hwnd, cls_buf, 256)
+            if cls_buf.value != class_name:
+                return True
+        length = user32.GetWindowTextLengthW(hwnd)
+        if length <= 0:
+            return True
+        title_buf = ctypes.create_unicode_buffer(length + 1)
+        user32.GetWindowTextW(hwnd, title_buf, length + 1)
+        if substring.lower() in title_buf.value.lower():
+            found_hwnd = hwnd
+            return False
+        return True
+
+    user32.EnumWindows(enum_proc, 0)
+    return found_hwnd
+
+
 def launch_side_by_side(output_file: Path) -> None:
-    """Close prior instances and open Calculator (left) and Notepad (right) with `output_file`."""
-    subprocess.run(
-        [
-            "powershell",
-            "-NoProfile",
-            "-Command",
-            "Get-Process CalculatorApp,Notepad -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.Id -Force }; "
-            'Remove-Item "$env:LOCALAPPDATA\\Packages\\Microsoft.WindowsNotepad_*\\LocalState\\TabState\\*" -Force -ErrorAction SilentlyContinue; '
-            'Set-Clipboard -Value " " -ErrorAction SilentlyContinue',
-        ],
-        check=False,
-    )
+    """Open Calculator (left) and Notepad (right) with `output_file` without terminating existing user apps."""
     output_file.write_text("", encoding="utf-8")
     subprocess.Popen(["calc.exe"])
     subprocess.Popen(["notepad.exe", str(output_file)])
@@ -57,9 +75,12 @@ def launch_side_by_side(output_file: Path) -> None:
     for _ in range(25):
         time.sleep(0.2)
         if not calc_hwnd:
-            calc_hwnd = user32.FindWindowW("ApplicationFrameWindow", "Calculator") or user32.FindWindowW(None, "Calculator")
+            calc_hwnd = (
+                user32.FindWindowW("ApplicationFrameWindow", "Calculator")
+                or user32.FindWindowW(None, "Calculator")
+            )
         if not notepad_hwnd:
-            notepad_hwnd = user32.FindWindowW("Notepad", None)
+            notepad_hwnd = _find_window_by_title_substring(output_file.name, class_name="Notepad")
         if calc_hwnd and notepad_hwnd:
             break
 

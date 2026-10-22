@@ -43,10 +43,6 @@ def cmd_create(_args: argparse.Namespace) -> None:
     print(f"  Tool         : {ComputerTool().as_dict()}")
     print(f"  Instructions : {INSTRUCTIONS_PATH.relative_to(INSTRUCTIONS_PATH.parent.parent.parent)}")
 
-    if os.environ.get("OPENAI_API_KEY"):
-        print(f"Agent definition ready (name={AGENT_NAME}, model={model}, tool=ComputerTool).")
-        return
-
     with get_project_client() as client:
         agent = client.agents.create_version(
             agent_name=AGENT_NAME,

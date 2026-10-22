@@ -27,26 +27,54 @@ from sample_config import ROOT_DIR
 dotenv.load_dotenv()
 
 DEFAULT_PROMPT = (
-    "Microsoft Paint (mspaint) is open on the desktop with a blank white canvas already loaded. "
-    "Draw a colored smiley face on the MS Paint canvas: "
-    "1) Select the Oval shape tool (or Brush), draw a large circle in the center of the canvas, "
-    "select the Fill with color (bucket) tool, pick Yellow from the color palette, and fill the circle yellow. "
-    "2) Switch back to Black and the Brush tool to draw two eyes and a big curved smile inside the yellow circle. "
-    "3) Press Ctrl+S to save the image file directly, then summarize the colored smiley face you drew."
+    "In MS Paint, draw a cheerful, polished smiley face centered on a clean white canvas. "
+    "Use a large yellow circle with a smooth black outline, two evenly spaced black oval eyes, "
+    "and a curved black smile. Keep the features balanced and the lines neat. "
+    "Use the ellipse and curve tools where possible, and leave some white space around the face. "
+    "Don’t add text or extra decorations."
 )
 
 
+def _find_paint_window_by_title(substring: str) -> int:
+    """Find a visible MS Paint window whose title contains `substring`."""
+    user32 = ctypes.windll.user32
+    found_hwnd = 0
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    def enum_proc(hwnd: int, _lparam: int) -> bool:
+        nonlocal found_hwnd
+        if not user32.IsWindowVisible(hwnd):
+            return True
+        cls_buf = ctypes.create_unicode_buffer(256)
+        user32.GetClassNameW(hwnd, cls_buf, 256)
+        if cls_buf.value != "MSPaintApp":
+            return True
+        length = user32.GetWindowTextLengthW(hwnd)
+        if length <= 0:
+            return True
+        title_buf = ctypes.create_unicode_buffer(length + 1)
+        user32.GetWindowTextW(hwnd, title_buf, length + 1)
+        if substring.lower() in title_buf.value.lower():
+            found_hwnd = hwnd
+            return False
+        return True
+
+    user32.EnumWindows(enum_proc, 0)
+    return found_hwnd
+
+
 def launch_mspaint(canvas_file: Path) -> None:
-    """Close prior MS Paint instances, create a blank white PNG canvas, and open it in `mspaint.exe`."""
-    subprocess.run(
-        [
-            "powershell",
-            "-NoProfile",
-            "-Command",
-            "Get-Process mspaint -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.Id -Force }",
-        ],
+    """Create a blank white PNG canvas and open it in `mspaint.exe` without terminating existing Paint windows."""
+    existing = subprocess.run(
+        ["powershell", "-NoProfile", "-Command", "Get-Process mspaint -ErrorAction SilentlyContinue"],
+        capture_output=True,
+        text=True,
         check=False,
     )
+    if existing.stdout.strip():
+        raise RuntimeError(
+            "Microsoft Paint (mspaint) is already running. Please save and close existing Paint windows before running this sample."
+        )
 
     Image.new("RGB", (800, 600), color=(255, 255, 255)).save(canvas_file, format="PNG")
     subprocess.Popen(["mspaint.exe", str(canvas_file)])
@@ -55,7 +83,7 @@ def launch_mspaint(canvas_file: Path) -> None:
     paint_hwnd = 0
     for _ in range(30):
         time.sleep(0.2)
-        paint_hwnd = user32.FindWindowW("MSPaintApp", None) or user32.FindWindowW(None, "Paint")
+        paint_hwnd = _find_paint_window_by_title(canvas_file.name)
         if paint_hwnd:
             break
 
