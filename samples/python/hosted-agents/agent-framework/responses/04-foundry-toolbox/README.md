@@ -75,7 +75,7 @@ The separate Foundry MCP connection needs no additional secret; it uses the call
 
 #### Initialize the agent project
 
-No cloning required. Create a new empty folder and initialize from the manifest with `--src .` so `azure.yaml` and the downloaded sample files are placed in the current directory:
+No cloning required. Create a new empty folder and initialize from the manifest. Initialization reports the output directory containing `azure.yaml` and the downloaded sample files; use that directory for the subsequent commands:
 
 ```bash
 mkdir my-toolbox-agent && cd my-toolbox-agent
