@@ -83,6 +83,7 @@ mkdir my-toolbox-agent && cd my-toolbox-agent
 azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/azure.yaml
 ```
 
+
 Follow the prompts to configure your Foundry project and model deployment, and enter the PAT and Language MCP URL prepared above when prompted. If you don't have an existing Foundry project, `azd ai agent init` will guide you through configuring a new one; `azd provision` creates its Azure resources.
 
 **Run every subsequent command from the initialized project directory containing `azure.yaml`.** If initialization reports a different output directory, change to that directory first. Selecting an active Foundry project for `azd ai` commands is not a substitute for being in the local azd project directory.
