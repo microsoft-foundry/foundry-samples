@@ -15,16 +15,16 @@ This sample provisions a **Microsoft Foundry Prompt Agent** equipped with the GA
 ## What this sample demonstrates
 
 - Provisioning a Microsoft Foundry **Prompt Agent** with `PromptAgentDefinition` and `ComputerTool()` (`{"type": "computer"}`)
-- Separating agent provisioning (`utils/agent_factory.py`), generic system instructions (`prompts/base.md`), and task-specific user prompts (`scenarios/`)
+- Separating agent initialization (`create_agent.py` + `utils/agent_factory.py`), generic system instructions (`prompts/base.md`), and runtime task execution (`main.py` + `scenarios/paint_smiley.py`)
 - Multi-turn `computer_call` -> `handle_pyautogui_action` -> `computer_call_output` execution loop (`utils/agent_runner.py`) with automatic temporary screenshot file cleanup
 - Local OS action translation (`click`, `double_click`, `triple_click`, `move`, `drag`, `scroll`, `type`, `keypress`, `wait`) and DPI-normalized screenshot capture via **PyAutoGUI** (`utils/pyautogui_helper.py`)
 
 ## How it works
 
-1. `hooks/postprovision.*` (or `python main.py provision`) creates the `openai-computer-agent` Prompt Agent version in Microsoft Foundry with `ComputerTool()` (`{"type": "computer"}`) and generic system instructions from `src/openai-computer-tool/prompts/base.md`.
-2. `src/openai-computer-tool/main.py` invokes the deployed Prompt Agent with the desktop task prompt (`python main.py run`).
-3. `src/openai-computer-tool/utils/agent_runner.py` runs the multi-turn `computer_call` -> `handle_pyautogui_action` -> `computer_call_output` loop against `openai-computer-agent`.
-4. `src/openai-computer-tool/utils/pyautogui_helper.py` translates each batched `computer_call` action (`click`, `double_click`, `triple_click`, `move`, `drag`, `scroll`, `type`, `keypress`, `wait`, `screenshot`) into local OS mouse and keyboard events via `pyautogui` and captures DPI-normalized desktop screenshots.
+1. **Agent Initialization (`create_agent.py`)**: `python create_agent.py` (or `hooks/postprovision.*` during `azd up`) initializes the `openai-computer-agent` Prompt Agent version in Microsoft Foundry with `ComputerTool()` (`{"type": "computer"}`) and generic system instructions from `src/openai-computer-tool/prompts/base.md`.
+2. **Runtime Execution (`main.py`)**: `python main.py` invokes the provisioned Prompt Agent with the desktop task prompt (`scenarios/paint_smiley.py` or a custom `--prompt`).
+3. **Computer Call Loop (`utils/agent_runner.py`)**: Runs the multi-turn `computer_call` -> `handle_pyautogui_action` -> `computer_call_output` loop against `openai-computer-agent`.
+4. **Local PyAutoGUI Execution (`utils/pyautogui_helper.py`)**: Translates each batched `computer_call` action (`click`, `double_click`, `triple_click`, `move`, `drag`, `scroll`, `type`, `keypress`, `wait`, `screenshot`) into local OS mouse and keyboard events via `pyautogui` and captures DPI-normalized desktop screenshots.
 
 ## Key files
 
@@ -32,8 +32,9 @@ This sample provisions a **Microsoft Foundry Prompt Agent** equipped with the GA
 | --- | --- |
 | `sample.yaml` | Repository build-readiness validation metadata. |
 | `azure.yaml` | Declarative Azure Developer CLI (`azd`) definition for the Foundry project and Prompt Agent. |
-| `hooks/postprovision.*` | Provisions the `openai-computer-agent` Prompt Agent version after `azd provision`. |
-| `src/openai-computer-tool/main.py` | CLI entrypoint (`provision`, `run`, `delete`). |
+| `hooks/postprovision.*` | Runs `python create_agent.py` to initialize the `openai-computer-agent` Prompt Agent version after `azd provision`. |
+| `src/openai-computer-tool/create_agent.py` | Standalone agent initialization flow (`python create_agent.py` to create/update the Prompt Agent; `--delete` to delete versions). |
+| `src/openai-computer-tool/main.py` | Runtime CLI entrypoint that invokes the provisioned Prompt Agent on the desktop task (`python main.py`). |
 | `src/openai-computer-tool/prompts/base.md` | Generic desktop automation system instructions for the Prompt Agent. |
 | `src/openai-computer-tool/utils/agent_factory.py` | Creates and deletes Prompt Agent versions with `PromptAgentDefinition` and `ComputerTool()`. |
 | `src/openai-computer-tool/utils/agent_runner.py` | Multi-turn `computer_call` -> `computer_call_output` execution loop and temporary screenshot file cleanup. |
@@ -57,6 +58,7 @@ samples/python/prompt-agents/openai-computer-tool/
         ├── .gitignore
         ├── pyproject.toml
         ├── requirements.txt
+        ├── create_agent.py
         ├── main.py
         ├── prompts/
         │   └── base.md
@@ -100,7 +102,7 @@ From the sample root (`samples/python/prompt-agents/openai-computer-tool`), prov
 azd up
 ```
 
-The `postprovision` hook runs `python main.py provision` to register the `openai-computer-agent` Prompt Agent version with `ComputerTool()`.
+The `postprovision` hook runs `python create_agent.py` to register the `openai-computer-agent` Prompt Agent version with `ComputerTool()`.
 
 ## Option 2: Run locally with Python (`pip` or `uv`)
 
@@ -118,18 +120,18 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 2. Provision the Prompt Agent
+### 2. Create / initialize the Prompt Agent (separate one-time flow)
 
 ```bash
-python main.py provision
+python create_agent.py
 ```
 
-### 3. Run the desktop scenario
+### 3. Run the desktop scenario (`main.py`)
 
-#### MS Paint Colored Smiley (`python main.py run`)
+#### MS Paint Colored Smiley (`python main.py`)
 
 ```bash
-python main.py run
+python main.py
 ```
 
 Sends the user task prompt asking `openai-computer-agent` to open **Microsoft Paint** via Windows Search, draw a cheerful, polished yellow smiley face centered on a clean white canvas with a black outline, two evenly spaced oval eyes, and a curved smile using the ellipse, fill, and curve/brush tools, and save it to `paint_smiley_<timestamp>.png`.
@@ -137,13 +139,13 @@ Sends the user task prompt asking `openai-computer-agent` to open **Microsoft Pa
 #### Custom task prompt
 
 ```bash
-python main.py run --prompt "Open Windows Search, launch MS Paint, draw a blue star in the center of the canvas, and save it."
+python main.py --prompt "Open Windows Search, launch MS Paint, draw a blue star in the center of the canvas, and save it."
 ```
 
 ### 4. Clean up agent versions (optional)
 
 ```bash
-python main.py delete
+python create_agent.py --delete
 ```
 
 ## Safety and human oversight

@@ -2,4 +2,4 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/../src/openai-computer-tool"
-python3 main.py provision
+python3 create_agent.py

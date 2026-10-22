@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $srcDir = Join-Path $PSScriptRoot ".." "src" "openai-computer-tool"
 Push-Location $srcDir
 try {
-    python main.py provision
+    python create_agent.py
 } finally {
     Pop-Location
 }
