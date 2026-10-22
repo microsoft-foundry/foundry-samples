@@ -10,7 +10,7 @@ Microsoft has no responsibility to you or others with respect to any of these sa
 
 # OpenAI Computer Tool Agent (Python, Prompt Agent)
 
-This sample provisions a **Microsoft Foundry Prompt Agent** equipped with the GA **OpenAI Computer Tool** (`ComputerTool` / `{"type": "computer"}` in `azure-ai-projects`, replacing `computer_use_preview`) and executes local desktop scenarios (**Calculator + Notepad** and **MS Paint Colored Smiley**) using **PyAutoGUI**, matching the structured `src/` layout of the C# and Python `browser-automation` samples.
+This sample provisions a **Microsoft Foundry Prompt Agent** equipped with the GA **OpenAI Computer Tool** (`ComputerTool` / `{"type": "computer"}` in `azure-ai-projects`, replacing `computer_use_preview`) and executes a local desktop scenario (**MS Paint Colored Smiley**) using **PyAutoGUI**, matching the structured `src/` layout of the C# and Python `browser-automation` samples.
 
 ## What this sample demonstrates
 
@@ -22,7 +22,7 @@ This sample provisions a **Microsoft Foundry Prompt Agent** equipped with the GA
 ## How it works
 
 1. `hooks/postprovision.*` (or `python main.py provision`) creates the `openai-computer-agent` Prompt Agent version in Microsoft Foundry with `ComputerTool()` (`{"type": "computer"}`) and generic system instructions from `src/openai-computer-tool/prompts/base.md`.
-2. `src/openai-computer-tool/main.py` invokes the deployed Prompt Agent with a scenario-specific user task prompt (`--scenario calculator` or `--scenario paint`).
+2. `src/openai-computer-tool/main.py` invokes the deployed Prompt Agent with the desktop task prompt (`python main.py run`).
 3. `src/openai-computer-tool/utils/agent_runner.py` runs the multi-turn `computer_call` -> `handle_pyautogui_action` -> `computer_call_output` loop against `openai-computer-agent`.
 4. `src/openai-computer-tool/utils/pyautogui_helper.py` translates each batched `computer_call` action (`click`, `double_click`, `triple_click`, `move`, `drag`, `scroll`, `type`, `keypress`, `wait`, `screenshot`) into local OS mouse and keyboard events via `pyautogui` and captures DPI-normalized desktop screenshots.
 
@@ -33,14 +33,13 @@ This sample provisions a **Microsoft Foundry Prompt Agent** equipped with the GA
 | `sample.yaml` | Repository build-readiness validation metadata. |
 | `azure.yaml` | Declarative Azure Developer CLI (`azd`) definition for the Foundry project and Prompt Agent. |
 | `hooks/postprovision.*` | Provisions the `openai-computer-agent` Prompt Agent version after `azd provision`. |
-| `src/openai-computer-tool/main.py` | CLI entrypoint (`provision`, `run --scenario calculator`, `run --scenario paint`, `delete`). |
+| `src/openai-computer-tool/main.py` | CLI entrypoint (`provision`, `run`, `delete`). |
 | `src/openai-computer-tool/prompts/base.md` | Generic desktop automation system instructions for the Prompt Agent. |
 | `src/openai-computer-tool/utils/agent_factory.py` | Creates and deletes Prompt Agent versions with `PromptAgentDefinition` and `ComputerTool()`. |
 | `src/openai-computer-tool/utils/agent_runner.py` | Multi-turn `computer_call` -> `computer_call_output` execution loop and temporary screenshot file cleanup. |
 | `src/openai-computer-tool/utils/pyautogui_helper.py` | PyAutoGUI action dispatcher (`click`, `drag`, `type`, `keypress`, `scroll`) and DPI screenshot helper. |
 | `src/openai-computer-tool/utils/settings.py` | Environment variable and `AIProjectClient` configuration helpers. |
-| `src/openai-computer-tool/scenarios/calculator_notepad.py` | Scenario 1: Prompt Agent opens Calculator and Notepad via Windows Search, computes `347 * 29 = 10063`, copies the result, pastes it into Notepad, and saves `calculation_result_<timestamp>.txt`. |
-| `src/openai-computer-tool/scenarios/paint_smiley.py` | Scenario 2: Prompt Agent opens MS Paint via Windows Search, draws a centered yellow smiley face using `drag` and `click` actions, and saves `paint_smiley_<timestamp>.png`. |
+| `src/openai-computer-tool/scenarios/paint_smiley.py` | MS Paint Scenario: Prompt Agent opens MS Paint via Windows Search, draws a centered yellow smiley face using `drag` and `click` actions, and saves `paint_smiley_<timestamp>.png`. |
 
 ## Directory structure
 
@@ -63,7 +62,6 @@ samples/python/prompt-agents/openai-computer-tool/
         │   └── base.md
         ├── scenarios/
         │   ├── __init__.py
-        │   ├── calculator_notepad.py
         │   └── paint_smiley.py
         └── utils/
             ├── __init__.py
@@ -78,7 +76,7 @@ samples/python/prompt-agents/openai-computer-tool/
 - An Azure AI Foundry / Microsoft Foundry **project** with a model deployment that supports the **OpenAI Computer Tool** (`{"type": "computer"}`, such as `gpt-5.4`)
 - **Azure CLI** (`az login`) and **Azure Developer CLI** (`azd`)
 - Python 3.10 or later (`uv` or `pip` + `venv`)
-- Windows desktop session with `calc.exe`, `notepad.exe`, and `mspaint.exe` for the built-in desktop scenarios
+- Windows desktop session with `mspaint.exe` for the built-in MS Paint scenario
 
 ## Configuration
 
@@ -126,20 +124,12 @@ pip install -r requirements.txt
 python main.py provision
 ```
 
-### 3. Run desktop scenarios
+### 3. Run the desktop scenario
 
-#### Scenario 1 — Calculator + Notepad (`--scenario calculator`)
-
-```bash
-python main.py run --scenario calculator
-```
-
-Sends the user task prompt to `openai-computer-agent` to open **Calculator** via Windows Search, compute `347 * 29 = 10063`, copy the result (`Ctrl+C`), close Calculator (`Alt+F4`), open **Notepad** via Windows Search, paste the result (`Ctrl+V`), and save it to `calculation_result_<timestamp>.txt`.
-
-#### Scenario 2 — MS Paint Colored Smiley (`--scenario paint`)
+#### MS Paint Colored Smiley (`python main.py run`)
 
 ```bash
-python main.py run --scenario paint
+python main.py run
 ```
 
 Sends the user task prompt asking `openai-computer-agent` to open **Microsoft Paint** via Windows Search, draw a cheerful, polished yellow smiley face centered on a clean white canvas with a black outline, two evenly spaced oval eyes, and a curved smile using the ellipse, fill, and curve/brush tools, and save it to `paint_smiley_<timestamp>.png`.
@@ -147,7 +137,7 @@ Sends the user task prompt asking `openai-computer-agent` to open **Microsoft Pa
 #### Custom task prompt
 
 ```bash
-python main.py run --scenario calculator --prompt "Compute 125 * 48 in Calculator, copy the result, close Calculator, and paste it into Notepad."
+python main.py run --prompt "Open Windows Search, launch MS Paint, draw a blue star in the center of the canvas, and save it."
 ```
 
 ### 4. Clean up agent versions (optional)
