@@ -2,4 +2,6 @@
 .env
 __pycache__/
 calculation_result_*.txt
+snowman_*.png
+
 

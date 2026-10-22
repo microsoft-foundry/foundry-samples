@@ -66,10 +66,12 @@ def handle_pyautogui_action(action: dict[str, Any]) -> None:
         case "drag":
             path = action["path"]
             pyautogui.moveTo(path[0]["x"], path[0]["y"], duration=0.1)
-            pyautogui.mouseDown()
+            pyautogui.mouseDown(button="left")
+            time.sleep(0.05)
             for point in path[1:]:
-                pyautogui.moveTo(point["x"], point["y"], duration=0.18)
-            pyautogui.mouseUp()
+                pyautogui.moveTo(point["x"], point["y"], duration=0.12)
+            time.sleep(0.05)
+            pyautogui.mouseUp(button="left")
 
         case "scroll":
             pyautogui.moveTo(x=action["x"], y=action["y"])
