@@ -1,6 +1,6 @@
 # Prompt Agent with OpenAI Computer Tool (GA `computer`) — Python
 
-A **Prompt Agent** sample demonstrating how to provision an **Azure AI Foundry Prompt Agent** equipped with the **OpenAI Computer Tool** (GA `ComputerTool` / `{"type": "computer"}` in `azure-ai-projects`, replacing `computer_use_preview`) and invoke it on local desktop tasks (**Calculator + Notepad** in `main.py` and **MS Paint Snowman** in `paint_snowman.py`) using **PyAutoGUI** (`common/pyautogui_helper.py`), matching the desktop automation pattern in [`openai-cua-sample-app`](https://github.com/openai/openai-cua-sample-app).
+A **Prompt Agent** sample demonstrating how to provision an **Azure AI Foundry Prompt Agent** equipped with the **OpenAI Computer Tool** (GA `ComputerTool` / `{"type": "computer"}` in `azure-ai-projects`, replacing `computer_use_preview`) and invoke it on local desktop tasks (**Calculator + Notepad** in `main.py` and **MS Paint Colored Smiley** in `paint_smiley.py`) using **PyAutoGUI** (`common/pyautogui_helper.py`), matching the desktop automation pattern in [`openai-cua-sample-app`](https://github.com/openai/openai-cua-sample-app).
 
 ## Architecture & Separation of Concerns
 
@@ -13,9 +13,9 @@ Following the structure of existing `samples/python/prompt-agents/` samples (`ag
 2. **Local PyAutoGUI Execution Helper (`common/pyautogui_helper.py` & `common/agent_runner.py`):**
    - `common/pyautogui_helper.py` translates each batched `computer_call` action (`click`, `double_click`, `triple_click`, `move`, `drag`, `scroll`, `type`, `keypress`, `wait`, `screenshot`) into local OS mouse/keyboard actions via `pyautogui` and captures DPI-normalized screenshots (`pyautogui.size()`).
    - `common/agent_runner.py` runs the multi-turn `computer_call` -> `handle_pyautogui_action` -> `computer_call_output` loop against the provisioned agent.
-3. **Task Invocation via User Prompt (`main.py` & `paint_snowman.py`):**
+3. **Task Invocation via User Prompt (`main.py` & `paint_smiley.py`):**
    - `main.py` opens Windows **Calculator** and **Notepad** side-by-side and passes the specific task (`347 * 29` -> copy -> close Calculator -> paste into Notepad -> save) **purely via the user `prompt`** (`responses.create(input=prompt)`).
-   - `paint_snowman.py` opens **Microsoft Paint (`mspaint.exe`)** with a blank canvas and asks the same provisioned agent via user `prompt` to draw a basic snowman (three stacked circles, eyes, smile, buttons, and stick arms) using `drag` and `click` actions and save the drawing (`Ctrl+S`).
+   - `paint_smiley.py` opens **Microsoft Paint (`mspaint.exe`)** with a blank canvas and asks the same provisioned agent via user `prompt` to draw a colored yellow smiley face (circle outline, yellow bucket fill, eyes, and curved smile) using `drag` and `click` actions and save the drawing (`Ctrl+S`).
 
 ## Directory Structure
 
@@ -30,7 +30,7 @@ samples/python/prompt-agents/openai-computer-tool/
 ├── sample_config.py                         # Shared constants (AGENT_NAME) and client helpers
 ├── provision_agent.py                       # Separate provisioning script (create / delete Prompt Agent)
 ├── main.py                                  # Sample 1: Calculator + Notepad desktop task via user prompt
-├── paint_snowman.py                         # Sample 2: Draw a basic snowman in MS Paint (mspaint) via user prompt
+├── paint_smiley.py                          # Sample 2: Draw a colored smiley face in MS Paint (mspaint) via user prompt
 ├── agents/
 │   └── computer_agent/
 │       └── instructions.md                  # Generic system instructions for the Prompt Agent
@@ -99,19 +99,19 @@ python main.py
 
 `main.py` launches Windows **Calculator** (left) and **Notepad** (right) and sends the task prompt to `openai-computer-agent`. The agent inspects screenshots and emits batched `computer_call` actions that `common/pyautogui_helper.py` executes locally via **PyAutoGUI** to compute `347 * 29 = 10063`, copy the result (`Ctrl+C`), close Calculator (`Alt+F4`), paste the result into Notepad (`Ctrl+V`), and save `calculation_result_<timestamp>.txt` (`Ctrl+S`).
 
-#### Sample B — Draw a Basic Snowman in MS Paint (`paint_snowman.py`)
+#### Sample B — Draw a Colored Smiley Face in MS Paint (`paint_smiley.py`)
 
 ```bash
-python paint_snowman.py
+python paint_smiley.py
 ```
 
-`paint_snowman.py` launches **Microsoft Paint (`mspaint.exe`)** with a blank white canvas and sends a user prompt asking `openai-computer-agent` to draw a basic snowman (three stacked circles, eyes, smile, buttons, and stick arms) on the canvas using multi-point `drag` strokes and `click` actions, then save the drawing (`snowman_<timestamp>.png`).
+`paint_smiley.py` launches **Microsoft Paint (`mspaint.exe`)** with a blank white canvas and sends a user prompt asking `openai-computer-agent` to draw a colored yellow smiley face (circle outline, yellow bucket fill, two eyes, and a curved smile) using `drag` and `click` actions, then save the drawing (`smiley_<timestamp>.png`).
 
 You can also pass any custom desktop prompt at runtime to either script:
 
 ```bash
 python main.py --prompt "Compute 125 * 48 in Calculator, copy the result, close Calculator, and paste it into Notepad."
-python paint_snowman.py --prompt "Draw a basic snowman with a top hat on the MS Paint canvas and press Ctrl+S."
+python paint_smiley.py --prompt "Draw a yellow smiley face with sunglasses in MS Paint and press Ctrl+S."
 ```
 
 ### 3. Clean Up Agent Versions (optional)

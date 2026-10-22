@@ -1,15 +1,15 @@
-"""Run the MS Paint snowman drawing task using the provisioned OpenAI Computer Tool Prompt Agent.
+"""Run the MS Paint colored smiley face drawing task using the provisioned OpenAI Computer Tool Prompt Agent.
 
 Prerequisites:
     1. Provision the Prompt Agent once:
            python provision_agent.py
-    2. Invoke the agent with the MS Paint snowman user prompt:
-           python paint_snowman.py
+    2. Invoke the agent with the MS Paint colored smiley user prompt:
+           python paint_smiley.py
 
 The deployed agent has generic system instructions (`agents/computer_agent/instructions.md`).
-The snowman drawing task is supplied purely via the user `prompt` below, and all `computer_call`
-actions (including multi-point `drag` strokes and `click` actions on the MS Paint canvas)
-are executed locally using `common/pyautogui_helper.py` (PyAutoGUI).
+The colored smiley face drawing task is supplied purely via the user `prompt` below, and all
+`computer_call` actions (`click`, `drag`, `keypress`) are executed locally using
+`common/pyautogui_helper.py` (PyAutoGUI).
 """
 
 import argparse
@@ -28,11 +28,11 @@ dotenv.load_dotenv()
 
 DEFAULT_PROMPT = (
     "Microsoft Paint (mspaint) is open on the desktop with a blank white canvas already loaded. "
-    "Draw a basic snowman on the MS Paint canvas using mouse drag strokes and clicks: "
-    "1) Draw three stacked circles (large bottom body circle, medium middle torso circle, smaller top head circle) "
-    "in the center of the white canvas. "
-    "2) Add two eyes and a smile on the head, buttons down the middle circle, and two stick arms on the sides. "
-    "3) Press Ctrl+S to save the image file directly, then summarize the snowman you drew."
+    "Draw a colored smiley face on the MS Paint canvas: "
+    "1) Select the Oval shape tool (or Brush), draw a large circle in the center of the canvas, "
+    "select the Fill with color (bucket) tool, pick Yellow from the color palette, and fill the circle yellow. "
+    "2) Switch back to Black and the Brush tool to draw two eyes and a big curved smile inside the yellow circle. "
+    "3) Press Ctrl+S to save the image file directly, then summarize the colored smiley face you drew."
 )
 
 
@@ -68,12 +68,14 @@ def launch_mspaint(canvas_file: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Invoke the OpenAI Computer Tool Prompt Agent to draw a snowman in MS Paint.")
+    parser = argparse.ArgumentParser(
+        description="Invoke the OpenAI Computer Tool Prompt Agent to draw a colored smiley face in MS Paint."
+    )
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Task prompt sent to the Prompt Agent.")
     args = parser.parse_args()
 
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    canvas_file = ROOT_DIR / f"snowman_{timestamp}.png"
+    canvas_file = ROOT_DIR / f"smiley_{timestamp}.png"
     launch_mspaint(canvas_file)
 
     run_cua_loop(
