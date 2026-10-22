@@ -69,7 +69,7 @@ azd ext install microsoft.foundry
 azd auth login
 ```
 
-See the [parent sample guide](../../../README.md#running-the-agent-host-locally)
+See the [parent sample guide](../../README.md#running-the-agent-host-locally)
 for general Foundry setup options.
 
 ### Configure the environment
@@ -296,7 +296,7 @@ Local checkpoints remain beneath `${AGENTSERVER_STATE_ROOT}/state_stores`.
 
 ## Deploying the Agent to Foundry
 
-See the [parent deployment guide](../../../README.md#deploying-the-agent-to-foundry)
+See the [parent deployment guide](../../README.md#deploying-the-agent-to-foundry)
 for the common hosted-agent workflow. This directory is an independent `azd`
 project. Its [azure.yaml](azure.yaml) defines both regular and steerable
 Invocations services.
