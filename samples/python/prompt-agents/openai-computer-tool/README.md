@@ -40,7 +40,7 @@ This sample provisions a **Microsoft Foundry Prompt Agent** equipped with the GA
 | `src/openai-computer-tool/utils/pyautogui_helper.py` | PyAutoGUI action dispatcher (`click`, `drag`, `type`, `keypress`, `scroll`) and DPI screenshot helper. |
 | `src/openai-computer-tool/utils/settings.py` | Environment variable and `AIProjectClient` configuration helpers. |
 | `src/openai-computer-tool/scenarios/calculator_notepad.py` | Scenario 1: Prompt Agent opens Calculator and Notepad via Windows Search, computes `347 * 29 = 10063`, copies the result, pastes it into Notepad, and saves `calculation_result_<timestamp>.txt`. |
-| `src/openai-computer-tool/scenarios/paint_smiley.py` | Scenario 2: Prompt Agent opens MS Paint via Windows Search and draws a centered yellow smiley face using `drag` and `click` actions. |
+| `src/openai-computer-tool/scenarios/paint_smiley.py` | Scenario 2: Prompt Agent opens MS Paint via Windows Search, draws a centered yellow smiley face using `drag` and `click` actions, and saves `paint_smiley_<timestamp>.png`. |
 
 ## Directory structure
 
@@ -142,7 +142,7 @@ Sends the user task prompt to `openai-computer-agent` to open **Calculator** via
 python main.py run --scenario paint
 ```
 
-Sends the user task prompt asking `openai-computer-agent` to open **Microsoft Paint** via Windows Search and draw a cheerful, polished yellow smiley face centered on a clean white canvas with a black outline, two evenly spaced oval eyes, and a curved smile using the ellipse, fill, and curve/brush tools.
+Sends the user task prompt asking `openai-computer-agent` to open **Microsoft Paint** via Windows Search, draw a cheerful, polished yellow smiley face centered on a clean white canvas with a black outline, two evenly spaced oval eyes, and a curved smile using the ellipse, fill, and curve/brush tools, and save it to `paint_smiley_<timestamp>.png`.
 
 #### Custom task prompt
 
