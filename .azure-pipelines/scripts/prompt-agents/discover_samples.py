@@ -79,8 +79,13 @@ def sample_record(repo: Path, manifest: Path) -> dict:
         harness_type = ""
         if "harness" in agent:
             harness = agent["harness"]
-            if not isinstance(harness, dict) or harness.get("type") != "github_copilot_preview":
-                raise DiscoveryError("harness.type must be github_copilot_preview when harness is present")
+            if (
+                not isinstance(harness, dict)
+                or set(harness) != {"type"}
+                or not isinstance(harness.get("type"), str)
+                or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", harness["type"])
+            ):
+                raise DiscoveryError("harness.type must be a nonempty identifier when harness is present")
             harness_type = harness["type"]
         protocol_version = "1.0.0"
         if "protocols" in agent:

@@ -32,8 +32,13 @@ def execution_profile(agent: dict) -> str:
     if "harness" not in agent:
         return "prompt"
     harness = agent["harness"]
-    if not isinstance(harness, dict) or harness.get("type") != "github_copilot_preview":
-        raise LifecycleError("managed harness.type must be github_copilot_preview")
+    if (
+        not isinstance(harness, dict)
+        or set(harness) != {"type"}
+        or not isinstance(harness.get("type"), str)
+        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", harness["type"])
+    ):
+        raise LifecycleError("managed harness.type must be a nonempty identifier")
     return "managed"
 
 
