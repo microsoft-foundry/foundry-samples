@@ -1,7 +1,7 @@
 """Shared multi-turn execution loop for the Azure AI Foundry Prompt Agent + OpenAI Computer Tool.
 
 Invokes the provisioned Prompt Agent with a user `prompt`, dispatches each action in
-`computer_call.actions` to the local PyAutoGUI helper (`common/pyautogui_helper.py`),
+`computer_call.actions` to the local PyAutoGUI helper (`utils/pyautogui_helper.py`),
 and returns a desktop screenshot in `computer_call_output` until the task completes.
 """
 
@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 from openai import OpenAI
 
-from sample_config import AGENT_NAME, get_model_deployment_name, get_project_client
+from utils.settings import AGENT_NAME, get_model_deployment_name, get_project_client
 
 
 def build_screenshot_output(
@@ -113,4 +113,3 @@ def run_cua_loop(
             return response.output_text
         finally:
             _cleanup_uploaded_files(openai_client, uploaded_file_ids)
-

@@ -1,30 +1,13 @@
-"""Run the Calculator + Notepad desktop task using the provisioned OpenAI Computer Tool Prompt Agent.
+"""Calculator + Notepad desktop scenario for the OpenAI Computer Tool Prompt Agent."""
 
-Prerequisites:
-    1. Provision the Prompt Agent once:
-           python provision_agent.py
-    2. Invoke the agent with a user task prompt:
-           python main.py
-
-The deployed agent has generic system instructions (`agents/computer_agent/instructions.md`).
-The specific task is supplied purely via the user `prompt` below, and all `computer_call`
-actions are executed locally using `common/pyautogui_helper.py` (PyAutoGUI).
-"""
-
-import argparse
 import ctypes
 import subprocess
 import time
 from pathlib import Path
 
-import dotenv
+from utils import SRC_DIR, handle_pyautogui_action, run_cua_loop, take_desktop_screenshot
 
-from common import handle_pyautogui_action, run_cua_loop, take_desktop_screenshot
-from sample_config import ROOT_DIR
-
-dotenv.load_dotenv()
-
-DEFAULT_PROMPT = (
+DEFAULT_CALCULATOR_PROMPT = (
     "Calculator (on the left) and Notepad (on the right, with a pre-created calculation_result_<timestamp>.txt "
     "file already open) are visible on the desktop. "
     "1) Click the Calculator window, compute 347 * 29, press Ctrl+C to copy the result, and press Alt+F4 to close Calculator. "
@@ -96,24 +79,20 @@ def launch_side_by_side(output_file: Path) -> None:
     time.sleep(0.4)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Invoke the OpenAI Computer Tool Prompt Agent on a desktop task.")
-    parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Task prompt sent to the Prompt Agent.")
-    args = parser.parse_args()
-
+def run_calculator_scenario(prompt: str | None = None) -> Path:
+    """Launch Calculator + Notepad and execute the user prompt via the provisioned Prompt Agent."""
+    task_prompt = prompt or DEFAULT_CALCULATOR_PROMPT
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    output_file = ROOT_DIR / f"calculation_result_{timestamp}.txt"
+    output_file = SRC_DIR / f"calculation_result_{timestamp}.txt"
     launch_side_by_side(output_file)
 
     run_cua_loop(
-        prompt=args.prompt,
+        prompt=task_prompt,
         handle_action=handle_pyautogui_action,
         take_screenshot=take_desktop_screenshot,
+        max_turns=10,
     )
 
     if output_file.exists():
         print(f"\nSaved file ({output_file.name}): {output_file.read_text(encoding='utf-8').strip()!r}")
-
-
-if __name__ == "__main__":
-    main()
+    return output_file

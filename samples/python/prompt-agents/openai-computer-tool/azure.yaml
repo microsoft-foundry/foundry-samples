@@ -15,7 +15,7 @@ services:
           capacity: 10
   openai-computer-agent:
     host: azure.ai.agent
-    project: .
+    project: ./src/openai-computer-tool
     uses:
       - ai-project
     kind: prompt
@@ -29,5 +29,17 @@ services:
       to complete the task requested in the user's prompt.
     tools:
       - type: computer
+hooks:
+  postprovision:
+    windows:
+      shell: pwsh
+      run: ./hooks/postprovision.ps1
+      interactive: false
+      continueOnError: false
+    posix:
+      shell: sh
+      run: ./hooks/postprovision.sh
+      interactive: false
+      continueOnError: false
 infra:
   provider: microsoft.foundry

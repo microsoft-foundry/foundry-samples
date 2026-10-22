@@ -1,32 +1,15 @@
-"""Run the MS Paint colored smiley face drawing task using the provisioned OpenAI Computer Tool Prompt Agent.
+"""MS Paint colored smiley face scenario for the OpenAI Computer Tool Prompt Agent."""
 
-Prerequisites:
-    1. Provision the Prompt Agent once:
-           python provision_agent.py
-    2. Invoke the agent with the MS Paint colored smiley user prompt:
-           python paint_smiley.py
-
-The deployed agent has generic system instructions (`agents/computer_agent/instructions.md`).
-The colored smiley face drawing task is supplied purely via the user `prompt` below, and all
-`computer_call` actions (`click`, `drag`, `keypress`) are executed locally using
-`common/pyautogui_helper.py` (PyAutoGUI).
-"""
-
-import argparse
 import ctypes
 import subprocess
 import time
 from pathlib import Path
 
-import dotenv
 from PIL import Image
 
-from common import handle_pyautogui_action, run_cua_loop, take_desktop_screenshot
-from sample_config import ROOT_DIR
+from utils import SRC_DIR, handle_pyautogui_action, run_cua_loop, take_desktop_screenshot
 
-dotenv.load_dotenv()
-
-DEFAULT_PROMPT = (
+DEFAULT_PAINT_PROMPT = (
     "In MS Paint, draw a cheerful, polished smiley face centered on a clean white canvas. "
     "Use a large yellow circle with a smooth black outline, two evenly spaced black oval eyes, "
     "and a curved black smile. Keep the features balanced and the lines neat. "
@@ -95,19 +78,15 @@ def launch_mspaint(canvas_file: Path) -> None:
     time.sleep(0.6)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Invoke the OpenAI Computer Tool Prompt Agent to draw a colored smiley face in MS Paint."
-    )
-    parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Task prompt sent to the Prompt Agent.")
-    args = parser.parse_args()
-
+def run_paint_scenario(prompt: str | None = None) -> Path:
+    """Launch MS Paint with a blank canvas and execute the smiley drawing prompt via the Prompt Agent."""
+    task_prompt = prompt or DEFAULT_PAINT_PROMPT
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    canvas_file = ROOT_DIR / f"smiley_{timestamp}.png"
+    canvas_file = SRC_DIR / f"smiley_{timestamp}.png"
     launch_mspaint(canvas_file)
 
     run_cua_loop(
-        prompt=args.prompt,
+        prompt=task_prompt,
         handle_action=handle_pyautogui_action,
         take_screenshot=take_desktop_screenshot,
         max_turns=15,
@@ -115,7 +94,4 @@ def main() -> None:
 
     if canvas_file.exists():
         print(f"\nSaved MS Paint drawing: {canvas_file}")
-
-
-if __name__ == "__main__":
-    main()
+    return canvas_file
