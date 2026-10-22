@@ -1,6 +1,7 @@
 # Native Chat Completions (Python)
 
-Initialize the SDK, start the local service, and run streaming chat completions.
+Run streaming chat completions in-process using the SDK v2 typed `ChatSession`
+API. No local HTTP service is required.
 
 > Part of the [Foundry Local samples for Python](../).
 

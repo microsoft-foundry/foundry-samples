@@ -1,5 +1,5 @@
 name: LangChain Integration (Python)
-description: LangChain integration for building translation and text generation chains.
+description: Run LangChain against the SDK v2 local OpenAI-compatible web service.
 
-build: "pip install -r requirements.txt"
-validate: "python -m py_compile $(find . -maxdepth 3 -name '*.py' -not -path './.venv/*')"
+build: "python -m pip install -r requirements.txt"
+validate: "python -m compileall -q src"

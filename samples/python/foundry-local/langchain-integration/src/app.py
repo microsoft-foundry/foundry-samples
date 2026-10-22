@@ -32,14 +32,18 @@ if current_ep:
 
 # Load a model
 model = manager.catalog.get_model("qwen2.5-0.5b")
-model.download(
-    lambda progress: print(
-        f"\rDownloading model: {progress:.2f}%",
-        end="",
-        flush=True,
+if model is None:
+    manager.close()
+    raise RuntimeError("Model 'qwen2.5-0.5b' was not found in the catalog.")
+if not model.is_cached:
+    model.download(
+        lambda progress: print(
+            f"\rDownloading model: {progress:.2f}%",
+            end="",
+            flush=True,
+        )
     )
-)
-print()
+    print()
 model.load()
 print("Model loaded.")
 
@@ -69,14 +73,18 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-chain = prompt | llm | StrOutputParser()
+try:
+    chain = prompt | llm | StrOutputParser()
 
-# Run the chain
-result = chain.invoke({"language": "Spanish", "text": "Hello, how are you today?"})
-print(f"Translation: {result}")
+    # Run the chain
+    result = chain.invoke({"language": "Spanish", "text": "Hello, how are you today?"})
+    print(f"Translation: {result}")
 # </chat_completion>
+finally:
+    # Clean up
+    manager.stop_web_service()
+    if model.is_loaded:
+        model.unload()
+    manager.close()
 
-# Clean up
-model.unload()
-manager.stop_web_service()
 # </complete_code>

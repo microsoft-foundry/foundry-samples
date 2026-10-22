@@ -1,6 +1,6 @@
 # Foundry Local Web Server (Rust)
 
-Start a local OpenAI-compatible web server and call it with a standard HTTP client.
+Start the v2 SDK's local OpenAI-compatible web server and call it with a standard HTTP client.
 
 > Part of the [Foundry Local samples for Rust](../).
 

@@ -7,7 +7,7 @@ Tool calling with custom function definitions and streaming responses.
 ## Prerequisites
 
 - [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
-- Node.js 18+
+- Node.js 20+
 
 ## Run
 

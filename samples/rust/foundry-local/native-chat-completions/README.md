@@ -1,6 +1,6 @@
 # Native Chat Completions (Rust)
 
-Non-streaming and streaming chat completions using the native chat client.
+Non-streaming and streaming chat completions using the stateful v2 `ChatSession` API.
 
 > Part of the [Foundry Local samples for Rust](../).
 

@@ -1,6 +1,6 @@
 # Tutorial: Tool Calling (Rust)
 
-Create a tool-calling assistant (tutorial).
+Create an interactive tool-calling assistant with v2 tool definitions and session state.
 
 > Part of the [Foundry Local samples for Rust](../).
 

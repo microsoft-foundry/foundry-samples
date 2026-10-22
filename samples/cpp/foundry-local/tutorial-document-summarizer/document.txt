@@ -1,0 +1,5 @@
+Foundry Local runs supported AI models directly on a user's device. Local
+inference can reduce network latency and keep prompts and model responses on
+the device. Applications still need to select a compatible model variant,
+download it when it is not cached, load it before creating an inference
+session, and release sessions before unloading the model.

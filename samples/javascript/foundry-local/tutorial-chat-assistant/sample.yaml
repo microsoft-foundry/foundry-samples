@@ -1,4 +1,5 @@
-name: Tutorial: Chat Assistant (JavaScript)
+name: "Tutorial: Chat Assistant (JavaScript)"
 description: Build an interactive multi-turn chat assistant (tutorial).
 
 build: "npm install --omit=optional --no-audit --no-fund"
+validate: "node --check app.js"

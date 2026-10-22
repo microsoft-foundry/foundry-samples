@@ -2,3 +2,4 @@ name: Embeddings (JavaScript)
 description: Generate single and batch text embeddings using the Foundry Local SDK.
 
 build: "npm install --omit=optional --no-audit --no-fund"
+validate: "node --check app.js"

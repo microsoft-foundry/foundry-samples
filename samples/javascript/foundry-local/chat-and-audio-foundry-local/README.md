@@ -7,7 +7,7 @@ Unified sample demonstrating both chat and audio transcription in one applicatio
 ## Prerequisites
 
 - [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
-- Node.js 18+
+- Node.js 20+
 
 ## Run
 

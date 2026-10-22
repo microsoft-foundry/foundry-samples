@@ -1,7 +1,5 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const fs = require('fs');
-const os = require('os');
 
 let mainWindow;
 
@@ -45,7 +43,9 @@ app.on('activate', () => {
 // SDK Management
 let manager = null;
 let currentModel = null;
-let chatClient = null;
+let AudioSession;
+let Item;
+let Request;
 let webServiceStarted = false;
 const SERVICE_PORT = 47392;
 const SERVICE_URL = `http://127.0.0.1:${SERVICE_PORT}`;
@@ -56,7 +56,9 @@ async function initializeSDK() {
   if (initPromise) return initPromise;
   
   initPromise = (async () => {
-    const { FoundryLocalManager } = await import('foundry-local-sdk');
+    const sdk = await import('foundry-local-sdk');
+    const { FoundryLocalManager } = sdk;
+    ({ AudioSession, Item, Request } = sdk);
     manager = FoundryLocalManager.create({
       appName: 'foundry_local_samples',
       logLevel: 'info',
@@ -108,11 +110,11 @@ ipcMain.handle('get-models', async () => {
       variants: m.variants.map(v => ({
         id: v.id,
         alias: v.alias,
-        displayName: v.modelInfo.displayName || v.alias,
+        displayName: v.info.displayName || v.alias,
         isCached: cachedIds.has(v.id),
-        fileSizeMb: v.modelInfo.fileSizeMb,
-        modelType: v.modelInfo.modelType,
-        publisher: v.modelInfo.publisher
+        fileSizeMb: v.info.fileSizeMb,
+        modelType: v.info.modelType,
+        publisher: v.info.publisher
       }))
     }));
     
@@ -152,7 +154,6 @@ ipcMain.handle('load-model', async (event, modelAlias) => {
       } catch (e) {
         // Ignore unload errors
       }
-      chatClient = null;
     }
     
     const model = await manager.catalog.getModel(modelAlias);
@@ -165,13 +166,12 @@ ipcMain.handle('load-model', async (event, modelAlias) => {
     
     await model.load();
     
-    // Wait for model to be fully loaded before creating chat client
+    // Wait for model to be fully loaded before accepting requests.
     while (!(await model.isLoaded())) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     
     currentModel = model;
-    chatClient = model.createChatClient();
     
     return { success: true, modelId: model.id };
   } catch (error) {
@@ -185,7 +185,6 @@ ipcMain.handle('unload-model', async () => {
     if (currentModel) {
       await currentModel.unload();
       currentModel = null;
-      chatClient = null;
     }
     return { success: true };
   } catch (error) {
@@ -204,7 +203,6 @@ ipcMain.handle('delete-model', async (event, modelAlias) => {
     if (currentModel && currentModel.alias === modelAlias) {
       await currentModel.unload();
       currentModel = null;
-      chatClient = null;
     }
     
     model.removeFromCache();
@@ -306,7 +304,7 @@ ipcMain.handle('get-whisper-models', async () => {
     .map(m => ({
       alias: m.alias,
       isCached: m.isCached,
-      fileSizeMb: m.variants[0]?.modelInfo?.fileSizeMb
+      fileSizeMb: m.variants[0]?.info?.fileSizeMb
     }));
 });
 
@@ -320,57 +318,37 @@ ipcMain.handle('download-whisper-model', async (event, modelAlias) => {
 
 ipcMain.handle('transcribe-audio', async (event, audioFilePath, base64Data) => {
   await initializeSDK();
-  ensureWebServiceStarted();
-  
-  // Use OS temp directory
-  const tempDir = os.tmpdir();
-  const tempFilePath = path.join(tempDir, `foundry_audio_${Date.now()}.wav`);
-  
-  // Write audio data to temp file
-  const audioBuffer = Buffer.from(base64Data, 'base64');
-  fs.writeFileSync(tempFilePath, audioBuffer);
-  
+
+  const models = await manager.catalog.getModels();
+  const whisperModels = models.filter(m =>
+    m.alias.toLowerCase().includes('whisper') && m.isCached
+  );
+
+  if (whisperModels.length === 0) {
+    throw new Error('No whisper model downloaded');
+  }
+
+  const selectedModel = whisperModels.sort((a, b) => {
+    const sizeA = a.variants[0]?.info?.fileSizeMb || 0;
+    const sizeB = b.variants[0]?.info?.fileSizeMb || 0;
+    return sizeA - sizeB;
+  })[0];
+
+  const whisperModel = await manager.catalog.getModel(selectedModel.alias);
+  await whisperModel.load();
+  const audioSession = new AudioSession(whisperModel);
   try {
-    // Find a cached whisper model
-    const models = await manager.catalog.getModels();
-    const whisperModels = models.filter(m => 
-      m.alias.toLowerCase().includes('whisper') && m.isCached
+    const audioBytes = new Uint8Array(Buffer.from(base64Data, 'base64'));
+    const response = await audioSession.processRequest(
+      new Request().addItem(Item.audioFromData('wav', audioBytes))
     );
-    
-    if (whisperModels.length === 0) {
-      throw new Error('No whisper model downloaded');
+    const result = response.output.find(item => item.type === 'speechResult');
+    if (!result) {
+      throw new Error('The audio model returned no transcription.');
     }
-    
-    // Use the smallest cached whisper model
-    const selectedModel = whisperModels.sort((a, b) => {
-      const sizeA = a.variants[0]?.modelInfo?.fileSizeMb || 0;
-      const sizeB = b.variants[0]?.modelInfo?.fileSizeMb || 0;
-      return sizeA - sizeB;
-    })[0];
-    
-    // Load whisper model
-    const whisperModel = await manager.catalog.getModel(selectedModel.alias);
-    await whisperModel.load();
-    
-    // Wait for model to be loaded
-    while (!(await whisperModel.isLoaded())) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    
-    // Create audio client and transcribe
-    const audioClient = whisperModel.createAudioClient();
-    const result = await audioClient.transcribe(tempFilePath);
-    
-    // Unload whisper model
-    await whisperModel.unload();
-    
-    return result;
+    return { text: result.text };
   } finally {
-    // Clean up temp file
-    try {
-      fs.unlinkSync(tempFilePath);
-    } catch (e) {
-      // Ignore cleanup errors
-    }
+    audioSession.dispose();
+    await whisperModel.unload();
   }
 });

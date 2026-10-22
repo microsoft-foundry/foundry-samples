@@ -3,4 +3,4 @@ description: Real-time microphone-to-text transcription using the Foundry Local 
 
 # SKIP: Optional native module (naudiodon2) requires PortAudio headers; falls back to synthetic audio at runtime.
 build: "echo 'SKIP: Optional native module (naudiodon2) requires PortAudio headers; falls back to synthetic audio at runtime.'"
-validate: "echo 'SKIP: Optional native module (naudiodon2) requires PortAudio headers; falls back to synthetic audio at runtime.'"
+validate: "node --check app.js"

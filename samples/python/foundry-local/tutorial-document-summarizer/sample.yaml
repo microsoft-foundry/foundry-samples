@@ -1,5 +1,5 @@
-name: Tutorial: Document Summarizer (Python)
-description: Summarize documents with AI (tutorial).
+name: "Tutorial: Document Summarizer (Python)"
+description: Summarize text files with the SDK v2 native ChatSession API.
 
-build: "pip install -r requirements.txt"
-validate: "python -m py_compile $(find . -maxdepth 3 -name '*.py' -not -path './.venv/*')"
+build: "python -m pip install -r requirements.txt"
+validate: "python -m compileall -q src"

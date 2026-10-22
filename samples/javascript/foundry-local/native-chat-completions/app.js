@@ -1,6 +1,11 @@
 // <complete_code>
 // <imports>
-import { FoundryLocalManager } from 'foundry-local-sdk';
+import {
+    ChatSession,
+    FoundryLocalManager,
+    Item,
+    Request
+} from 'foundry-local-sdk';
 // </imports>
 
 // Initialize the Foundry Local SDK
@@ -63,38 +68,52 @@ console.log('✓ Model loaded');
 // </model_setup>
 
 // <chat_completion>
-// Create chat client
-console.log('\nCreating chat client...');
-const chatClient = model.createChatClient();
-console.log('✓ Chat client created');
+// Create a stateful native chat session
+console.log('\nCreating chat session...');
+const chatSession = new ChatSession(model);
+chatSession.setOptions({
+    search: { temperature: 0.7, maxOutputTokens: 256 }
+});
+console.log('✓ Chat session created');
 
 // Example chat completion
 console.log('\nTesting chat completion...');
-const completion = await chatClient.completeChat([
-    { role: 'user', content: 'Why is the sky blue?' }
-]);
+const completion = await chatSession.processRequest(
+    new Request().addItem(Item.userMessage('Why is the sky blue?'))
+);
 
 console.log('\nChat completion result:');
-console.log(completion.choices[0]?.message?.content);
+for (const item of completion.output) {
+    if (item.type === 'message') {
+        process.stdout.write(item.content ?? item.parts?.map((part) => part.text ?? '').join('') ?? '');
+    } else if (item.type === 'text' && item.textType === 'default') {
+        process.stdout.write(item.text);
+    }
+}
+console.log();
 // </chat_completion>
 
 // <streaming>
 // Example streaming completion
 console.log('\nTesting streaming completion...');
-for await (const chunk of chatClient.completeStreamingChat(
-    [{ role: 'user', content: 'Write a short poem about programming.' }]
-)) {
-    const content = chunk.choices?.[0]?.delta?.content;
-    if (content) {
-        process.stdout.write(content);
+const stream = chatSession.processStreamingRequest(
+    new Request().addItem(Item.userMessage(
+        'Write a short poem about programming.'
+    ))
+);
+for await (const item of stream) {
+    if (item.type === 'text' && item.textType === 'default') {
+        process.stdout.write(item.text);
     }
 }
+await stream.response;
 console.log('\n');
 // </streaming>
 
 // <cleanup>
 // Unload the model
 console.log('Unloading model...');
+chatSession.dispose();
 await model.unload();
 console.log(`✓ Model unloaded`);
 // </cleanup>

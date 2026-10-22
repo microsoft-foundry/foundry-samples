@@ -1,13 +1,14 @@
 # Tutorial: Document Summarizer (C#)
 
-Summarize documents with AI (tutorial).
+Summarize documents with native v2 chat sessions and typed request/response items.
 
 > Part of the [Foundry Local samples for C#](../).
 
 ## Prerequisites
 
-- [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
 - .NET 9 SDK
+
+The unified `Microsoft.AI.Foundry.Local` package includes the local runtime.
 
 ## Run
 

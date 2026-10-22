@@ -4,11 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-foundry-local-sdk = "1.2"
-tokio = { version = "1", features = ["full"] }
+foundry-local-sdk.workspace = true
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 tokio-stream = "0.1"
-anyhow = "1"
-serde_json = "1"
-
-[target.'cfg(windows)'.dependencies]
-foundry-local-sdk = { version = "1.2", features = ["winml"] }

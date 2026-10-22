@@ -1,7 +1,6 @@
 // <complete_code>
 // <imports>
 using Microsoft.AI.Foundry.Local;
-using Betalgo.Ranul.OpenAI.ObjectModels.RequestModels;
 using Microsoft.Extensions.Logging;
 using System.Text;
 // </imports>
@@ -57,21 +56,34 @@ await speechModel.DownloadAsync(progress =>
 await speechModel.LoadAsync();
 Console.WriteLine("Speech model loaded.");
 
-// Transcribe the audio file
-var audioClient = await speechModel.GetAudioClientAsync();
+// Transcribe the audio file with the native v2 audio session.
 var transcriptionText = new StringBuilder();
+using var audioSession = new AudioSession(speechModel);
+audioSession.SetStreaming(true);
+using var audioRequest = new Request();
+audioRequest.AddItem(new AudioItem("meeting-notes.wav"));
 
 Console.WriteLine("\nTranscription:");
-var audioResponse = audioClient
-    .TranscribeAudioStreamingAsync("meeting-notes.wav", ct);
-await foreach (var chunk in audioResponse)
+await using var audioResponse = audioSession.ProcessStreamingRequestAsync(audioRequest, ct);
+await foreach (var item in audioResponse)
 {
-    Console.Write(chunk.Text);
-    transcriptionText.Append(chunk.Text);
+    using (item)
+    {
+        if (item is SpeechSegmentItem segment)
+        {
+            Console.Write(segment.Text);
+            transcriptionText.Append(segment.Text);
+        }
+    }
 }
+using var finalTranscription = await audioResponse.FinalResponse;
 Console.WriteLine();
 
 // Unload the speech model to free memory
+finalTranscription.Dispose();
+await audioResponse.DisposeAsync();
+audioRequest.Dispose();
+audioSession.Dispose();
 await speechModel.UnloadAsync();
 // </transcription>
 
@@ -89,29 +101,26 @@ await chatModel.DownloadAsync(progress =>
 await chatModel.LoadAsync();
 Console.WriteLine("Chat model loaded.");
 
-// Summarize the transcription into organized notes
-var chatClient = await chatModel.GetChatClientAsync();
-var messages = new List<ChatMessage>
-{
-    new ChatMessage
-    {
-        Role = "system",
-        Content = "You are a note-taking assistant. Summarize " +
-                  "the following transcription into organized, " +
-                  "concise notes with bullet points."
-    },
-    new ChatMessage
-    {
-        Role = "user",
-        Content = transcriptionText.ToString()
-    }
-};
-
-var chatResponse = await chatClient.CompleteChatAsync(messages, ct);
-var summary = chatResponse.Choices[0].Message.Content;
+// Summarize the transcription into organized notes.
+using var chatSession = new ChatSession(chatModel);
+using var chatRequest = new Request();
+chatRequest.AddItem(MessageItem.System(
+    "You are a note-taking assistant. Summarize the following transcription " +
+    "into organized, concise notes with bullet points."));
+chatRequest.AddItem(MessageItem.User(transcriptionText.ToString()));
+using var chatResponse = await chatSession.ProcessRequestAsync(chatRequest, ct);
+var summary = string.Concat(
+    chatResponse.OfType<MessageItem>()
+        .SelectMany(message => message.Parts)
+        .OfType<TextItem>()
+        .Where(text => text.Type == TextItemType.Default)
+        .Select(text => text.Text));
 Console.WriteLine($"\nSummary:\n{summary}");
 
 // Clean up
+chatResponse.Dispose();
+chatRequest.Dispose();
+chatSession.Dispose();
 await chatModel.UnloadAsync();
 Console.WriteLine("\nDone. Models unloaded.");
 // </summarization>

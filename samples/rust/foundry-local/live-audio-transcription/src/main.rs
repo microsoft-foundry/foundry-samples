@@ -12,7 +12,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use foundry_local_sdk::{FoundryLocalConfig, FoundryLocalManager, LiveAudioTranscriptionSession};
+use foundry_local_sdk::{
+    AudioSession, FoundryLocalConfig, FoundryLocalManager, Item, ItemQueue, Request, TextKind,
+};
 use tokio_stream::StreamExt;
 
 // English-only:
@@ -59,33 +61,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     model.load().await?;
     println!("✓ Model loaded\n");
 
-    let audio_client = model.create_audio_client();
-    let mut session = audio_client.create_live_transcription_session();
-    session.settings.language = Some("en".into());    // English (default)
-    // session.settings.language = Some("de".into());    // German
-    // session.settings.language = Some("zh-CN".into()); // Chinese (Simplified)
-    // session.settings.language = Some("auto".into());  // Auto-detect language
-    let session = Arc::new(session);
-    session.start(None).await?;
+    let session = AudioSession::new(&model).await?;
+    let audio_queue = session.create_input_queue()?;
+    let mut stream =
+        session.process_streaming_request(Request::new().with_input_queue(audio_queue.clone()));
     println!("✓ Session started\n");
 
     // --- Background task reads transcription results (mirrors JS readPromise) ---
-    let mut stream = session.get_stream().await?;
     let read_task = tokio::spawn(async move {
-        while let Some(result) = stream.next().await {
-            match result {
-                Ok(r) => {
-                    if let Some(content) = r.content.first() {
-                        let text = &content.text;
-                        if r.is_final {
-                            println!();
-                            println!("  [FINAL] {text}");
-                        } else if !text.is_empty() {
-                            print!("{text}");
-                            io::stdout().flush().ok();
-                        }
-                    }
+        while let Some(item) = stream.next().await {
+            match item {
+                Ok(Item::SpeechResult(result)) => {
+                    println!("\n  [FINAL] {}", result.text);
                 }
+                Ok(Item::Text {
+                    text,
+                    kind: TextKind::Default,
+                }) => {
+                    print!("{text}");
+                    io::stdout().flush().ok();
+                }
+                Ok(_) => {}
                 Err(e) => {
                     eprintln!("\n[ERROR] Stream error: {e}");
                     break;
@@ -100,7 +96,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut mic_active = false;
 
     if !use_synth {
-        match try_start_mic(&session, &running).await {
+        match try_start_mic(&audio_queue, &running).await {
             Ok(()) => {
                 mic_active = true;
             }
@@ -122,7 +118,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 break;
             }
             let end = std::cmp::min(offset + chunk_size, pcm_data.len());
-            session.append(&pcm_data[offset..end], None).await?;
+            audio_queue.push(&Item::audio_data(
+                pcm_data[offset..end].to_vec(),
+                Some("pcm16"),
+                16000,
+                1,
+            ))?;
             tokio::time::sleep(chunk_interval).await;
         }
         println!("✓ Synthetic audio pushed");
@@ -133,8 +134,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Graceful shutdown (mirrors JS SIGINT handler)
     println!("\n\nStopping...");
-    session.stop(None).await?;
+    audio_queue.mark_finished();
     read_task.await?;
+    drop(audio_queue);
+    drop(session);
     model.unload().await?;
     println!("✓ Done");
     Ok(())
@@ -143,7 +146,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Try to open the default microphone with CPAL and forward PCM to the session.
 /// Blocks until Ctrl+C is pressed.
 async fn try_start_mic(
-    session: &Arc<LiveAudioTranscriptionSession>,
+    audio_queue: &ItemQueue,
     running: &Arc<AtomicBool>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let host = cpal::default_host();
@@ -187,10 +190,8 @@ async fn try_start_mic(
             device.build_input_stream(
                 &mic_config,
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
-                    let samples: Vec<f32> = data
-                        .iter()
-                        .map(|&s| s as f32 / i16::MAX as f32)
-                        .collect();
+                    let samples: Vec<f32> =
+                        data.iter().map(|&s| s as f32 / i16::MAX as f32).collect();
                     let bytes = convert_audio(&samples, device_channels, device_rate);
                     if !bytes.is_empty() {
                         let _ = tx.try_send(bytes);
@@ -234,10 +235,10 @@ async fn try_start_mic(
     println!();
 
     // Pump audio from channel to session (mirrors JS pumpAudio / C++ pump loop)
-    let session_clone = Arc::clone(session);
+    let queue = audio_queue.clone();
     let forward_task = tokio::spawn(async move {
         while let Some(bytes) = audio_rx.recv().await {
-            if let Err(e) = session_clone.append(&bytes, None).await {
+            if let Err(e) = queue.push(&Item::audio_data(bytes, Some("pcm16"), 16000, 1)) {
                 eprintln!("Append error: {e}");
                 break;
             }

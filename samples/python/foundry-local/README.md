@@ -10,27 +10,30 @@ description: Foundry Local Python samples — chat, embeddings, audio, LangChain
 
 # 🚀 Foundry Local Python Samples
 
-These samples demonstrate how to use [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) with Python.
+These samples demonstrate the maintained Foundry Local Python SDK v2. Native
+samples use typed sessions, requests, and modality-specific items. Web-service
+samples expose the local OpenAI-compatible endpoint for OpenAI and LangChain
+clients.
 
 ## Prerequisites
 
-- [Python](https://www.python.org/) 3.11 or later
-- [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed on your machine
+- [Python](https://www.python.org/) 3.11 through 3.14
+- A supported Windows, Linux, or Apple silicon macOS machine
 
 ## Samples
 
 | Sample | Description |
 |--------|-------------|
-| [native-chat-completions](native-chat-completions/) | Initialize the SDK, start the local service, and run streaming chat completions. |
-| [embeddings](embeddings/) | Generate single and batch text embeddings using the Foundry Local SDK. |
-| [audio-transcription](audio-transcription/) | Transcribe audio files using the Whisper model. |
+| [native-chat-completions](native-chat-completions/) | Run streaming chat inference with the native typed `ChatSession` API. |
+| [embeddings](embeddings/) | Generate single and batch embeddings with `EmbeddingsSession`. |
+| [audio-transcription](audio-transcription/) | Transcribe audio files with `AudioSession`. |
 | [web-server](web-server/) | Start a local OpenAI-compatible web server and call it with the OpenAI Python SDK. |
 | [web-server-responses](web-server-responses/) | Call a running local OpenAI-compatible web server with the Responses API, including streaming and tool calling. |
 | [web-server-responses-vision](web-server-responses-vision/) | Vision (image understanding) using the Foundry Local web service and OpenAI Responses API. |
-| [tool-calling](tool-calling/) | Tool calling with custom function definitions (get_weather, calculate). |
+| [tool-calling](tool-calling/) | Native typed tool calling with custom function definitions. |
 | [langchain-integration](langchain-integration/) | LangChain integration for building translation and text generation chains. |
-| [live-audio-transcription](live-audio-transcription/) | Real-time microphone-to-text using `pyaudio` (falls back to synthetic audio if unavailable). |
-| [verify-winml](verify-winml/) | Verify WinML 2.0 execution providers (Windows only). |
+| [live-audio-transcription](live-audio-transcription/) | Stream PCM input through `AudioSession` and `ItemQueue`. |
+| [verify-winml](verify-winml/) | Verify unified-package Windows ML/current-platform acceleration capabilities. |
 | [tutorial-chat-assistant](tutorial-chat-assistant/) | Build an interactive multi-turn chat assistant (tutorial). |
 | [tutorial-document-summarizer](tutorial-document-summarizer/) | Summarize documents with AI (tutorial). |
 | [tutorial-tool-calling](tutorial-tool-calling/) | Create a tool-calling assistant (tutorial). |
@@ -59,4 +62,5 @@ These samples demonstrate how to use [Foundry Local](https://learn.microsoft.com
    ```
 
 > [!TIP]
-> Each sample's `requirements.txt` uses environment markers to automatically install the right SDK for your platform. On **Windows**, `foundry-local-sdk-winml` is installed for broader hardware acceleration. On **macOS and Linux**, the standard `foundry-local-sdk` is used. Just run `pip install -r requirements.txt` — platform detection is handled for you.
+> Every sample pins the unified `foundry-local-sdk` package. The Windows wheel
+> includes Windows ML support; no separate WinML package is required.

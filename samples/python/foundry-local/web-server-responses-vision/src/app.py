@@ -85,6 +85,7 @@ else:
     ]
     if not vision_models:
         print("\nNo vision models found in catalog.")
+        manager.close()
         sys.exit(0)
 
     total_variants = sum(len(m.variants) for m in vision_models)
@@ -130,6 +131,7 @@ else:
             )
             cached = "yes" if v.is_cached else "no"
             print(f"      {v.id:<54}  {device:<6}  {ep:<32}  {size}  {cached}")
+    manager.close()
     sys.exit(0)
 
 
@@ -144,6 +146,7 @@ if model is None:
     )
     print(f"Available aliases: {available_aliases}")
     print("Run with --list-models to see variant ids.")
+    manager.close()
     sys.exit(1)
 
 if not model.is_cached:
@@ -171,40 +174,43 @@ print("Web service started")
 openai = OpenAI(base_url=base_url, api_key="notneeded")
 # </server_setup>
 
-# <inference>
-print(f"\nPreparing image: {image_path}")
-image_b64, media_type = encode_image(image_path)
+try:
+    # <inference>
+    print(f"\nPreparing image: {image_path}")
+    image_b64, media_type = encode_image(image_path)
 
-vision_input = [
-    {
-        "type": "message",
-        "role": "user",
-        "content": [
-            {"type": "input_text", "text": "Describe this image."},
-            {
-                "type": "input_image",
-                "image_data": image_b64,
-                "media_type": media_type,
-            },
-        ],
-    }
-]
+    vision_input = [
+        {
+            "type": "message",
+            "role": "user",
+            "content": [
+                {"type": "input_text", "text": "Describe this image."},
+                {
+                    "type": "input_image",
+                    "image_data": image_b64,
+                    "media_type": media_type,
+                },
+            ],
+        }
+    ]
 
-print("\nStreaming vision response...")
-stream = openai.responses.create(
-    model=model.id,
-    input="placeholder",
-    extra_body={"input": vision_input, "max_output_tokens": 8192},
-    stream=True,
-)
+    print("\nStreaming vision response...")
+    stream = openai.responses.create(
+        model=model.id,
+        input="placeholder",
+        extra_body={"input": vision_input, "max_output_tokens": 8192},
+        stream=True,
+    )
 
-print("[ASSISTANT]: ", end="", flush=True)
-for event in stream:
-    if getattr(event, "type", None) == "response.output_text.delta":
-        print(getattr(event, "delta", ""), end="", flush=True)
-print()
-# </inference>
-
-openai.close()
-manager.stop_web_service()
-model.unload()
+    print("[ASSISTANT]: ", end="", flush=True)
+    for event in stream:
+        if getattr(event, "type", None) == "response.output_text.delta":
+            print(getattr(event, "delta", ""), end="", flush=True)
+    print()
+    # </inference>
+finally:
+    openai.close()
+    manager.stop_web_service()
+    if model.is_loaded:
+        model.unload()
+    manager.close()

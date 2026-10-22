@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 
 // <imports>
-use foundry_local_sdk::{FoundryLocalConfig, FoundryLocalManager};
+use foundry_local_sdk::{EmbeddingsSession, FoundryLocalConfig, FoundryLocalManager};
 // </imports>
 
 const ALIAS: &str = "qwen3-embedding-0.6b";
@@ -39,45 +39,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✓ Model loaded\n");
     // </model_setup>
 
-    // ── 3. Create an embedding client ───────────────────────────────────
+    // ── 3. Create an embedding session ──────────────────────────────────
     // <embedding_client>
-    let client = model.create_embedding_client();
+    let session = EmbeddingsSession::new(&model).await?;
     // </embedding_client>
 
     // ── 4. Single embedding ─────────────────────────────────────────────
     // <single_embedding>
     println!("--- Single Embedding ---");
-    let response = client
-        .generate_embedding("The quick brown fox jumps over the lazy dog")
+    let embedding = session
+        .embed("The quick brown fox jumps over the lazy dog")
         .await?;
 
-    let embedding = &response.data[0].embedding;
     println!("Dimensions: {}", embedding.len());
-    println!(
-        "First 5 values: {:?}",
-        &embedding[..5]
-    );
+    println!("First 5 values: {:?}", &embedding[..embedding.len().min(5)]);
     // </single_embedding>
 
     // ── 5. Batch embeddings ─────────────────────────────────────────────
     // <batch_embedding>
     println!("\n--- Batch Embeddings ---");
-    let batch_response = client
-        .generate_embeddings(&[
-            "Machine learning is a subset of artificial intelligence",
-            "The capital of France is Paris",
-            "Rust is a systems programming language",
+    let embeddings = session
+        .embed_batch(vec![
+            "Machine learning is a subset of artificial intelligence".into(),
+            "The capital of France is Paris".into(),
+            "Rust is a systems programming language".into(),
         ])
         .await?;
 
-    println!("Number of embeddings: {}", batch_response.data.len());
-    for (i, data) in batch_response.data.iter().enumerate() {
-        println!("  [{i}] Dimensions: {}", data.embedding.len());
+    println!("Number of embeddings: {}", embeddings.len());
+    for (i, embedding) in embeddings.iter().enumerate() {
+        println!("  [{i}] Dimensions: {}", embedding.len());
     }
     // </batch_embedding>
 
     // ── 6. Unload the model ─────────────────────────────────────────────
     // <cleanup>
+    drop(session);
     println!("\nUnloading model...");
     model.unload().await?;
     println!("Done.");

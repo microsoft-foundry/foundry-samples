@@ -1,6 +1,5 @@
-name: Verify WinML Execution Providers (Python)
-description: Verify WinML 2.0 execution providers are correctly registered.
+name: Verify Windows ML Capability (Python)
+description: Verify unified SDK execution-provider discovery, acceleration, and native inference.
 
-# SKIP: Windows-only: requires foundry-local-sdk-winml which has no Linux/macOS wheel.
-build: "echo 'SKIP: Windows-only: requires foundry-local-sdk-winml which has no Linux/macOS wheel.'"
-validate: "echo 'SKIP: Windows-only: requires foundry-local-sdk-winml which has no Linux/macOS wheel.'"
+build: "python -m pip install -r requirements.txt"
+validate: "python -m compileall -q src"

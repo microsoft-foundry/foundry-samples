@@ -2,3 +2,4 @@ name: Tool Calling (JavaScript)
 description: Tool calling with custom function definitions and streaming responses.
 
 build: "npm ci --omit=optional --no-audit --no-fund --registry=https://registry.npmjs.org"
+validate: "node --check src/app.js"
