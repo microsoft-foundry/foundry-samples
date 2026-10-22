@@ -65,7 +65,6 @@ def run_cua_loop(
         openai_client = project_client.get_openai_client()
         try:
             response = openai_client.responses.create(
-                reasoning={"effort": "low"},
                 input=prompt,
                 extra_body=agent_ref,
             )
@@ -98,7 +97,6 @@ def run_cua_loop(
 
                 response = openai_client.responses.create(
                     previous_response_id=response.id,
-                    reasoning={"effort": "low"},
                     input=[call_output],
                     extra_body=agent_ref,
                 )
