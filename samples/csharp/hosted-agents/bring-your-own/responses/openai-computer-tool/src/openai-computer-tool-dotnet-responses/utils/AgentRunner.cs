@@ -193,6 +193,20 @@ public static class AgentRunner
 
             foreach ((string callId, List<JsonElement> actions, List<JsonElement> safetyChecks) in computerCalls)
             {
+                if (safetyChecks.Count > 0)
+                {
+                    List<string> descriptions = [];
+                    foreach (JsonElement sc in safetyChecks)
+                    {
+                        string code = sc.TryGetProperty("code", out JsonElement scCode) ? scCode.GetString() ?? "unknown" : "unknown";
+                        string message = sc.TryGetProperty("message", out JsonElement scMsg) ? scMsg.GetString() ?? string.Empty : string.Empty;
+                        descriptions.Add($"{code}: {message}");
+                    }
+
+                    throw new InvalidOperationException(
+                        $"Refusing to execute computer_call with pending safety checks: {string.Join(", ", descriptions)}");
+                }
+
                 List<string> actionSummaries = [];
                 foreach (JsonElement action in actions)
                 {
@@ -218,22 +232,6 @@ public static class AgentRunner
                         ["detail"] = "original",
                     },
                 };
-
-                if (safetyChecks.Count > 0)
-                {
-                    JsonArray ackChecks = [];
-                    foreach (JsonElement sc in safetyChecks)
-                    {
-                        ackChecks.Add(new JsonObject
-                        {
-                            ["id"] = sc.TryGetProperty("id", out JsonElement scId) ? scId.GetString() : string.Empty,
-                            ["code"] = sc.TryGetProperty("code", out JsonElement scCode) ? scCode.GetString() : string.Empty,
-                            ["message"] = sc.TryGetProperty("message", out JsonElement scMsg) ? scMsg.GetString() : string.Empty,
-                        });
-                    }
-
-                    callOutput["acknowledged_safety_checks"] = ackChecks;
-                }
 
                 nextOutputs.Add(callOutput);
             }

@@ -341,6 +341,14 @@ def ensure_virtual_desktop(output_file: Path | None = None) -> None:
         _pyautogui_available = False
         return
 
+    if output_file is not None and _paint_process is not None and _paint_process.poll() is None:
+        _paint_process.terminate()
+        try:
+            _paint_process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            _paint_process.kill()
+        _paint_process = None
+
     if _paint_process is None or _paint_process.poll() is not None:
         target = str(output_file or (Path(__file__).resolve().parent.parent / "paint_smiley.png"))
         _paint_process = subprocess.Popen(

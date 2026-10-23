@@ -80,7 +80,6 @@ def run_cua_loop(
                 instructions=instructions,
                 input=prompt,
                 tools=[COMPUTER_TOOL],
-                store=False,
             )
 
             for turn in range(1, max_turns + 1):
@@ -115,7 +114,6 @@ def run_cua_loop(
                     previous_response_id=response.id,
                     input=[call_output],
                     tools=[COMPUTER_TOOL],
-                    store=False,
                 )
 
             remaining_calls = [item for item in response.output if item.type == "computer_call"]
