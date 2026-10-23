@@ -1,0 +1,343 @@
+# Prompt/managed azd E2E. Reuse a warm project by default; optionally provision
+# a cell-owned project/model and tear it down after the run.
+# Require maintainer approval for fork PRs and protect the service connection with
+# resource approvals/checks outside YAML before enabling credentialed PR builds.
+trigger:
+  batch: true
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - samples/cli/prompt-agents/**
+      - .azure-pipelines/prompt-agents-samples-ci.yml
+      - .azure-pipelines/scripts/prompt-agents/**
+      - .azure-pipelines/prompt-agent-tests/**
+      - .github/scripts/hosted_agent_fixture.py
+      - .github/scripts/hosted_agent_test_spec.py
+
+pr:
+  autoCancel: true
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - samples/cli/prompt-agents/**
+      - .azure-pipelines/prompt-agents-samples-ci.yml
+      - .azure-pipelines/scripts/prompt-agents/**
+      - .azure-pipelines/prompt-agent-tests/**
+      - .github/scripts/hosted_agent_fixture.py
+      - .github/scripts/hosted_agent_test_spec.py
+
+schedules:
+  - cron: '0 9 * * *'
+    displayName: Daily prompt and managed agent E2E
+    branches:
+      include:
+        - main
+    always: true
+
+parameters:
+  - name: sampleFilter
+    displayName: 'Sample substring filter (* for all; comma-separated OR)'
+    type: string
+    default: '*'
+  - name: discoveryMode
+    type: string
+    default: auto
+    values: [auto, all, changed]
+  - name: baseRef
+    type: string
+    default: origin/main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: samples-prompt-agents-ci
+  - name: AZURE_DEV_COLLECT_TELEMETRY
+    value: 'no'
+  - name: profiles
+    value: 'prompt,managed'
+
+stages:
+  - stage: Discover
+    displayName: Validate contracts and discover samples
+    jobs:
+      - job: Discover
+        steps:
+          - checkout: self
+            fetchDepth: 0
+            persistCredentials: true
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.13'
+          - bash: |
+              set -euo pipefail
+              mkdir -p "$MATRIX_DIR"
+              if [ "$SKIP_PROVISION" != true ] && [ "$SKIP_PROVISION" != false ]; then
+                echo 'Set SKIP_PROVISION=true or false in samples-prompt-agents-ci' >&2
+                exit 1
+              fi
+              is_unset() { [ -z "$1" ] || [[ "$1" == \$\(*\) ]]; }
+              is_unset "$SERVICE_CONNECTION" && { echo 'AZURE_SERVICE_CONNECTION is required' >&2; exit 1; }
+              if [ "$SKIP_PROVISION" = true ]; then
+                for key in PROJECT_ID PROJECT_ENDPOINT MODEL_DEPLOYMENT; do
+                  is_unset "${!key}" && { echo "Missing pipeline variable: $key" >&2; exit 1; }
+                done
+              else
+                for key in SUBSCRIPTION_ID LOCATION; do
+                  is_unset "${!key}" && { echo "Missing pipeline variable: $key" >&2; exit 1; }
+                done
+              fi
+              python -m pip install -r .azure-pipelines/scripts/prompt-agents/requirements.txt
+              python -m unittest discover -s .azure-pipelines/scripts/prompt-agents/tests -p 'test_*.py'
+              if [ "$DISCOVERY_MODE" = auto ]; then
+                if [ "$BUILD_REASON" = PullRequest ]; then
+                  DISCOVERY_MODE=changed
+                  target_branch=${PR_TARGET_BRANCH#refs/heads/}
+                  [ -n "$target_branch" ] && git check-ref-format "refs/heads/$target_branch"
+                  BASE_REF="origin/$target_branch"
+                else
+                  DISCOVERY_MODE=all
+                fi
+              fi
+              if [ "$DISCOVERY_MODE" = changed ]; then
+                if [[ "$BASE_REF" == origin/* ]]; then
+                  branch=${BASE_REF#origin/}
+                  git check-ref-format "refs/heads/$branch"
+                  git fetch --no-tags origin "+refs/heads/$branch:refs/remotes/origin/$branch"
+                fi
+                git rev-parse --verify "$BASE_REF^{commit}" >/dev/null
+              fi
+              python .azure-pipelines/scripts/prompt-agents/discover_samples.py discover \
+                --validate-contracts \
+                --mode "$DISCOVERY_MODE" --base-ref "$BASE_REF" --sample-filter "$SAMPLE_FILTER" \
+                > "$MATRIX_DIR/discovery.json"
+              jq '.entries' "$MATRIX_DIR/discovery.json" > "$MATRIX_DIR/entries.json"
+              for key in count count_prompt count_managed matrix_prompt matrix_managed; do
+                value=$(jq -c ".$key" "$MATRIX_DIR/discovery.json")
+                echo "##vso[task.setvariable variable=$key;isOutput=true]$value"
+              done
+            name: matrix
+            displayName: Validate fixtures and build compact matrices
+            env:
+              MATRIX_DIR: $(Build.ArtifactStagingDirectory)/matrix
+              DISCOVERY_MODE: ${{ parameters.discoveryMode }}
+              BASE_REF: ${{ parameters.baseRef }}
+              SAMPLE_FILTER: ${{ parameters.sampleFilter }}
+              BUILD_REASON: $(Build.Reason)
+              PR_TARGET_BRANCH: $(System.PullRequest.TargetBranch)
+              SKIP_PROVISION: $(SKIP_PROVISION)
+              SERVICE_CONNECTION: $(AZURE_SERVICE_CONNECTION)
+              PROJECT_ID: $(AZURE_AI_PROJECT_ID)
+              PROJECT_ENDPOINT: $(AZURE_AI_PROJECT_ENDPOINT)
+              MODEL_DEPLOYMENT: $(AZURE_AI_MODEL_DEPLOYMENT_NAME)
+              SUBSCRIPTION_ID: $(AZURE_SUBSCRIPTION_ID)
+              LOCATION: $(AZURE_LOCATION)
+          - task: PublishPipelineArtifact@1
+            condition: always()
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)/matrix
+              artifact: PromptAgentSamplesMatrix
+
+  - ${{ each profile in split(variables.profiles, ',') }}:
+      - stage: E2E_${{ profile }}
+        displayName: '${{ profile }} agent E2E'
+        dependsOn: Discover
+        condition: and(succeeded(), ne(dependencies.Discover.outputs['Discover.matrix.count_${{ profile }}'], '0'))
+        jobs:
+          - job: Validate
+            timeoutInMinutes: 210
+            cancelTimeoutInMinutes: 65
+            strategy:
+              matrix: $[ stageDependencies.Discover.Discover.outputs['matrix.matrix_${{ profile }}'] ]
+              maxParallel: 1
+            steps:
+              - checkout: self
+              - download: current
+                artifact: PromptAgentSamplesMatrix
+              - task: UsePythonVersion@0
+                inputs:
+                  versionSpec: '3.13'
+              - bash: |
+                  set -euo pipefail
+                  mkdir -p "$CELL_DIR"
+                  python -m pip install -r .azure-pipelines/scripts/prompt-agents/requirements.txt
+                  curl -fsSL https://aka.ms/install-azd.sh | bash
+                  azd extension install microsoft.foundry
+                  azd config set auth.useAzCliAuth true
+                  command -v jq
+                  command -v timeout
+                displayName: Prepare CLI tools
+                env:
+                  CELL_DIR: $(Build.ArtifactStagingDirectory)/cell
+              - task: AzureCLI@2
+                displayName: Provision disposable Foundry project and model
+                condition: and(succeeded(), eq(variables['SKIP_PROVISION'], 'false'))
+                timeoutInMinutes: 30
+                inputs:
+                  azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                  visibleAzLogin: false
+                  scriptType: bash
+                  scriptLocation: inlineScript
+                  inlineScript: |
+                    set -euo pipefail
+                    python .azure-pipelines/scripts/prompt-agents/discover_samples.py hydrate \
+                      --entries "$ENTRIES" --combo-id "$COMBO_ID" > "$CELL_DIR/record.json"
+                    sample=$(jq -er '.samplePath' "$CELL_DIR/record.json")
+                    bash .azure-pipelines/scripts/prompt-agents/provision-prompt-agent.sh \
+                      --sample "$sample" --artifacts "$CELL_DIR" --work "$PROVISION_WORK" \
+                      --subscription-id "$SUBSCRIPTION_ID" --location "$LOCATION"
+                env:
+                  PYTHON: python
+                  ENTRIES: $(Pipeline.Workspace)/PromptAgentSamplesMatrix/entries.json
+                  COMBO_ID: $(comboId)
+                  CELL_DIR: $(Build.ArtifactStagingDirectory)/cell
+                  PROVISION_WORK: $(Agent.TempDirectory)/prompt-infra-$(comboId)
+                  SUBSCRIPTION_ID: $(AZURE_SUBSCRIPTION_ID)
+                  LOCATION: $(AZURE_LOCATION)
+              - task: AzureCLI@2
+                displayName: Init, deploy, invoke, assert, and clean up
+                timeoutInMinutes: 110
+                inputs:
+                  azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                  visibleAzLogin: false
+                  scriptType: bash
+                  scriptLocation: inlineScript
+                  inlineScript: |
+                    set -euo pipefail
+                    if [ "$SKIP_PROVISION" = false ]; then
+                      [ -f "$CELL_DIR/provision-ledger.json" ] || { echo 'Missing provisioning ledger' >&2; exit 1; }
+                      PROJECT_ID=$(jq -er .project_id "$CELL_DIR/provision-ledger.json")
+                      PROJECT_ENDPOINT=$(jq -er .project_endpoint "$CELL_DIR/provision-ledger.json")
+                      MODEL_DEPLOYMENT=$(jq -er .model_deployment "$CELL_DIR/provision-ledger.json")
+                    elif [ "$SKIP_PROVISION" != true ]; then
+                      echo 'SKIP_PROVISION must be true or false' >&2; exit 1
+                    fi
+                    for key in PROJECT_ID PROJECT_ENDPOINT MODEL_DEPLOYMENT; do
+                      value=${!key}
+                      if [ -z "$value" ] || [[ "$value" == '$('* ]]; then
+                        echo "Missing pipeline variable: $key" >&2
+                        exit 1
+                      fi
+                    done
+                    python .azure-pipelines/scripts/prompt-agents/discover_samples.py hydrate \
+                      --entries "$ENTRIES" --combo-id "$COMBO_ID" > "$CELL_DIR/record.json"
+                    sample=$(jq -er '.samplePath' "$CELL_DIR/record.json")
+                    bash .azure-pipelines/scripts/prompt-agents/run-prompt-agent.sh \
+                      --sample "$sample" --project-id "$PROJECT_ID" --project-endpoint "$PROJECT_ENDPOINT" \
+                      --model-deployment "$MODEL_DEPLOYMENT" --artifacts "$CELL_DIR/run" \
+                      --command-timeout 300 --turn-timeout 600
+                env:
+                  PYTHON: python
+                  COMBO_ID: $(comboId)
+                  ENTRIES: $(Pipeline.Workspace)/PromptAgentSamplesMatrix/entries.json
+                  CELL_DIR: $(Build.ArtifactStagingDirectory)/cell
+                  SKIP_PROVISION: $(SKIP_PROVISION)
+                  PROJECT_ID: $(AZURE_AI_PROJECT_ID)
+                  PROJECT_ENDPOINT: $(AZURE_AI_PROJECT_ENDPOINT)
+                  MODEL_DEPLOYMENT: $(AZURE_AI_MODEL_DEPLOYMENT_NAME)
+                  PROMPT_AGENT_KEEP_WORKSPACE: 'true'
+              - task: AzureCLI@2
+                displayName: Recover cleanup after cancellation or failure
+                condition: always()
+                timeoutInMinutes: 20
+                inputs:
+                  azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                  visibleAzLogin: false
+                  scriptType: bash
+                  scriptLocation: inlineScript
+                  inlineScript: |
+                    set -euo pipefail
+                    if [ "$SKIP_PROVISION" = false ]; then
+                      [ -f "$CELL_DIR/provision-ledger.json" ] || exit 0
+                      if jq -e '.project_id and .project_endpoint and .model_deployment' \
+                        "$CELL_DIR/provision-ledger.json" >/dev/null; then
+                        PROJECT_ID=$(jq -r .project_id "$CELL_DIR/provision-ledger.json")
+                        PROJECT_ENDPOINT=$(jq -r .project_endpoint "$CELL_DIR/provision-ledger.json")
+                        MODEL_DEPLOYMENT=$(jq -r .model_deployment "$CELL_DIR/provision-ledger.json")
+                      else
+                        exit 0
+                      fi
+                    fi
+                    bash .azure-pipelines/scripts/prompt-agents/cleanup-prompt-agent.sh \
+                      --artifacts "$CELL_DIR/run" --project-id "$PROJECT_ID" \
+                      --project-endpoint "$PROJECT_ENDPOINT" --model-deployment "$MODEL_DEPLOYMENT"
+                env:
+                  PYTHON: python
+                  CELL_DIR: $(Build.ArtifactStagingDirectory)/cell
+                  SKIP_PROVISION: $(SKIP_PROVISION)
+                  PROJECT_ID: $(AZURE_AI_PROJECT_ID)
+                  PROJECT_ENDPOINT: $(AZURE_AI_PROJECT_ENDPOINT)
+                  MODEL_DEPLOYMENT: $(AZURE_AI_MODEL_DEPLOYMENT_NAME)
+              - task: AzureCLI@2
+                displayName: Tear down disposable Foundry resources
+                condition: and(always(), eq(variables['SKIP_PROVISION'], 'false'))
+                timeoutInMinutes: 30
+                inputs:
+                  azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                  visibleAzLogin: false
+                  scriptType: bash
+                  scriptLocation: inlineScript
+                  inlineScript: |
+                    bash .azure-pipelines/scripts/prompt-agents/teardown-prompt-agent.sh \
+                      --artifacts "$CELL_DIR" --work "$PROVISION_WORK" --subscription-id "$SUBSCRIPTION_ID"
+                env:
+                  CELL_DIR: $(Build.ArtifactStagingDirectory)/cell
+                  PROVISION_WORK: $(Agent.TempDirectory)/prompt-infra-$(comboId)
+                  SUBSCRIPTION_ID: $(AZURE_SUBSCRIPTION_ID)
+              - bash: mkdir -p "$CELL_DIR"
+                displayName: Ensure diagnostic artifact exists
+                condition: always()
+                env:
+                  CELL_DIR: $(Build.ArtifactStagingDirectory)/cell
+              - task: PublishPipelineArtifact@1
+                condition: always()
+                inputs:
+                  targetPath: $(Build.ArtifactStagingDirectory)/cell
+                  artifact: 'PromptAgentResult-$(comboId)'
+
+  - stage: Summary
+    dependsOn:
+      - Discover
+      - ${{ each profile in split(variables.profiles, ',') }}:
+          - E2E_${{ profile }}
+    condition: and(always(), eq(dependencies.Discover.result, 'Succeeded'), ne(dependencies.Discover.outputs['Discover.matrix.count'], '0'))
+    jobs:
+      - job: Summary
+        steps:
+          - checkout: self
+          - download: current
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.13'
+          - bash: |
+              set -euo pipefail
+              python .azure-pipelines/scripts/prompt-agents/summarize_results.py \
+                --entries "$WORKSPACE/PromptAgentSamplesMatrix/entries.json" \
+                --artifacts "$WORKSPACE" --output "$SUMMARY"
+            displayName: Summarize expected results
+            condition: always()
+            env:
+              WORKSPACE: $(Pipeline.Workspace)
+              SUMMARY: $(Build.ArtifactStagingDirectory)/summary.md
+          - bash: echo "##vso[task.uploadsummary]$SUMMARY"
+            condition: always()
+            env:
+              SUMMARY: $(Build.ArtifactStagingDirectory)/summary.md
+          - task: PublishPipelineArtifact@1
+            condition: always()
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)/summary.md
+              artifact: PromptAgentSummary
+
+  - stage: NoSamples
+    dependsOn: Discover
+    condition: and(succeeded(), eq(dependencies.Discover.outputs['Discover.matrix.count'], '0'))
+    jobs:
+      - job: NoSamples
+        steps:
+          - checkout: none
+          - bash: echo 'No non-skipped samples matched the discovery filters.'

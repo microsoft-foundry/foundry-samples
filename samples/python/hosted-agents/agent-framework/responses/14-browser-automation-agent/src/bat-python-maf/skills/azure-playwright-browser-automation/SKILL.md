@@ -7,7 +7,7 @@ description: Automates browser interactions with the Azure Playwright browser to
 
 ## Start and reuse a session
 
-1. Call the tool ending in `create_browser_session`.
+1. Call the `create_browser_session` tool.
 2. Keep the returned `browserSessionId`.
 3. Pass that ID to every browser tool until the session is closed.
 4. Reuse the active session for follow-up work.
@@ -33,4 +33,4 @@ Use `browser_tabs` for tab management, `browser_take_screenshot` for visual evid
 
 Keep sessions open after successful work and while waiting for user input, approval, CAPTCHA, MFA, or manual browser interaction. Resume in the same browser with a fresh snapshot when the user replies.
 
-Call `close_browser_session` only when the user explicitly requests it. If a session becomes unusable, report the problem instead of silently closing it.
+Call the `close_browser_session` tool when the user explicitly requests it or when a session becomes unusable. For an unusable session, make a best-effort close call before reporting the problem.

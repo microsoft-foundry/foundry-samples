@@ -5,6 +5,8 @@ requiredVersions:
   extensions:
     azure.ai.agents: '>=1.0.0-beta.16'
 name: bat-csharp-maf
+metadata:
+  template: browser-agent-csharp-maf
 services:
   ai-project:
     host: azure.ai.project

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Schema, planning, and assertion evaluation for hosted-agent E2E test specs."""
+"""Schema, planning, and assertion evaluation for agent E2E test specs."""
 
 from __future__ import annotations
 
@@ -27,6 +27,11 @@ TEST_SOURCES = {"console_log", "trace"}
 TEXT_SOURCES = {"assistant_text", "raw", "console_log"}
 TEXT_TYPES = {"contains", "equals", "regex"}
 STATUSES = {"ok", "error", "unset"}
+PROFILE_SOURCES = {
+    "hosted": TURN_SOURCES | TEST_SOURCES,
+    "prompt": {"assistant_text", "raw"},
+    "managed": {"assistant_text", "raw"},
+}
 ALIAS_RE = re.compile(r"^[A-Za-z][A-Za-z0-9._-]*$")
 if yaml is not None:
 
@@ -399,7 +404,32 @@ def build_plan(
     toolbox_label: str = "",
     toolbox_query: str = "",
     protocol: str = "responses",
+    profile: str = "hosted",
 ) -> dict[str, Any]:
+    if profile not in PROFILE_SOURCES:
+        raise SpecError(f"unsupported execution profile: {profile}")
+    if profile != "hosted" and protocol != "responses":
+        raise SpecError(f"the {profile} execution profile supports only the Responses protocol")
+    for test_index, test in enumerate(document["tests"], start=1):
+        for turn_index, turn in enumerate(test["turns"], start=1):
+            if profile != "hosted" and "approvals" in turn:
+                raise SpecError(
+                    f"document.tests[{test_index}].turns[{turn_index}].approvals "
+                    f"is not supported by the {profile} execution profile"
+                )
+            for assertion_index, assertion in enumerate(turn.get("assertions", []), start=1):
+                if assertion["source"] not in PROFILE_SOURCES[profile]:
+                    raise SpecError(
+                        f"document.tests[{test_index}].turns[{turn_index}]."
+                        f"assertions[{assertion_index}].source {assertion['source']!r} "
+                        f"is not supported by the {profile} execution profile"
+                    )
+        for assertion_index, assertion in enumerate(test.get("assertions", []), start=1):
+            if assertion["source"] not in PROFILE_SOURCES[profile]:
+                raise SpecError(
+                    f"document.tests[{test_index}].assertions[{assertion_index}]."
+                    f"source {assertion['source']!r} is not supported by the {profile} execution profile"
+                )
     if protocol != "responses":
         if any(
             "approvals" in turn for test in document["tests"] for turn in test["turns"]
@@ -471,6 +501,7 @@ def build_plan(
         )
     return {
         "version": 1,
+        "execution_profile": profile,
         "sample": document["sample"],
         "tests": tests,
         "turn_count": global_turn,
@@ -958,7 +989,7 @@ def _command_plan(args: argparse.Namespace) -> int:
     try:
         document = load_spec(args.spec)
         plan = build_plan(
-            document, args.toolbox_label, args.toolbox_query, args.protocol
+            document, args.toolbox_label, args.toolbox_query, args.protocol, args.profile
         )
     except SpecError as exc:
         return _emit_error(str(exc), args.report)
@@ -1031,6 +1062,7 @@ def _build_parser() -> argparse.ArgumentParser:
     plan.add_argument(
         "--protocol", choices=("responses", "invocations"), default="responses"
     )
+    plan.add_argument("--profile", choices=tuple(PROFILE_SOURCES), default="hosted")
     plan.add_argument("--output", type=Path, required=True)
     plan.add_argument("--report", type=Path)
     plan.set_defaults(func=_command_plan)

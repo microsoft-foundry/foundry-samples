@@ -62,6 +62,7 @@
 /samples/REST/quickstart/quickstart-chat-with-agent.sh @microsoft-foundry/AI-Platform-Docs
 /samples/REST/quickstart/quickstart-create-agent.sh @microsoft-foundry/AI-Platform-Docs
 /samples/REST/quickstart/quickstart-responses.sh @microsoft-foundry/AI-Platform-Docs
+/samples/csharp/VoiceAgents/realtime-image-input/RealtimeImageInput.cs @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/enterprise-agent-tutorial/1-idea-to-prototype/Evaluate/Program.cs @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/enterprise-agent-tutorial/1-idea-to-prototype/ModernWorkplaceAssistant/Program.cs @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/foundry-local/audio-transcription-example/Program.cs @microsoft-foundry/AI-Platform-Docs
@@ -82,6 +83,7 @@
 /samples/java/quickstart/chat-with-agent/src/main/java/com/azure/ai/foundry/samples/ChatWithAgent.java @microsoft-foundry/AI-Platform-Docs
 /samples/java/quickstart/create-agent/src/main/java/com/azure/ai/foundry/samples/CreateAgent.java @microsoft-foundry/AI-Platform-Docs
 /samples/java/quickstart/responses/src/main/java/com/azure/ai/foundry/samples/CreateResponse.java @microsoft-foundry/AI-Platform-Docs
+/samples/java/voice-agents/src/main/java/com/azure/ai/agents/voice/VoiceAgentLiveImageConversationSample.java @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/foundry-local/audio-transcription-example/app.js @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/foundry-local/embeddings/app.js @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/foundry-local/langchain-integration-example/app.js @microsoft-foundry/AI-Platform-Docs
@@ -93,6 +95,7 @@
 /samples/javascript/foundry-local/tutorial-tool-calling/app.js @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/foundry-local/tutorial-voice-to-text/app.js @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/foundry-local/web-server-example/app.js @microsoft-foundry/AI-Platform-Docs
+/samples/javascript/voice-agents/realtime-image-input/app.js @microsoft-foundry/AI-Platform-Docs
 /samples/python/enterprise-agent-tutorial/1-idea-to-prototype/evaluate.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/enterprise-agent-tutorial/1-idea-to-prototype/main.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/foundry-local/audio-transcription/src/app.py @microsoft-foundry/AI-Platform-Docs
@@ -113,6 +116,7 @@
 /samples/python/quickstart/chat-with-agent/quickstart-chat-with-agent.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/quickstart/create-agent/quickstart-create-agent.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/quickstart/responses/quickstart-responses.py @microsoft-foundry/AI-Platform-Docs
+/samples/python/voice-agents/voice_agent_realtime_image_conversation.py @microsoft-foundry/AI-Platform-Docs
 /samples/rust/foundry-local/audio-transcription-example/src/main.rs @microsoft-foundry/AI-Platform-Docs
 /samples/rust/foundry-local/embeddings/src/main.rs @microsoft-foundry/AI-Platform-Docs
 /samples/rust/foundry-local/foundry-local-webserver/src/main.rs @microsoft-foundry/AI-Platform-Docs
@@ -126,6 +130,7 @@
 /samples/typescript/quickstart/chat-with-agent/src/quickstart-chat-with-agent.ts @microsoft-foundry/AI-Platform-Docs
 /samples/typescript/quickstart/create-agent/src/quickstart-create-agent.ts @microsoft-foundry/AI-Platform-Docs
 /samples/typescript/quickstart/responses/src/quickstart-responses.ts @microsoft-foundry/AI-Platform-Docs
+/samples/typescript/voice-agents/realtime-image-input/src/voice-agents-realtime-image-input.ts @microsoft-foundry/AI-Platform-Docs
 
 #### Additional ownership entries (added via issue triage) ##############################################
 # Routing for sample paths that were uncovered during issue triage.

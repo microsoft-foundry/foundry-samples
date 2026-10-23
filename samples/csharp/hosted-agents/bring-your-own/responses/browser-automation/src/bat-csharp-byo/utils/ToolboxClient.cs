@@ -17,7 +17,8 @@ public sealed record ToolboxCallResult(
     string? BrowserSessionId,
     string? LiveViewUrl,
     bool IsError,
-    string? SessionName = null);
+    string? SessionName = null,
+    string? PublicOutput = null);
 
 public sealed class ToolboxClient
 {
@@ -138,7 +139,7 @@ public sealed class ToolboxClient
                                 property => property.Name,
                                 property => property.Value.Clone());
                         values["note"] = JsonSerializer.SerializeToElement(
-                            "The live view link is delivered directly to the user.");
+                            "Live-view URL omitted from model-visible tool output.");
                         sanitized.Add(JsonSerializer.Serialize(values));
                     }
                     else
@@ -157,11 +158,16 @@ public sealed class ToolboxClient
                 : result.GetRawText();
             var isError = result.TryGetProperty("isError", out var error)
                 && error.GetBoolean();
+            IReadOnlyList<string> liveViewUrls = liveViewUrl is null ? [] : [liveViewUrl];
+            var publicOutput = string.Join("\n",
+                (sanitized.Count > 0 ? sanitized : [output]).Select(text =>
+                    Redaction.PublicToolOutput(name, text, isError, liveViewUrls)));
             return new ToolboxCallResult(
                 output,
                 browserSessionId,
                 liveViewUrl,
-                isError);
+                isError,
+                PublicOutput: publicOutput);
         }
         finally
         {

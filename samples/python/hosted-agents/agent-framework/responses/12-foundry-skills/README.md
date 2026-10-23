@@ -68,18 +68,20 @@ Your identity (or the Managed Identity running the container in production) need
 ## Manual skill provisioning (without `azd deploy`)
 
 Use the script when you are running the agent from VS Code or are not using
-the declarative `azure.yaml` deployment:
+the declarative `azure.yaml` deployment. From `src/agent-framework-agent-foundry-skills-responses`, with Python 3.13 or later and uv installed:
 
 ```bash
+uv sync --frozen
 export FOUNDRY_PROJECT_ENDPOINT="https://<account>.services.ai.azure.com/api/projects/<project>"
-python provision_skills.py
+uv run --no-sync python provision_skills.py
 ```
 
 Or in PowerShell:
 
 ```powershell
+uv sync --frozen
 $env:FOUNDRY_PROJECT_ENDPOINT="https://<account>.services.ai.azure.com/api/projects/<project>"
-python provision_skills.py
+uv run --no-sync python provision_skills.py
 ```
 
 Expected output:
@@ -105,7 +107,7 @@ declared skills exist in the Foundry project. Otherwise, use the manual
 provisioning script above.
 
 The manifest supplies this default for `azd ai agent run`. For direct
-`python main.py` runs, set:
+`uv run --no-sync python main.py` runs, set:
 
 ```bash
 export SKILL_NAMES="support-style,escalation-policy"
@@ -152,20 +154,16 @@ Because skills are loaded on demand, the canary token in a response also proves 
 
 1. **VS Code** with the **[Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)** extension installed.
 2. For debugging Python in VS Code, install the **[Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)** extension pack.
+3. **Python 3.13 or later** and [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment.
 
 **Set up the Python virtual environment**
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install dependencies in the virtual environment:
+- Create and synchronize the locked environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+  uv sync --frozen
   ```
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
 
 **Run and debug the agent**
 
@@ -174,7 +172,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 **Or run manually, then open the Inspector**
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
+2. Start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ## Deploying the Agent to Foundry
