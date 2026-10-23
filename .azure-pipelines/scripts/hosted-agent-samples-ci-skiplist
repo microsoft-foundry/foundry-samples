@@ -6,7 +6,8 @@ samples/csharp/hosted-agents/agent-framework/a2a/01-delegation/caller
 samples/python/hosted-agents/agent-framework/a2a/01-delegation/caller
 samples/python/hosted-agents/langgraph/a2a/a2a-caller
 
-# Activity and WebSocket protocols need dedicated orchestration/clients.
+# A2A, Activity, and WebSocket protocols need dedicated orchestration/clients.
+samples/python/hosted-agents/bring-your-own/a2a/echo
 samples/csharp/hosted-agents/bring-your-own/invocations_ws/HelloWorld
 samples/python/hosted-agents/bring-your-own/activity/echo
 samples/python/hosted-agents/bring-your-own/activity/github-copilot
