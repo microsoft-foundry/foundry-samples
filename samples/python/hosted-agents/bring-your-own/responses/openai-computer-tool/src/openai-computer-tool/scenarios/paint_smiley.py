@@ -13,6 +13,7 @@ from pathlib import Path
 
 from utils import (
     ensure_virtual_desktop,
+    get_writable_output_path,
     handle_pyautogui_action,
     run_cua_loop,
     take_desktop_screenshot,
@@ -21,7 +22,7 @@ from utils import (
 
 def build_paint_prompt(output_file: Path | None = None) -> str:
     """Build the default Paint smiley task prompt for the current platform."""
-    target = output_file or (Path(__file__).resolve().parent.parent / f"paint_smiley_{time.strftime('%Y%m%d_%H%M%S')}.png")
+    target = output_file or get_writable_output_path(f"paint_smiley_{time.strftime('%Y%m%d_%H%M%S')}.png")
     if sys.platform == "win32":
         return (
             "Open Windows Search (click the Start/Search button on the taskbar or press the WIN key), "
@@ -45,7 +46,7 @@ def build_paint_prompt(output_file: Path | None = None) -> str:
 def run_paint_scenario(prompt: str | None = None) -> Path:
     """Execute the Paint smiley drawing scenario and save the resulting PNG image."""
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    output_file = Path(__file__).resolve().parent.parent / f"paint_smiley_{timestamp}.png"
+    output_file = get_writable_output_path(f"paint_smiley_{timestamp}.png")
     ensure_virtual_desktop(output_file=output_file)
     task_prompt = prompt or build_paint_prompt(output_file)
 

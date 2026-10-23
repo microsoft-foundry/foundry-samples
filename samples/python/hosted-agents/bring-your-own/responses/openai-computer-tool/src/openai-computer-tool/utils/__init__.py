@@ -5,6 +5,7 @@
 from utils.agent_runner import COMPUTER_TOOL, run_cua_loop, stream_cua_loop
 from utils.pyautogui_helper import (
     ensure_virtual_desktop,
+    get_writable_output_path,
     handle_pyautogui_action,
     take_desktop_screenshot,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "get_model_deployment_name",
     "get_project_client",
     "get_project_endpoint",
+    "get_writable_output_path",
     "handle_pyautogui_action",
     "load_agent_instructions",
     "run_cua_loop",

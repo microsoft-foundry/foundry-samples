@@ -30,6 +30,7 @@ from azure.ai.agentserver.responses.models import get_input_expanded
 from scenarios import build_paint_prompt, run_paint_scenario
 from utils import (
     ensure_virtual_desktop,
+    get_writable_output_path,
     handle_pyautogui_action,
     stream_cua_loop,
     take_desktop_screenshot,
@@ -96,7 +97,7 @@ async def handler(
     if verbose_mode:
         user_input = user_input.replace("/verbose", "", 1).strip()
 
-    output_file = Path(__file__).resolve().parent / f"paint_smiley_{time.strftime('%Y%m%d_%H%M%S')}.png"
+    output_file = get_writable_output_path(f"paint_smiley_{time.strftime('%Y%m%d_%H%M%S')}.png")
     ensure_virtual_desktop(output_file=output_file)
 
     if not user_input or user_input.lower() in {"paint_smiley", "smiley"}:

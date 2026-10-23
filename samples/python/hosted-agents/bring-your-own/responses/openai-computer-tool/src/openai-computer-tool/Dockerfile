@@ -17,6 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=utf-8 \
     DISPLAY=:99 \
+    XAUTHORITY=/tmp/.Xauthority \
+    PATH="/app/user_agent/.venv/bin:$PATH" \
     PORT=8088
 
 WORKDIR /app/user_agent
