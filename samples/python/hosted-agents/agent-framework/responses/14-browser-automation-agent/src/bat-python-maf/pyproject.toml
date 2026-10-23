@@ -1,0 +1,16 @@
+[project]
+name = "bat-python-maf"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted browser automation agent."
+requires-python = ">=3.11"
+dependencies = [
+    "agent-framework-core==1.21.0",
+    "agent-framework-foundry==1.14.0",
+    "agent-framework-foundry-hosting==1.0.0b261002",
+    "azure-identity==1.26.0",
+    "debugpy==1.8.22",
+    "httpx==0.28.1",
+    "pydantic==2.13.5",
+    "python-dotenv==1.2.4",
+    "pywin32==312 ; sys_platform == 'win32'",
+]
