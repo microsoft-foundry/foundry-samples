@@ -18,9 +18,12 @@ python -m venv .venv
 # macOS/Linux
 source .venv/bin/activate
 
-pip install -r requirements.txt
+python -m pip install --upgrade 'pip>=26.0'
+python -m pip install -r requirements.txt
 cp .env.sample .env
 ```
+
+Upgrade pip before installing dependencies: pip 25 can crash while parsing an optional extra marker in `langchain-azure-ai` metadata.
 
 Set these values in `.env`:
 
