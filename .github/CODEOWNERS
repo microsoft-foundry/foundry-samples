@@ -63,8 +63,6 @@
 /samples/REST/quickstart/quickstart-create-agent.sh @microsoft-foundry/AI-Platform-Docs
 /samples/REST/quickstart/quickstart-responses.sh @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/VoiceAgents/realtime-image-input/RealtimeImageInput.cs @microsoft-foundry/AI-Platform-Docs
-/samples/csharp/enterprise-agent-tutorial/1-idea-to-prototype/Evaluate/Program.cs @microsoft-foundry/AI-Platform-Docs
-/samples/csharp/enterprise-agent-tutorial/1-idea-to-prototype/ModernWorkplaceAssistant/Program.cs @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/foundry-local/audio-transcription-example/Program.cs @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/foundry-local/embeddings/Program.cs @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/foundry-local/foundry-local-web-server/Program.cs @microsoft-foundry/AI-Platform-Docs
@@ -96,8 +94,6 @@
 /samples/javascript/foundry-local/tutorial-voice-to-text/app.js @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/foundry-local/web-server-example/app.js @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/voice-agents/realtime-image-input/app.js @microsoft-foundry/AI-Platform-Docs
-/samples/python/enterprise-agent-tutorial/1-idea-to-prototype/evaluate.py @microsoft-foundry/AI-Platform-Docs
-/samples/python/enterprise-agent-tutorial/1-idea-to-prototype/main.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/foundry-local/audio-transcription/src/app.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/foundry-local/embeddings/src/app.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/foundry-local/langchain-integration/src/app.py @microsoft-foundry/AI-Platform-Docs
