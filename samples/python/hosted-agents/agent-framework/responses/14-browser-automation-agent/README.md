@@ -51,7 +51,7 @@ The hosted runtime supplies the Foundry endpoint. For local runs, authenticate w
 ```bash
 cd src/bat-python-maf
 uv sync --frozen
-uv run --no-sync python main.py
+PYTHONNOUSERSITE=1 uv run --no-sync python main.py
 ```
 
 Invoke the local Responses endpoint:

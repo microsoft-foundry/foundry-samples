@@ -126,7 +126,7 @@ uv sync --frozen
 ### Start the agent
 
 ```bash
-uv run --no-sync python main.py
+PYTHONNOUSERSITE=1 uv run --no-sync python main.py
 ```
 
 The service listens on `http://localhost:8088`.

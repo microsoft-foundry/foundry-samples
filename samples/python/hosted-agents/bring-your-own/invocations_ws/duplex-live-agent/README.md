@@ -93,7 +93,7 @@ cp .env.example .env
 # Fill in AZURE_VOICELIVE_ENDPOINT and AZURE_VOICELIVE_MODEL.
 export $(grep -v '^#' .env | xargs)
 
-uv run --no-sync python main.py
+PYTHONNOUSERSITE=1 uv run --no-sync python main.py
 # → Uvicorn running on http://0.0.0.0:8088
 ```
 

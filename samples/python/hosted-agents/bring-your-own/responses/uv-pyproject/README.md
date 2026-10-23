@@ -142,7 +142,7 @@ az login
 Start the agent:
 
 ```bash
-uv run --no-sync python main.py
+PYTHONNOUSERSITE=1 uv run --no-sync python main.py
 ```
 
 The agent listens on `http://localhost:8088`. In VS Code, select the interpreter at `.venv`, press **F5**, and use the Foundry Toolkit Agent Inspector to send requests.
@@ -154,6 +154,7 @@ The included Dockerfile also installs from `pyproject.toml` and `uv.lock`:
 ```bash
 docker build --platform=linux/amd64 -t uv-pyproject-agent src/uv-pyproject-python-responses
 docker run --rm -p 8088:8088 \
+  -e PYTHONNOUSERSITE=1 \
   -e FOUNDRY_PROJECT_ENDPOINT \
   -e AZURE_AI_MODEL_DEPLOYMENT_NAME \
   uv-pyproject-agent

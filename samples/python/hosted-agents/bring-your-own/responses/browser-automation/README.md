@@ -90,7 +90,7 @@ To run manually:
 ```bash
 cd src/bat-python-byo
 uv sync --frozen --python 3.12
-uv run --no-sync python main.py
+PYTHONNOUSERSITE=1 uv run --no-sync python main.py
 ```
 
 Invoke the local Responses endpoint:

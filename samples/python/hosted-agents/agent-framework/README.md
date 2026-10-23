@@ -1,5 +1,8 @@
 # Agent Framework Samples
 
+See the shared [Python startup configuration](../README.md#python-startup-configuration)
+for local shells, debugger launches, and hosted deployments.
+
 This directory contains samples that demonstrate how to use the [Agent Framework](https://github.com/microsoft/agent-framework) to host agents with different capabilities and configurations. Each sample includes a README with instructions on how to set up, run, and interact with the agent.
 
 > [!IMPORTANT]
@@ -268,13 +271,13 @@ After setting up the environment:
 With the `requirements.txt` environment activated, run:
 
 ```bash
-python main.py
+PYTHONNOUSERSITE=1 python main.py
 ```
 
 Or with uv, run:
 
 ```bash
-uv run --no-sync python main.py
+PYTHONNOUSERSITE=1 uv run --no-sync python main.py
 ```
 
 Right now, the agent host should be running on `http://localhost:8088`

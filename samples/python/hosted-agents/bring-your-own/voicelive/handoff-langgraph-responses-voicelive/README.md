@@ -38,7 +38,7 @@ cp .env.example .env
 # Edit .env with your values
 python -m pip install uv
 uv sync --frozen
-uv run --no-sync python main.py
+PYTHONNOUSERSITE=1 uv run --no-sync python main.py
 ```
 
 #### Test

@@ -134,7 +134,7 @@ and Python extensions. Install the agent dependencies and start the host:
 ```bash
 cd src/langchain-azure-resilient-invocations
 uv sync --frozen
-uv run --no-sync python main.py
+PYTHONNOUSERSITE=1 uv run --no-sync python main.py
 ```
 
 Then open **Agent Inspector** in VS Code

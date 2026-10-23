@@ -142,7 +142,7 @@ azd deploy
 
 ```bash
 cd src/langgraph-run-invocations
-uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol invocations
+PYTHONNOUSERSITE=1 uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol invocations
 ```
 
 Then invoke it:

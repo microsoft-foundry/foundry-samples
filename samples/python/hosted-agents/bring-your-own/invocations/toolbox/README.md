@@ -155,7 +155,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 **Or run manually, then open the Inspector**
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. From `src/toolbox-python-invocations`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
+2. From `src/toolbox-python-invocations`, start the agent: `PYTHONNOUSERSITE=1 uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 </details>
@@ -171,7 +171,7 @@ export $(grep -v '^#' .env | xargs)
 
 pipx install uv==0.11.7
 uv sync --frozen --python 3.12
-uv run --no-sync python main.py
+PYTHONNOUSERSITE=1 uv run --no-sync python main.py
 ```
 
 The agent starts on `http://localhost:8088`.

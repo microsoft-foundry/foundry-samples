@@ -133,7 +133,7 @@ and Python extensions. Install the agent dependencies and start the host:
 ```bash
 cd src/langchain-azure-resilient-responses
 uv sync --frozen
-uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses \
+PYTHONNOUSERSITE=1 uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses \
   --option resilient_background=true \
   --option steerable_conversations=true
 ```

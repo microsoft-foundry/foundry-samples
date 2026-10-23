@@ -22,6 +22,12 @@ Match deployment guidance to the sample's `azure.yaml`: direct code deployment
 uses `codeConfiguration` and does not require a Dockerfile; Dockerfile guidance
 applies only when the sample uses container deployment through `docker.path`.
 
+Configure `PYTHONNOUSERSITE: "1"` in each Python hosted service's `env` map
+and `ENV PYTHONNOUSERSITE=1` in Python Dockerfiles. For direct runs, set it
+before starting Python, not inside `main.py` or a Python-loaded `.env`.
+See the shared [Python startup configuration](./README.md#python-startup-configuration)
+for shell, debugger, and dependency guidance.
+
 ## Python dependency policy
 
 Follow [`DEPENDENCY_POLICY.md`](./DEPENDENCY_POLICY.md) whenever you create a
@@ -85,7 +91,7 @@ Most samples follow the shared template,
 4. Option 1: Azure Developer CLI (`azd`) — init → provision → run → invoke →
    deploy → invoke-deployed
 5. Option 2: VS Code (Foundry Toolkit) — the one-click **F5** run-and-debug flow
-   (Agent Inspector opens automatically) and/or a manual run (`python main.py`)
+   (Agent Inspector opens automatically) and/or a manual run (`PYTHONNOUSERSITE=1 python main.py`)
    → open the Agent Inspector → deploy
 6. Any sample-specific deep-dive sections (customization, advanced demos, reference)
 7. Troubleshooting

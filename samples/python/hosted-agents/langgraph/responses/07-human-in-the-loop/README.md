@@ -187,7 +187,7 @@ When the agent pauses with an approval request, the Inspector renders an interac
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses` (listens on `http://localhost:8088`).
+2. Start the agent: `PYTHONNOUSERSITE=1 uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry

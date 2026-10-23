@@ -51,7 +51,7 @@ pipx install uv==0.11.7
 uv sync --frozen --python 3.12
 
 # 3. Start the agent
-uv run --no-sync python main.py
+PYTHONNOUSERSITE=1 uv run --no-sync python main.py
 
 # 4. Invoke
 curl -X POST http://localhost:8088/responses \
@@ -73,7 +73,7 @@ pipx install uv==0.11.7
 uv sync --frozen --python 3.12
 
 # 3. Start the agent
-uv run --no-sync python main.py
+$env:PYTHONNOUSERSITE = "1"; uv run --no-sync python main.py
 
 # 4. Invoke
 Invoke-RestMethod -Method POST http://localhost:8088/responses `
@@ -108,7 +108,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 **Or run manually, then open the Inspector**
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. From `src/toolbox-langgraph`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
+2. From `src/toolbox-langgraph`, start the agent: `PYTHONNOUSERSITE=1 uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 </details>
@@ -411,6 +411,8 @@ protocols:
   - protocol: responses
     version: 2.0.0
 environment_variables:
+  - name: PYTHONNOUSERSITE
+    value: "1"
   - name: AZURE_OPENAI_ENDPOINT
     value: ${AZURE_OPENAI_ENDPOINT}     # Single-brace syntax
   - name: AZURE_AI_MODEL_DEPLOYMENT_NAME

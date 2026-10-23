@@ -27,7 +27,7 @@ analysis; it does not deploy a second live probe.
 ## Design notes
 
 - **Stdlib-only probe code.** All DNS / TCP / TLS / HTTP probes are written against `socket`, `ssl`, `urllib`, and `http.client`. The network is the very thing being diagnosed; the probes must not depend on import-time package fetches or pyca handshakes that obscure the failure mode.
-- **No model, no project endpoint.** The manifest declares no `resources` and no `environment_variables`. The image is portable across any Foundry project.
+- **No model, no project endpoint.** The manifest needs no model or project endpoint environment variables; its service `env` map only configures [Python startup](../../../README.md#python-startup-configuration). The image is portable across any Foundry project.
 - **Buffered JSON or opt-in SSE.** By default, all probe outcomes are returned as one JSON document. Set `"stream": true` or send `Accept: text/event-stream` to receive SSE heartbeats followed by the complete report. Per-probe failures remain in the report rather than becoming non-2xx HTTP responses.
 - **Caller controls the probe matrix.** The request body lists hostnames; nothing is hard-coded to a specific customer ACR. An empty body runs only the safe defaults (container info, env dump, and a small set of public Azure endpoints).
 - **No secrets in the response.** Env vars matching `KEY`, `SECRET`, `PASSWORD`, `TOKEN`, `CONNECTION_STRING`, or `SAS` are reported with their length only.
@@ -442,7 +442,7 @@ cd src/diagnostic-agent-python-invocations
 
 pipx install uv==0.11.7
 uv sync --frozen --python 3.12
-uv run --no-sync python main.py
+PYTHONNOUSERSITE=1 uv run --no-sync python main.py
 ```
 
 The agent listens on `http://localhost:8088/`. Invoke it:
