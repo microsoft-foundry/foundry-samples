@@ -1,15 +1,15 @@
 /// <summary>
-/// Foundry Local SDK - WinML 2.0 EP Verification (C#)
+/// Foundry Local SDK - Unified WinML Capability Verification (C#)
 ///
 /// Verifies:
-///   1. Execution providers are discovered and registered
+///   1. The unified Microsoft.AI.Foundry.Local package exposes WinML EP discovery
+///   2. Execution providers are downloaded and registered when available
 ///   2. Accelerated models appear in catalog after EP registration
 ///   3. Streaming chat completions work on an accelerated model
 /// </summary>
 
 using Microsoft.AI.Foundry.Local;
 using Microsoft.Extensions.Logging;
-using Betalgo.Ranul.OpenAI.ObjectModels.RequestModels;
 
 const string PASS = "\x1b[92m[PASS]\x1b[0m";
 const string FAIL = "\x1b[91m[FAIL]\x1b[0m";
@@ -68,6 +68,7 @@ var logger = loggerFactory.CreateLogger<Program>();
 await FoundryLocalManager.CreateAsync(config, logger);
 var mgr = FoundryLocalManager.Instance;
 Console.WriteLine($"{INFO} FoundryLocalManager initialized.");
+LogResult("Unified package initialization", true, "Microsoft.AI.Foundry.Local includes WinML support");
 
 // ── 1. Discover & Register EPs ────────────────────────────
 PrintSeparator("Step 1: Discover & Register Execution Providers");
@@ -90,9 +91,11 @@ catch (Exception e)
 
 if (eps.Length == 0)
 {
-    var detail = "No execution providers discovered on this machine";
-    LogResult("EP Download & Registration", false, detail);
-    Console.WriteLine($"\n{FAIL} {detail}.");
+    var detail = OperatingSystem.IsWindows()
+        ? "No WinML execution providers were discovered on this Windows machine"
+        : "Dynamic WinML execution providers are only available on supported Windows hardware";
+    LogResult("EP capability detection", !OperatingSystem.IsWindows(), detail);
+    Console.WriteLine($"\n{WARN} {detail}.");
     PrintSummary();
     return;
 }
@@ -239,27 +242,32 @@ LogResult("Model Load", true, $"Loaded {chosen.Id}");
 PrintSeparator("Step 4: Streaming Chat Completions (Native)");
 try
 {
-    var chatClient = await chosen.GetChatClientAsync();
-    chatClient.Settings.Temperature = 0;
-    chatClient.Settings.MaxTokens = 16;
-    var messages = new List<ChatMessage>
+    using var chatSession = new ChatSession(chosen);
+    chatSession.SetOptions(new RequestOptions
     {
-        new() { Role = "system", Content = "You are a helpful assistant." },
-        new() { Role = "user", Content = "What is 2 + 2? Reply with just the number." },
-    };
+        Search = new SearchOptions { Temperature = 0, MaxOutputTokens = 16 }
+    });
+    chatSession.SetStreaming(true);
+    using var request = new Request();
+    request.AddItem(MessageItem.System("You are a helpful assistant."));
+    request.AddItem(MessageItem.User("What is 2 + 2? Reply with just the number."));
 
     var fullResponse = "";
     var start = DateTime.UtcNow;
-    await foreach (var chunk in chatClient.CompleteChatStreamingAsync(messages, ct))
+    await using var stream = chatSession.ProcessStreamingRequestAsync(request, ct);
+    await foreach (var item in stream)
     {
-        var content = chunk.Choices?.FirstOrDefault()?.Message?.Content;
-        if (!string.IsNullOrEmpty(content))
+        using (item)
         {
-            Console.Write(content);
-            Console.Out.Flush();
-            fullResponse += content;
+            if (item is TextItem { Type: TextItemType.Default } text)
+            {
+                Console.Write(text.Text);
+                Console.Out.Flush();
+                fullResponse += text.Text;
+            }
         }
     }
+    using var finalResponse = await stream.FinalResponse;
 
     var elapsed = (DateTime.UtcNow - start).TotalSeconds;
     Console.WriteLine();

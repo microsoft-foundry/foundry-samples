@@ -50,6 +50,10 @@ console.log('✓ Model loaded');
 console.log('\nStarting web service...');
 manager.startWebService();
 console.log('✓ Web service started');
+const endpoint = manager.urls[0];
+if (!endpoint) {
+    throw new Error('Foundry Local web service did not return an endpoint.');
+}
 
 // <langchain_setup>
 
@@ -57,7 +61,7 @@ console.log('✓ Web service started');
 const llm = new ChatOpenAI({
     model: model.id,
     configuration: {
-        baseURL: endpointUrl + '/v1',
+        baseURL: endpoint.replace(/\/$/, '') + '/v1',
         apiKey: 'notneeded'
     },
     temperature: 0.6,

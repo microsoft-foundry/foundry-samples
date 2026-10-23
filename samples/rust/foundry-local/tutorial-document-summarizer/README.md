@@ -1,6 +1,6 @@
 # Tutorial: Document Summarizer (Rust)
 
-Summarize documents with AI (tutorial).
+Summarize one text file or a directory of text files with v2 chat sessions.
 
 > Part of the [Foundry Local samples for Rust](../).
 

@@ -2,3 +2,4 @@ name: LangChain.js Integration (JavaScript)
 description: LangChain.js integration for building text generation chains.
 
 build: "npm install --omit=optional --no-audit --no-fund"
+validate: "node --check app.js"

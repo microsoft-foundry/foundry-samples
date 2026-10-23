@@ -1,0 +1,4 @@
+name: Foundry Local C++ tutorial chat assistant
+description: Build an interactive, streaming, multi-turn chat assistant.
+build: cmake -S . -B build
+validate: cmake --build build --config Release --target tutorial-chat-assistant

@@ -1,0 +1,4 @@
+name: Foundry Local C++ live audio transcription
+description: Stream raw PCM audio into a native real-time audio session.
+build: cmake -S . -B build
+validate: cmake --build build --config Release --target live-audio-transcription

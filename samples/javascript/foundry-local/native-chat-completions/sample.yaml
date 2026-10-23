@@ -2,3 +2,4 @@ name: Native Chat Completions (JavaScript)
 description: Initialize the SDK, download a model, and run non-streaming and streaming chat completions.
 
 build: "npm install --omit=optional --no-audit --no-fund"
+validate: "node --check app.js"

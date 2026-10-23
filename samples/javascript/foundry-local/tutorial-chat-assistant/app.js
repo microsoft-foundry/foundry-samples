@@ -1,6 +1,11 @@
 // <complete_code>
 // <imports>
-import { FoundryLocalManager } from 'foundry-local-sdk';
+import {
+    ChatSession,
+    FoundryLocalManager,
+    Item,
+    Request
+} from 'foundry-local-sdk';
 import * as readline from 'readline';
 // </imports>
 
@@ -33,19 +38,19 @@ console.log('\nModel downloaded.');
 await model.load();
 console.log('Model loaded and ready.');
 
-// Create a chat client
-const chatClient = model.createChatClient();
+// Create a stateful native chat session
+const chatSession = new ChatSession(model);
+chatSession.setOptions({
+    search: { temperature: 0.7, maxOutputTokens: 512 }
+});
 // </init>
 
 // <system_prompt>
 // Start the conversation with a system prompt
-const messages = [
-    {
-        role: 'system',
-        content: 'You are a helpful, friendly assistant. Keep your responses ' +
-                 'concise and conversational. If you don\'t know something, say so.'
-    }
-];
+const systemPrompt =
+    'You are a helpful, friendly assistant. Keep your responses ' +
+    'concise and conversational. If you don\'t know something, say so.';
+let firstTurn = true;
 // </system_prompt>
 
 // Set up readline for console input
@@ -79,29 +84,30 @@ while (true) {
         break;
     }
 
-    // Add the user's message to conversation history
-    messages.push({ role: 'user', content: userInput });
+    const request = new Request();
+    if (firstTurn) {
+        request.addItem(Item.systemMessage(systemPrompt));
+        firstTurn = false;
+    }
+    request.addItem(Item.userMessage(userInput));
 
     // <streaming>
     // Stream the response token by token
     process.stdout.write('Assistant: ');
-    let fullResponse = '';
-    for await (const chunk of chatClient.completeStreamingChat(messages)) {
-        const content = chunk.choices?.[0]?.delta?.content;
-        if (content) {
-            process.stdout.write(content);
-            fullResponse += content;
+    const stream = chatSession.processStreamingRequest(request);
+    for await (const item of stream) {
+        if (item.type === 'text' && item.textType === 'default') {
+            process.stdout.write(item.text);
         }
     }
+    await stream.response;
     console.log('\n');
     // </streaming>
-
-    // Add the complete response to conversation history
-    messages.push({ role: 'assistant', content: fullResponse });
 }
 // </conversation_loop>
 
 // Clean up - unload the model
+chatSession.dispose();
 await model.unload();
 console.log('Model unloaded. Goodbye!');
 rl.close();

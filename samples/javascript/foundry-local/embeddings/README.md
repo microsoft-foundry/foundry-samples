@@ -7,7 +7,7 @@ Generate single and batch text embeddings using the Foundry Local SDK.
 ## Prerequisites
 
 - [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
-- Node.js 18+
+- Node.js 20+
 
 ## Run
 

@@ -1,9 +1,43 @@
 # <complete_code>
 # <imports>
 import sys
-from foundry_local_sdk import Configuration, FoundryLocalManager
+from pathlib import Path
+
+from foundry_local_sdk import (
+    AudioItem,
+    AudioSession,
+    Configuration,
+    FoundryLocalManager,
+    Request,
+    SpeechResultItem,
+    TextItem,
+)
 
 # </imports>
+
+
+def download_if_needed(model) -> None:
+    if model.is_cached:
+        print(f"Using cached model {model.id}.")
+        return
+    model.download(
+        lambda progress: print(
+            f"\rDownloading model: {progress:.2f}%",
+            end="",
+            flush=True,
+        )
+    )
+    print()
+
+
+def response_text(response) -> str:
+    parts = []
+    for item in response:
+        if isinstance(item, SpeechResultItem):
+            parts.append(item.text)
+        elif isinstance(item, TextItem):
+            parts.append(item.text)
+    return "".join(parts)
 
 
 # <init>
@@ -12,46 +46,29 @@ config = Configuration(app_name="foundry_local_samples")
 FoundryLocalManager.initialize(config)
 manager = FoundryLocalManager.instance
 
-# Download and register all execution providers.
-current_ep = ""
-
-
-def _ep_progress(ep_name: str, percent: float):
-    global current_ep
-    if ep_name != current_ep:
-        if current_ep:
-            print()
-        current_ep = ep_name
-    print(f"\r  {ep_name:<30}  {percent:5.1f}%", end="", flush=True)
-
-
-manager.download_and_register_eps(progress_callback=_ep_progress)
-if current_ep:
-    print()
-
-# Load the whisper model for speech-to-text
+# Load the speech-to-text model from the catalog.
 model = manager.catalog.get_model("whisper-tiny")
-model.download(
-    lambda progress: print(
-        f"\rDownloading model: {progress:.2f}%",
-        end="",
-        flush=True,
-    )
-)
-print()
+if model is None:
+    raise RuntimeError("Model 'whisper-tiny' was not found in the catalog.")
+
+download_if_needed(model)
 model.load()
 print("Model loaded.")
 # </init>
 
-# <transcription>
-# Get the audio client and transcribe
-audio_client = model.get_audio_client()
-audio_file = sys.argv[1] if len(sys.argv) > 1 else "Recording.mp3"
-result = audio_client.transcribe(audio_file)
-print("Transcription:")
-print(result.text)
+try:
+    # <transcription>
+    # Create a native audio session and transcribe the file.
+    audio_file = Path(sys.argv[1] if len(sys.argv) > 1 else "Recording.mp3")
+    with AudioSession(model) as session:
+        with Request().add_item(AudioItem.from_uri(str(audio_file))) as request:
+            with session.process_request(request) as response:
+                print("Transcription:")
+                print(response_text(response))
 # </transcription>
-
-# Clean up
-model.unload()
+finally:
+    # Clean up
+    if model.is_loaded:
+        model.unload()
+    manager.close()
 # </complete_code>

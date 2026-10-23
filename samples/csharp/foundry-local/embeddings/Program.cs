@@ -39,35 +39,50 @@ Console.WriteLine("done.");
 // </model_setup>
 
 // <single_embedding>
-// Get an embedding client
-var embeddingClient = await model.GetEmbeddingClientAsync();
+// Create a native embeddings session.
+using var embeddingSession = new EmbeddingsSession(model);
 
 // Generate a single embedding
 Console.WriteLine("\n--- Single Embedding ---");
-var response = await embeddingClient.GenerateEmbeddingAsync("The quick brown fox jumps over the lazy dog");
-var embedding = response.Data[0].Embedding;
-Console.WriteLine($"Dimensions: {embedding.Count}");
-Console.WriteLine($"First 5 values: [{string.Join(", ", embedding.Take(5).Select(v => v.ToString("F6")))}]");
+using var singleRequest = new Request();
+singleRequest.AddItem(new TextItem("The quick brown fox jumps over the lazy dog"));
+using var response = await embeddingSession.ProcessRequestAsync(singleRequest);
+var embedding = (TensorItem)response.GetItem(0);
+var values = embedding.ToArray<float>();
+Console.WriteLine($"Dimensions: {embedding.ElementCount}");
+Console.WriteLine($"First 5 values: [{string.Join(", ", values.Take(5).Select(v => v.ToString("F6")))}]");
 // </single_embedding>
 
 // <batch_embedding>
 // Generate embeddings for multiple inputs
 Console.WriteLine("\n--- Batch Embeddings ---");
-var batchResponse = await embeddingClient.GenerateEmbeddingsAsync([
+using var batchRequest = new Request();
+foreach (var input in new[]
+{
     "Machine learning is a subset of artificial intelligence",
     "The capital of France is Paris",
-    "Rust is a systems programming language"
-]);
-
-Console.WriteLine($"Number of embeddings: {batchResponse.Data.Count}");
-for (var i = 0; i < batchResponse.Data.Count; i++)
+    "C# is a modern programming language"
+})
 {
-    Console.WriteLine($"  [{i}] Dimensions: {batchResponse.Data[i].Embedding.Count}");
+    batchRequest.AddItem(new TextItem(input));
+}
+using var batchResponse = await embeddingSession.ProcessRequestAsync(batchRequest);
+
+Console.WriteLine($"Number of embeddings: {batchResponse.ItemCount}");
+for (var i = 0; i < batchResponse.ItemCount; i++)
+{
+    var tensor = (TensorItem)batchResponse.GetItem(i);
+    Console.WriteLine($"  [{i}] Dimensions: {tensor.ElementCount}");
 }
 // </batch_embedding>
 
 // <cleanup>
 // Tidy up - unload the model
+batchResponse.Dispose();
+batchRequest.Dispose();
+response.Dispose();
+singleRequest.Dispose();
+embeddingSession.Dispose();
 await model.UnloadAsync();
 Console.WriteLine("\nModel unloaded.");
 // </cleanup>

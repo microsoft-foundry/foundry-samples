@@ -18,11 +18,11 @@ pip install -r requirements.txt
 
 That installs:
 
-- `foundry-local-sdk` on non-Windows platforms
-- `foundry-local-sdk-winml` on Windows
+- The unified `foundry-local-sdk` package on every supported platform
 - `openai`
 
-The sample downloads/registers Foundry Local execution providers and downloads the `qwen2.5-0.5b` model the first time it runs.
+The Windows wheel includes Windows ML support. The sample registers missing
+execution providers and downloads `qwen2.5-0.5b` only when it is not cached.
 
 ## Run the sample
 

@@ -1,6 +1,6 @@
 # Tool Calling (Rust)
 
-Tool calling with streaming responses, multi-turn conversation, and local tool execution.
+Tool calling with v2 `ChatSession`, streaming responses, multi-turn state, and local tool execution.
 
 > Part of the [Foundry Local samples for Rust](../).
 

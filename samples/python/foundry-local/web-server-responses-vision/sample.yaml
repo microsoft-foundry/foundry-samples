@@ -1,5 +1,5 @@
 name: Web Server with Vision Responses (Python)
-description: Vision (image understanding) using the Foundry Local web service and OpenAI Responses API.
+description: Stream vision inference through the SDK v2 web service and Responses API.
 
-build: "pip install -r requirements.txt"
-validate: "python -m py_compile $(find . -maxdepth 3 -name '*.py' -not -path './.venv/*')"
+build: "python -m pip install -r requirements.txt"
+validate: "python -m compileall -q src"
