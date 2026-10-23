@@ -185,7 +185,7 @@ cd src/pipecat-ws-webrtc
 uv sync --frozen
 
 # Make sure .env is filled in (see "Server" table above)
-PYTHONNOUSERSITE=1 uv run --no-sync python server.py
+uv run --no-sync python server.py
 ```
 
 The server logs `Uvicorn running on http://0.0.0.0:8089` and exposes:

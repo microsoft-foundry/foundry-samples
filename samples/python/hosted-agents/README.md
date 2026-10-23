@@ -30,7 +30,7 @@ You'll have a running agent in minutes.
 > **Prerequisites:** Install the Foundry Toolkit VS Code extension and sign in to Azure.
 
 1. Clone this repo and open a sample folder under `samples/python/hosted-agents/` in VS Code.
-2. Start the agent locally following the sample's run instructions (e.g. `azd ai agent run` or `PYTHONNOUSERSITE=1 python main.py`).
+2. Start the agent locally following the sample's run instructions (e.g. `azd ai agent run` or `python main.py`).
 3. Open the Command Palette (`Ctrl+Shift+P`) and run **Foundry Toolkit: Open Agent Inspector** to chat with the running agent.
 4. When you're ready to deploy, run **Foundry Toolkit: Deploy Hosted Agent** to build the container image in ACR, register the agent version, and assign the required RBAC roles automatically.
 
@@ -55,15 +55,8 @@ installations use a project virtual environment and remain compatible.
 This is a scoped Python startup measure, not a general execution-prevention
 or sandbox boundary.
 
-For direct local runs, set the variable **before** starting the interpreter:
-
-```bash
-PYTHONNOUSERSITE=1 uv run --no-sync python main.py
-```
-
-In PowerShell, use `$env:PYTHONNOUSERSITE = "1"` before the run command.
-Alternatively, export `PYTHONNOUSERSITE=1` in your Bash session. Set the same
-variable in the debugger's launch environment before using **F5**. Loading it
+Keep this setting in deployment environment configuration and Python
+Dockerfiles rather than adding it to individual run commands. Loading it
 from `.env` inside Python or assigning `os.environ` in `main.py` is too late
 to affect interpreter startup.
 
@@ -249,7 +242,7 @@ Every sample deploys the same way and supports two equivalent paths. Pick the on
 | --- | --- | --- |
 | **Install** | [Install `azd`](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) + `azd ext install microsoft.foundry` | Install the Foundry Toolkit VS Code extension |
 | **Open the sample** | `azd ai agent init -m <azure.yaml>` — adopts the sample's `azure.yaml` and sets up env config | Clone the repo and open the sample folder in VS Code |
-| **Run locally** | `azd ai agent run` (or `PYTHONNOUSERSITE=1 python main.py`) | Same as `azd`/manual, then open **Foundry Toolkit: Open Agent Inspector** to chat with the running agent |
+| **Run locally** | `azd ai agent run` (or `python main.py`) | Same as `azd`/manual, then open **Foundry Toolkit: Open Agent Inspector** to chat with the running agent |
 | **Provision Azure resources** | `azd provision` (creates Foundry project, model deployment, ACR, App Insights if needed) | Guided dialog in **Foundry Toolkit: Deploy Hosted Agent** — reuses existing project or provisions a new one |
 | **Deploy to Foundry** | `azd deploy` (or `azd up` to provision + deploy) | **Foundry Toolkit: Deploy Hosted Agent** — builds image in ACR, registers the agent version, assigns RBAC |
 | **Tear down** | `azd down` | Delete the agent in the Foundry portal or with `az` CLI |
@@ -276,7 +269,7 @@ The [Foundry Toolkit VS Code extension](https://learn.microsoft.com/en-us/azure/
 Or, if you've already cloned this repository:
 
 1. Open a sample folder under `samples/python/hosted-agents/` in VS Code.
-2. Start the agent locally with `azd ai agent run` or `PYTHONNOUSERSITE=1 python main.py` (see the sample README for details). The agent runs on `http://localhost:8088/`.
+2. Start the agent locally with `azd ai agent run` or `python main.py` (see the sample README for details). The agent runs on `http://localhost:8088/`.
 3. Open the Command Palette (`Ctrl+Shift+P`) and run **Foundry Toolkit: Open Agent Inspector** to chat with the running agent.
 4. When you're ready to deploy, run **Foundry Toolkit: Deploy Hosted Agent**. The extension opens a tab-based wizard and reads `agent.yaml` to auto-populate what it can:
    - If prompted, complete **Foundry Project Setup** to pick the subscription and Foundry project (or create a new one) to deploy to.

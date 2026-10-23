@@ -170,7 +170,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. From `src/github-copilot-invocations`, start the agent: `PYTHONNOUSERSITE=1 uv run --no-sync python main.py` (listens on `http://localhost:8088`).
+2. From `src/github-copilot-invocations`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry
@@ -209,7 +209,7 @@ cd src/github-copilot-invocations
 
 FOUNDRY_PROJECT_ENDPOINT=https://<account>.services.ai.azure.com/api/projects/<project> \
 AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-5.4-mini \
-PYTHONNOUSERSITE=1 uv run --no-sync python main.py
+uv run --no-sync python main.py
 ```
 
 Authentication uses Managed Identity via `DefaultAzureCredential`. When deployed as a hosted agent, `FOUNDRY_PROJECT_ENDPOINT` is auto-injected by the platform, so in `azure.yaml` you only need `AZURE_AI_MODEL_DEPLOYMENT_NAME` (declared by default).

@@ -137,7 +137,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables (including `TOOLBOX_NAME`), and sign in to Azure with the Azure CLI (`az login`).
-2. From `src/langgraph-files-responses`, start the agent: `PYTHONNOUSERSITE=1 uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses`
+2. From `src/langgraph-files-responses`, start the agent: `uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses`
    (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 

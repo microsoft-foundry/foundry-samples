@@ -117,7 +117,7 @@ python -m pip install "uv==0.11.7"
 uv sync --frozen
 cp .env.example .env
 az login
-PYTHONNOUSERSITE=1 uv run python main.py
+uv run python main.py
 ```
 
 Fill in `FOUNDRY_PROJECT_ENDPOINT` and

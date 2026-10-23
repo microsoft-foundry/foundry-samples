@@ -122,7 +122,7 @@ azd ai agent run
 
 The agent starts on `http://localhost:8088/`. Local requests do not include hosted protocol 2.0.0 platform context, so the handler fails closed until `get_request_context().user_id` and `get_request_context().call_id` are present.
 
-To run without `azd`, set the required environment variables manually, then, from `src/hello-world-session-multiplexing-python-responses`, start the agent with `PYTHONNOUSERSITE=1 uv run --no-sync python main.py`.
+To run without `azd`, set the required environment variables manually, then, from `src/hello-world-session-multiplexing-python-responses`, start the agent with `uv run --no-sync python main.py`.
 
 ### Deploy to Foundry
 
@@ -173,7 +173,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. From `src/hello-world-session-multiplexing-python-responses`, start the agent: `PYTHONNOUSERSITE=1 uv run --no-sync python main.py` (listens on `http://localhost:8088`).
+2. From `src/hello-world-session-multiplexing-python-responses`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry

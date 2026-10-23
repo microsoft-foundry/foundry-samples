@@ -60,7 +60,7 @@ pipx install uv==0.11.7
 uv sync --frozen --python 3.12
 
 # 3. Start the agent
-PYTHONNOUSERSITE=1 uv run --no-sync python main.py
+uv run --no-sync python main.py
 
 # 4. Invoke
 curl -X POST http://localhost:8088/responses \
@@ -82,7 +82,7 @@ pipx install uv==0.11.7
 uv sync --frozen --python 3.12
 
 # 3. Start the agent
-$env:PYTHONNOUSERSITE = "1"; uv run --no-sync python main.py
+uv run --no-sync python main.py
 
 # 4. Invoke
 Invoke-RestMethod -Method POST http://localhost:8088/responses `
@@ -117,7 +117,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 **Or run manually, then open the Inspector**
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. From `src/toolbox-langgraph-user-identity`, start the agent: `PYTHONNOUSERSITE=1 uv run --no-sync python main.py` (listens on `http://localhost:8088`).
+2. From `src/toolbox-langgraph-user-identity`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 </details>

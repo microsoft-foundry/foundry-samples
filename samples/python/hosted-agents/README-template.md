@@ -17,7 +17,7 @@ How to use:
 {{Short description of how the agent is wired.}} See `main.py` for the implementation.
 
 Follow the shared [Python startup configuration](https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/README.md#python-startup-configuration)
-for local shells, debugger launches, and hosted deployments.
+for deployment environments and dependency compatibility.
 
 <!--
 Sample-specific *background* subsections (e.g. "Environment variables", "Architecture",
@@ -138,7 +138,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `PYTHONNOUSERSITE=1 python main.py` (listens on `http://localhost:8088`).
+2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry

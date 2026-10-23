@@ -46,7 +46,7 @@ key values.
 
 ```bash
 uv sync --frozen
-PYTHONNOUSERSITE=1 uv run python main.py
+uv run python main.py
 azd ai agent run
 azd deploy
 ```

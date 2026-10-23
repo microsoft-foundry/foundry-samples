@@ -101,7 +101,7 @@ toolbox declared by the sample; running `azd provision` creates them.
 Start the server:
 
 ```bash
-PYTHONNOUSERSITE=1 uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses
+uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses
 ```
 
 In another terminal, invoke the local Responses endpoint:

@@ -118,7 +118,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 **Or run manually, then open the Inspector**
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. From `src/hello-world-python-invocations`, start the agent: `PYTHONNOUSERSITE=1 uv run --no-sync python main.py` (listens on `http://localhost:8088`).
+2. From `src/hello-world-python-invocations`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 </details>
@@ -181,7 +181,7 @@ If running without `azd`, set environment variables manually (see [Environment V
 ```bash
 cd src/hello-world-python-invocations
 
-PYTHONNOUSERSITE=1 uv run --no-sync python main.py
+uv run --no-sync python main.py
 ```
 
 ### Deploying the Agent to Microsoft Foundry

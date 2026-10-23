@@ -105,7 +105,7 @@ The first version becomes the default automatically. Use `azd ai toolbox list`, 
 azd env set TOOLBOX_ENDPOINT "https://<account>.services.ai.azure.com/api/projects/<project>/toolboxes/maf-skills-toolbox/versions/1/mcp?api-version=v1"
 ```
 
-When running the host with `PYTHONNOUSERSITE=1 uv run --no-sync python main.py`, put the same value in a `.env` file next to `main.py` instead — see [`.env.example`](src/agent-framework-agent-foundry-toolbox-mcp-skills-responses/.env.example).
+When running the host with `uv run --no-sync python main.py`, put the same value in a `.env` file next to `main.py` instead — see [`.env.example`](src/agent-framework-agent-foundry-toolbox-mcp-skills-responses/.env.example).
 
 ## Option 1: Azure Developer CLI (`azd`)
 
@@ -215,7 +215,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `PYTHONNOUSERSITE=1 uv run --no-sync python main.py` (listens on `http://localhost:8088`).
+2. Start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry

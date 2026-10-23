@@ -193,7 +193,7 @@ automatically; file writes, shell commands, and simulated trades pause for appro
 
 1. Change to `src/harness-scaling-capabilities-responses`.
 2. Copy `.env.example` to `.env`, set the required environment variables, and sign in with `az login`.
-3. Start the agent with `PYTHONNOUSERSITE=1 uv run --no-sync python main.py`; it listens on `http://localhost:8088`.
+3. Start the agent with `uv run --no-sync python main.py`; it listens on `http://localhost:8088`.
 4. Open the Command Palette (`Ctrl+Shift+P`), run **Foundry Toolkit: Open Agent Inspector**, and send
    a message to test.
 

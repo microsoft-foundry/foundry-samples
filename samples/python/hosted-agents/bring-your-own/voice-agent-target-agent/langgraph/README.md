@@ -136,7 +136,7 @@ Load the environment and start the server:
 set -a
 source .env
 set +a
-PYTHONNOUSERSITE=1 uv run --no-sync python main.py
+uv run --no-sync python main.py
 ```
 
 The server listens on `PORT` or port `8088` and exposes `GET /readiness` and the
@@ -222,7 +222,7 @@ bash .github/scripts/validate-sample.sh \
   Protocol `1.0`. This is separate from the `invocations_ws` transport version in `azure.yaml`.
 - If model calls fail locally, verify `FOUNDRY_PROJECT_ENDPOINT`,
   `AZURE_AI_MODEL_DEPLOYMENT_NAME`, and the active Azure CLI identity.
-- If the smoke test cannot connect, start `PYTHONNOUSERSITE=1 uv run --no-sync python main.py` first and verify that port `8088` is
+- If the smoke test cannot connect, start `uv run --no-sync python main.py` first and verify that port `8088` is
   available, or set the smoke client's URL to match `PORT`.
 
 ## Next steps

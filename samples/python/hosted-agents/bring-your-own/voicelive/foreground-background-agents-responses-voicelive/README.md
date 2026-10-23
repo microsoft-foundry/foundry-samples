@@ -153,7 +153,7 @@ azd ai agent invoke --local "Check the fiber repair procedure"
 If running without `azd`, set environment variables manually (see [Environment Variables](#environment-variables)), then:
 
 ```bash
-PYTHONNOUSERSITE=1 uv run --no-sync python main.py
+uv run --no-sync python main.py
 ```
 
 ### Deploying the Agent to Microsoft Foundry

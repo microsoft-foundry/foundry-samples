@@ -142,7 +142,7 @@ az login
 Start the agent:
 
 ```bash
-PYTHONNOUSERSITE=1 uv run --no-sync python main.py
+uv run --no-sync python main.py
 ```
 
 The agent listens on `http://localhost:8088`. In VS Code, select the interpreter at `.venv`, press **F5**, and use the Foundry Toolkit Agent Inspector to send requests.

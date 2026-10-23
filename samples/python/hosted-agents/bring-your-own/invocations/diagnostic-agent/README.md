@@ -442,7 +442,7 @@ cd src/diagnostic-agent-python-invocations
 
 pipx install uv==0.11.7
 uv sync --frozen --python 3.12
-PYTHONNOUSERSITE=1 uv run --no-sync python main.py
+uv run --no-sync python main.py
 ```
 
 The agent listens on `http://localhost:8088/`. Invoke it:

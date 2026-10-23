@@ -127,7 +127,7 @@ Press **F5** to start the agent. The **Agent Inspector** opens automatically —
 ### Or run manually, then open the Inspector
 
 1. Sign in to Azure with the Azure CLI (`az login`).
-2. From `src/resilient-streaming`, start the agent: `PYTHONNOUSERSITE=1 uv run --no-sync python main.py` (listens on `http://localhost:8088`).
+2. From `src/resilient-streaming`, start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message.
 
 ### Deploy to Foundry

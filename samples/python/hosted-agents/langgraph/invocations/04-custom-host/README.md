@@ -109,7 +109,7 @@ python -m pip install uv
 uv sync --frozen
 cp .env.example .env
 az login
-PYTHONNOUSERSITE=1 uv run --no-sync python main.py
+uv run --no-sync python main.py
 ```
 
 Send a location-aware request. The `-i` flag shows the

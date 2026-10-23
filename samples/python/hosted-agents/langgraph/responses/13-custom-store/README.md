@@ -154,7 +154,7 @@ configure the local agent's model authentication separately.
 
    ```bash
    cd src/custom-store
-   PYTHONNOUSERSITE=1 uv run --no-sync python main.py
+   uv run --no-sync python main.py
    ```
 
    Then open the Command Palette and select **Foundry Toolkit: Open Agent
@@ -198,7 +198,7 @@ Then start the agent from the source directory with the virtual environment
 activated:
 
 ```bash
-PYTHONNOUSERSITE=1 uv run --no-sync python main.py
+uv run --no-sync python main.py
 ```
 
 ## Test the stores

@@ -85,7 +85,7 @@ cp .env.example .env
 # edit .env -> AZURE_*, LIVEKIT_URL/KEY/SECRET
 
 # 3) Start the backend (signaling endpoint + agent worker in one process)
-PYTHONNOUSERSITE=1 uv run --no-sync python server.py
+uv run --no-sync python server.py
 ```
 
 Then start the chat-client portal:
@@ -105,7 +105,7 @@ python web_portal.py
 Open <http://localhost:9529> in Chrome / Edge.
 
 > `server.py` automatically launches `agent.py start` as a child
-> process. To run the worker yourself (e.g. with `PYTHONNOUSERSITE=1 uv run --no-sync python agent.py dev`
+> process. To run the worker yourself (e.g. with `uv run --no-sync python agent.py dev`
 > for live reload), set `RUN_AGENT_WORKER=0` before starting `server.py`.
 
 ## Default ports
@@ -128,7 +128,7 @@ Open <http://localhost:9529> in Chrome / Edge.
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | LiveKit server the agent registers with and the browser joins. |
 | `LIVEKIT_PUBLIC_URL` | Optional override of the URL handed to the *browser*. Falls back to `LIVEKIT_URL`. |
 | `LIVEKIT_AGENT_WORKER_NAME` | Optional. Worker name used for explicit dispatch (must match between `agent.py` and `server.py`). Defaults to `foundry-azure-voice`. |
-| `RUN_AGENT_WORKER` | Set to `0` to skip launching `agent.py` from `server.py` (e.g. when running it yourself with `PYTHONNOUSERSITE=1 uv run --no-sync python agent.py dev`). |
+| `RUN_AGENT_WORKER` | Set to `0` to skip launching `agent.py` from `server.py` (e.g. when running it yourself with `uv run --no-sync python agent.py dev`). |
 
 ## Hosted deployment (Azure Foundry)
 

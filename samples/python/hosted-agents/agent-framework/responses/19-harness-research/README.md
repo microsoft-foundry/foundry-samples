@@ -137,7 +137,7 @@ Use the same Inspector conversation for follow-up turns so the plan, todos, and 
 ### Or run manually, then open the Inspector
 
 1. Set the environment variables in `.env` and authenticate with `az login`.
-2. From `src/agent-framework-harness-research-responses`, run `PYTHONNOUSERSITE=1 uv run --no-sync python main.py`.
+2. From `src/agent-framework-harness-research-responses`, run `uv run --no-sync python main.py`.
 3. Open the Command Palette and run **Foundry Toolkit: Open Agent Inspector**.
 4. Connect to `http://localhost:8088` and send the prompt above.
 

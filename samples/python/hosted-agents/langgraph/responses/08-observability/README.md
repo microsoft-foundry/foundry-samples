@@ -41,7 +41,7 @@ The sample sets two tracing toggles in [azure.yaml](azure.yaml):
 | `OTEL_AUTO_CONFIGURE_AZURE_MONITOR` | Let `enable_auto_tracing()` configure the OpenTelemetry `TracerProvider` and Azure Monitor exporter itself, using `APPLICATIONINSIGHTS_CONNECTION_STRING`. |
 | `AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED` | Capture prompts, completions, and tool I/O on spans. |
 
-The `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable is injected when the agent is deployed to Foundry, so no extra setup is needed in hosted mode. To ship telemetry from a **local** run, you must set it yourself — either in `.env` (for `PYTHONNOUSERSITE=1 uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses`) or via `azd env set` (for `azd ai agent run`).
+The `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable is injected when the agent is deployed to Foundry, so no extra setup is needed in hosted mode. To ship telemetry from a **local** run, you must set it yourself — either in `.env` (for `uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses`) or via `azd env set` (for `azd ai agent run`).
 
 ## Option 1: Azure Developer CLI (`azd`)
 
@@ -163,7 +163,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `PYTHONNOUSERSITE=1 uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses` (listens on `http://localhost:8088`).
+2. Start the agent: `uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry

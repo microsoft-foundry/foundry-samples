@@ -130,7 +130,7 @@ Summarize total quantity by region from input/sales.csv. Do not write any files.
 
 ### Or run manually, then open the Inspector
 
-1. From `src/agent-framework-harness-data-processing-responses`, run `PYTHONNOUSERSITE=1 uv run --no-sync python main.py`.
+1. From `src/agent-framework-harness-data-processing-responses`, run `uv run --no-sync python main.py`.
 2. Open the Command Palette and run **Foundry Toolkit: Open Agent Inspector**.
 3. Connect to `http://localhost:8088` and send the prompt above.
 
