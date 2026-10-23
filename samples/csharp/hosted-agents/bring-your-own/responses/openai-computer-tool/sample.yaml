@@ -1,0 +1,5 @@
+name: OpenAI Computer Tool Hosted Agent (C#)
+description: "Build and run a C# Microsoft Foundry Hosted Agent (kind: hosted, protocol: responses) with the GA OpenAI Computer Tool (ComputerTool) and an in-container Virtual Paint Desktop."
+
+build: "dotnet restore src/openai-computer-tool-dotnet-responses/openai-computer-tool.csproj && dotnet build src/openai-computer-tool-dotnet-responses/openai-computer-tool.csproj --no-restore --verbosity minimal"
+validate: "dotnet build src/openai-computer-tool-dotnet-responses/openai-computer-tool.csproj --no-restore --verbosity minimal"
