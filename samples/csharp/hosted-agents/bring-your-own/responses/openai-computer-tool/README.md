@@ -46,15 +46,17 @@ openai-computer-tool/
         ├── Dockerfile
         ├── .dockerignore
         ├── .gitignore
-        ├── .azdignore
         ├── .env.example
         ├── openai-computer-tool.csproj
-        ├── Program.cs               # ResponsesServer (:8088) + --local CLI mode
-        ├── AgentRunner.cs           # Multi-turn GA OpenAI Computer Tool loop
-        ├── VirtualPaintDesktop.cs   # 1280x800 in-container Virtual Paint Desktop + PNG encoder
-        ├── Settings.cs              # Environment configuration loader
-        └── prompts/
-            └── base.md              # System instructions for the Computer Tool agent
+        ├── Program.cs                        # ResponsesServer (:8088) + --local CLI mode
+        ├── prompts/
+        │   └── base.md                       # System instructions for the Computer Tool agent
+        ├── scenarios/
+        │   └── PaintSmileyScenario.cs        # Paint Smiley scenario prompt and runner
+        └── utils/
+            ├── AgentRunner.cs                # Multi-turn GA OpenAI Computer Tool loop
+            ├── VirtualPaintDesktop.cs        # 1280x800 in-container Virtual Paint Desktop + PNG encoder
+            └── Settings.cs                   # Environment configuration loader
 ```
 
 ---

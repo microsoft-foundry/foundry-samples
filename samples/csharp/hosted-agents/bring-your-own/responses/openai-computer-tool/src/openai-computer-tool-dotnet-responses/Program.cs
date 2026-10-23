@@ -18,7 +18,7 @@ public class Program
             string promptArg = string.Join(
                 " ",
                 args.Where(a => !string.Equals(a, "--local", StringComparison.OrdinalIgnoreCase)));
-            CuaLoopResult result = await AgentRunner.RunPaintSmileyLoopAsync(promptArg);
+            CuaLoopResult result = await PaintSmileyScenario.RunPaintScenarioAsync(promptArg);
             Console.WriteLine($"\n=== Final Output ===\n{result.FinalText}");
             Console.WriteLine($"Saved PNG: {result.OutputFile}");
             return;
@@ -47,7 +47,7 @@ public sealed class ComputerToolHandler : ResponseHandler
             .Replace("/verbose", string.Empty, StringComparison.OrdinalIgnoreCase)
             .Trim();
 
-        CuaLoopResult result = await AgentRunner.RunPaintSmileyLoopAsync(
+        CuaLoopResult result = await PaintSmileyScenario.RunPaintScenarioAsync(
             cleanedInput,
             maxTurns: 25,
             cancellationToken: cancellationToken);

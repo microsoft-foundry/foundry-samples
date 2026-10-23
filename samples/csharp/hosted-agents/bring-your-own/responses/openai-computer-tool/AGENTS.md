@@ -6,8 +6,10 @@ This project is a **Microsoft Foundry hosted agent** — a containerized AI agen
 
 - `src/openai-computer-tool-dotnet-responses/Dockerfile` — container definition
 - `src/openai-computer-tool-dotnet-responses/Program.cs` — `Azure.AI.AgentServer.Responses` endpoint (`port 8088`) and `--local` CLI entrypoint
-- `src/openai-computer-tool-dotnet-responses/AgentRunner.cs` — multi-turn GA OpenAI Computer Tool (`{"type": "computer"}`) loop
-- `src/openai-computer-tool-dotnet-responses/VirtualPaintDesktop.cs` — `1280x800` in-container Virtual Paint Desktop with pure managed PNG encoding
+- `src/openai-computer-tool-dotnet-responses/scenarios/PaintSmileyScenario.cs` — Paint Smiley scenario prompt and runner
+- `src/openai-computer-tool-dotnet-responses/utils/AgentRunner.cs` — multi-turn GA OpenAI Computer Tool (`{"type": "computer"}`) loop
+- `src/openai-computer-tool-dotnet-responses/utils/VirtualPaintDesktop.cs` — `1280x800` in-container Virtual Paint Desktop with pure managed PNG encoding
+- `src/openai-computer-tool-dotnet-responses/utils/Settings.cs` — environment and system prompt loader
 
 ## Development workflow
 

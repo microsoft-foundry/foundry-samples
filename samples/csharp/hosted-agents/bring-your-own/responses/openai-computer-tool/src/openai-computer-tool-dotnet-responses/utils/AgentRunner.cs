@@ -39,7 +39,7 @@ public static class AgentRunner
 
         string taskPrompt = string.IsNullOrWhiteSpace(customPrompt) ||
                             customPrompt.Contains("paint_smiley", StringComparison.OrdinalIgnoreCase)
-            ? VirtualPaintDesktop.BuildPaintPrompt(outputFile)
+            ? PaintSmileyScenario.BuildPaintPrompt(outputFile)
             : customPrompt;
 
         DefaultAzureCredential credential = new();

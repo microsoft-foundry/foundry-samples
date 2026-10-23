@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=utf-8 \
+    UV_SYSTEM_CERTS=1 \
     DISPLAY=:99 \
     XAUTHORITY=/tmp/.Xauthority \
     PATH="/app/user_agent/.venv/bin:$PATH" \
@@ -24,16 +25,14 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app/user_agent
 
 # Install Python dependencies
-COPY pyproject.toml uv.lock uv.toml ./
+COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy source
-COPY main.py entrypoint.sh ./
+COPY main.py ./
 COPY prompts/ ./prompts/
 COPY scenarios/ ./scenarios/
 COPY utils/ ./utils/
-
-RUN chmod +x /app/user_agent/entrypoint.sh
 
 EXPOSE 8088
 
@@ -41,4 +40,4 @@ EXPOSE 8088
 RUN PYTHONDONTWRITEBYTECODE= .venv/bin/python -m compileall -q $(.venv/bin/python -c "import sysconfig as s; print(s.get_paths()['stdlib'], s.get_paths()['purelib'])") || true; \
     PYTHONDONTWRITEBYTECODE= .venv/bin/python -m compileall -q -x '[.]venv' .
 
-CMD ["/app/user_agent/entrypoint.sh"]
+CMD ["sh", "-c", "if ! pgrep -x Xvfb >/dev/null 2>&1; then Xvfb \"${DISPLAY:-:99}\" -screen 0 1280x800x24 -ac +extension GLX +render -noreset >/tmp/xvfb.log 2>&1 & sleep 1; fi; touch \"${XAUTHORITY:-/tmp/.Xauthority}\" 2>/dev/null || true; exec /app/user_agent/.venv/bin/python /app/user_agent/main.py"]

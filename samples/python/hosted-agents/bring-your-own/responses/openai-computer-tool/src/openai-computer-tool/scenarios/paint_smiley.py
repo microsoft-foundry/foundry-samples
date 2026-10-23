@@ -7,6 +7,7 @@ on Windows, opens Microsoft Paint (`mspaint.exe`) via Windows Search, draws a
 centered yellow smiley face on a clean white canvas, and saves `paint_smiley_<timestamp>.png`.
 """
 
+import os
 import sys
 import time
 from pathlib import Path
@@ -23,7 +24,7 @@ from utils import (
 def build_paint_prompt(output_file: Path | None = None) -> str:
     """Build the default Paint smiley task prompt for the current platform."""
     target = output_file or get_writable_output_path(f"paint_smiley_{time.strftime('%Y%m%d_%H%M%S')}.png")
-    if sys.platform == "win32":
+    if sys.platform == "win32" and os.environ.get("USE_NATIVE_WINDOWS_PAINT", "").strip() == "1":
         return (
             "Open Windows Search (click the Start/Search button on the taskbar or press the WIN key), "
             "search for 'Paint' (mspaint), and press Enter to open MS Paint (press Ctrl+N if needed for a clean canvas). "

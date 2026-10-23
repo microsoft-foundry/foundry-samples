@@ -22,7 +22,7 @@ This sample implements a **Microsoft Foundry Hosted Agent** (`kind: hosted`) usi
 
 ## How it works
 
-1. **Container & Virtual Desktop (`Dockerfile` + `entrypoint.sh`)**: Starts an `Xvfb :99` virtual X11 display (`1280x800x24`) and launches the `ResponsesAgentServerHost` server on port `8088`.
+1. **Container & Virtual Desktop (`Dockerfile`)**: Starts an `Xvfb :99` virtual X11 display (`1280x800x24`) and launches the `ResponsesAgentServerHost` server on port `8088`.
 2. **Hosted Agent Responses Handler (`main.py`)**: Accepts OpenAI Responses protocol requests (`POST /responses`), reconstructs conversation history, and streams the multi-turn Computer Tool loop back to the caller. Also supports `--local` CLI execution (`python main.py --local`) for direct desktop testing.
 3. **Computer Call Loop (`utils/agent_runner.py`)**: Calls the Foundry Responses API with `tools=[{"type": "computer"}]` and system instructions from `prompts/base.md`, dispatches each `computer_call` batch to `handle_pyautogui_action`, and returns a `computer_screenshot` in `computer_call_output` until the task completes.
 4. **PyAutoGUI + Virtual Paint Canvas (`utils/pyautogui_helper.py` + `scenarios/paint_smiley.py`)**: Translates `computer_call` actions into mouse/keyboard input via `pyautogui`. On Linux (`Xvfb`), automatically opens a lightweight Tkinter Paint canvas so the agent can draw a yellow smiley face and save `paint_smiley_<timestamp>.png`; on Windows, the agent uses Microsoft Paint (`mspaint.exe`).
@@ -34,7 +34,6 @@ This sample implements a **Microsoft Foundry Hosted Agent** (`kind: hosted`) usi
 | `sample.yaml` | Repository build-readiness validation metadata. |
 | `azure.yaml` | Declarative Azure Developer CLI (`azd`) definition for the Foundry project and Hosted Agent (`kind: hosted`, `protocol: responses`). |
 | `src/openai-computer-tool/Dockerfile` | Container definition with `uv`, `xvfb`, `python3-tk`, and `scrot` for virtual desktop execution. |
-| `src/openai-computer-tool/entrypoint.sh` | Starts `Xvfb :99` before launching `main.py`. |
 | `src/openai-computer-tool/main.py` | Hosted Agent Responses protocol server (`ResponsesAgentServerHost`) and `--local` CLI entrypoint. |
 | `src/openai-computer-tool/prompts/base.md` | Desktop automation system instructions for the OpenAI Computer Tool agent. |
 | `src/openai-computer-tool/utils/agent_runner.py` | Multi-turn `computer_call` -> `computer_call_output` execution loop and temporary screenshot file cleanup. |
@@ -56,12 +55,9 @@ samples/python/hosted-agents/bring-your-own/responses/openai-computer-tool/
         ├── .env.example
         ├── .gitignore
         ├── Dockerfile
-        ├── entrypoint.sh
         ├── main.py
         ├── pyproject.toml
-        ├── requirements.txt
         ├── uv.lock
-        ├── uv.toml
         ├── prompts/
         │   └── base.md
         ├── scenarios/
@@ -121,14 +117,7 @@ azd ai agent invoke "Draw a yellow smiley face on the Paint canvas and save it."
 
 ```bash
 cd src/openai-computer-tool
-
-# Using uv (recommended)
 uv sync --frozen --python 3.12
-
-# Using pip + venv
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -r requirements.txt
 ```
 
 ### 2. Start the Hosted Agent Responses server (`http://localhost:8088/responses`)

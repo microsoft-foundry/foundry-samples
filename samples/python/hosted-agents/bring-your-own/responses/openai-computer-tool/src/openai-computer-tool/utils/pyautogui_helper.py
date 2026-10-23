@@ -312,7 +312,7 @@ def ensure_virtual_desktop(output_file: Path | None = None) -> None:
     global _xvfb_process, _paint_process, _pyautogui_available
     _headless_desktop.set_output_file(output_file)
     if sys.platform == "win32":
-        _pyautogui_available = True
+        _pyautogui_available = os.environ.get("USE_NATIVE_WINDOWS_PAINT", "").strip() == "1"
         return
 
     os.environ.setdefault("DISPLAY", ":99")
