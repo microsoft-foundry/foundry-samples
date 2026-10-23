@@ -1,0 +1,5 @@
+name: OpenAI Computer Tool Hosted Agent (Python, Responses)
+description: Containerized Microsoft Foundry Hosted Agent using the Responses protocol and GA OpenAI Computer Tool (computer) with PyAutoGUI and Xvfb.
+
+build: "pip install -r src/openai-computer-tool/requirements.txt"
+validate: "python -m compileall -q src/openai-computer-tool"
