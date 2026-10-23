@@ -278,8 +278,19 @@ stages:
                   fi
                 fi
 
+                filtered_deployment_files="$(mktemp)"
+                if ! printf '%s\n' "${deployment_files[@]:-}" |
+                    bash .azure-pipelines/scripts/bicep/filter-live-deployment-files.sh \
+                      .azure-pipelines/scripts/bicep/live-deployment-skiplist \
+                      "$(BICEP_ROOT)" > "$filtered_deployment_files"; then
+                  rm -f "$filtered_deployment_files"
+                  exit 1
+                fi
+                mapfile -t deployment_files < "$filtered_deployment_files"
+                rm -f "$filtered_deployment_files"
+
                 if [ "${#deployment_files[@]}" -eq 0 ]; then
-                  echo "No deployable Bicep samples found for the changed files. Static Bicep build already validated template syntax."
+                  echo "No live-deployable Bicep samples found for the changed files. Static Bicep build already validated template syntax."
                   exit 0
                 fi
 
