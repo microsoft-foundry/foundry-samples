@@ -85,8 +85,6 @@ samples/python/prompt-agents/openai-computer-tool/
 Copy `src/openai-computer-tool/.env.example` to `src/openai-computer-tool/.env`:
 
 ```dotenv
-FOUNDRY_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
-FOUNDRY_MODEL_DEPLOYMENT=gpt-5.4
 AZURE_AI_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
 AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-5.4
 AGENT_NAME=openai-computer-agent

@@ -24,29 +24,17 @@ def load_agent_instructions() -> str:
 
 def get_project_endpoint() -> str:
     """Resolve the Azure AI Foundry project endpoint from environment variables."""
-    endpoint = (
-        os.environ.get("FOUNDRY_PROJECT_ENDPOINT")
-        or os.environ.get("AZURE_AI_PROJECT_ENDPOINT")
-        or os.environ.get("PROJECT_ENDPOINT")
-        or ""
-    ).rstrip("/")
+    endpoint = os.environ.get("AZURE_AI_PROJECT_ENDPOINT", "").rstrip("/")
     if not endpoint:
         raise RuntimeError(
-            "Set FOUNDRY_PROJECT_ENDPOINT (or AZURE_AI_PROJECT_ENDPOINT) in .env or via `azd env set`."
+            "Set AZURE_AI_PROJECT_ENDPOINT in .env or via `azd env set`."
         )
     return endpoint
 
 
 def get_model_deployment_name() -> str:
     """Resolve the model deployment name supporting the GA OpenAI Computer Tool (`computer`)."""
-    return (
-        os.environ.get("FOUNDRY_MODEL_DEPLOYMENT")
-        or os.environ.get("AZURE_AI_MODEL_DEPLOYMENT_NAME")
-        or os.environ.get("MODEL_DEPLOYMENT_NAME")
-        or os.environ.get("MODEL_DEPLOYMENT")
-        or os.environ.get("FOUNDRY_MODEL")
-        or "gpt-5.4"
-    )
+    return os.environ.get("AZURE_AI_MODEL_DEPLOYMENT_NAME", "gpt-5.4")
 
 
 def get_project_client() -> AIProjectClient:
