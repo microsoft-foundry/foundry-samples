@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: openai-computer-tool
+services:
+  ai-project:
+    host: azure.ai.project
+    deployments:
+      - name: gpt-5.4
+        model:
+          format: OpenAI
+          name: gpt-5.4
+          version: '2026-06-01'
+        sku:
+          name: GlobalStandard
+          capacity: 10
+  openai-computer-agent:
+    host: azure.ai.agent
+    project: ./src/openai-computer-tool
+    uses:
+      - ai-project
+    kind: prompt
+    name: openai-computer-agent
+    description: A prompt agent that emits GA OpenAI Computer Tool (computer_call) actions executed locally on the desktop in C#.
+    model: gpt-5.4
+    instructions: >-
+      You are a general-purpose desktop automation agent running on Azure AI Foundry and equipped
+      with the GA OpenAI Computer Tool ({"type": "computer"}). Inspect the desktop screenshot and
+      emit batched computer_call actions (click, double_click, drag, scroll, type, keypress, wait)
+      to complete the task requested in the user's prompt.
+    tools:
+      - type: computer
+hooks:
+  postprovision:
+    windows:
+      shell: pwsh
+      run: ./hooks/postprovision.ps1
+      interactive: false
+      continueOnError: false
+    posix:
+      shell: sh
+      run: ./hooks/postprovision.sh
+      interactive: false
+      continueOnError: false
+infra:
+  provider: microsoft.foundry
