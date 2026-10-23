@@ -22,6 +22,10 @@ samples/python/hosted-agents/bring-your-own/voice-agent-target-agent/langgraph
 # Requires external Anthropic credentials.
 samples/python/hosted-agents/bring-your-own/invocations/claude-agent-sdk
 
+# Requires interactive blueprint-scoped user sign-in, downstream delegated consent,
+# and tenant application configuration/cleanup not supplied by the shared CI runner.
+samples/csharp/hosted-agents/agent-framework/blueprint-signin-on-behalf-of-user
+
 # Requires Cognitive Services OpenAI User on the hosted identity at account scope.
 samples/python/hosted-agents/bring-your-own/voicelive/github-copilot-responses-voicelive
 

@@ -1,0 +1,4 @@
+.azure/
+node_modules/
+dist/
+local.settings.json
