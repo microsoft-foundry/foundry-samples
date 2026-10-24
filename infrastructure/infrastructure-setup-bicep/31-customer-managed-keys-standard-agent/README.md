@@ -42,3 +42,17 @@ If you are new to template deployment, see:
 - [Azure AI services quickstart article](https://learn.microsoft.com/azure/cognitive-services/resource-manager-template)
 
 `Tags: Microsoft.CognitiveServices/accounts/projects`
+
+## Agent tracing & evaluation (Application Insights)
+
+By default (`deployApplicationInsights = true`) this template also:
+
+- Deploys a **Log Analytics workspace** and a **workspace-based Application Insights** component and connects it to the Foundry account, so agents export OpenTelemetry traces.
+- Grants the **project managed identity** **Log Analytics Reader** and **Privileged Monitoring Data Reader** on the component so evaluation can read traces, including GenAI prompt/response content.
+
+This adds Log Analytics / Application Insights cost. Deploy with `deployApplicationInsights=false` to skip
+all tracing resources and RBAC:
+
+```bash
+az deployment group create --resource-group <rg> --template-file main.bicep --parameters deployApplicationInsights=false
+```

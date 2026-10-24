@@ -17,6 +17,12 @@ param projectDisplayName string = 'project_display_name'
 param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
 var uniqueSuffix = substring(uniqueString('${resourceGroup().id}-${deploymentTimestamp}'), 0, 4)
 var accountName = toLower('${aiServicesName}${uniqueSuffix}')
+
+@description('Deploy a Log Analytics workspace + Application Insights, connect them to the Foundry account, and grant the project managed identity read access so agent traces can be viewed and evaluated. Adds resources/cost. Default true.')
+param deployApplicationInsights bool = true
+
+var appInsightsName = toLower('${uniqueSuffix}appinsights')
+var logAnalyticsName = toLower('${uniqueSuffix}loganalytics')
 @allowed([
   'australiaeast'
   'canadaeast'
@@ -125,6 +131,34 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-
   }
 }
 
+// Application Insights + Foundry connection (agent tracing), gated by deployApplicationInsights
+module applicationInsights 'modules-basic/application-insights.bicep' = if (deployApplicationInsights) {
+  name: 'app-insights-${uniqueSuffix}-deployment'
+  params: {
+    location: location
+    aiAccountName: account.name
+    logAnalyticsName: logAnalyticsName
+    appInsightsName: appInsightsName
+  }
+  dependsOn: [
+    project
+  ]
+}
+
+module applicationInsightsRoleAssignment 'modules-basic/application-insights-role-assignment.bicep' = if (deployApplicationInsights) {
+  name: 'app-insights-ra-${uniqueSuffix}-deployment'
+  params: {
+    appInsightsName: appInsightsName
+    projectPrincipalId: project.identity.principalId
+  }
+  dependsOn: [
+    applicationInsights
+  ]
+}
+
 output accountName string = account.name
 output projectName string = project.name
 output accountEndpoint string = account.properties.endpoint
+output applicationInsightsResourceId string = deployApplicationInsights ? applicationInsights.outputs.appInsightsId : ''
+output applicationInsightsAppId string = deployApplicationInsights ? applicationInsights.outputs.appInsightsAppId : ''
+output logAnalyticsWorkspaceId string = deployApplicationInsights ? applicationInsights.outputs.logAnalyticsId : ''

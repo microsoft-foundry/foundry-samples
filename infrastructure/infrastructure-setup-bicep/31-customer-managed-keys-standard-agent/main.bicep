@@ -43,6 +43,12 @@ var cosmosDBName = toLower('${aiFoundryName}${uniqueSuffix}cosmosdb')
 var aiSearchName = toLower('${aiFoundryName}${uniqueSuffix}search')
 var azureStorageName = toLower('${aiFoundryName}${uniqueSuffix}storage')
 
+@description('Deploy a Log Analytics workspace + Application Insights, connect them to the Foundry account, and grant the project managed identity read access so agent traces can be viewed and evaluated. Adds resources/cost. Default true.')
+param deployApplicationInsights bool = true
+
+var appInsightsName = toLower('${uniqueSuffix}appinsights')
+var logAnalyticsName = toLower('${uniqueSuffix}loganalytics')
+
 // Check if existing resources have been passed in
 var storagePassedIn = azureStorageAccountResourceId != ''
 var searchPassedIn = aiSearchResourceId != ''
@@ -252,5 +258,30 @@ module storageContainersRoleAssignment 'modules-standard/blob-storage-container-
   }
   dependsOn: [
     addProjectCapabilityHost
+  ]
+}
+
+// Application Insights + Foundry connection (agent tracing), gated by deployApplicationInsights
+module applicationInsights 'modules-standard/application-insights.bicep' = if (deployApplicationInsights) {
+  name: 'app-insights-${uniqueSuffix}-deployment'
+  params: {
+    location: location
+    aiAccountName: account.name
+    logAnalyticsName: logAnalyticsName
+    appInsightsName: appInsightsName
+  }
+  dependsOn: [
+    aiProject
+  ]
+}
+
+module applicationInsightsRoleAssignment 'modules-standard/application-insights-role-assignment.bicep' = if (deployApplicationInsights) {
+  name: 'app-insights-ra-${uniqueSuffix}-deployment'
+  params: {
+    appInsightsName: appInsightsName
+    projectPrincipalId: aiProject.outputs.projectPrincipalId
+  }
+  dependsOn: [
+    applicationInsights
   ]
 }
