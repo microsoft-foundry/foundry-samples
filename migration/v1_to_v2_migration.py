@@ -2657,13 +2657,13 @@ def resolve_connection_id(v1_connection_id: str) -> str:
 def remap_connection_ids_in_tool(tool_data: Any) -> Any:
     """
     Recursively walk a tool data structure and:
-    - Rename 'connection_id' keys to 'project_connection_id'
+    - Rename 'connection_id' and 'index_connection_id' keys to 'project_connection_id'
     - Resolve ARM paths to short connection names via CONNECTION_MAP
     """
     if isinstance(tool_data, dict):
         result = {}
         for key, value in tool_data.items():
-            if key == 'connection_id':
+            if key in ('connection_id', 'index_connection_id'):
                 # Rename and resolve
                 resolved = resolve_connection_id(str(value)) if value else value
                 result['project_connection_id'] = resolved
