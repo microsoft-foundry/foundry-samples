@@ -41,6 +41,10 @@ public sealed class ComputerToolHandler : ResponseHandler
         ResponseContext context,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        var stream = new ResponseEventStream(context, request);
+        yield return stream.EmitCreated();
+        yield return stream.EmitInProgress();
+
         string userInput = (await context.GetInputTextAsync(cancellationToken: cancellationToken)).Trim();
         bool verbose = userInput.Contains("/verbose", StringComparison.OrdinalIgnoreCase);
         string cleanedInput = userInput
@@ -71,21 +75,12 @@ public sealed class ComputerToolHandler : ResponseHandler
             reply.Append($"Saved image: {result.OutputFile} ({fileInfo.Length} bytes)");
         }
 
-        var stream = new ResponseEventStream(context, request);
-        yield return stream.EmitCreated();
-
-        var message = stream.AddOutputItemMessage();
-        yield return message.EmitAdded();
-
-        var text = message.AddTextContent();
-        yield return text.EmitAdded();
-
         string finalReply = reply.ToString().Trim();
-        yield return text.EmitDelta(finalReply);
-        yield return text.EmitTextDone(finalReply);
-        yield return text.EmitDone();
+        foreach (ResponseStreamEvent ev in stream.OutputItemMessage(finalReply))
+        {
+            yield return ev;
+        }
 
-        yield return message.EmitDone();
         yield return stream.EmitCompleted();
     }
 }

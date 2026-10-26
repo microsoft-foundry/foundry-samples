@@ -447,7 +447,7 @@ public sealed class VirtualPaintDesktop
 
         using (MemoryStream compressed = new())
         {
-            using (ZLibStream zlib = new(compressed, CompressionLevel.Fastest, leaveOpen: true))
+            using (ZLibStream zlib = new(compressed, CompressionLevel.Optimal, leaveOpen: true))
             {
                 zlib.Write(rawScanlines, 0, rawScanlines.Length);
             }

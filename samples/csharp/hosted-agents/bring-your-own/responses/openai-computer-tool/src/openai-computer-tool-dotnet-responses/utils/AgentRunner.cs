@@ -198,30 +198,39 @@ public static class AgentRunner
         string screenshotBase64,
         List<string> uploadedFileIds)
     {
-        if (screenshotBase64.Length <= 40_000)
+        if (screenshotBase64.Length <= 250_000)
         {
             return new JsonObject
             {
                 ["type"] = "computer_screenshot",
                 ["image_url"] = $"data:image/png;base64,{screenshotBase64}",
-                ["detail"] = "original",
             };
         }
 
-        byte[] pngBytes = Convert.FromBase64String(screenshotBase64);
-        using MemoryStream stream = new(pngBytes);
-        ClientResult<OpenAIFile> uploaded = await fileClient.UploadFileAsync(
-            stream,
-            "screenshot.png",
-            FileUploadPurpose.Assistants);
-
-        uploadedFileIds.Add(uploaded.Value.Id);
-        return new JsonObject
+        try
         {
-            ["type"] = "computer_screenshot",
-            ["file_id"] = uploaded.Value.Id,
-            ["detail"] = "original",
-        };
+            byte[] pngBytes = Convert.FromBase64String(screenshotBase64);
+            using MemoryStream stream = new(pngBytes);
+            ClientResult<OpenAIFile> uploaded = await fileClient.UploadFileAsync(
+                stream,
+                "screenshot.png",
+                FileUploadPurpose.Assistants);
+
+            uploadedFileIds.Add(uploaded.Value.Id);
+            return new JsonObject
+            {
+                ["type"] = "computer_screenshot",
+                ["file_id"] = uploaded.Value.Id,
+            };
+        }
+        catch (ClientResultException)
+        {
+            return new JsonObject
+            {
+                ["type"] = "computer_screenshot",
+                ["image_url"] = $"data:image/png;base64,{screenshotBase64}",
+            };
+        }
     }
 
     private static async Task CleanupUploadedFilesAsync(
