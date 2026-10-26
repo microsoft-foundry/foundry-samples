@@ -1,0 +1,14 @@
+[project]
+name = "openai-computer-tool"
+version = "0.1.0"
+description = "Azure AI Foundry Prompt Agent with the GA OpenAI Computer Tool (computer) and PyAutoGUI"
+readme = "../../README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "azure-ai-projects>=2.0.0b4",
+    "azure-identity>=1.19.0",
+    "openai>=1.68.0",
+    "pillow>=11.0.0",
+    "pyautogui>=0.9.54",
+    "python-dotenv>=1.0.1",
+]

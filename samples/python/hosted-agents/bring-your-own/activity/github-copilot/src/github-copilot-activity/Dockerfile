@@ -1,5 +1,7 @@
 FROM python:3.13-slim
 
+ENV PYTHONNOUSERSITE=1
+
 WORKDIR /app
 COPY . user_agent/
 WORKDIR /app/user_agent

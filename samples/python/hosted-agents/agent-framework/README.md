@@ -1,5 +1,8 @@
 # Agent Framework Samples
 
+See the shared [Python startup configuration](../README.md#python-startup-configuration)
+for deployment environments and dependency compatibility.
+
 This directory contains samples that demonstrate how to use the [Agent Framework](https://github.com/microsoft/agent-framework) to host agents with different capabilities and configurations. Each sample includes a README with instructions on how to set up, run, and interact with the agent.
 
 > [!IMPORTANT]
