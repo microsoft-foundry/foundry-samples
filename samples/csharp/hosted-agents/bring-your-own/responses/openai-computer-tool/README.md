@@ -63,7 +63,7 @@ openai-computer-tool/
 
 ## Prerequisites
 
-1. **.NET 8.0 SDK** (or newer, such as .NET 9.0 / 10.0 SDK)
+1. **.NET 10.0 SDK** (`dotnet`)
 2. **Azure CLI (`az`)** and **Azure Developer CLI (`azd`)** with the `azure.ai.agents` extension (`>=1.0.0-beta.16`)
 3. A **Microsoft Foundry Project** with a computer-use capable model deployment (such as `gpt-5.4` or newer) and RBAC role **Azure AI User** assigned to your identity (`az login`).
 

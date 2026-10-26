@@ -9,6 +9,7 @@ using System.Text.Json.Nodes;
 using Azure.AI.Extensions.OpenAI;
 using Azure.AI.Projects;
 using Azure.Identity;
+using OpenAI.Files;
 
 namespace OpenAIComputerToolHostedAgent;
 
@@ -44,212 +45,309 @@ public static class AgentRunner
 
         DefaultAzureCredential credential = new();
         AIProjectClient projectClient = new(new Uri(endpoint), credential);
-        ProjectResponsesClient responsesClient =
-            projectClient.ProjectOpenAIClient.GetProjectResponsesClientForModel(model);
+        ProjectOpenAIClient openAIClient = projectClient.ProjectOpenAIClient;
+        ProjectResponsesClient responsesClient = openAIClient.GetProjectResponsesClientForModel(model);
+        OpenAIFileClient fileClient = openAIClient.GetOpenAIFileClient();
 
         List<string> turnLogs = [];
+        List<string> uploadedFileIds = [];
         Console.WriteLine($"[HostedAgent] Model={model} | OutputFile={outputFile}");
 
-        // Send initial screenshot + prompt so the model immediately sees the 1280x800 Virtual Paint Desktop
-        string initialScreenshotB64 = desktop.TakeScreenshotBase64();
-        JsonNode currentInput = new JsonArray
+        try
         {
-            new JsonObject
+            JsonNode currentInput = new JsonArray
             {
-                ["role"] = "user",
-                ["content"] = new JsonArray
+                new JsonObject
                 {
-                    new JsonObject
-                    {
-                        ["type"] = "input_text",
-                        ["text"] = taskPrompt,
-                    },
-                    new JsonObject
-                    {
-                        ["type"] = "input_image",
-                        ["image_url"] = $"data:image/png;base64,{initialScreenshotB64}",
-                        ["detail"] = "original",
-                    },
+                    ["role"] = "user",
+                    ["content"] = taskPrompt,
                 },
-            },
-        };
-
-        string? previousResponseId = null;
-        string finalAssistantText = string.Empty;
-
-        for (int turn = 1; turn <= maxTurns; turn++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            JsonObject payload = new()
-            {
-                ["model"] = model,
-                ["instructions"] = systemPrompt,
-                ["tools"] = new JsonArray
-                {
-                    new JsonObject
-                    {
-                        ["type"] = "computer",
-                    },
-                },
-                ["input"] = currentInput.DeepClone(),
             };
 
-            if (!string.IsNullOrEmpty(previousResponseId))
+            string? previousResponseId = null;
+            string finalAssistantText = string.Empty;
+
+            for (int turn = 1; turn <= maxTurns; turn++)
             {
-                payload["previous_response_id"] = previousResponseId;
-            }
+                cancellationToken.ThrowIfCancellationRequested();
 
-            using BinaryContent requestContent = BinaryContent.Create(
-                BinaryData.FromString(payload.ToJsonString()));
-            ClientResult rawResult = await Task.Run(
-                () => responsesClient.CreateResponse(requestContent, (RequestOptions?)null),
-                cancellationToken);
+                using JsonDocument responseDoc = await SendResponseRequestAsync(
+                    responsesClient,
+                    model,
+                    systemPrompt,
+                    currentInput,
+                    previousResponseId,
+                    cancellationToken);
+                JsonElement root = responseDoc.RootElement;
 
-            PipelineResponse rawResponse = rawResult.GetRawResponse();
-            using JsonDocument responseDoc = JsonDocument.Parse(rawResponse.Content.ToMemory());
-            JsonElement root = responseDoc.RootElement;
+                previousResponseId = root.TryGetProperty("id", out JsonElement idProp)
+                    ? idProp.GetString()
+                    : null;
 
-            previousResponseId = root.TryGetProperty("id", out JsonElement idProp)
-                ? idProp.GetString()
-                : null;
+                List<(string CallId, List<JsonElement> Actions, List<JsonElement> PendingSafetyChecks)> computerCalls =
+                    GetComputerCalls(root);
+                List<string> assistantTexts = ExtractAssistantTexts(root);
 
-            List<(string CallId, List<JsonElement> Actions, List<JsonElement> PendingSafetyChecks)> computerCalls = [];
-            List<string> assistantTexts = [];
-
-            if (root.TryGetProperty("output", out JsonElement outputArray) &&
-                outputArray.ValueKind == JsonValueKind.Array)
-            {
-                foreach (JsonElement item in outputArray.EnumerateArray())
+                if (assistantTexts.Count > 0)
                 {
-                    string itemType = item.TryGetProperty("type", out JsonElement tProp)
-                        ? tProp.GetString() ?? string.Empty
-                        : string.Empty;
-
-                    if (itemType == "computer_call")
-                    {
-                        string callId = item.GetProperty("call_id").GetString() ?? string.Empty;
-                        List<JsonElement> actions = [];
-
-                        if (item.TryGetProperty("actions", out JsonElement actionsProp) &&
-                            actionsProp.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (JsonElement act in actionsProp.EnumerateArray())
-                            {
-                                actions.Add(act.Clone());
-                            }
-                        }
-                        else if (item.TryGetProperty("action", out JsonElement singleActProp) &&
-                                 singleActProp.ValueKind == JsonValueKind.Object)
-                        {
-                            actions.Add(singleActProp.Clone());
-                        }
-
-                        List<JsonElement> safetyChecks = [];
-                        if (item.TryGetProperty("pending_safety_checks", out JsonElement safetyProp) &&
-                            safetyProp.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (JsonElement sc in safetyProp.EnumerateArray())
-                            {
-                                safetyChecks.Add(sc.Clone());
-                            }
-                        }
-
-                        computerCalls.Add((callId, actions, safetyChecks));
-                    }
-                    else if (itemType == "message" &&
-                             item.TryGetProperty("content", out JsonElement contentArray) &&
-                             contentArray.ValueKind == JsonValueKind.Array)
-                    {
-                        foreach (JsonElement part in contentArray.EnumerateArray())
-                        {
-                            if (part.TryGetProperty("text", out JsonElement textProp))
-                            {
-                                string? text = textProp.GetString();
-                                if (!string.IsNullOrWhiteSpace(text))
-                                {
-                                    assistantTexts.Add(text);
-                                }
-                            }
-                        }
-                    }
+                    finalAssistantText = string.Join("\n", assistantTexts);
+                    Console.WriteLine($"[Turn {turn}] Agent: {finalAssistantText}");
                 }
+
+                if (computerCalls.Count == 0)
+                {
+                    desktop.SaveImage();
+                    Console.WriteLine($"[Turn {turn}] Completed! Saved PNG: {outputFile}");
+                    break;
+                }
+
+                JsonArray nextOutputs = [];
+
+                foreach ((string callId, List<JsonElement> actions, List<JsonElement> safetyChecks) in computerCalls)
+                {
+                    EnsureNoPendingSafetyChecks(safetyChecks);
+
+                    List<string> actionSummaries = [];
+                    foreach (JsonElement action in actions)
+                    {
+                        string summary = FormatActionSummary(action);
+                        actionSummaries.Add(summary);
+                        Console.WriteLine($"[Turn {turn}]   -> {summary}");
+                        desktop.HandleAction(action);
+                    }
+
+                    string turnSummary = $"[Turn {turn}] {string.Join(", ", actionSummaries)}";
+                    turnLogs.Add(turnSummary);
+
+                    string screenshotB64 = desktop.TakeScreenshotBase64();
+                    JsonObject screenshotOutput = await BuildScreenshotOutputAsync(
+                        fileClient,
+                        screenshotB64,
+                        uploadedFileIds);
+
+                    JsonObject callOutput = new()
+                    {
+                        ["type"] = "computer_call_output",
+                        ["call_id"] = callId,
+                        ["output"] = screenshotOutput,
+                    };
+
+                    nextOutputs.Add(callOutput);
+                }
+
+                currentInput = nextOutputs;
             }
 
-            if (assistantTexts.Count > 0)
-            {
-                finalAssistantText = string.Join("\n", assistantTexts);
-                Console.WriteLine($"[Turn {turn}] Agent: {finalAssistantText}");
-            }
-
-            if (computerCalls.Count == 0)
+            if (!File.Exists(outputFile))
             {
                 desktop.SaveImage();
-                Console.WriteLine($"[Turn {turn}] Completed! Saved PNG: {outputFile}");
-                break;
             }
 
-            JsonArray nextOutputs = [];
-
-            foreach ((string callId, List<JsonElement> actions, List<JsonElement> safetyChecks) in computerCalls)
+            if (string.IsNullOrWhiteSpace(finalAssistantText))
             {
-                if (safetyChecks.Count > 0)
-                {
-                    List<string> descriptions = [];
-                    foreach (JsonElement sc in safetyChecks)
-                    {
-                        string code = sc.TryGetProperty("code", out JsonElement scCode) ? scCode.GetString() ?? "unknown" : "unknown";
-                        string message = sc.TryGetProperty("message", out JsonElement scMsg) ? scMsg.GetString() ?? string.Empty : string.Empty;
-                        descriptions.Add($"{code}: {message}");
-                    }
-
-                    throw new InvalidOperationException(
-                        $"Refusing to execute computer_call with pending safety checks: {string.Join(", ", descriptions)}");
-                }
-
-                List<string> actionSummaries = [];
-                foreach (JsonElement action in actions)
-                {
-                    string summary = FormatActionSummary(action);
-                    actionSummaries.Add(summary);
-                    Console.WriteLine($"[Turn {turn}]   -> {summary}");
-                    desktop.HandleAction(action);
-                }
-
-                string turnSummary = $"[Turn {turn}] {string.Join(", ", actionSummaries)}";
-                turnLogs.Add(turnSummary);
-
-                string screenshotB64 = desktop.TakeScreenshotBase64();
-
-                JsonObject callOutput = new()
-                {
-                    ["type"] = "computer_call_output",
-                    ["call_id"] = callId,
-                    ["output"] = new JsonObject
-                    {
-                        ["type"] = "computer_screenshot",
-                        ["image_url"] = $"data:image/png;base64,{screenshotB64}",
-                        ["detail"] = "original",
-                    },
-                };
-
-                nextOutputs.Add(callOutput);
+                finalAssistantText = $"Completed drawing the yellow smiley face on the container Virtual Paint Desktop and saved to {outputFile}.";
             }
 
-            currentInput = nextOutputs;
+            return new CuaLoopResult(finalAssistantText, outputFile, turnLogs);
         }
-
-        if (!File.Exists(outputFile))
+        finally
         {
-            desktop.SaveImage();
+            await CleanupUploadedFilesAsync(fileClient, uploadedFileIds);
         }
+    }
 
-        if (string.IsNullOrWhiteSpace(finalAssistantText))
+    private static async Task<JsonDocument> SendResponseRequestAsync(
+        ProjectResponsesClient responsesClient,
+        string model,
+        string instructions,
+        JsonNode input,
+        string? previousResponseId,
+        CancellationToken cancellationToken)
+    {
+        JsonObject payload = new()
         {
-            finalAssistantText = $"Completed drawing the yellow smiley face on the container Virtual Paint Desktop and saved to {outputFile}.";
+            ["model"] = model,
+            ["instructions"] = instructions,
+            ["tools"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["type"] = "computer",
+                },
+            },
+            ["input"] = input.DeepClone(),
+        };
+
+        if (!string.IsNullOrEmpty(previousResponseId))
+        {
+            payload["previous_response_id"] = previousResponseId;
         }
 
-        return new CuaLoopResult(finalAssistantText, outputFile, turnLogs);
+        using BinaryContent requestContent = BinaryContent.Create(
+            BinaryData.FromString(payload.ToJsonString()));
+        ClientResult rawResult = await Task.Run(
+            () => responsesClient.CreateResponse(requestContent, (RequestOptions?)null),
+            cancellationToken);
+
+        PipelineResponse rawResponse = rawResult.GetRawResponse();
+        return JsonDocument.Parse(rawResponse.Content.ToMemory());
+    }
+
+    private static async Task<JsonObject> BuildScreenshotOutputAsync(
+        OpenAIFileClient fileClient,
+        string screenshotBase64,
+        List<string> uploadedFileIds)
+    {
+        if (screenshotBase64.Length <= 40_000)
+        {
+            return new JsonObject
+            {
+                ["type"] = "computer_screenshot",
+                ["image_url"] = $"data:image/png;base64,{screenshotBase64}",
+                ["detail"] = "original",
+            };
+        }
+
+        byte[] pngBytes = Convert.FromBase64String(screenshotBase64);
+        using MemoryStream stream = new(pngBytes);
+        ClientResult<OpenAIFile> uploaded = await fileClient.UploadFileAsync(
+            stream,
+            "screenshot.png",
+            FileUploadPurpose.Assistants);
+
+        uploadedFileIds.Add(uploaded.Value.Id);
+        return new JsonObject
+        {
+            ["type"] = "computer_screenshot",
+            ["file_id"] = uploaded.Value.Id,
+            ["detail"] = "original",
+        };
+    }
+
+    private static async Task CleanupUploadedFilesAsync(
+        OpenAIFileClient fileClient,
+        List<string> uploadedFileIds)
+    {
+        foreach (string fileId in uploadedFileIds)
+        {
+            try
+            {
+                await fileClient.DeleteFileAsync(fileId);
+            }
+            catch
+            {
+                // Ignore best-effort cleanup errors.
+            }
+        }
+    }
+
+    private static List<(string CallId, List<JsonElement> Actions, List<JsonElement> PendingSafetyChecks)> GetComputerCalls(
+        JsonElement root)
+    {
+        List<(string CallId, List<JsonElement> Actions, List<JsonElement> PendingSafetyChecks)> computerCalls = [];
+        if (!root.TryGetProperty("output", out JsonElement outputArray) ||
+            outputArray.ValueKind != JsonValueKind.Array)
+        {
+            return computerCalls;
+        }
+
+        foreach (JsonElement item in outputArray.EnumerateArray())
+        {
+            string itemType = item.TryGetProperty("type", out JsonElement tProp)
+                ? tProp.GetString() ?? string.Empty
+                : string.Empty;
+
+            if (itemType != "computer_call")
+            {
+                continue;
+            }
+
+            string callId = item.GetProperty("call_id").GetString() ?? string.Empty;
+            List<JsonElement> actions = [];
+
+            if (item.TryGetProperty("actions", out JsonElement actionsProp) &&
+                actionsProp.ValueKind == JsonValueKind.Array)
+            {
+                foreach (JsonElement act in actionsProp.EnumerateArray())
+                {
+                    actions.Add(act.Clone());
+                }
+            }
+            else if (item.TryGetProperty("action", out JsonElement singleActProp) &&
+                     singleActProp.ValueKind == JsonValueKind.Object)
+            {
+                actions.Add(singleActProp.Clone());
+            }
+
+            List<JsonElement> safetyChecks = [];
+            if (item.TryGetProperty("pending_safety_checks", out JsonElement safetyProp) &&
+                safetyProp.ValueKind == JsonValueKind.Array)
+            {
+                foreach (JsonElement sc in safetyProp.EnumerateArray())
+                {
+                    safetyChecks.Add(sc.Clone());
+                }
+            }
+
+            computerCalls.Add((callId, actions, safetyChecks));
+        }
+
+        return computerCalls;
+    }
+
+    private static List<string> ExtractAssistantTexts(JsonElement root)
+    {
+        List<string> assistantTexts = [];
+        if (!root.TryGetProperty("output", out JsonElement outputArray) ||
+            outputArray.ValueKind != JsonValueKind.Array)
+        {
+            return assistantTexts;
+        }
+
+        foreach (JsonElement item in outputArray.EnumerateArray())
+        {
+            string itemType = item.TryGetProperty("type", out JsonElement tProp)
+                ? tProp.GetString() ?? string.Empty
+                : string.Empty;
+
+            if (itemType == "message" &&
+                item.TryGetProperty("content", out JsonElement contentArray) &&
+                contentArray.ValueKind == JsonValueKind.Array)
+            {
+                foreach (JsonElement part in contentArray.EnumerateArray())
+                {
+                    if (part.TryGetProperty("text", out JsonElement textProp))
+                    {
+                        string? text = textProp.GetString();
+                        if (!string.IsNullOrWhiteSpace(text))
+                        {
+                            assistantTexts.Add(text);
+                        }
+                    }
+                }
+            }
+        }
+
+        return assistantTexts;
+    }
+
+    private static void EnsureNoPendingSafetyChecks(List<JsonElement> safetyChecks)
+    {
+        if (safetyChecks.Count == 0)
+        {
+            return;
+        }
+
+        List<string> descriptions = [];
+        foreach (JsonElement sc in safetyChecks)
+        {
+            string code = sc.TryGetProperty("code", out JsonElement scCode) ? scCode.GetString() ?? "unknown" : "unknown";
+            string message = sc.TryGetProperty("message", out JsonElement scMsg) ? scMsg.GetString() ?? string.Empty : string.Empty;
+            descriptions.Add($"{code}: {message}");
+        }
+
+        throw new InvalidOperationException(
+            $"Refusing to execute computer_call with pending safety checks: {string.Join(", ", descriptions)}");
     }
 
     private static string FormatActionSummary(JsonElement action)

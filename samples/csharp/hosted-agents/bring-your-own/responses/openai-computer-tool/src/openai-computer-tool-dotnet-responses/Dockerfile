@@ -2,7 +2,7 @@
 # Uses the VirtualPaintDesktop (1280x800 pure managed framebuffer + PNG encoder)
 # inside the container so no native X11 or GUI dependencies are required.
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy project file and restore dependencies first (layer caching)
@@ -13,7 +13,7 @@ RUN dotnet restore
 COPY . .
 RUN dotnet publish -c Release -o /app --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 
 COPY --from=build /app .
