@@ -85,6 +85,7 @@ dependencies = [
  "foundry-local-sdk",
  "tokio",
  "tokio-stream",
+ "url",
 ]
 
 [[package]]
@@ -2213,6 +2214,7 @@ version = "0.1.0"
 dependencies = [
  "foundry-local-sdk",
  "tokio",
+ "url",
 ]
 
 [[package]]

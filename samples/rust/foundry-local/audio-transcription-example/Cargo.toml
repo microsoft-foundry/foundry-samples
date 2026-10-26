@@ -8,3 +8,4 @@ description = "Audio transcription example using the Foundry Local Rust SDK"
 foundry-local-sdk.workspace = true
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 tokio-stream = "0.1"
+url.workspace = true

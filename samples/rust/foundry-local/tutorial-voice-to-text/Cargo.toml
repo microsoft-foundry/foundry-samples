@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 foundry-local-sdk.workspace = true
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+url.workspace = true

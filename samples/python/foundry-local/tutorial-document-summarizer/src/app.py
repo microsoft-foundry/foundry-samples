@@ -27,19 +27,25 @@ def get_text(response):
     return "".join(parts)
 
 
-def summarize_file(session, file_path, system_prompt):
+def summarize_file(model, file_path, system_prompt):
     """Summarize a single file and print the result."""
     content = Path(file_path).read_text(encoding="utf-8")
-    with (
-        Request()
-        .add_item(MessageItem.system(system_prompt))
-        .add_item(MessageItem.user(content)) as request
-    ):
-        with session.process_request(request) as response:
-            print(get_text(response))
+    with ChatSession(model) as session:
+        session.set_options(
+            RequestOptions(
+                search=SearchOptions(temperature=0.2, max_output_tokens=512)
+            )
+        )
+        with (
+            Request()
+            .add_item(MessageItem.system(system_prompt))
+            .add_item(MessageItem.user(content)) as request
+        ):
+            with session.process_request(request) as response:
+                print(get_text(response))
 
 
-def summarize_directory(session, directory, system_prompt):
+def summarize_directory(model, directory, system_prompt):
     """Summarize all .txt files in a directory."""
     txt_files = sorted(Path(directory).glob("*.txt"))
 
@@ -49,7 +55,7 @@ def summarize_directory(session, directory, system_prompt):
 
     for txt_file in txt_files:
         print(f"--- {txt_file.name} ---")
-        summarize_file(session, txt_file, system_prompt)
+        summarize_file(model, txt_file, system_prompt)
         print()
 
 
@@ -92,17 +98,11 @@ def main():
         target_path = Path(target)
         # </file_reading>
 
-        with ChatSession(model) as session:
-            session.set_options(
-                RequestOptions(
-                    search=SearchOptions(temperature=0.2, max_output_tokens=512)
-                )
-            )
-            if target_path.is_dir():
-                summarize_directory(session, target_path, system_prompt)
-            else:
-                print(f"--- {target_path.name} ---")
-                summarize_file(session, target_path, system_prompt)
+        if target_path.is_dir():
+            summarize_directory(model, target_path, system_prompt)
+        else:
+            print(f"--- {target_path.name} ---")
+            summarize_file(model, target_path, system_prompt)
     # </summarization>
     finally:
         # Clean up

@@ -13,7 +13,8 @@ use std::sync::Arc;
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use foundry_local_sdk::{
-    AudioSession, FoundryLocalConfig, FoundryLocalManager, Item, ItemQueue, Request, TextKind,
+    AudioSession, FoundryLocalConfig, FoundryLocalManager, Item, ItemQueue, Request,
+    SpeechSegmentKind, TextKind,
 };
 use tokio_stream::StreamExt;
 
@@ -63,16 +64,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let session = AudioSession::new(&model).await?;
     let audio_queue = session.create_input_queue()?;
-    let mut stream =
-        session.process_streaming_request(Request::new().with_input_queue(audio_queue.clone()));
+    let mut stream = session.process_streaming_request(
+        Request::new()
+            .with_item(Item::audio_data(Vec::new(), Some("pcm"), 16000, 1))
+            .with_input_queue(audio_queue.clone()),
+    );
     println!("✓ Session started\n");
 
     // --- Background task reads transcription results (mirrors JS readPromise) ---
     let read_task = tokio::spawn(async move {
         while let Some(item) = stream.next().await {
             match item {
-                Ok(Item::SpeechResult(result)) => {
-                    println!("\n  [FINAL] {}", result.text);
+                Ok(Item::SpeechSegment(segment)) if segment.kind == SpeechSegmentKind::Final => {
+                    println!("\n  [FINAL] {}", segment.text);
                 }
                 Ok(Item::Text {
                     text,
@@ -88,6 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
+        stream.response().await
     });
 
     // --- Microphone capture (mirrors JS naudiodon2 / C++ PortAudio / Python PyAudio) ---
@@ -118,12 +123,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 break;
             }
             let end = std::cmp::min(offset + chunk_size, pcm_data.len());
-            audio_queue.push(&Item::audio_data(
-                pcm_data[offset..end].to_vec(),
-                Some("pcm16"),
-                16000,
-                1,
-            ))?;
+            audio_queue.push(&Item::bytes(pcm_data[offset..end].to_vec()))?;
             tokio::time::sleep(chunk_interval).await;
         }
         println!("✓ Synthetic audio pushed");
@@ -135,7 +135,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Graceful shutdown (mirrors JS SIGINT handler)
     println!("\n\nStopping...");
     audio_queue.mark_finished();
-    read_task.await?;
+    let final_response = read_task.await??;
+    if let Some(result) = final_response.items.iter().find_map(Item::as_speech_result) {
+        println!("Final transcript: {}", result.text);
+    }
     drop(audio_queue);
     drop(session);
     model.unload().await?;
@@ -238,7 +241,7 @@ async fn try_start_mic(
     let queue = audio_queue.clone();
     let forward_task = tokio::spawn(async move {
         while let Some(bytes) = audio_rx.recv().await {
-            if let Err(e) = queue.push(&Item::audio_data(bytes, Some("pcm16"), 16000, 1)) {
+            if let Err(e) = queue.push(&Item::bytes(bytes)) {
                 eprintln!("Append error: {e}");
                 break;
             }

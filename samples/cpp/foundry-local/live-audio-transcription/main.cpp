@@ -11,6 +11,11 @@
 #include <thread>
 #include <vector>
 
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 using namespace foundry_local;
 
 void StreamPcm(std::istream& input, ItemQueue& queue) {
@@ -64,7 +69,13 @@ int main(int argc, char* argv[]) {
 
     std::ifstream file;
     std::istream* input = &std::cin;
-    if (std::string(argv[1]) != "-") {
+    if (std::string(argv[1]) == "-") {
+#ifdef _WIN32
+      if (_setmode(_fileno(stdin), _O_BINARY) == -1) {
+        throw std::runtime_error("Could not switch standard input to binary mode.");
+      }
+#endif
+    } else {
       file.open(argv[1], std::ios::binary);
       if (!file) {
         throw std::runtime_error("Could not open PCM input file.");

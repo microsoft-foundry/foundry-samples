@@ -5,6 +5,7 @@ use foundry_local_sdk::{
     RequestOptions, SearchOptions,
 };
 use std::io::{self, Write};
+use url::Url;
 // </imports>
 
 #[tokio::main]
@@ -49,7 +50,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Speech model loaded.");
 
     let audio_session = AudioSession::new(&speech_model).await?;
-    let audio = Item::audio_data(std::fs::read("meeting-notes.wav")?, Some("wav"), 0, 0);
+    let audio_path = std::fs::canonicalize("meeting-notes.wav")?;
+    let audio_uri = Url::from_file_path(&audio_path)
+        .map_err(|_| format!("Could not convert {} to a file URI.", audio_path.display()))?;
+    let audio = Item::audio_uri(audio_uri.as_str(), Some("wav"), 0, 0);
     let transcription = audio_session.transcribe(audio).await?;
     println!("\nTranscription:\n{transcription}");
 

@@ -61,7 +61,7 @@ using (var request = new Request())
     request.AddItem(inputQueue, takeOwnership: false);
 
     await using var stream = audioSession.ProcessStreamingRequestAsync(request);
-    var producer = ProduceAudioAsync(inputQueue, args.Contains("--synth"));
+    var producer = Task.Run(() => ProduceAudioAsync(inputQueue, args.Contains("--synth")));
 
     await foreach (var item in stream)
     {

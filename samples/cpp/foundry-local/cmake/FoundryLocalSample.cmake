@@ -39,10 +39,26 @@ set(FOUNDRY_LOCAL_RUNTIME_ROOT
 set(FOUNDRY_LOCAL_INCLUDE_DIR "${FOUNDRY_LOCAL_RUNTIME_ROOT}/build/native/include")
 
 if(WIN32)
-  if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
-    set(FOUNDRY_LOCAL_RID "win-arm64")
+  if(CMAKE_GENERATOR_PLATFORM)
+    set(_foundry_local_target_arch "${CMAKE_GENERATOR_PLATFORM}")
+  elseif(CMAKE_VS_PLATFORM_NAME)
+    set(_foundry_local_target_arch "${CMAKE_VS_PLATFORM_NAME}")
+  elseif(CMAKE_CXX_COMPILER_ARCHITECTURE_ID)
+    set(_foundry_local_target_arch "${CMAKE_CXX_COMPILER_ARCHITECTURE_ID}")
   else()
+    set(_foundry_local_target_arch "${CMAKE_SYSTEM_PROCESSOR}")
+  endif()
+  string(REGEX REPLACE ",.*$" "" _foundry_local_target_arch "${_foundry_local_target_arch}")
+  string(TOLOWER "${_foundry_local_target_arch}" _foundry_local_target_arch)
+
+  if(_foundry_local_target_arch MATCHES "^(arm64|aarch64)$")
+    set(FOUNDRY_LOCAL_RID "win-arm64")
+  elseif(_foundry_local_target_arch MATCHES "^(x64|amd64|x86_64)$")
     set(FOUNDRY_LOCAL_RID "win-x64")
+  else()
+    message(FATAL_ERROR
+      "Unsupported Windows target architecture: ${_foundry_local_target_arch}. "
+      "Foundry Local supports x64 and ARM64.")
   endif()
   set(FOUNDRY_LOCAL_LIBRARY
       "${FOUNDRY_LOCAL_RUNTIME_ROOT}/runtimes/${FOUNDRY_LOCAL_RID}/native/foundry_local.lib")
@@ -111,6 +127,14 @@ function(add_foundry_local_sample target)
       COMMAND "${CMAKE_COMMAND}" -E create_symlink
               "libonnxruntime.dylib"
               "$<TARGET_FILE_DIR:${target}>/libonnxruntime.1.dylib"
+      VERBATIM)
+  elseif(UNIX)
+    add_custom_command(TARGET "${target}" POST_BUILD
+      COMMAND "${CMAKE_COMMAND}" -E rm -f
+              "$<TARGET_FILE_DIR:${target}>/libonnxruntime.so.1"
+      COMMAND "${CMAKE_COMMAND}" -E create_symlink
+              "libonnxruntime.so"
+              "$<TARGET_FILE_DIR:${target}>/libonnxruntime.so.1"
       VERBATIM)
   endif()
 endfunction()

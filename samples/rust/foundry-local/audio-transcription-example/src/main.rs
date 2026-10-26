@@ -8,9 +8,11 @@ use std::io::{self, Write};
 use std::path::Path;
 
 use foundry_local_sdk::{
-    AudioSession, FoundryLocalConfig, FoundryLocalManager, Item, Request, TextKind,
+    AudioSession, FoundryLocalConfig, FoundryLocalManager, Item, Request, SpeechSegmentKind,
+    TextKind,
 };
 use tokio_stream::StreamExt;
+use url::Url;
 // </imports>
 
 const ALIAS: &str = "whisper-tiny";
@@ -70,13 +72,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // <transcription>
     // ── 3. Create an audio session ──────────────────────────────────────
     let session = AudioSession::new(&model).await?;
-    let bytes = std::fs::read(&audio_path)?;
     let format = Path::new(&audio_path)
         .extension()
         .and_then(|extension| extension.to_str())
         .unwrap_or("mp3")
         .to_string();
-    let audio = Item::audio_data(bytes, Some(format), 0, 0);
+    let canonical_path = std::fs::canonicalize(&audio_path)?;
+    let audio_uri = Url::from_file_path(&canonical_path).map_err(|_| {
+        format!(
+            "Could not convert {} to a file URI.",
+            canonical_path.display()
+        )
+    })?;
+    let audio = Item::audio_uri(audio_uri.as_str(), Some(format), 0, 0);
 
     // ── 4. Non-streaming transcription ──────────────────────────────────
     println!("--- Non-streaming transcription ---");
@@ -89,7 +97,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stream = session.process_streaming_request(Request::from_items(vec![audio]));
     while let Some(item) = stream.next().await {
         match item? {
-            Item::SpeechResult(result) => print!("{}", result.text),
+            Item::SpeechSegment(segment) if segment.kind == SpeechSegmentKind::Final => {
+                print!("{}", segment.text)
+            }
             Item::Text {
                 text,
                 kind: TextKind::Default,
@@ -97,6 +107,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             _ => {}
         }
         io::stdout().flush().ok();
+    }
+    let final_response = stream.response().await?;
+    if let Some(result) = final_response.items.iter().find_map(Item::as_speech_result) {
+        println!("\nFinal transcript: {}", result.text);
     }
     println!("\n");
     // </transcription>
