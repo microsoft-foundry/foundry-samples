@@ -357,6 +357,9 @@ def ensure_virtual_desktop(output_file: Path | None = None) -> None:
             stderr=subprocess.DEVNULL,
         )
         time.sleep(0.8)
+        if _paint_process.poll() is not None:
+            _pyautogui_available = False
+            return
 
 
 def _get_pyautogui() -> Any | None:

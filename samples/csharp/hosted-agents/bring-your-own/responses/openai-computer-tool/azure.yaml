@@ -33,6 +33,9 @@ services:
         - .NET
     project: src/openai-computer-tool-dotnet-responses
     language: csharp
+    codeConfiguration:
+      runtime: dotnet_10
+      entryPoint: openai-computer-tool.dll
     docker:
       path: Dockerfile
       remoteBuild: true

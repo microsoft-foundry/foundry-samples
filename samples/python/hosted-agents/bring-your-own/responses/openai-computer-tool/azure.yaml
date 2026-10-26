@@ -33,6 +33,10 @@ services:
         - PyAutoGUI
     project: src/openai-computer-tool
     language: python
+    codeConfiguration:
+      runtime: python_3_13
+      entryPoint: main.py
+      dependencyResolution: remote_build
     docker:
       path: Dockerfile
       remoteBuild: true
