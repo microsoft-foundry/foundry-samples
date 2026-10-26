@@ -4,9 +4,10 @@
 # Remote code builds do not include a shell-resolvable playwright-cli.
 samples/csharp/hosted-agents/agent-framework/browser-automation
 samples/csharp/hosted-agents/bring-your-own/responses/browser-automation
-samples/csharp/hosted-agents/bring-your-own/responses/openai-computer-tool
 samples/python/hosted-agents/agent-framework/responses/14-browser-automation-agent
 samples/python/hosted-agents/bring-your-own/responses/browser-automation
+
+# Remote code builds do not install Xvfb/Tkinter/scrot OS packages from the Dockerfile.
 samples/python/hosted-agents/bring-your-own/responses/openai-computer-tool
 
 # Existing code-mode exclusion.

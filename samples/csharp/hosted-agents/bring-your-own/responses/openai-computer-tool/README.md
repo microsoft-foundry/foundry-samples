@@ -49,14 +49,12 @@ openai-computer-tool/
         ├── .env.example
         ├── openai-computer-tool.csproj
         ├── Program.cs                        # ResponsesServer (:8088) + --local CLI mode
-        ├── prompts/
-        │   └── base.md                       # System instructions for the Computer Tool agent
         ├── scenarios/
         │   └── PaintSmileyScenario.cs        # Paint Smiley scenario prompt and runner
         └── utils/
             ├── AgentRunner.cs                # Multi-turn GA OpenAI Computer Tool loop
             ├── VirtualPaintDesktop.cs        # 1280x800 in-container Virtual Paint Desktop + PNG encoder
-            └── Settings.cs                   # Environment configuration loader
+            └── Settings.cs                   # Environment configuration and system instructions
 ```
 
 ---
@@ -80,8 +78,8 @@ cp src/openai-computer-tool-dotnet-responses/.env.example src/openai-computer-to
 Edit `src/openai-computer-tool-dotnet-responses/.env`:
 
 ```dotenv
-PROJECT_ENDPOINT=https://<your-foundry-resource>.services.ai.azure.com/api/projects/<your-project>
-MODEL_DEPLOYMENT_NAME=gpt-5.4
+FOUNDRY_PROJECT_ENDPOINT=https://<account>.services.ai.azure.com/api/projects/<project>
+AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-5.4
 ```
 
 *(Both `PROJECT_ENDPOINT` / `FOUNDRY_PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT_NAME` / `AZURE_AI_MODEL_DEPLOYMENT_NAME` are supported.)*

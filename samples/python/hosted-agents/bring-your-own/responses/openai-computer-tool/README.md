@@ -24,7 +24,7 @@ This sample implements a **Microsoft Foundry Hosted Agent** (`kind: hosted`) usi
 
 1. **Container & Virtual Desktop (`Dockerfile`)**: Starts an `Xvfb :99` virtual X11 display (`1280x800x24`) and launches the `ResponsesAgentServerHost` server on port `8088`.
 2. **Hosted Agent Responses Handler (`main.py`)**: Accepts OpenAI Responses protocol requests (`POST /responses`), reconstructs conversation history, and streams the multi-turn Computer Tool loop back to the caller. Also supports `--local` CLI execution (`python main.py --local`) for direct desktop testing.
-3. **Computer Call Loop (`utils/agent_runner.py`)**: Calls the Foundry Responses API with `tools=[{"type": "computer"}]` and system instructions from `prompts/base.md`, dispatches each `computer_call` batch to `handle_pyautogui_action`, and returns a `computer_screenshot` in `computer_call_output` until the task completes.
+3. **Computer Call Loop (`utils/agent_runner.py`)**: Calls the Foundry Responses API with `tools=[{"type": "computer"}]` and system instructions from `utils/settings.py`, dispatches each `computer_call` batch to `handle_pyautogui_action`, and returns a `computer_screenshot` in `computer_call_output` until the task completes.
 4. **PyAutoGUI + Virtual Paint Canvas (`utils/pyautogui_helper.py` + `scenarios/paint_smiley.py`)**: Translates `computer_call` actions into mouse/keyboard input via `pyautogui`. On Linux (`Xvfb`), automatically opens a lightweight Tkinter Paint canvas so the agent can draw a yellow smiley face and save `paint_smiley_<timestamp>.png`; on Windows, the agent uses Microsoft Paint (`mspaint.exe`).
 
 ## Key files
@@ -35,10 +35,9 @@ This sample implements a **Microsoft Foundry Hosted Agent** (`kind: hosted`) usi
 | `azure.yaml` | Declarative Azure Developer CLI (`azd`) definition for the Foundry project and Hosted Agent (`kind: hosted`, `protocol: responses`). |
 | `src/openai-computer-tool/Dockerfile` | Container definition with `uv`, `xvfb`, `python3-tk`, and `scrot` for virtual desktop execution. |
 | `src/openai-computer-tool/main.py` | Hosted Agent Responses protocol server (`ResponsesAgentServerHost`) and `--local` CLI entrypoint. |
-| `src/openai-computer-tool/prompts/base.md` | Desktop automation system instructions for the OpenAI Computer Tool agent. |
 | `src/openai-computer-tool/utils/agent_runner.py` | Multi-turn `computer_call` -> `computer_call_output` execution loop and temporary screenshot file cleanup. |
 | `src/openai-computer-tool/utils/pyautogui_helper.py` | PyAutoGUI action dispatcher (`click`, `drag`, `type`, `keypress`, `scroll`), `Xvfb` / Tkinter Paint canvas launcher, and DPI screenshot helper. |
-| `src/openai-computer-tool/utils/settings.py` | Environment variable (`FOUNDRY_PROJECT_ENDPOINT` / `AZURE_AI_PROJECT_ENDPOINT`, `AZURE_AI_MODEL_DEPLOYMENT_NAME`) and `AIProjectClient` helpers. |
+| `src/openai-computer-tool/utils/settings.py` | Environment variable (`FOUNDRY_PROJECT_ENDPOINT`, `AZURE_AI_MODEL_DEPLOYMENT_NAME`), system instructions (`SYSTEM_PROMPT`), and `AIProjectClient` helpers. |
 | `src/openai-computer-tool/scenarios/paint_smiley.py` | Paint Smiley scenario prompt and runner (`build_paint_prompt`, `run_paint_scenario`). |
 
 ## Directory structure
@@ -58,8 +57,6 @@ samples/python/hosted-agents/bring-your-own/responses/openai-computer-tool/
         ├── main.py
         ├── pyproject.toml
         ├── uv.lock
-        ├── prompts/
-        │   └── base.md
         ├── scenarios/
         │   ├── __init__.py
         │   └── paint_smiley.py
@@ -82,8 +79,7 @@ samples/python/hosted-agents/bring-your-own/responses/openai-computer-tool/
 Copy `src/openai-computer-tool/.env.example` to `src/openai-computer-tool/.env`:
 
 ```dotenv
-FOUNDRY_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
-AZURE_AI_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
+FOUNDRY_PROJECT_ENDPOINT=https://<account>.services.ai.azure.com/api/projects/<project>
 AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-5.4
 ```
 
@@ -137,13 +133,13 @@ curl -sS -X POST http://localhost:8088/responses \
 ### 3. Run the Paint Smiley scenario directly in CLI mode (`--local`)
 
 ```bash
-python main.py --local
+uv run --no-sync python main.py --local
 ```
 
 Or pass a custom desktop task prompt:
 
 ```bash
-python main.py --local --prompt "Draw a cheerful yellow smiley face in the center of the canvas and save it."
+uv run --no-sync python main.py --local --prompt "Draw a cheerful yellow smiley face in the center of the canvas and save it."
 ```
 
 ## Safety and human oversight

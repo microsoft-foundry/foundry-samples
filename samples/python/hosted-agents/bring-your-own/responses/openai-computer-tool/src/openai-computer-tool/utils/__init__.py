@@ -10,9 +10,9 @@ from utils.pyautogui_helper import (
     take_desktop_screenshot,
 )
 from utils.settings import (
-    PROMPTS_PATH,
     SAMPLE_ROOT_DIR,
     SRC_DIR,
+    SYSTEM_PROMPT,
     get_model_deployment_name,
     get_project_client,
     get_project_endpoint,
@@ -21,9 +21,9 @@ from utils.settings import (
 
 __all__ = [
     "COMPUTER_TOOL",
-    "PROMPTS_PATH",
     "SAMPLE_ROOT_DIR",
     "SRC_DIR",
+    "SYSTEM_PROMPT",
     "ensure_virtual_desktop",
     "get_model_deployment_name",
     "get_project_client",

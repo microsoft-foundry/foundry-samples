@@ -6,52 +6,39 @@ using DotNetEnv;
 namespace OpenAIComputerToolHostedAgent;
 
 /// <summary>
-/// Environment configuration and prompt loader for the C# OpenAI Computer Tool Hosted Agent.
+/// Environment configuration and system instructions for the C# OpenAI Computer Tool Hosted Agent.
 /// </summary>
 public static class Settings
 {
-    public static readonly string SrcDir = ResolveSrcDir();
+    public const string SystemPrompt = """
+        You are a desktop automation agent running on Microsoft Foundry and equipped with the `computer` tool (`{"type": "computer"}`).
+
+        Inspect the desktop screenshot before taking action and after each batch of actions. Use batched `computer_call` actions (`click`, `double_click`, `triple_click`, `move`, `drag`, `scroll`, `type`, `keypress`, `wait`, `screenshot`) to complete the user's task, verify the result visually on screen, and then provide a concise summary.
+        """;
 
     static Settings()
     {
-        string envFile = Path.Combine(SrcDir, ".env");
-        if (File.Exists(envFile))
-        {
-            Env.Load(envFile);
-        }
+        Env.NoClobber().TraversePath().Load();
     }
 
     public static string GetProjectEndpoint() =>
         GetFirstEnv("FOUNDRY_PROJECT_ENDPOINT", "PROJECT_ENDPOINT", "AZURE_AI_PROJECT_ENDPOINT")
         ?? throw new InvalidOperationException(
-            "Required environment variable FOUNDRY_PROJECT_ENDPOINT or PROJECT_ENDPOINT is not set.");
+            "Required environment variable FOUNDRY_PROJECT_ENDPOINT is not set.");
 
     public static string GetModelDeploymentName() =>
-        GetFirstEnv("AZURE_AI_MODEL_DEPLOYMENT_NAME", "MODEL_DEPLOYMENT_NAME")
+        GetFirstEnv("FOUNDRY_MODEL_DEPLOYMENT_NAME", "AZURE_AI_MODEL_DEPLOYMENT_NAME", "MODEL_DEPLOYMENT_NAME")
         ?? "gpt-5.4";
 
-    public static string GetSystemPrompt()
-    {
-        string promptPath = Path.Combine(SrcDir, "prompts", "base.md");
-        if (!File.Exists(promptPath))
-        {
-            promptPath = Path.Combine(AppContext.BaseDirectory, "prompts", "base.md");
-        }
-
-        if (!File.Exists(promptPath))
-        {
-            return "You are a helpful computer-use agent running inside a Microsoft Foundry Hosted Agent container.";
-        }
-
-        return File.ReadAllText(promptPath).Trim();
-    }
+    public static string GetSystemPrompt() => SystemPrompt;
 
     public static string GetWritableOutputPath(string filename)
     {
+        string workDir = Directory.GetCurrentDirectory();
         try
         {
-            string candidate = Path.Combine(SrcDir, filename);
-            string testProbe = Path.Combine(SrcDir, $".write_probe_{Guid.NewGuid():N}");
+            string candidate = Path.Combine(workDir, filename);
+            string testProbe = Path.Combine(workDir, $".write_probe_{Guid.NewGuid():N}");
             File.WriteAllText(testProbe, string.Empty);
             File.Delete(testProbe);
             return candidate;
@@ -74,21 +61,5 @@ public static class Settings
         }
 
         return null;
-    }
-
-    private static string ResolveSrcDir()
-    {
-        DirectoryInfo? dir = new(AppContext.BaseDirectory);
-        while (dir is not null)
-        {
-            if (File.Exists(Path.Combine(dir.FullName, "openai-computer-tool.csproj")))
-            {
-                return dir.FullName;
-            }
-
-            dir = dir.Parent;
-        }
-
-        return Directory.GetCurrentDirectory();
     }
 }

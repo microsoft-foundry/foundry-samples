@@ -30,7 +30,6 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy source
 COPY main.py ./
-COPY prompts/ ./prompts/
 COPY scenarios/ ./scenarios/
 COPY utils/ ./utils/
 

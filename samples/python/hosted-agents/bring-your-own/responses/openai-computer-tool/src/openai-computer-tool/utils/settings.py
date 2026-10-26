@@ -15,12 +15,19 @@ SAMPLE_ROOT_DIR = SRC_DIR.parent.parent
 dotenv.load_dotenv(SRC_DIR / ".env", override=False)
 dotenv.load_dotenv(SAMPLE_ROOT_DIR / ".env", override=False)
 
-PROMPTS_PATH = SRC_DIR / "prompts" / "base.md"
+SYSTEM_PROMPT = (
+    "You are a desktop automation agent running on Microsoft Foundry and equipped with "
+    'the `computer` tool (`{"type": "computer"}`).\n\n'
+    "Inspect the desktop screenshot before taking action and after each batch of actions. "
+    "Use batched `computer_call` actions (`click`, `double_click`, `triple_click`, `move`, "
+    "`drag`, `scroll`, `type`, `keypress`, `wait`, `screenshot`) to complete the user's task, "
+    "verify the result visually on screen, and then provide a concise summary."
+)
 
 
 def load_agent_instructions() -> str:
-    """Load the desktop automation system instructions from `prompts/base.md`."""
-    return PROMPTS_PATH.read_text(encoding="utf-8").strip()
+    """Return the desktop automation system instructions for the `computer` tool agent."""
+    return SYSTEM_PROMPT
 
 
 def get_project_endpoint() -> str:
@@ -32,14 +39,19 @@ def get_project_endpoint() -> str:
     ).rstrip("/")
     if not endpoint:
         raise RuntimeError(
-            "Set FOUNDRY_PROJECT_ENDPOINT or AZURE_AI_PROJECT_ENDPOINT in .env or via `azd env set`."
+            "Set FOUNDRY_PROJECT_ENDPOINT in .env or via `azd env set`."
         )
     return endpoint
 
 
 def get_model_deployment_name() -> str:
-    """Resolve the model deployment name supporting the GA OpenAI Computer Tool (`computer`)."""
-    return os.environ.get("AZURE_AI_MODEL_DEPLOYMENT_NAME", "gpt-5.4")
+    """Resolve the model deployment name supporting the OpenAI `computer` tool."""
+    return (
+        os.environ.get("FOUNDRY_MODEL_DEPLOYMENT_NAME")
+        or os.environ.get("AZURE_AI_MODEL_DEPLOYMENT_NAME")
+        or os.environ.get("MODEL_DEPLOYMENT_NAME")
+        or "gpt-5.4"
+    )
 
 
 def get_project_client() -> AIProjectClient:
