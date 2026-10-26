@@ -72,7 +72,7 @@ samples/csharp/prompt-agents/openai-computer-tool/
 
 - An Azure AI Foundry / Microsoft Foundry **project** with a model deployment that supports the **OpenAI Computer Tool** (`{"type": "computer"}`, such as `gpt-5.4`)
 - **Azure CLI** (`az login`) and **Azure Developer CLI** (`azd`)
-- .NET 8.0 SDK or later (`dotnet`)
+- .NET 10.0 SDK (`dotnet`)
 - Windows desktop session with `mspaint.exe` for the built-in MS Paint scenario
 
 ## Configuration
