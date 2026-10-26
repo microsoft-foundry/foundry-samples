@@ -26,21 +26,14 @@ def build_paint_prompt(output_file: Path | None = None) -> str:
     target = output_file or get_writable_output_path(f"paint_smiley_{time.strftime('%Y%m%d_%H%M%S')}.png")
     if sys.platform == "win32" and os.environ.get("USE_NATIVE_WINDOWS_PAINT", "").strip() == "1":
         return (
-            "Open Windows Search (click the Start/Search button on the taskbar or press the WIN key), "
-            "search for 'Paint' (mspaint), and press Enter to open MS Paint (press Ctrl+N if needed for a clean canvas). "
-            "In MS Paint, draw a cheerful, polished smiley face centered on a clean white canvas. "
-            "Use a large yellow circle with a smooth black outline, two evenly spaced black oval eyes, "
-            "and a curved black smile. Keep the features balanced and the lines neat. "
-            "Use the ellipse and curve tools where possible, and leave some white space around the face. "
-            "Don’t add text or extra decorations. "
-            f"When finished drawing, save the image (press Ctrl+S, type the full path '{target}', and press Enter)."
+            "Open Microsoft Paint from Windows Search, draw a cheerful yellow smiley face "
+            "centered on a clean white canvas with a black outline, two black oval eyes, and a curved smile, "
+            f"and save the image to '{target}'."
         )
     return (
-        "On the open Paint Canvas window, draw a cheerful, polished yellow smiley face centered on the white canvas: "
-        "1. Click 'Oval' and 'Yellow' in the top toolbar, then drag a large circle in the center of the white canvas. "
-        "2. Click 'Black' in the top toolbar, then drag two evenly spaced oval eyes inside the upper half of the face. "
-        "3. Click 'Brush' in the top toolbar, then drag a curved black smile across the lower half of the face. "
-        f"4. Click 'Save' (or press Ctrl+S) to save the finished drawing to '{target}'."
+        "Draw a cheerful yellow smiley face centered on the white Paint canvas with a black outline, "
+        "two black oval eyes, and a curved smile. "
+        f"When finished, click Save (or press Ctrl+S) to save the image to '{target}'."
     )
 
 
