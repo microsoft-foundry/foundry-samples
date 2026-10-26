@@ -4,10 +4,12 @@ description: Basic quickstart sample demonstrating Microsoft Foundry chat with A
 build: "npm install --registry=https://registry.npmjs.org/"
 validate: "npx tsc --noEmit"
 live_service_validation:
+  trace_validation: true
   command: "npm ci --registry=https://registry.npmjs.org/ && npm run start"
   required_env:
     - FOUNDRY_PROJECT_ENDPOINT
     - MODEL_DEPLOYMENT
+    - FOUNDRY_PROJECT_RESOURCE_ID
   cleanup_resources:
     - type: foundry_agent_versions
   substitutions:

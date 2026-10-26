@@ -1,6 +1,7 @@
 import { DefaultAzureCredential } from "@azure/identity";
 import { AIProjectClient } from "@azure/ai-projects";
 
+// Optional project tracing setup: ../../../observability/README.md
 // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
 const FOUNDRY_PROJECT_ENDPOINT = "your_project_endpoint";
 const FOUNDRY_AGENT_NAME = "your-agent-name";
@@ -36,6 +37,10 @@ async function main(): Promise<void> {
                 },
             );
             console.log(response.output_text);
+            if (response.status !== "completed" || !response.output_text.trim()) {
+                throw new Error("Agent response did not complete with output text.");
+            }
+            console.log(`Agent response ID: ${response.id}`);
 
             // Ask a follow-up question in the same conversation
             const response2 = await openai.responses.create(
@@ -48,6 +53,10 @@ async function main(): Promise<void> {
                 },
             );
             console.log(response2.output_text);
+            if (response2.status !== "completed" || !response2.output_text.trim()) {
+                throw new Error("Agent follow-up did not complete with output text.");
+            }
+            console.log(`Agent response ID: ${response2.id}`);
         } finally {
             await openai.conversations.delete(conversation.id);
         }

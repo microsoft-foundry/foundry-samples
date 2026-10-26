@@ -4,10 +4,12 @@ description: Basic quickstart sample demonstrating Microsoft Foundry chat with A
 build: "pip install -r requirements.txt"
 validate: "python -m py_compile *.py"
 live_service_validation:
+  trace_validation: true
   command: "python quickstart-chat-with-agent.py"
   required_env:
     - FOUNDRY_PROJECT_ENDPOINT
     - MODEL_DEPLOYMENT
+    - FOUNDRY_PROJECT_RESOURCE_ID
   cleanup_resources:
     - type: foundry_agent_versions
   substitutions:

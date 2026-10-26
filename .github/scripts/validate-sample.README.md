@@ -142,6 +142,22 @@ The contract is:
   scoped the same way (queryable by this run's unique agent name, with no
   pre-existing collisions possible) can be added the same way, without a new
   `sample.yaml` field.
+- `live_service_validation.trace_validation` is an optional boolean (default
+  `false`). When enabled, a successful command must print exactly two distinct
+  `Agent response ID: <id>` lines, one after each completed agent turn. The
+  verifier resolves the project's actual App Insights connection, then polls
+  for spans carrying those response IDs after the command's start time. A
+  successful command alone is not a pass. Missing IDs or ingested traces are
+  sample failures (`1`); query/configuration errors are infrastructure errors
+  (`2`). Existing cleanup runs after verification, including on trace failure.
+  This requires Python 3.10+, Azure CLI authentication, and
+  `FOUNDRY_PROJECT_RESOURCE_ID` (the project's ARM resource ID, not endpoint).
+  The querying identity needs App Insights trace-read access. The validator
+  never provisions or changes connections; configure the existing project
+  separately with `agent_tracing_setup.py`. Override the default 300-second
+  ingestion wait with `FOUNDRY_TRACE_TIMEOUT_SECONDS`. With `--results-dir`,
+  successful queries write a `*-traces.json` evidence file containing resource,
+  response, and span IDs, but not message content or connection credentials.
 - `SKIP_PROVISION` is a reserved caller input and must be set to exactly `true`
   or `false` whenever live-service validation is declared. The validator
   passes it through but never provisions resources itself. Current repository
@@ -174,6 +190,7 @@ variables to every declared live-service command:
 | Variable | Purpose |
 |---|---|
 | `FOUNDRY_PROJECT_ENDPOINT` | The existing warm Microsoft Foundry project endpoint. |
+| `FOUNDRY_PROJECT_RESOURCE_ID` | ARM resource ID of that same project, required by samples declaring trace verification. |
 | `FOUNDRY_MODEL_DEPLOYMENT` | The deployment name in that project. |
 | `SKIP_PROVISION` | Always `true`; the cadence uses an existing warm project and never provisions resources. |
 

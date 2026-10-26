@@ -2,6 +2,7 @@ from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import PromptAgentDefinition
 
+# Optional project tracing setup: ../../observability/README.md
 # Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
 FOUNDRY_PROJECT_ENDPOINT = "your_project_endpoint"
 FOUNDRY_AGENT_NAME = "your-agent-name"
@@ -33,6 +34,9 @@ response = openai.responses.create(
     input="What is the size of France in square miles?",
 )
 print(response.output_text)
+if response.status != "completed" or not response.output_text:
+    raise RuntimeError("Agent response did not complete with output text.")
+print(f"Agent response ID: {response.id}")
 
 # Ask a follow-up question in the same conversation
 response = openai.responses.create(
@@ -40,3 +44,6 @@ response = openai.responses.create(
     input="And what is the capital city?",
 )
 print(response.output_text)
+if response.status != "completed" or not response.output_text:
+    raise RuntimeError("Agent follow-up did not complete with output text.")
+print(f"Agent response ID: {response.id}")

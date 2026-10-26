@@ -2,10 +2,12 @@ name: Quickstart Chat with Agent
 description: Basic quickstart sample demonstrating Microsoft Foundry chat with Agent.
 build: "dotnet restore --source https://api.nuget.org/v3/index.json && dotnet build --no-restore --verbosity minimal"
 live_service_validation:
+  trace_validation: true
   command: "dotnet run"
   required_env:
     - FOUNDRY_PROJECT_ENDPOINT
     - MODEL_DEPLOYMENT
+    - FOUNDRY_PROJECT_RESOURCE_ID
   cleanup_resources:
     - type: foundry_agent_versions
   substitutions:

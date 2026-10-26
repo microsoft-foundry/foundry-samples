@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -20,6 +21,7 @@ DISCOVERY = ROOT / "scripts" / "discover-validation-samples.py"
 COMPLETENESS = ROOT / "scripts" / "validate-validation-pilot-results.py"
 WORKFLOW = ROOT / "workflows" / "validation-pilot.yml"
 SELFTEST_WORKFLOW = ROOT / "workflows" / "scripts-selftest.yml"
+BASH = shutil.which("bash") or "bash"
 
 DISCOVERY_SPEC = importlib.util.spec_from_file_location("validation_discovery", DISCOVERY)
 assert DISCOVERY_SPEC and DISCOVERY_SPEC.loader
@@ -96,7 +98,7 @@ if kind_match:
 tag_match = re.fullmatch(r"(.+) \\| tag", query)
 if tag_match:
     value = resolve(tag_match.group(1))
-    print("!!str" if isinstance(value, str) else "!!null" if value is None else "!!int")
+    print("!!str" if isinstance(value, str) else "!!bool" if isinstance(value, bool) else "!!null" if value is None else "!!int")
     raise SystemExit(0)
 
 length_match = re.fullmatch(r"(.+) \\| length", query)
@@ -355,7 +357,7 @@ print_value(resolve(query))
             }
             completed = subprocess.run(
                 [
-                    "bash",
+                    BASH,
                     str(ROOT / "scripts" / "validate-sample.sh"),
                     "--mode",
                     "live-service",
@@ -409,7 +411,7 @@ print_value(resolve(query))
             }
             completed = subprocess.run(
                 [
-                    "bash",
+                    BASH,
                     str(ROOT / "scripts" / "validate-sample.sh"),
                     "--mode",
                     "live-service",
@@ -468,7 +470,7 @@ print_value(resolve(query))
             }
             completed = subprocess.run(
                 [
-                    "bash",
+                    BASH,
                     str(ROOT / "scripts" / "validate-sample.sh"),
                     "--mode",
                     "live-service",
@@ -505,7 +507,7 @@ print_value(resolve(query))
             }
             completed = subprocess.run(
                 [
-                    "bash",
+                    BASH,
                     str(ROOT / "scripts" / "validate-sample.sh"),
                     "--mode",
                     "live-service",
@@ -554,7 +556,7 @@ print_value(resolve(query))
                 # interpreter or nothing in this test would be able to parse YAML.
                 'case "$1" in\n'
                 "    */live-resource-cleanup.py)\n"
-                f"        echo \"$*\" >> {recorder}\n"
+                f'        echo "$*" >> "{recorder.as_posix()}"\n'
                 '        if [ "$2" = "snapshot" ]; then\n'
                 '            prev=""\n'
                 '            for arg in "$@"; do\n'
@@ -567,7 +569,7 @@ print_value(resolve(query))
                 "        exit 0\n"
                 "        ;;\n"
                 "esac\n"
-                f"exec {sys.executable} \"$@\"\n",
+                f'exec "{Path(sys.executable).as_posix()}" "$@"\n',
                 encoding="utf-8",
             )
             fake_python3.chmod(0o755)
@@ -578,7 +580,7 @@ print_value(resolve(query))
             }
             completed = subprocess.run(
                 [
-                    "bash",
+                    BASH,
                     str(ROOT / "scripts" / "validate-sample.sh"),
                     "--mode",
                     "live-service",
@@ -597,6 +599,75 @@ print_value(resolve(query))
             self.assertNotEqual(substituted_name, "your-agent-name")
             recorded = recorder.read_text(encoding="utf-8")
             self.assertIn(f"--foundry-agent {substituted_name}", recorded)
+
+    def test_trace_validation_verdicts_preserve_cleanup(self) -> None:
+        cases = (
+            ("true", 0, "true", True, 0, "pass", ["snapshot", "trace", "cleanup"]),
+            ("true", 1, "true", True, 1, "fail", ["snapshot", "trace", "cleanup"]),
+            ("true", 2, "true", True, 2, "error", ["snapshot", "trace", "cleanup"]),
+            ("true", 0, "false", True, 1, "fail", ["snapshot", "cleanup"]),
+            ("false", 2, "true", False, 0, "pass", ["snapshot", "cleanup"]),
+            (None, 2, "true", False, 0, "pass", ["snapshot", "cleanup"]),
+            ('"true"', 0, "true", True, 2, "error", []),
+            ("true", 0, "true", False, 2, "error", []),
+        )
+        for flag, trace_rc, command, configured, expected, verdict, calls in cases:
+            with self.subTest(flag=flag, trace_rc=trace_rc, command=command, configured=configured):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    sample = root / "samples" / "python" / "traced"
+                    sample.mkdir(parents=True)
+                    (sample / "agent.txt").write_text("your-agent-name\n", encoding="utf-8")
+                    trace_field = "" if flag is None else f"  trace_validation: {flag}\n"
+                    (sample / "sample.yaml").write_text(
+                        "name: traced\nlive_service_validation:\n"
+                        f'  command: "{command}"\n{trace_field}'
+                        "  cleanup_resources:\n    - type: foundry_agent_versions\n"
+                        "  substitutions:\n    - file: agent.txt\n      replacements:\n"
+                        "        - placeholder: your-agent-name\n          generate: unique_name\n",
+                        encoding="utf-8",
+                    )
+                    self.write_fake_yq(root)
+                    recorder = root / "calls.txt"
+                    python3 = root / "python3"
+                    python3.write_text(
+                        "#!/bin/sh\n"
+                        'case "$1" in\n'
+                        "  */agent_trace_evidence.py)\n"
+                        f'    echo trace >> "{recorder.as_posix()}"\n'
+                        f"    exit {trace_rc} ;;\n"
+                        "  */live-resource-cleanup.py)\n"
+                        f'    echo "$2" >> "{recorder.as_posix()}"\n'
+                        '    if [ "$2" = snapshot ]; then\n'
+                        '      prev=""; for arg in "$@"; do\n'
+                        '        if [ "$prev" = --output ]; then printf "{}" > "$arg"; fi\n'
+                        '        prev="$arg"\n'
+                        "      done\n    fi\n    exit 0 ;;\n"
+                        "esac\n"
+                        f'exec "{Path(sys.executable).as_posix()}" "$@"\n',
+                        encoding="utf-8",
+                    )
+                    python3.chmod(0o755)
+                    az = root / "az"
+                    az.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+                    az.chmod(0o755)
+                    env = {
+                        **os.environ,
+                        "PATH": f"{root}{os.pathsep}{os.environ['PATH']}",
+                        "SKIP_PROVISION": "true",
+                    }
+                    env.pop("FOUNDRY_PROJECT_RESOURCE_ID", None)
+                    if configured:
+                        env["FOUNDRY_PROJECT_RESOURCE_ID"] = "test-project-id"
+                    result = subprocess.run(
+                        [BASH, str(ROOT / "scripts" / "validate-sample.sh"),
+                         "--mode", "live-service", "--sample-dir", str(sample)],
+                        capture_output=True, text=True, env=env,
+                    )
+                    self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(f"verdict={verdict}", result.stdout)
+                    recorded = recorder.read_text().splitlines() if recorder.exists() else []
+                    self.assertEqual(calls, recorded)
 
     def test_live_service_substitutions_reject_trailing_parent_directory_paths(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -623,7 +694,7 @@ print_value(resolve(query))
             }
             completed = subprocess.run(
                 [
-                    "bash",
+                    BASH,
                     str(ROOT / "scripts" / "validate-sample.sh"),
                     "--mode",
                     "live-service",
@@ -669,7 +740,7 @@ print_value(resolve(query))
             }
             completed = subprocess.run(
                 [
-                    "bash",
+                    BASH,
                     str(ROOT / "scripts" / "validate-sample.sh"),
                     "--mode",
                     "live-service",
@@ -721,7 +792,7 @@ print_value(resolve(query))
             }
             completed = subprocess.run(
                 [
-                    "bash",
+                    BASH,
                     str(ROOT / "scripts" / "validate-sample.sh"),
                     "--mode",
                     "live-service",
@@ -766,7 +837,7 @@ print_value(resolve(query))
             }
             completed = subprocess.run(
                 [
-                    "bash",
+                    BASH,
                     str(ROOT / "scripts" / "validate-sample.sh"),
                     "--mode",
                     "live-service",

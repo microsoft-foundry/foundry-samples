@@ -6,6 +6,7 @@ using OpenAI.Responses;
 
 #pragma warning disable OPENAI001
 
+// Optional project tracing setup: ../../observability/README.md
 // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
 var foundryProjectEndpoint = "your_project_endpoint";
 var foundryAgentName = "your-agent-name";
@@ -33,7 +34,17 @@ ProjectResponsesClient responsesClient = projectClient.ProjectOpenAIClient.GetPr
     defaultConversationId: conversation.Id);
 ResponseResult response = responsesClient.CreateResponse("What is the size of France in square miles?");
 Console.WriteLine(response.GetOutputText());
+if (response.Status != ResponseStatus.Completed || string.IsNullOrWhiteSpace(response.GetOutputText()))
+{
+    throw new InvalidOperationException("Agent response did not complete with output text.");
+}
+Console.WriteLine($"Agent response ID: {response.Id}");
 
 // Ask a follow-up question in the same conversation
 response = responsesClient.CreateResponse("And what is the capital city?");
 Console.WriteLine(response.GetOutputText());
+if (response.Status != ResponseStatus.Completed || string.IsNullOrWhiteSpace(response.GetOutputText()))
+{
+    throw new InvalidOperationException("Agent follow-up did not complete with output text.");
+}
+Console.WriteLine($"Agent response ID: {response.Id}");

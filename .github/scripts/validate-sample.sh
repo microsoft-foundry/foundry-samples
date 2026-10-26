@@ -647,6 +647,20 @@ run_live_service_validation() {
     printf '%s' "$cmd" | grep -q '[^[:space:]]' ||
         error "sample.yaml live_service_validation.command must be a non-empty string"
 
+    local trace_validation=false
+    if [ "$(yq eval '.live_service_validation | has("trace_validation")' "$yaml" 2>/dev/null)" = "true" ]; then
+        [ "$(yq eval '.live_service_validation.trace_validation | tag' "$yaml" 2>/dev/null)" = "!!bool" ] ||
+            error "sample.yaml live_service_validation.trace_validation must be a boolean"
+        trace_validation="$(yq eval '.live_service_validation.trace_validation' "$yaml")" ||
+            error "failed to read live_service_validation.trace_validation"
+    fi
+    if [ "$trace_validation" = true ]; then
+        require_tool python3
+        require_tool az
+        [ -n "${FOUNDRY_PROJECT_RESOURCE_ID:-}" ] ||
+            error "FOUNDRY_PROJECT_RESOURCE_ID is required for agent trace verification"
+    fi
+
     if [ "$(yq eval '.live_service_validation | has("required_env")' "$yaml" 2>/dev/null)" = "true" ]; then
         local required_env_kind env_count i env_name env_tag
         required_env_kind="$(yq eval '.live_service_validation.required_env | kind' "$yaml" 2>/dev/null)" ||
@@ -733,10 +747,25 @@ run_live_service_validation() {
     echo "Running live-service command (SKIP_PROVISION=$SKIP_PROVISION): $cmd"
     local live_service_log
     live_service_log="$(mktemp)" || error "failed to create temporary live-service command log"
-    local live_service_rc
+    local live_service_rc trace_rc=0 trace_started_at=""
+    if [ "$trace_validation" = true ]; then
+        trace_started_at="$(python3 -c 'from datetime import datetime, timezone; print(datetime.now(timezone.utc).isoformat())')" ||
+            error "failed to record trace verification start time"
+    fi
     ( cd "$SAMPLE_DIR" && eval "$cmd" ) >"$live_service_log" 2>&1
     live_service_rc=$?
     cat "$live_service_log"
+    if [ "$live_service_rc" -eq 0 ] && [ "$trace_validation" = true ]; then
+        local -a trace_args=()
+        if [ -n "$RESULTS_DIR" ]; then
+            mkdir -p "$RESULTS_DIR"
+            trace_args+=(--output "$RESULTS_DIR/$(printf '%s' "$SAMPLE_DIR" | sed 's/[^a-zA-Z0-9_-]/_/g')-traces.json")
+        fi
+        python3 "$SCRIPT_DIR/agent_trace_evidence.py" \
+            --sample-log "$live_service_log" --started-at "$trace_started_at" \
+            --timeout "${FOUNDRY_TRACE_TIMEOUT_SECONDS:-300}" "${trace_args[@]}"
+        trace_rc=$?
+    fi
     rm -f "$live_service_log"
 
     if [ -n "$cleanup_snapshot" ]; then
@@ -747,6 +776,14 @@ run_live_service_validation() {
             error "live-resource cleanup failed"
         fi
         rm -f "$cleanup_snapshot"
+    fi
+
+    if [ "$live_service_rc" -eq 0 ]; then
+        case "$trace_rc" in
+            0) ;;
+            1) fail "agent response traces were not verified in connected Application Insights" ;;
+            *) error "agent trace verification could not complete (exit $trace_rc)" ;;
+        esac
     fi
 
     case "$live_service_rc" in

@@ -10,6 +10,7 @@ import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseCreateParams;
 
 public class ChatWithAgent {
+    // Optional project tracing setup: samples/java/observability/README.md
     public static void main(String[] args) {
         // Format: "https://resource_name.services.ai.azure.com/api/projects/project_name"
         String foundryProjectEndpoint = "your_project_endpoint";
@@ -49,8 +50,13 @@ public class ChatWithAgent {
     }
 
     private static void printResponse(Response response) {
+        if (response.status().isEmpty() || !response.status().get().toString().equals("completed")
+                || response.output().isEmpty()) {
+            throw new IllegalStateException("Agent response did not complete with output.");
+        }
         response.output().forEach(item -> item.message().ifPresent(message ->
             message.content().forEach(content -> content.outputText().ifPresent(
                 text -> System.out.println(text.text())))));
+        System.out.println("Agent response ID: " + response.id());
     }
 }

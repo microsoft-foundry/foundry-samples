@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -61,7 +62,7 @@ def access_token() -> str:
     try:
         completed = subprocess.run(
             [
-                "az",
+                shutil.which("az") or "az",
                 "account",
                 "get-access-token",
                 "--resource",

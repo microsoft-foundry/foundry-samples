@@ -138,6 +138,9 @@ jobs:
       - name: Phase-1 exit gate — all 5 languages, pass(0)/fail(1)/error(2)
         run: bash .github/scripts/test/run-tests.sh
 
+      - name: Agent tracing setup and ingestion contracts (offline)
+        run: python -m unittest discover -s .github/scripts/test -p 'test_agent_*.py'
+
   # --- Reporting consumer contract tests: fixtures only, no producer coupling ----------------------
   report-harness:
     runs-on: ubuntu-latest
