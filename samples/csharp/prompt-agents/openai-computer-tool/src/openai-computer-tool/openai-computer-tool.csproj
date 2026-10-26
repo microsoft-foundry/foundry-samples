@@ -7,7 +7,7 @@
     <AssemblyName>openai-computer-tool</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <NoWarn>$(NoWarn);OPENAI001</NoWarn>
+    <NoWarn>$(NoWarn);OPENAI001;CA1416</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +16,7 @@
     <PackageReference Include="Azure.AI.Extensions.OpenAI" Version="2.0.0" />
     <PackageReference Include="Azure.Identity" Version="1.20.0" />
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
   </ItemGroup>
 
   <ItemGroup>

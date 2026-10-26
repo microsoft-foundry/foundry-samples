@@ -14,14 +14,9 @@ namespace OpenAIComputerTool.Scenarios;
 public static class PaintSmileyScenario
 {
     public static string BuildPaintPrompt(string outputFile) =>
-        "Open Windows Search (click the Start/Search button on the taskbar or press the WIN key), " +
-        "search for 'Paint' (mspaint), and press Enter to open MS Paint (press Ctrl+N if needed for a clean canvas). " +
-        "In MS Paint, draw a cheerful, polished smiley face centered on a clean white canvas. " +
-        "Use a large yellow circle with a smooth black outline, two evenly spaced black oval eyes, " +
-        "and a curved black smile. Keep the features balanced and the lines neat. " +
-        "Use the ellipse and curve tools where possible, and leave some white space around the face. " +
-        "Don’t add text or extra decorations. " +
-        $"When finished drawing, save the image (press Ctrl+S, type the full path '{outputFile}', and press Enter).";
+        "Open Microsoft Paint from Windows Search, draw a cheerful yellow smiley face " +
+        "centered on a clean white canvas with a black outline, two black oval eyes, and a curved smile, " +
+        $"and save the image to '{outputFile}'.";
 
     public static async Task<string> RunPaintScenarioAsync(string? prompt = null)
     {

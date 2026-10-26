@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-using System.Buffers.Binary;
-using System.IO.Compression;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
@@ -13,14 +13,13 @@ namespace OpenAIComputerTool.Utils;
 /// Translates each batched action returned by the Azure AI Foundry Prompt Agent
 /// (<c>click</c>, <c>double_click</c>, <c>triple_click</c>, <c>move</c>, <c>drag</c>, <c>scroll</c>,
 /// <c>type</c>, <c>keypress</c>, <c>wait</c>, <c>screenshot</c>) into OS-level mouse and keyboard
-/// operations via Win32 <c>user32.dll</c> / <c>gdi32.dll</c>, and captures desktop screenshots
-/// encoded as PNG for <c>computer_call_output</c>.
+/// operations via Win32 <c>user32.dll</c> and captures desktop screenshots encoded as PNG via
+/// <see cref="Graphics.CopyFromScreen(int, int, int, int, Size)"/> for <c>computer_call_output</c>.
 /// </summary>
 public static class DesktopAutomationHelper
 {
     private const int SmCxScreen = 0;
     private const int SmCyScreen = 1;
-    private const int SrcCopy = 0x00CC0020;
 
     private const uint MouseEventLeftDown = 0x0002;
     private const uint MouseEventLeftUp = 0x0004;
@@ -235,43 +234,15 @@ public static class DesktopAutomationHelper
             throw new InvalidOperationException("Failed to query primary desktop dimensions.");
         }
 
-        IntPtr screenDc = GetDC(IntPtr.Zero);
-        IntPtr memDc = CreateCompatibleDC(screenDc);
-        IntPtr hBitmap = CreateCompatibleBitmap(screenDc, width, height);
-        IntPtr oldObj = SelectObject(memDc, hBitmap);
-
-        byte[] bgraPixels = new byte[width * height * 4];
-        try
+        using Bitmap bitmap = new(width, height, PixelFormat.Format32bppArgb);
+        using (Graphics graphics = Graphics.FromImage(bitmap))
         {
-            if (!BitBlt(memDc, 0, 0, width, height, screenDc, 0, 0, SrcCopy))
-            {
-                throw new InvalidOperationException("BitBlt failed while capturing the desktop screenshot.");
-            }
-
-            BITMAPINFO bmi = default;
-            bmi.bmiHeader.biSize = (uint)Marshal.SizeOf<BITMAPINFOHEADER>();
-            bmi.bmiHeader.biWidth = width;
-            bmi.bmiHeader.biHeight = -height; // Top-down DIB
-            bmi.bmiHeader.biPlanes = 1;
-            bmi.bmiHeader.biBitCount = 32;
-            bmi.bmiHeader.biCompression = 0; // BI_RGB
-
-            int rows = GetDIBits(memDc, hBitmap, 0, (uint)height, bgraPixels, ref bmi, 0);
-            if (rows == 0)
-            {
-                throw new InvalidOperationException("GetDIBits failed while reading desktop bitmap pixels.");
-            }
-        }
-        finally
-        {
-            SelectObject(memDc, oldObj);
-            DeleteObject(hBitmap);
-            DeleteDC(memDc);
-            ReleaseDC(IntPtr.Zero, screenDc);
+            graphics.CopyFromScreen(0, 0, 0, 0, new Size(width, height), CopyPixelOperation.SourceCopy);
         }
 
-        byte[] pngBytes = EncodeBgraToPng(bgraPixels, width, height);
-        return Convert.ToBase64String(pngBytes);
+        using MemoryStream ms = new();
+        bitmap.Save(ms, ImageFormat.Png);
+        return Convert.ToBase64String(ms.ToArray());
     }
 
     private static void EnsureWindowsDesktop()
@@ -435,121 +406,11 @@ public static class DesktopAutomationHelper
         return false;
     }
 
-    private static byte[] EncodeBgraToPng(byte[] bgra, int width, int height)
-    {
-        using MemoryStream output = new();
-        output.Write([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
-
-        Span<byte> ihdr = stackalloc byte[13];
-        BinaryPrimitives.WriteInt32BigEndian(ihdr[..4], width);
-        BinaryPrimitives.WriteInt32BigEndian(ihdr.Slice(4, 4), height);
-        ihdr[8] = 8;  // 8 bits per channel
-        ihdr[9] = 2;  // RGB color type
-        ihdr[10] = 0; // compression
-        ihdr[11] = 0; // filter
-        ihdr[12] = 0; // interlace
-        WritePngChunk(output, "IHDR"u8, ihdr);
-
-        int rowBytes = (width * 3) + 1;
-        byte[] rawScanlines = new byte[rowBytes * height];
-        for (int y = 0; y < height; y++)
-        {
-            int dstRowOffset = y * rowBytes;
-            rawScanlines[dstRowOffset] = 0; // Filter type 0 (None)
-            int srcRowOffset = y * width * 4;
-            int dstPixelOffset = dstRowOffset + 1;
-
-            for (int x = 0; x < width; x++)
-            {
-                int srcIdx = srcRowOffset + (x * 4);
-                int dstIdx = dstPixelOffset + (x * 3);
-                rawScanlines[dstIdx] = bgra[srcIdx + 2];     // R
-                rawScanlines[dstIdx + 1] = bgra[srcIdx + 1]; // G
-                rawScanlines[dstIdx + 2] = bgra[srcIdx];     // B
-            }
-        }
-
-        using (MemoryStream compressed = new())
-        {
-            using (ZLibStream zlib = new(compressed, CompressionLevel.Fastest, leaveOpen: true))
-            {
-                zlib.Write(rawScanlines, 0, rawScanlines.Length);
-            }
-
-            WritePngChunk(output, "IDAT"u8, compressed.GetBuffer().AsSpan(0, (int)compressed.Length));
-        }
-
-        WritePngChunk(output, "IEND"u8, ReadOnlySpan<byte>.Empty);
-        return output.ToArray();
-    }
-
-    private static void WritePngChunk(Stream stream, ReadOnlySpan<byte> chunkType, ReadOnlySpan<byte> data)
-    {
-        Span<byte> lengthBytes = stackalloc byte[4];
-        BinaryPrimitives.WriteUInt32BigEndian(lengthBytes, (uint)data.Length);
-        stream.Write(lengthBytes);
-        stream.Write(chunkType);
-        if (!data.IsEmpty)
-        {
-            stream.Write(data);
-        }
-
-        uint crc = ComputeCrc32(chunkType, data);
-        Span<byte> crcBytes = stackalloc byte[4];
-        BinaryPrimitives.WriteUInt32BigEndian(crcBytes, crc);
-        stream.Write(crcBytes);
-    }
-
-    private static uint ComputeCrc32(ReadOnlySpan<byte> type, ReadOnlySpan<byte> data)
-    {
-        uint crc = 0xFFFFFFFFu;
-        crc = UpdateCrc32(crc, type);
-        crc = UpdateCrc32(crc, data);
-        return ~crc;
-    }
-
-    private static uint UpdateCrc32(uint crc, ReadOnlySpan<byte> buffer)
-    {
-        foreach (byte b in buffer)
-        {
-            crc ^= b;
-            for (int i = 0; i < 8; i++)
-            {
-                crc = (crc & 1) != 0 ? (crc >> 1) ^ 0xEDB88320u : crc >> 1;
-            }
-        }
-
-        return crc;
-    }
-
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT
     {
         public int X;
         public int Y;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct BITMAPINFOHEADER
-    {
-        public uint biSize;
-        public int biWidth;
-        public int biHeight;
-        public ushort biPlanes;
-        public ushort biBitCount;
-        public uint biCompression;
-        public uint biSizeImage;
-        public int biXPelsPerMeter;
-        public int biYPelsPerMeter;
-        public uint biClrUsed;
-        public uint biClrImportant;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct BITMAPINFO
-    {
-        public BITMAPINFOHEADER bmiHeader;
-        public uint bmiColors;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -613,47 +474,4 @@ public static class DesktopAutomationHelper
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetDC(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
-
-    [DllImport("gdi32.dll")]
-    private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
-
-    [DllImport("gdi32.dll")]
-    private static extern bool DeleteDC(IntPtr hdc);
-
-    [DllImport("gdi32.dll")]
-    private static extern IntPtr CreateCompatibleBitmap(IntPtr hdc, int nWidth, int nHeight);
-
-    [DllImport("gdi32.dll")]
-    private static extern IntPtr SelectObject(IntPtr hdc, IntPtr hgdiobj);
-
-    [DllImport("gdi32.dll")]
-    private static extern bool DeleteObject(IntPtr hObject);
-
-    [DllImport("gdi32.dll")]
-    private static extern bool BitBlt(
-        IntPtr hdcDest,
-        int nXDest,
-        int nYDest,
-        int nWidth,
-        int nHeight,
-        IntPtr hdcSrc,
-        int nXSrc,
-        int nYSrc,
-        int dwRop);
-
-    [DllImport("gdi32.dll")]
-    private static extern int GetDIBits(
-        IntPtr hdc,
-        IntPtr hbmp,
-        uint uStartScan,
-        uint cScanLines,
-        [Out] byte[] lpvBits,
-        ref BITMAPINFO lpbi,
-        uint uUsage);
 }
