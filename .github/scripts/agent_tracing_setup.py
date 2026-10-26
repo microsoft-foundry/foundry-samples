@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import json
 import math
 import re
@@ -14,7 +15,7 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 ARM = "https://management.azure.com"
 FOUNDRY_VERSION = "2025-10-01-preview"
@@ -27,10 +28,16 @@ INSIGHTS_PATTERN = re.compile(
     r"/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\.Insights/components/[^/]+",
     re.IGNORECASE,
 )
+IDENTITY_PATTERN = re.compile(
+    r"/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\.ManagedIdentity/userAssignedIdentities/[^/]+",
+    re.IGNORECASE,
+)
+SETUP_LOCK_TAG = "foundry-tracing-setup-lock"
 PUBLISHER = "3913510d-42f4-4e42-8a64-420c390055eb"
 READER = "73c42c96-874c-492b-b04d-ab87d138a893"
 CONTENT_READER = "dbc9c667-e97f-4491-aee6-90b9cf960190"
 NOT_FOUND = {"ResourceNotFound", "ResourceGroupNotFound", "NotFound", "RoleAssignmentNotFound", "ParentResourceNotFound"}
+PRECONDITION_FAILED = {"PreconditionFailed", "IfMatchPreconditionFailed"}
 
 
 class AzureError(RuntimeError):
@@ -71,6 +78,7 @@ class AzureCLI:
                 "Unauthorized": "Unauthorized", "Bad Request": "BadRequest",
                 "Conflict": "Conflict", "Gateway Timeout": "GatewayTimeout",
                 "Too Many Requests": "TooManyRequests",
+                "Precondition Failed": "PreconditionFailed",
             }
             code = next(group for group in match.groups() if group) if match else status_codes.get(plain_error, "AzureCLIError")
             guidance = "Check sign-in, resource IDs, policy, and permissions."
@@ -85,14 +93,23 @@ class AzureCLI:
         except json.JSONDecodeError as exc:
             raise AzureError("Azure CLI returned malformed JSON") from exc
 
-    def rest(self, method: str, resource_id: str, version: str, body: Any = None) -> Any:
+    def rest(
+        self, method: str, resource_id: str, version: str, body: Any = None, *,
+        headers: dict[str, str] | None = None,
+    ) -> Any:
         arguments = ["rest", "--method", method, "--url", f"{ARM}{resource_id}?api-version={version}"]
-        if body is None:
+        if body is None and not headers:
             return self.run(*arguments)
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "body.json"
-            path.write_text(json.dumps(body), encoding="utf-8")
-            return self.run(*arguments, "--body", f"@{path}")
+            if headers:
+                path = Path(directory) / "headers.json"
+                path.write_text(json.dumps(headers), encoding="utf-8")
+                arguments.extend(("--headers", f"@{path}"))
+            if body is not None:
+                path = Path(directory) / "body.json"
+                path.write_text(json.dumps(body), encoding="utf-8")
+                arguments.extend(("--body", f"@{path}"))
+            return self.run(*arguments)
 
     def list(self, resource_id: str, version: str) -> list[dict[str, Any]]:
         result = self.rest("get", resource_id, version)
@@ -154,6 +171,107 @@ def connection(cli: AzureCLI, project_id: str) -> dict[str, Any] | None:
         "application_insights_resource_id": target,
         "auth_type": properties.get("authType"),
     }
+
+
+def _reuse_connection(
+    project_id: str, existing: dict[str, Any], application_insights: str | None,
+) -> dict[str, Any]:
+    if application_insights and insights_id(application_insights).lower() != existing["application_insights_resource_id"].lower():
+        raise AzureError("The project already has a different App Insights connection; it will not be replaced")
+    return {"status": "reused", "project_id": project_id, **existing}
+
+
+def _release_project_lock(cli: AzureCLI, project_id: str, owner: str) -> None:
+    while True:
+        project = cli.rest("get", project_id, FOUNDRY_VERSION)
+        tags = dict(project.get("tags") or {})
+        key = next((key for key in tags if key.lower() == SETUP_LOCK_TAG), None)
+        if key is None or tags[key] != owner:
+            return
+        etag = project.get("etag")
+        if not etag:
+            raise AzureError("Project has no ETag; setup lock release could not be verified")
+        del tags[key]
+        try:
+            cli.rest("patch", project_id, FOUNDRY_VERSION, {"tags": tags}, headers={"If-Match": etag})
+            return
+        except AzureError as exc:
+            if exc.code not in PRECONDITION_FAILED:
+                raise
+        time.sleep(min(1, max(0, cli.deadline - time.monotonic())))
+
+
+@contextmanager
+def project_setup_lock(cli: AzureCLI, project_id: str, deadline: float) -> Iterator[None]:
+    owner = uuid.uuid4().hex
+    attempted = False
+    try:
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise AzureError(
+                    f"Timed out waiting for project tracing setup. Inspect the {SETUP_LOCK_TAG} "
+                    "tag; remove it only after confirming its setup process has stopped."
+                )
+            project = cli.rest("get", project_id, FOUNDRY_VERSION)
+            tags = dict(project.get("tags") or {})
+            if not any(key.lower() == SETUP_LOCK_TAG for key in tags):
+                etag = project.get("etag")
+                if not etag:
+                    raise AzureError("Project has no ETag; refusing unsafe concurrent tracing setup")
+                tags[SETUP_LOCK_TAG] = owner
+                attempted = True
+                try:
+                    cli.rest("patch", project_id, FOUNDRY_VERSION, {"tags": tags}, headers={"If-Match": etag})
+                    break
+                except AzureError as exc:
+                    if exc.code not in PRECONDITION_FAILED:
+                        raise
+            time.sleep(min(1, max(0, deadline - time.monotonic())))
+        yield
+    finally:
+        if attempted:
+            active_error = sys.exc_info()[0] is not None
+            previous_deadline = cli.deadline
+            cli.deadline = time.monotonic() + 60
+            try:
+                _release_project_lock(cli, project_id, owner)
+            except AzureError as exc:
+                print(f"WARNING: Project setup lock release unverified: {exc}", file=sys.stderr)
+                if not active_error:
+                    raise
+            finally:
+                cli.deadline = previous_deadline
+
+
+def project_principal(
+    cli: AzureCLI, project: dict[str, Any], user_assigned_identity: str | None = None,
+) -> str:
+    identity = project.get("identity") or {}
+    assigned = identity.get("userAssignedIdentities") or {}
+    if user_assigned_identity:
+        selected = next(
+            (resource_id for resource_id in assigned if resource_id.lower() == user_assigned_identity.rstrip("/").lower()),
+            None,
+        )
+        if selected is None:
+            raise AzureError("--user-assigned-identity-resource-id must select an identity attached to the project")
+    elif identity.get("principalId"):
+        return identity["principalId"]
+    elif len(assigned) == 1:
+        selected = next(iter(assigned))
+    elif assigned:
+        raise AzureError("Multiple user-assigned identities are attached; select --user-assigned-identity-resource-id explicitly")
+    else:
+        raise AzureError("Project managed identity is required; enable it before configuring tracing")
+    if not IDENTITY_PATTERN.fullmatch(selected):
+        raise AzureError("The project contains an invalid user-assigned identity resource ID")
+    principal = (assigned[selected] or {}).get("principalId")
+    if not principal:
+        principal = cli.rest("get", selected, "2023-01-31").get("properties", {}).get("principalId")
+    if not principal:
+        raise AzureError("The selected user-assigned identity has no principal ID")
+    return principal
 
 
 def wait_ready(cli: AzureCLI, resource_id: str, version: str, deadline: float) -> dict[str, Any]:
@@ -239,6 +357,7 @@ def delete_owned(
 def prepare(
     cli: AzureCLI, project_id: str, *, disabled: bool = False,
     timeout: float = 300, application_insights: str | None = None,
+    user_assigned_identity: str | None = None,
 ) -> dict[str, Any]:
     project_id = validate_project(project_id)
     if disabled:
@@ -247,14 +366,23 @@ def prepare(
     cli.deadline = deadline
     existing = connection(cli, project_id)
     if existing:
-        if application_insights and insights_id(application_insights).lower() != existing["application_insights_resource_id"].lower():
-            raise AzureError("The project already has a different App Insights connection; it will not be replaced")
-        return {"status": "reused", "project_id": project_id, **existing}
+        return _reuse_connection(project_id, existing, application_insights)
+    with project_setup_lock(cli, project_id, deadline):
+        return _prepare_locked(
+            cli, project_id, deadline=deadline, timeout=timeout,
+            application_insights=application_insights, user_assigned_identity=user_assigned_identity,
+        )
 
+
+def _prepare_locked(
+    cli: AzureCLI, project_id: str, *, deadline: float, timeout: float,
+    application_insights: str | None, user_assigned_identity: str | None,
+) -> dict[str, Any]:
+    existing = connection(cli, project_id)
+    if existing:
+        return _reuse_connection(project_id, existing, application_insights)
     project = cli.rest("get", project_id, FOUNDRY_VERSION)
-    principal = project.get("identity", {}).get("principalId")
-    if not principal:
-        raise AzureError("Project managed identity is required; enable it before configuring tracing")
+    principal = project_principal(cli, project, user_assigned_identity)
     location = project.get("location")
     if not location:
         raise AzureError("The project has no location")
@@ -300,7 +428,7 @@ def prepare(
             component = wait_ready(cli, component_id, "2020-02-02", deadline)
         for role in (PUBLISHER, READER, CONTENT_READER):
             assign_role(cli, component_id, principal, role, owner=owner, created=created)
-        # Recheck before creating: a concurrent setup must not be overwritten.
+        # Recheck for connections created by tools that do not use this lock.
         existing = connection(cli, project_id)
         if existing:
             raise AzureError("A connection appeared during setup; it was not replaced. Rerun to reuse it")
@@ -321,6 +449,7 @@ def prepare(
             "connection_id": connection_id,
             "application_insights_resource_id": component_id,
             "auth_type": "ProjectManagedIdentity",
+            "principal_id": principal,
         }
     except (AzureError, KeyError, KeyboardInterrupt):
         if not attached and (attaching or application_insights):
@@ -346,6 +475,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project-id", required=True)
     parser.add_argument("--application-insights-resource-id")
+    parser.add_argument("--user-assigned-identity-resource-id", help="Select an attached user-assigned identity for role assignments")
     parser.add_argument("--disable", action="store_true", help="Skip setup without disconnecting existing telemetry")
     parser.add_argument("--timeout", type=float, default=300)
     args = parser.parse_args()
@@ -355,6 +485,7 @@ def main() -> int:
         result = prepare(
             AzureCLI(args.timeout), args.project_id, disabled=args.disable,
             timeout=args.timeout, application_insights=args.application_insights_resource_id,
+            user_assigned_identity=args.user_assigned_identity_resource_id,
         )
     except (AzureError, KeyError) as exc:
         print(

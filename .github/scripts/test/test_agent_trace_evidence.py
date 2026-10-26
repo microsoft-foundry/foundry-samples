@@ -1,5 +1,8 @@
 """Offline tests of response-correlated App Insights ingestion verification."""
 
+import contextlib
+import errno
+import io
 import json
 from pathlib import Path
 import sys
@@ -110,6 +113,26 @@ class EvidenceTests(unittest.TestCase):
             ]), mock.patch.object(evidence, "verify") as verify:
                 self.assertEqual(1, evidence.main())
                 verify.assert_not_called()
+
+    def test_evidence_filesystem_failures_are_infrastructure_errors(self):
+        cases = (
+            ("mkdir", PermissionError(errno.EACCES, "Permission denied")),
+            ("write_text", OSError(errno.ENOSPC, "No space left on device")),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "sample.log"
+            log.write_text("Agent response ID: resp_1\nAgent response ID: resp_2\n", encoding="utf-8")
+            for operation, error in cases:
+                with self.subTest(operation=operation), \
+                        mock.patch.object(sys, "argv", [
+                            "verify", "--project-id", PROJECT, "--sample-log", str(log),
+                            "--started-at", START, "--output", str(Path(directory) / "evidence.json"),
+                        ]), mock.patch.object(evidence, "verify", return_value={"status": "verified"}) as verify, \
+                        mock.patch.object(Path, operation, side_effect=error), \
+                        contextlib.redirect_stderr(io.StringIO()) as stderr:
+                    self.assertEqual(2, evidence.main())
+                    verify.assert_called_once()
+                    self.assertIn("Trace evidence could not be written", stderr.getvalue())
 
 
 if __name__ == "__main__":

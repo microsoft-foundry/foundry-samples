@@ -21,6 +21,20 @@ App Insights, grants the project identity the necessary roles, and attaches a
 project-managed-identity connection. Resource creation and role assignment
 require appropriate Azure permissions.
 
+When creating a connection, setup serializes cooperating runs with an ETag-protected
+temporary `foundry-tracing-setup-lock` project tag. This requires project-write
+permission and room for one tag; reusing a connection remains read-only.
+An interrupted process can leave the tag behind. After a lock-wait timeout,
+remove that tag only after confirming the original setup process has stopped.
+Unrelated project tags are preserved.
+
+Setup defaults to the system-assigned identity, or the sole attached user-assigned
+identity if no system identity exists. With multiple user-assigned identities,
+pass `--user-assigned-identity-resource-id <attached-identity-ARM-ID>`.
+This selects the identity receiving RBAC, not the service's runtime identity;
+ensure it matches the project's actual tracing identity. Setup does not change
+project identities.
+
 New identity/connection settings can take 2-5 minutes to propagate. Allow that
 time before the first conversation; retry the sample if its initial trace check
 preceded propagation. Setup reports configuration, not verified ingestion.

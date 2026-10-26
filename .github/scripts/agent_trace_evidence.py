@@ -136,8 +136,12 @@ def main() -> int:
         print(f"Trace verification could not complete: {exc}", file=sys.stderr)
         return 2
     if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        try:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        except OSError as exc:
+            print(f"Trace evidence could not be written: {exc}", file=sys.stderr)
+            return 2
     print(json.dumps(result, indent=2))
     return 0 if result["status"] == "verified" else 1
 

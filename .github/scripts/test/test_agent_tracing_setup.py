@@ -1,11 +1,14 @@
 """Offline tests for ownership-safe, existing-project tracing setup."""
 
 import contextlib
+from concurrent.futures import ThreadPoolExecutor
 import io
 import json
 from pathlib import Path
 import subprocess
 import sys
+from threading import Barrier, Lock
+import time
 import unittest
 from unittest import mock
 
@@ -14,6 +17,7 @@ import agent_tracing_setup as setup
 
 PROJECT = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.CognitiveServices/accounts/account/projects/project"
 APPI = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Insights/components/appi"
+IDENTITY = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/agent"
 LINK = {"connection_id": PROJECT + "/connections/traces", "application_insights_resource_id": APPI, "auth_type": "ApiKey"}
 
 
@@ -71,6 +75,11 @@ class ConnectionTests(unittest.TestCase):
 
 
 class ProvisioningTests(unittest.TestCase):
+    def setUp(self):
+        lock = mock.patch.object(setup, "project_setup_lock", return_value=contextlib.nullcontext())
+        self.setup_lock = lock.start()
+        self.addCleanup(lock.stop)
+
     def cli(self):
         cli = mock.Mock()
         cli.list.return_value = []
@@ -80,7 +89,7 @@ class ProvisioningTests(unittest.TestCase):
         )
         return cli
 
-    @mock.patch.object(setup, "connection", side_effect=[None, None])
+    @mock.patch.object(setup, "connection", side_effect=[None, None, None])
     @mock.patch.object(setup, "wait_ready")
     def test_new_setup_is_workspace_based_and_uses_project_identity(self, ready, _connection):
         ready.side_effect = [{}, {"properties": {"ConnectionString": "placeholder"}}, {}]
@@ -188,7 +197,7 @@ class ProvisioningTests(unittest.TestCase):
             self.fail(f"Unexpected request: {method} {resource}")
 
         cli.rest.side_effect = rest
-        with mock.patch.object(setup, "connection", side_effect=[None, None, None]):
+        with mock.patch.object(setup, "connection", side_effect=[None, None, None, None]):
             with self.assertRaisesRegex(setup.AzureError, "PolicyDenied"):
                 setup.prepare(cli, PROJECT, application_insights=APPI)
         self.assertEqual(3, len(deleted))
@@ -210,7 +219,7 @@ class ProvisioningTests(unittest.TestCase):
 
         cli.rest.side_effect = rest
         link = {"application_insights_resource_id": APPI}
-        with mock.patch.object(setup, "connection", side_effect=[None, None, link]), \
+        with mock.patch.object(setup, "connection", side_effect=[None, None, None, link]), \
                 mock.patch.object(setup, "wait_ready", return_value={"properties": {
                     "ConnectionString": "placeholder", "WorkspaceResourceId": "workspace", "DisableLocalAuth": True,
                 }}):
@@ -238,8 +247,264 @@ class ProvisioningTests(unittest.TestCase):
                 setup.prepare(cli, PROJECT)
         self.assertIn("Cleanup unverified", stderr.getvalue())
 
+    def test_waiting_setup_reuses_winner_without_provisioning(self):
+        cli = self.cli()
+        with mock.patch.object(setup, "connection", side_effect=[None, LINK]):
+            result = setup.prepare(cli, PROJECT)
+        self.assertEqual("reused", result["status"])
+        self.setup_lock.assert_called_once()
+        cli.rest.assert_not_called()
+
+    @mock.patch.object(setup, "connection", side_effect=[None, None, None])
+    @mock.patch.object(setup, "wait_ready")
+    def test_user_assigned_project_grants_roles_to_its_principal(self, ready, _connection):
+        ready.side_effect = [{}, {"properties": {"ConnectionString": "placeholder"}}, {}]
+        cli = self.cli()
+        original = cli.rest.side_effect
+
+        def rest(method, resource, version, *body):
+            if method == "get" and resource == PROJECT:
+                return {"location": "westus3", "identity": {
+                    "type": "UserAssigned", "userAssignedIdentities": {IDENTITY: {"principalId": "uai-principal"}},
+                }}
+            return original(method, resource, version, *body)
+
+        cli.rest.side_effect = rest
+        result = setup.prepare(cli, PROJECT)
+        roles = [call.args[3]["properties"]["principalId"] for call in cli.rest.call_args_list
+                 if call.args[0] == "put" and "/roleAssignments/" in call.args[1]]
+        self.assertEqual(["uai-principal"] * 3, roles)
+        self.assertEqual("uai-principal", result["principal_id"])
+
+    def test_failure_cleanup_finishes_before_releasing_lock(self):
+        active = False
+
+        @contextlib.contextmanager
+        def lock(*args):
+            nonlocal active
+            active = True
+            try:
+                yield
+            finally:
+                active = False
+
+        cli = self.cli()
+        original = cli.rest.side_effect
+
+        def rest(method, resource, version, *body):
+            self.assertTrue(active)
+            if method == "put":
+                raise setup.AzureError("Policy denied", "PolicyDenied")
+            return original(method, resource, version, *body)
+
+        cli.rest.side_effect = rest
+        self.setup_lock.side_effect = lock
+        with mock.patch.object(setup, "connection", return_value=None), \
+                mock.patch.object(setup, "delete_owned", side_effect=lambda *args: self.assertTrue(active)) as cleanup:
+            with self.assertRaisesRegex(setup.AzureError, "Policy denied"):
+                setup.prepare(cli, PROJECT)
+        cleanup.assert_called_once()
+        self.assertFalse(active)
+
+
+class ProjectIdentityTests(unittest.TestCase):
+    def test_system_identity_is_preserved_as_default(self):
+        cli = mock.Mock()
+        project = {"identity": {"principalId": "system", "userAssignedIdentities": {
+            IDENTITY: {"principalId": "user"},
+        }}}
+        self.assertEqual("system", setup.project_principal(cli, project))
+        cli.rest.assert_not_called()
+
+    def test_single_user_identity_is_selected(self):
+        cli = mock.Mock()
+        project = {"identity": {"type": "UserAssigned", "userAssignedIdentities": {
+            IDENTITY: {"principalId": "user"},
+        }}}
+        self.assertEqual("user", setup.project_principal(cli, project))
+        cli.rest.assert_not_called()
+
+    def test_missing_principal_is_resolved_from_attached_identity_resource(self):
+        cli = mock.Mock()
+        cli.rest.return_value = {"properties": {"principalId": "resolved"}}
+        self.assertEqual("resolved", setup.project_principal(cli, {"identity": {
+            "userAssignedIdentities": {IDENTITY: {}},
+        }}))
+        cli.rest.assert_called_once_with("get", IDENTITY, "2023-01-31")
+
+    def test_multiple_user_identities_require_explicit_selection(self):
+        project = {"identity": {"userAssignedIdentities": {
+            IDENTITY: {"principalId": "first"}, IDENTITY + "-other": {"principalId": "second"},
+        }}}
+        with self.assertRaisesRegex(setup.AzureError, "Multiple"):
+            setup.project_principal(mock.Mock(), project)
+        self.assertEqual("second", setup.project_principal(mock.Mock(), project, (IDENTITY + "-other").upper()))
+
+    def test_unattached_identity_is_rejected_without_reading_it(self):
+        cli = mock.Mock()
+        with self.assertRaisesRegex(setup.AzureError, "attached"):
+            setup.project_principal(cli, {"identity": {"userAssignedIdentities": {
+                IDENTITY: {"principalId": "first"},
+            }}}, IDENTITY + "-unattached")
+        cli.rest.assert_not_called()
+
+    def test_unresolved_identity_is_an_explicit_error(self):
+        cli = mock.Mock()
+        cli.rest.return_value = {"properties": {}}
+        with self.assertRaisesRegex(setup.AzureError, "no principal ID"):
+            setup.project_principal(cli, {"identity": {"userAssignedIdentities": {IDENTITY: {}}}})
+
+
+class ProjectLockTests(unittest.TestCase):
+    def test_concurrent_clients_are_serialized_by_project_etags(self):
+        mutex = Lock()
+        initial_reads = Barrier(2)
+        state = {"tags": {"existing": "keep"}, "version": 0, "reads": 0, "conflicts": 0,
+                 "active": 0, "maximum_active": 0}
+
+        def rest(method, resource, version, body=None, *, headers=None):
+            self.assertEqual(PROJECT, resource)
+            with mutex:
+                if method == "get":
+                    state["reads"] += 1
+                    synchronize = state["reads"] <= 2
+                    result = {"etag": str(state["version"]), "tags": dict(state["tags"])}
+                else:
+                    self.assertEqual("patch", method)
+                    if headers != {"If-Match": str(state["version"])}:
+                        state["conflicts"] += 1
+                        raise setup.AzureError("ETag changed", "IfMatchPreconditionFailed")
+                    state["tags"] = dict(body["tags"])
+                    state["version"] += 1
+                    return {}
+            if synchronize:
+                initial_reads.wait(timeout=5)
+            return result
+
+        def configure(_):
+            cli = mock.Mock()
+            cli.rest.side_effect = rest
+            cli.deadline = time.monotonic() + 10
+            with setup.project_setup_lock(cli, PROJECT, cli.deadline):
+                with mutex:
+                    state["active"] += 1
+                    state["maximum_active"] = max(state["maximum_active"], state["active"])
+                time.sleep(0.02)
+                with mutex:
+                    state["active"] -= 1
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            list(pool.map(configure, range(2)))
+        self.assertEqual(1, state["maximum_active"])
+        self.assertGreaterEqual(state["conflicts"], 1)
+        self.assertEqual({"existing": "keep"}, state["tags"])
+
+    def test_missing_etag_fails_closed_without_mutations(self):
+        cli = mock.Mock()
+        cli.rest.return_value = {"tags": {}}
+        with self.assertRaisesRegex(setup.AzureError, "no ETag"):
+            with setup.project_setup_lock(cli, PROJECT, time.monotonic() + 10):
+                self.fail("Unprotected setup must not run")
+        self.assertEqual(1, cli.rest.call_count)
+
+    def test_owned_lock_is_released_after_setup_failure(self):
+        cli = mock.Mock()
+        cli.deadline = time.monotonic() + 10
+        state = {"tags": {"existing": "keep"}}
+
+        def rest(method, resource, version, body=None, *, headers=None):
+            if method == "get":
+                return {"etag": "etag", "tags": dict(state["tags"])}
+            state["tags"] = dict(body["tags"])
+            return {}
+
+        cli.rest.side_effect = rest
+        for error in (setup.AzureError("Setup denied"), KeyboardInterrupt()):
+            with self.subTest(error=type(error).__name__), self.assertRaises(type(error)):
+                with setup.project_setup_lock(cli, PROJECT, cli.deadline):
+                    raise error
+            self.assertEqual({"existing": "keep"}, state["tags"])
+
+    def test_unrelated_or_replaced_lock_is_never_removed(self):
+        cli = mock.Mock()
+        cli.rest.return_value = {"etag": "etag", "tags": {setup.SETUP_LOCK_TAG: "another-run"}}
+        setup._release_project_lock(cli, PROJECT, "my-run")
+        self.assertEqual(1, cli.rest.call_count)
+
+    @mock.patch.object(setup.time, "sleep")
+    def test_release_retries_etag_conflict_and_preserves_new_tags(self, _sleep):
+        cli = mock.Mock()
+        cli.deadline = time.monotonic() + 10
+        cli.rest.side_effect = [
+            {"etag": "old", "tags": {setup.SETUP_LOCK_TAG.upper(): "owner"}},
+            setup.AzureError("ETag changed", "IfMatchPreconditionFailed"),
+            {"etag": "new", "tags": {setup.SETUP_LOCK_TAG: "owner", "new-tag": "keep"}},
+            {},
+        ]
+        setup._release_project_lock(cli, PROJECT, "owner")
+        self.assertEqual({"tags": {"new-tag": "keep"}}, cli.rest.call_args.args[3])
+        self.assertEqual({"If-Match": "new"}, cli.rest.call_args.kwargs["headers"])
+
+    def test_uncertain_claim_is_reconciled_and_released(self):
+        cli = mock.Mock()
+        cli.deadline = time.monotonic() + 10
+        with mock.patch.object(setup.uuid, "uuid4", return_value=mock.Mock(hex="owner")):
+            cli.rest.side_effect = [
+                {"etag": "old", "tags": {}},
+                setup.AzureError("Claim timed out"),
+                {"etag": "new", "tags": {setup.SETUP_LOCK_TAG: "owner"}},
+                {},
+            ]
+            with self.assertRaisesRegex(setup.AzureError, "Claim timed out"):
+                with setup.project_setup_lock(cli, PROJECT, cli.deadline):
+                    self.fail("An uncertain claim must not start setup")
+        self.assertEqual({"tags": {}}, cli.rest.call_args.args[3])
+
+    def test_release_failure_after_success_is_not_a_successful_result(self):
+        cli = mock.Mock()
+        cli.deadline = time.monotonic() + 10
+        cli.rest.side_effect = [{"etag": "etag", "tags": {}}, {}, setup.AzureError("Release denied")]
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaisesRegex(setup.AzureError, "Release denied"):
+            with setup.project_setup_lock(cli, PROJECT, cli.deadline):
+                pass
+
+    @mock.patch.object(setup.time, "sleep")
+    @mock.patch.object(setup.time, "monotonic", side_effect=[0, 1, 2])
+    def test_held_lock_wait_is_bounded_and_does_not_steal(self, _clock, _sleep):
+        cli = mock.Mock()
+        cli.rest.return_value = {"etag": "etag", "tags": {setup.SETUP_LOCK_TAG: "another-run"}}
+        with self.assertRaisesRegex(setup.AzureError, "Timed out"):
+            with setup.project_setup_lock(cli, PROJECT, 1):
+                self.fail("Must not steal an active or abandoned lock")
+        self.assertTrue(all(call.args[0] == "get" for call in cli.rest.call_args_list))
+
+    def test_release_failure_does_not_mask_original_error(self):
+        cli = mock.Mock()
+        cli.deadline = time.monotonic() + 10
+        cli.rest.side_effect = [{"etag": "etag", "tags": {}}, {}, setup.AzureError("Release denied")]
+        with contextlib.redirect_stderr(io.StringIO()) as stderr:
+            with self.assertRaisesRegex(setup.AzureError, "Original"):
+                with setup.project_setup_lock(cli, PROJECT, cli.deadline):
+                    raise setup.AzureError("Original")
+        self.assertIn("release unverified", stderr.getvalue())
+
 
 class AzureCLITests(unittest.TestCase):
+    def test_conditional_headers_are_preserved_via_json_file(self):
+        cli = setup.AzureCLI()
+        etag = '"quoted-etag"'
+
+        def run(*arguments):
+            headers_path = Path(arguments[arguments.index("--headers") + 1][1:])
+            body_path = Path(arguments[arguments.index("--body") + 1][1:])
+            self.assertEqual({"If-Match": etag}, json.loads(headers_path.read_text()))
+            self.assertEqual({"tags": {"existing": "keep"}}, json.loads(body_path.read_text()))
+            return {}
+
+        with mock.patch.object(cli, "run", side_effect=run):
+            cli.rest("patch", PROJECT, setup.FOUNDRY_VERSION, {"tags": {"existing": "keep"}},
+                     headers={"If-Match": etag})
+
     @mock.patch.object(setup.subprocess, "run")
     def test_plain_arm_not_found_is_recognized_during_cleanup(self, run):
         run.return_value = subprocess.CompletedProcess([], 1, "", "ERROR: Not Found\n")
