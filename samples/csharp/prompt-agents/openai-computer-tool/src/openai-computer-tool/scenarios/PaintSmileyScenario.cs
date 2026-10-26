@@ -21,7 +21,7 @@ public static class PaintSmileyScenario
     public static async Task<string> RunPaintScenarioAsync(string? prompt = null)
     {
         string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        string outputFile = Path.Combine(Settings.SrcDir, $"paint_smiley_{timestamp}.png");
+        string outputFile = Path.Combine(Directory.GetCurrentDirectory(), $"paint_smiley_{timestamp}.png");
         string taskPrompt = string.IsNullOrWhiteSpace(prompt)
             ? BuildPaintPrompt(outputFile)
             : prompt;
