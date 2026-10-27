@@ -5,6 +5,7 @@ This project is a **Microsoft Foundry hosted agent** built with LangGraph Deep A
 ## Key files
 
 - `azure.yaml` - Foundry hosted-agent manifest
+- `hooks/configure-report-storage.py` - fail-closed, scoped agent-instance Storage grants and cleanup
 - `src/langgraph-deep-agents/main.py` - Foundry Responses host entry point
 - `src/langgraph-deep-agents/agent.py` - Deep Agents graph assembly
 - `src/langgraph-deep-agents/report_export.py` - publish a saved named report to private Blob Storage
@@ -18,9 +19,10 @@ This project is a **Microsoft Foundry hosted agent** built with LangGraph Deep A
 ## Development workflow
 
 ```bash
+azd deploy --all
 azd ai agent run --no-client
 azd ai agent invoke --local "your message"
-azd deploy
+azd deploy --all
 azd ai agent invoke "your message"
 ```
 

@@ -36,10 +36,16 @@ Blob Storage is an export destination, not a replacement backend.
 | `FOUNDRY_PROJECT_ENDPOINT` | Foundry project endpoint; injected by Foundry/azd, set manually for a direct local run. |
 | `AZURE_AI_MODEL_DEPLOYMENT_NAME` | Model deployment selected during initialization. |
 | `TOOLBOX_NAME` | `deep-agents-tools`, declared in `azure.yaml`. |
+| `AZURE_STORAGE_ACCOUNT_NAME` | azd/CI input: existing report Storage account name. |
+| `AZURE_STORAGE_CONTAINER_NAME` | azd/CI input: existing private report container. |
 | `REPORT_STORAGE_ACCOUNT_URL` | HTTPS Blob endpoint for your dedicated report account. |
 | `REPORT_STORAGE_CONTAINER` | Existing private container, for example `reports`. |
 | `AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED` | Defaults to `false`. |
 | `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | Defaults to `false`. |
+
+`azure.yaml` maps the standard `AZURE_STORAGE_*` inputs to the upstream
+`REPORT_STORAGE_*` runtime variables. For standalone Python, fill the latter
+values in `.env`; do not rely on azd to export its environment into another shell.
 
 ## Prerequisites
 
@@ -56,10 +62,10 @@ Blob Storage is an export destination, not a replacement backend.
 | Identity / operation | Required access |
 | --- | --- |
 | Developer: project and Toolbox access | `Azure AI User` on the Foundry project and Reader on its parent account. |
-| Provisioner / deployer | Contributor on the intended resource group, plus `Azure AI Project Manager` on an existing project. |
+| Provisioner / deployer | Contributor on the intended resource group, `Azure AI Project Manager` on an existing project, and permission to assign the two Storage roles below. |
 | Project managed identity: managed tools | `Azure AI User` on the parent Foundry account when not already provisioned. |
 | Local developer: publish reports | `Storage Blob Data Contributor` on the dedicated report **account**. |
-| Deployed agent instance identity: publish reports | The same Blob role, granted **separately** after deployment. |
+| Deployed agent instance identity: publish reports | Container-scoped `Storage Blob Data Contributor` plus account-scoped `Storage Blob Delegator`; the postdeploy hook configures these **separately** from developer access. |
 
 The account-scoped Blob role allows both uploading and requesting the user
 delegation key. A narrower alternative is container-scoped `Storage Blob Data
@@ -117,8 +123,8 @@ export REPORT_STORAGE_ACCOUNT_URL="$(az storage account show --subscription "$SU
 export REPORT_STORAGE_ID="$(az storage account show --subscription "$SUBSCRIPTION_ID" --resource-group "$REPORT_RESOURCE_GROUP" --name "$REPORT_STORAGE_ACCOUNT" --query id -o tsv)"
 az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$DEVELOPER_OBJECT_ID" --assignee-principal-type User --role "Storage Blob Data Contributor" --scope "$REPORT_STORAGE_ID"
 
-azd env set REPORT_STORAGE_ACCOUNT_URL "$REPORT_STORAGE_ACCOUNT_URL"
-azd env set REPORT_STORAGE_CONTAINER "$REPORT_STORAGE_CONTAINER"
+azd env set AZURE_STORAGE_ACCOUNT_NAME "$REPORT_STORAGE_ACCOUNT"
+azd env set AZURE_STORAGE_CONTAINER_NAME "$REPORT_STORAGE_CONTAINER"
 ```
 
 For automation, substitute the actual developer service-principal object ID and
@@ -134,6 +140,23 @@ azd provision
 The manifest declares the project, model, and connection-free web-search Toolbox.
 For an existing project, ensure the project and developer permissions listed above
 are in place before provisioning. No external search API key is required.
+
+### Deploy the remote dependencies before local execution
+
+```bash
+azd deploy --all
+```
+
+This deploys the Toolbox before the agent. The postdeploy hook grants the agent
+container data access and account delegation rights, recording only assignments
+it creates in `.azure/report-storage-role-assignments.json`. Missing configuration
+or role-assignment permission fails deployment rather than silently skipping
+authorization. An RBAC administrator can run
+`python hooks/configure-report-storage.py` in the initialized project to repair
+the grants, then retry deployment.
+
+`azd provision` does not deploy Toolbox services, and `azd ai agent run` does not
+create remote tools. Complete this step before either local running or Toolkit F5.
 
 ### Run the agent locally
 
@@ -167,16 +190,13 @@ uv run --frozen python client.py
 ### Deploy to Foundry
 
 ```bash
-azd deploy
+azd deploy --all
 ```
 
-Retrieve the **agent instance** principal after deployment. An RBAC administrator
-must grant this principal its own account-scoped Blob role before the download demo:
-
-```bash
-export AGENT_PRINCIPAL_ID="$(azd ai agent show langgraph-deep-agents --output json | python -c 'import json,sys; print(json.load(sys.stdin)["instance_identity"]["principal_id"])')"
-az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$AGENT_PRINCIPAL_ID" --assignee-principal-type ServicePrincipal --role "Storage Blob Data Contributor" --scope "$REPORT_STORAGE_ID"
-```
+After edits, deploy all services again so the Toolbox and agent configuration stay
+aligned. The hook resolves the actual deployed agent, including CI-renamed service
+keys, and reuses existing/inherited grants. It never grants access to the project
+identity in place of the agent instance or falls back to Storage account keys.
 
 See [Deploy a hosted agent](https://learn.microsoft.com/azure/foundry/agents/how-to/deploy-hosted-agent)
 for the complete deployment workflow. The default is direct code deployment;
@@ -210,7 +230,8 @@ claiming a download; the saved report remains available for a later turn.
 Install the [Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)
 and sign in to Azure. Use a project with a deployed model, the `web_search`
 Toolbox, and the private Storage resources and identity grants listed in
-Prerequisites. If these do not exist yet, use the resource setup in Option 1.
+Prerequisites. Complete Option 1 through `azd deploy --all` first if remote
+dependencies have not already been deployed and authorized.
 
 ### Set up the Python environment
 
@@ -241,9 +262,10 @@ the complete named-report demo.
 
 ### Deploy to Foundry
 
-Use **Deploy Hosted Agent** in Foundry Toolkit. Configure the two `REPORT_STORAGE_*`
-values on the deployed service and grant its instance identity Blob access as
-shown in Option 1. Test in Agent Inspector or run the deployed demo client.
+Use **Deploy Hosted Agent** in Foundry Toolkit for agent-only changes. When the
+Toolbox, hooks or Storage settings change, run `azd deploy --all` from the
+initialized project so those dependencies and instance grants are updated too.
+Test in Agent Inspector or run the deployed demo client.
 
 ## Reports, downloads, and privacy
 
@@ -282,15 +304,25 @@ checks, continuation/session handling, and resource cleanup. They do **not** pro
 live Azure permissions, real search, cloud persistence, or a successful Blob export.
 
 The repository's [cloud behavior contract](../../../../../../.azure-pipelines/hosted-agent-tests/python/langgraph/responses/11-deep-agents/test-spec.yml)
-checks delegated research, named revision, and reading the original. It requires
-the configured resources and separate Blob permissions; schema validation alone
-does not execute it. For manual cloud acceptance, run the complete client, inspect
+checks delegated research, named revision, and publishing the original again. Its
+sample-owned verifier downloads all three publications over HTTPS, verifies their
+digests/attachment names, compares the original bytes before and after revision,
+and re-downloads the original snapshot to establish immutability. Publication
+errors cannot pass just because a response completed or mentioned a filename.
+It deletes only observed report exports. In CI, it also removes only role grants
+recorded as created by that deployment. The CI identity needs Blob deletion access
+to the configured test container and permission to remove its own role grants;
+no account keys are used. Schema validation alone does not execute this workflow.
+For manual cloud acceptance, run the complete client, inspect
 both reports and citations, verify that v1 remains unchanged, and repeat via the
 Responses streaming API. Keep any SAS-bearing evidence private.
 
 Stop test compute with `azd ai agent sessions list` and
 `azd ai agent sessions stop <session-id>` when not using the demo client's cleanup.
-Delete only your test exports. `azd down` removes azd-managed resources, **not**
+Delete only your test exports. Before deleting an agent that uses an existing
+Storage account, run `python hooks/configure-report-storage.py --cleanup` to
+remove only grants recorded as created by this deployment; pre-existing grants
+are retained. `azd down` removes azd-managed resources, **not**
 the separately created report account; remove the dedicated report resource group
 only after confirming it contains no resources you need to keep.
 
@@ -298,7 +330,8 @@ only after confirming it contains no resources you need to keep.
 
 | Symptom | Check |
 | --- | --- |
-| Startup reports missing `REPORT_STORAGE_*` | Set both variables through `azd env set` or the runtime `.env`. |
+| Missing report Storage configuration | Set `AZURE_STORAGE_ACCOUNT_NAME` and `AZURE_STORAGE_CONTAINER_NAME` in azd/CI; use `REPORT_STORAGE_*` in the standalone runtime `.env`. |
+| Postdeploy role hook fails | Confirm the private container exists and the deployer can assign Storage roles, or have an RBAC administrator run the hook. Do not ignore the failure. |
 | Toolbox does not expose `web_search` | Confirm the Toolbox name, project, provisioned tool, and project/developer roles. |
 | Publication returns a handled error / no download | Check the private container, network access, and the correct local or agent instance Blob grant. Do not fall back to account keys. |
 | Download digest mismatch | Do not accept the file; republish the selected saved filename and retry. |

@@ -6,6 +6,7 @@ sample:
 
 tests:
   - name: research-and-revise-named-reports
+    verifier: verify_reports.py
     turns:
       - input: Research how LangGraph checkpoints support multi-turn agents using delegated research. Include the heading '# LangGraph Checkpoints' and the exact primary-source URL https://docs.langchain.com/oss/python/langgraph/overview. Save the cited report as report-v1.md.
         assertions:
@@ -35,7 +36,7 @@ tests:
           - source: raw
             type: regex
             value: '"name"\s*:\s*"edit_file"'
-      - input: Show the complete original report-v1.md again, without editing it or researching again.
+      - input: Read the complete original report-v1.md again, without editing it or researching again, and give me a fresh download link for that original named version.
         assertions:
           - source: assistant_text
             type: contains

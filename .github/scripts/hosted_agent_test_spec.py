@@ -7,6 +7,7 @@ import argparse
 import json
 import math
 import re
+import subprocess
 import sys
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
@@ -326,12 +327,19 @@ def validate_spec(document: Any) -> dict[str, Any]:
         context = f"document.tests[{test_index}]"
         test = _require_mapping(test_value, context)
         _require_keys(
-            test, {"name", "when", "turns", "assertions"}, context, {"name", "turns"}
+            test,
+            {"name", "when", "turns", "assertions", "verifier"},
+            context,
+            {"name", "turns"},
         )
         name = _require_string(test["name"], f"{context}.name")
         if name in names:
             raise SpecError(f"{context}.name duplicates test name {name!r}")
         names.add(name)
+        if "verifier" in test:
+            verifier = _require_string(test["verifier"], f"{context}.verifier")
+            if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*\.py", verifier) is None:
+                raise SpecError(f"{context}.verifier must name a sibling Python script")
         if "when" in test:
             when = _require_mapping(test["when"], f"{context}.when")
             _require_keys(when, {"toolbox_label"}, f"{context}.when", {"toolbox_label"})
@@ -384,7 +392,21 @@ def load_spec(path: Path) -> dict[str, Any]:
         raise SpecError(f"could not read {path}: {exc}") from exc
     except yaml.YAMLError as exc:
         raise SpecError(f"invalid YAML in {path}: {exc}") from exc
-    return validate_spec(value)
+    document = validate_spec(value)
+    for test in document["tests"]:
+        if "verifier" in test:
+            _verifier_path(path.parent, test["verifier"])
+    return document
+
+
+def _verifier_path(directory: Path, filename: str) -> Path:
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*\.py", filename) is None:
+        raise SpecError("verifier must name a sibling Python script")
+    directory = directory.resolve()
+    script = (directory / filename).resolve()
+    if script.parent != directory or not script.is_file():
+        raise SpecError("verifier must be an existing Python file beside test-spec.yml")
+    return script
 
 
 def serialize_input(value: Any) -> str:
@@ -405,26 +427,37 @@ def build_plan(
     toolbox_query: str = "",
     protocol: str = "responses",
     profile: str = "hosted",
+    verifier_directory: Path | None = None,
 ) -> dict[str, Any]:
     if profile not in PROFILE_SOURCES:
         raise SpecError(f"unsupported execution profile: {profile}")
     if profile != "hosted" and protocol != "responses":
-        raise SpecError(f"the {profile} execution profile supports only the Responses protocol")
+        raise SpecError(
+            f"the {profile} execution profile supports only the Responses protocol"
+        )
     for test_index, test in enumerate(document["tests"], start=1):
+        if "verifier" in test and (profile != "hosted" or verifier_directory is None):
+            raise SpecError(
+                "verifier requires the hosted profile and its fixture directory"
+            )
         for turn_index, turn in enumerate(test["turns"], start=1):
             if profile != "hosted" and "approvals" in turn:
                 raise SpecError(
                     f"document.tests[{test_index}].turns[{turn_index}].approvals "
                     f"is not supported by the {profile} execution profile"
                 )
-            for assertion_index, assertion in enumerate(turn.get("assertions", []), start=1):
+            for assertion_index, assertion in enumerate(
+                turn.get("assertions", []), start=1
+            ):
                 if assertion["source"] not in PROFILE_SOURCES[profile]:
                     raise SpecError(
                         f"document.tests[{test_index}].turns[{turn_index}]."
                         f"assertions[{assertion_index}].source {assertion['source']!r} "
                         f"is not supported by the {profile} execution profile"
                     )
-        for assertion_index, assertion in enumerate(test.get("assertions", []), start=1):
+        for assertion_index, assertion in enumerate(
+            test.get("assertions", []), start=1
+        ):
             if assertion["source"] not in PROFILE_SOURCES[profile]:
                 raise SpecError(
                     f"document.tests[{test_index}].assertions[{assertion_index}]."
@@ -499,6 +532,10 @@ def build_plan(
                 "assertions": test.get("assertions", []),
             }
         )
+        if "verifier" in test:
+            assert verifier_directory is not None
+            _verifier_path(verifier_directory, test["verifier"])
+            tests[-1]["verifier"] = test["verifier"]
     return {
         "version": 1,
         "execution_profile": profile,
@@ -835,8 +872,67 @@ def _evaluate_assertion(
     return result
 
 
+def _evaluate_verifier(
+    test: dict[str, Any], evidence_dir: Path, verifier_directory: Path | None = None
+) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "source": "verifier",
+        "type": "script",
+        "status": "failed",
+        "expected": {"verifier": test["verifier"]},
+    }
+    try:
+        if verifier_directory is None:
+            raise SpecError("evaluate requires the verifier fixture directory")
+        script = _verifier_path(verifier_directory, test["verifier"])
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(script),
+                "--evidence-dir",
+                str(evidence_dir.resolve()),
+                "--turns",
+                *[str(turn["global_turn"]) for turn in test["turns"]],
+            ],
+            capture_output=True,
+            text=True,
+            timeout=240,
+            check=False,
+        )
+        summary = json.loads(completed.stdout)
+        if not isinstance(summary, dict) or summary.get("status") not in {
+            "passed",
+            "failed",
+        }:
+            raise ValueError("invalid verifier summary")
+        reason = summary["reason"]
+        if (
+            not isinstance(reason, str)
+            or re.fullmatch(r"[a-z][a-z0-9_]{0,63}", reason) is None
+        ):
+            result["observed"] = {"reason": "invalid_verifier_summary"}
+            return result
+        result["observed"] = {"exit_code": completed.returncode, "reason": reason}
+        if completed.returncode == 0 and summary.get("status") == "passed":
+            result["status"] = "passed"
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        AttributeError,
+        subprocess.SubprocessError,
+    ):
+        result["observed"] = {"reason": "verifier_execution_failed"}
+    return result
+
+
 def evaluate_plan(
-    plan: dict[str, Any], evidence_dir: Path, console_log: Path, trace_file: Path
+    plan: dict[str, Any],
+    evidence_dir: Path,
+    console_log: Path,
+    trace_file: Path,
+    verifier_directory: Path | None = None,
 ) -> dict[str, Any]:
     test_results = []
     any_failed = False
@@ -871,9 +967,9 @@ def evaluate_plan(
                 else:
                     exit_code = execution.get("exit_code")
                     if not isinstance(exit_code, int) or isinstance(exit_code, bool):
-                        execution["error"] = (
-                            "turn status exit_code must be a required integer"
-                        )
+                        execution[
+                            "error"
+                        ] = "turn status exit_code must be a required integer"
                         execution_error = True
                     elif exit_code != 0:
                         execution_error = True
@@ -898,9 +994,9 @@ def evaluate_plan(
                             )
                             or not isinstance(steps, list)
                         ):
-                            execution["error"] = (
-                                "turn status mcp_approvals fields are malformed"
-                            )
+                            execution[
+                                "error"
+                            ] = "turn status mcp_approvals fields are malformed"
                             execution_error = True
                         if approval_error:
                             execution_error = True
@@ -932,6 +1028,10 @@ def evaluate_plan(
                 assertion_index=assertion_index,
             )
             assertions_results.append(result)
+        if "verifier" in test:
+            assertions_results.append(
+                _evaluate_verifier(test, evidence_dir, verifier_directory)
+            )
         statuses = {item["status"] for item in assertions_results}
         if execution_error or "error" in statuses:
             status = "error"
@@ -989,7 +1089,12 @@ def _command_plan(args: argparse.Namespace) -> int:
     try:
         document = load_spec(args.spec)
         plan = build_plan(
-            document, args.toolbox_label, args.toolbox_query, args.protocol, args.profile
+            document,
+            args.toolbox_label,
+            args.toolbox_query,
+            args.protocol,
+            args.profile,
+            verifier_directory=args.spec.parent,
         )
     except SpecError as exc:
         return _emit_error(str(exc), args.report)
@@ -1029,7 +1134,13 @@ def _command_evaluate(args: argparse.Namespace) -> int:
         plan = json.loads(args.plan.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         return _emit_error(f"could not read execution plan: {exc}", args.report)
-    report = evaluate_plan(plan, args.evidence_dir, args.console_log, args.trace_file)
+    report = evaluate_plan(
+        plan,
+        args.evidence_dir,
+        args.console_log,
+        args.trace_file,
+        verifier_directory=args.verifier_directory,
+    )
     _write_json(args.report, report)
     for test in report["tests"]:
         print(f"{test['status'].upper()}: {test['name']}")
@@ -1079,6 +1190,7 @@ def _build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--evidence-dir", type=Path, required=True)
     evaluate.add_argument("--console-log", type=Path, required=True)
     evaluate.add_argument("--trace-file", type=Path, required=True)
+    evaluate.add_argument("--verifier-directory", type=Path)
     evaluate.add_argument("--report", type=Path, required=True)
     evaluate.set_defaults(func=_command_evaluate)
     return parser
