@@ -14,7 +14,7 @@ Microsoft has no responsibility to you or others with respect to any of these sa
 
 This sample gives a hosted text agent a managed voice experience without adding audio code to the
 agent. It implements Voice Live Bridge Protocol `1.0` with typed callbacks from
-`azure-ai-agentserver-invocations==1.1.0`. A LangChain agent calls a Microsoft Foundry model
+`azure-ai-agentserver-invocations==1.3.0b1`. A LangChain agent calls a Microsoft Foundry model
 through the Responses API, can invoke a local UTC-time tool, and streams only assistant text back
 to Voice Live.
 
