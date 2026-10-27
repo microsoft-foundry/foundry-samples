@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Ingestion Client v2 - Batch transcription config",
+  "description": "Config for files uploaded to audio-input/batch/. Asynchronous batch transcription (v3.2).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "locales": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "First entry = primary locale. Two or more entries enable language identification (base models only; 2-10 candidates)."
+    },
+    "diarization": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Separate speakers on mono audio. maxSpeakers > 2 uses the richer diarization model.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "maxSpeakers": { "type": "integer", "minimum": 2, "maximum": 35 }
+      }
+    },
+    "profanityFilterMode": {
+      "enum": ["None", "Masked", "Removed", "Tags"]
+    },
+    "channels": {
+      "type": "array",
+      "description": "Zero-based channel indices (e.g. [0,1] for stereo).",
+      "items": { "type": "integer", "enum": [0, 1] }
+    },
+    "batch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timeToLiveHours": {
+          "type": "integer",
+          "minimum": 6,
+          "maximum": 744,
+          "description": "How long results are retained on the service (6h-31d). Recommended 48."
+        },
+        "wordLevelTimestamps": { "type": "boolean" },
+        "displayFormWordLevelTimestamps": {
+          "type": "boolean",
+          "description": "Word-level timestamps on the display form (required for Whisper models)."
+        },
+        "punctuationMode": {
+          "description": "How to handle punctuation.",
+          "enum": ["None", "Dictated", "Automatic", "DictatedAndAutomatic"]
+        },
+        "model": {
+          "type": "string",
+          "description": "Optional custom or Whisper model 'self' URI. Empty = latest base model."
+        }
+      }
+    }
+  }
+}

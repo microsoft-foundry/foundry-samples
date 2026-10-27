@@ -1,0 +1,29 @@
+{
+  // Config for files uploaded to  audio-input/batch/  (asynchronous; for volume / long audio).
+  "$schema": "./schemas/batch.schema.json",
+
+  // First entry = primary locale. Two or more entries enable language identification
+  // (base models only). Examples: ["en-US"]  or  ["en-US", "de-DE", "es-ES"].
+  "locales": ["en-US"],
+
+  // Separate speakers on mono audio. maxSpeakers > 2 uses the richer diarization model.
+  "diarization": {
+    "enabled": false,
+    "maxSpeakers": 4    // 2-35
+  },
+
+  // Profanity handling: "None" | "Masked" | "Removed" | "Tags"
+  "profanityFilterMode": "Masked",
+
+  // Stereo channels to transcribe separately, e.g. [0, 1]. [] merges to mono.
+  "channels": [],
+
+  // Batch-specific options.
+  "batch": {
+    "timeToLiveHours": 12,                     // how long results stay on the service (6-744)
+    "wordLevelTimestamps": true,               // per-word timings (lexical form)
+    "displayFormWordLevelTimestamps": false,   // per-word timings on display form (Whisper needs this)
+    "punctuationMode": "DictatedAndAutomatic", // "None" | "Dictated" | "Automatic" | "DictatedAndAutomatic"
+    "model": ""                                // optional custom/Whisper model 'self' URI; "" = latest base model
+  }
+}

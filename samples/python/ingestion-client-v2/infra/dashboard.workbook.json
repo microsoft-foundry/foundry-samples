@@ -1,0 +1,146 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Ingestion Client v2 - Transcription Monitoring"
+      },
+      "name": "title"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let t = traces | where timestamp > ago(24h) and message startswith 'INGEST ' | parse message with 'INGEST status=' status ' engine=' engine ' ms=' ms:long ' blob=' blob; let submitted = t | where status == 'submitted' | distinct blob; let doneBatch = t | where status == 'transcribed' and engine == 'batch' | distinct blob; let inprog = toscalar(submitted | join kind=leftanti doneBatch on blob | count); let terminal = t | where status in ('transcribed','failed','quarantined'); union (terminal | summarize Value = countif(status == 'transcribed') | extend Metric = 'Transcribed'), (terminal | summarize Value = countif(status == 'failed') | extend Metric = 'Failed'), (terminal | summarize Value = countif(status == 'quarantined') | extend Metric = 'Quarantined'), (print Metric = 'In progress', Value = inprog) | extend o = case(Metric == 'Transcribed', 1, Metric == 'Failed', 2, Metric == 'Quarantined', 3, 4) | order by o asc | project Metric, Value",
+        "size": 4,
+        "title": "Last 24 hours",
+        "timeContext": { "durationMs": 86400000 },
+        "queryType": 0,
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": { "columnMatch": "Metric", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "Value",
+            "formatter": 12,
+            "formatOptions": { "palette": "blue" },
+            "numberFormat": { "unit": 17, "options": { "maximumFractionDigits": 0 } }
+          },
+          "showBorder": true,
+          "size": "auto"
+        }
+      },
+      "customWidth": "100",
+      "name": "kpi-tiles"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "traces | where timestamp > ago(24h) and message startswith 'INGEST ' | parse message with 'INGEST status=' status ' engine=' engine ' ms=' ms:long ' blob=' blob | where status in ('transcribed','failed','quarantined') | summarize Files = count() by status, bin(timestamp, 1h) | order by timestamp asc",
+        "size": 0,
+        "title": "Throughput per hour (terminal outcomes)",
+        "timeContext": { "durationMs": 86400000 },
+        "queryType": 0,
+        "visualization": "timechart"
+      },
+      "customWidth": "50",
+      "name": "throughput"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "traces | where timestamp > ago(24h) and message startswith 'INGEST ' | parse message with 'INGEST status=' status ' engine=' engine ' ms=' ms:long ' blob=' blob | where status == 'transcribed' | summarize Files = count() by engine",
+        "size": 0,
+        "title": "Transcribed by engine",
+        "timeContext": { "durationMs": 86400000 },
+        "queryType": 0,
+        "visualization": "piechart"
+      },
+      "customWidth": "50",
+      "name": "engine-mix"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "traces | where timestamp > ago(24h) and message startswith 'INGEST ' | parse message with 'INGEST status=' status ' engine=' engine ' ms=' ms:long ' blob=' blob | where status == 'transcribed' and ms > 0 | summarize Files = count(), p50_sec = round(percentile(ms, 50) / 1000.0, 1), p95_sec = round(percentile(ms, 95) / 1000.0, 1) by engine | order by Files desc",
+        "size": 0,
+        "title": "Latency by engine (seconds)",
+        "timeContext": { "durationMs": 86400000 },
+        "queryType": 0,
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            { "columnMatch": "p95_sec", "formatter": 8, "formatOptions": { "palette": "yellowOrangeRed" } }
+          ]
+        }
+      },
+      "customWidth": "50",
+      "name": "latency"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests | where timestamp > ago(24h) | summarize Executions = count(), Failed = countif(success == false), p95_ms = round(percentile(duration, 95), 0) by name | order by Executions desc",
+        "size": 0,
+        "title": "Function health (infrastructure - transient retries are normal)",
+        "timeContext": { "durationMs": 86400000 },
+        "queryType": 0,
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            { "columnMatch": "Failed", "formatter": 8, "formatOptions": { "palette": "yellowOrangeRed" } }
+          ]
+        }
+      },
+      "customWidth": "50",
+      "name": "function-health"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "traces | where timestamp > ago(24h) and message startswith 'INGEST status=failed' | parse message with 'INGEST status=' status ' engine=' engine ' ms=' ms:long ' blob=' blob | project timestamp, engine, blob | order by timestamp desc | take 50",
+        "size": 0,
+        "title": "Recent failures",
+        "timeContext": { "durationMs": 86400000 },
+        "queryType": 0,
+        "visualization": "table"
+      },
+      "customWidth": "50",
+      "name": "recent-failures"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "traces | where timestamp > ago(24h) and message startswith 'Quarantined ' | parse message with 'Quarantined ' blob ' (' reason ')' | project timestamp, blob, reason | order by timestamp desc | take 50",
+        "size": 0,
+        "title": "Recent quarantines (with reason)",
+        "timeContext": { "durationMs": 86400000 },
+        "queryType": 0,
+        "visualization": "table"
+      },
+      "customWidth": "50",
+      "name": "recent-quarantines"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "traces | where timestamp > ago(1h) | where message startswith 'INGEST ' or message startswith 'Processing ' or message startswith 'Transcript ' or message startswith 'Batch ' or message startswith 'Quarantined ' or severityLevel >= 2 | project timestamp, severityLevel, message | order by timestamp desc | take 200",
+        "size": 0,
+        "title": "Live activity (last hour)",
+        "timeContext": { "durationMs": 3600000 },
+        "queryType": 0,
+        "visualization": "table"
+      },
+      "customWidth": "100",
+      "name": "live-activity"
+    }
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Ingestion Client v2 - Fast transcription config",
+  "description": "Config for files uploaded to audio-input/fast/. Synchronous fast transcription.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "locales": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Candidate locales (e.g. en-US, el-GR). Empty [] = multilingual auto-detect. Two or more = language identification."
+    },
+    "diarization": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Separate speakers on a mono channel.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "maxSpeakers": { "type": "integer", "minimum": 2, "maximum": 35 }
+      }
+    },
+    "profanityFilterMode": {
+      "description": "How to handle profanity.",
+      "enum": ["None", "Masked", "Removed", "Tags"]
+    },
+    "channels": {
+      "type": "array",
+      "description": "Zero-based channel indices to transcribe separately (e.g. [0,1] for stereo). Not with diarization.",
+      "items": { "type": "integer", "enum": [0, 1] }
+    },
+    "phraseList": {
+      "type": "array",
+      "description": "Words/phrases to boost recognition (proper nouns, jargon).",
+      "items": { "type": "string" }
+    }
+  }
+}
