@@ -1,3 +1,7 @@
+---
+ai-usage: ai-assisted
+---
+
 # Python Hosted Agent dependency policy
 
 This policy applies only to executable Python projects under `samples/python/hosted-agents/`.
@@ -51,6 +55,11 @@ sample/
 ```
 
 A separately executable nested client with its own dependencies should have its own supported artifact. A standard-library-only runtime may use an empty `requirements.txt` with a comment explaining that it has no third-party runtime dependencies.
+
+An independently installable client can also live beside the service's `src`
+project within a sample. Its dependency inputs are checked against its own
+supported artifact, not the service runtime's lock. Sample-level inputs and
+nested inputs without their own supported artifact still belong to the service.
 
 When both artifact forms are present, the uv pair is authoritative and must satisfy the uv policy. `requirements.txt` is treated as a compatibility artifact and is not independently validated.
 

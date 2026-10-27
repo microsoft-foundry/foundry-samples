@@ -31,6 +31,22 @@
     "sdk_call_signatures": 1106,
     "sdk_model_constructions": 286,
     "complete_dependency_consumer_graphs": 13,
+    "repository_policies": {
+      "hosted_dependency_policy": {
+        "static_check": "passed",
+        "resolution_check": "passed using a local wheelhouse",
+        "regression_tests_passed": 46,
+        "cached_binary_artifacts": 51,
+        "artifact_provenance": "Every cached wheel SHA256 matches the official public PyPI release metadata.",
+        "public_index_transport": "Direct files.pythonhosted.org HTTPS requests fail locally during TLS negotiation. Certificate validation was not disabled.",
+        "policy_exceptions_added": 0,
+        "existing_runtime_dependency_artifacts_changed": 0
+      },
+      "hosted_behavior_contract_policy": {
+        "status": "passed",
+        "scope": "No new hosted runtime was introduced. The optional minimal LangChain entry point uses an existing frozen runtime."
+      }
+    },
     "what_is_not_proven": [
       "Azure authentication or authorization",
       "regional/model/service availability",
