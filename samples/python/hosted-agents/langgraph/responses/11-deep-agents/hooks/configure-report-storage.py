@@ -26,8 +26,15 @@ def run_cli(*arguments: str) -> str:
             text=True,
             timeout=120,
         )
-    except subprocess.CalledProcessError:
-        raise RuntimeError(f"Command failed: {' '.join(arguments[:4])}") from None
+    except subprocess.CalledProcessError as error:
+        code = re.search(
+            r"(?m)^ERROR:\s*\(([A-Za-z][A-Za-z0-9]{0,63})\)",
+            error.stderr or "",
+        )
+        detail = f" ({code.group(1)})" if code else ""
+        raise RuntimeError(
+            f"Command failed: {' '.join(arguments[:4])}{detail}"
+        ) from None
     return result.stdout.strip()
 
 

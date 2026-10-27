@@ -309,20 +309,24 @@ sample-owned verifier downloads all three publications over HTTPS, verifies thei
 digests/attachment names, compares the original bytes before and after revision,
 and re-downloads the original snapshot to establish immutability. Publication
 errors cannot pass just because a response completed or mentioned a filename.
-It deletes only observed report exports. In CI, it also removes only role grants
-recorded as created by that deployment. The CI identity needs Blob deletion access
-to the configured test container and permission to remove its own role grants;
-no account keys are used. Schema validation alone does not execute this workflow.
+It deletes only observed report exports. The CI identity needs Blob deletion access
+to the configured test container; no account keys are used. Stable CI agent names
+reuse the same identity across runs to stay within the role-assignment limit.
+Their two scoped Storage grants persist and are reused, not revoked when one job
+finishes, because other runs or agent versions can still need them. Schema
+validation alone does not execute this workflow.
 For manual cloud acceptance, run the complete client, inspect
 both reports and citations, verify that v1 remains unchanged, and repeat via the
 Responses streaming API. Keep any SAS-bearing evidence private.
 
 Stop test compute with `azd ai agent sessions list` and
 `azd ai agent sessions stop <session-id>` when not using the demo client's cleanup.
-Delete only your test exports. Before deleting an agent that uses an existing
-Storage account, run `python hooks/configure-report-storage.py --cleanup` to
-remove only grants recorded as created by this deployment; pre-existing grants
-are retained. `azd down` removes azd-managed resources, **not**
+Delete only your test exports. When retiring an agent that uses an existing
+Storage account, first confirm that no other run or agent version still needs its
+identity. Then run `python hooks/configure-report-storage.py --cleanup` from the
+deployment workspace to remove only its recorded grants; pre-existing grants
+are retained. Do not run role cleanup at the end of an ordinary CI job.
+`azd down` removes azd-managed resources, **not**
 the separately created report account; remove the dedicated report resource group
 only after confirming it contains no resources you need to keep.
 

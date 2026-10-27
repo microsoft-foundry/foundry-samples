@@ -9,7 +9,6 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 from email.message import Message
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -97,23 +96,6 @@ def delete_blob(account: str, container: str, name: str) -> None:
     )
 
 
-def cleanup_roles() -> None:
-    if os.environ.get("TF_BUILD", "").lower() != "true":
-        return
-    hook = Path("hooks/configure-report-storage.py")
-    if (
-        not hook.is_file()
-        or not Path(".azure/report-storage-role-assignments.json").is_file()
-    ):
-        raise VerificationError("rbac_receipt_missing")
-    subprocess.run(
-        [sys.executable, str(hook), "--cleanup"],
-        check=True,
-        capture_output=True,
-        timeout=60,
-    )
-
-
 def collect_publications(response: dict) -> list[dict]:
     calls = {}
     for item in response.get("output", []):
@@ -143,7 +125,6 @@ def verify_reports(
     turns: list[int],
     downloader=download_report,
     remover=delete_blob,
-    role_remover=cleanup_roles,
 ) -> None:
     account = os.environ.get("AZURE_STORAGE_ACCOUNT_NAME", "")
     container = os.environ.get("AZURE_STORAGE_CONTAINER_NAME", "")
@@ -215,10 +196,6 @@ def verify_reports(
                 remover(account, container, name)
             except (OSError, VerificationError, subprocess.SubprocessError):
                 cleanup_failed = True
-        try:
-            role_remover()
-        except (OSError, VerificationError, subprocess.SubprocessError):
-            cleanup_failed = True
         if cleanup_failed:
             raise VerificationError("cleanup_failed")
 

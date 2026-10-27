@@ -81,14 +81,13 @@ class ReportVerifierTests(unittest.TestCase):
             json.dumps(response), encoding="utf-8"
         )
 
-    def verify(self, downloader=None, remover=None, role_remover=None):
+    def verify(self, downloader=None, remover=None):
         return module.verify_reports(
             self.root,
             [1, 2, 3],
             downloader=downloader
             or (lambda publication: self.bodies[publication["download_url"]]),
             remover=remover or MagicMock(),
-            role_remover=role_remover or MagicMock(),
         )
 
     def test_success_checks_three_versions_rechecks_original_and_cleans_only_observed_exports(
@@ -98,8 +97,7 @@ class ReportVerifierTests(unittest.TestCase):
             side_effect=lambda publication: self.bodies[publication["download_url"]]
         )
         remover = MagicMock()
-        role_remover = MagicMock()
-        self.verify(downloader, remover, role_remover)
+        self.verify(downloader, remover)
         self.assertEqual(downloader.call_count, 4)
         self.assertEqual(remover.call_count, 3)
         self.assertEqual(
@@ -113,7 +111,13 @@ class ReportVerifierTests(unittest.TestCase):
                 for turn in [1, 2, 3]
             ],
         )
-        role_remover.assert_called_once_with()
+
+    def test_ci_verification_does_not_revoke_shared_agent_role_assignments(self):
+        with patch.dict(os.environ, {"TF_BUILD": "true"}), patch.object(
+            module.subprocess, "run"
+        ) as run:
+            self.verify()
+        run.assert_not_called()
 
     def test_handled_publication_errors_cannot_pass(self):
         for turn in [1, 2, 3]:
@@ -183,11 +187,9 @@ class ReportVerifierTests(unittest.TestCase):
         self,
     ):
         remover = MagicMock(side_effect=[OSError("denied"), None, None])
-        roles = MagicMock()
         with self.assertRaisesRegex(module.VerificationError, "cleanup_failed"):
-            self.verify(remover=remover, role_remover=roles)
+            self.verify(remover=remover)
         self.assertEqual(remover.call_count, 3)
-        roles.assert_called_once_with()
 
     def test_real_download_boundary_checks_digest_attachment_and_size(self):
         publication = self.publications[0]

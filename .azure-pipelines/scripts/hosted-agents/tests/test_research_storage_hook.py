@@ -148,6 +148,48 @@ class ResearchStorageHookTests(unittest.TestCase):
                 arguments[arguments.index("--ids") + 1].startswith(ACCOUNT_ID + "/")
             )
 
+    def test_cli_failure_exposes_only_safe_error_code_not_command_values_or_output(
+        self,
+    ):
+        for stderr, detail in [
+            (
+                "ERROR: (AuthorizationFailed) sensitive-service-output",
+                " (AuthorizationFailed)",
+            ),
+            (
+                "ERROR: (RoleAssignmentLimitExceeded) sensitive-service-output",
+                " (RoleAssignmentLimitExceeded)",
+            ),
+            (
+                "ERROR: (https://private.invalid/?sig=secret) sensitive-service-output",
+                "",
+            ),
+            (None, ""),
+        ]:
+            with self.subTest(stderr=stderr), patch.object(
+                module.shutil, "which", return_value="az"
+            ), patch.object(
+                module.subprocess,
+                "run",
+                side_effect=subprocess.CalledProcessError(
+                    1, "az", output="sensitive-stdout", stderr=stderr
+                ),
+            ), self.assertRaises(
+                RuntimeError
+            ) as raised:
+                module.run_cli(
+                    "az",
+                    "role",
+                    "assignment",
+                    "create",
+                    "--assignee-object-id",
+                    "private-id",
+                )
+            self.assertEqual(
+                str(raised.exception),
+                "Command failed: az role assignment create" + detail,
+            )
+
     def test_cleanup_refuses_a_different_principal(self):
         with patch.object(module, "run_cli", side_effect=self.cli):
             module.configure()
