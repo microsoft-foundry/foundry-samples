@@ -33,3 +33,5 @@ For more information, [see the getting started guide.](https://learn.microsoft.c
 ```bash
     az deployment group create --resource-group <new-rg-name> --template-file main.bicep
 ```
+
+<!-- ci baseline check: touch only, do not merge -->

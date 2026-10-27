@@ -47,3 +47,5 @@ az deployment group create \
                account_name='foundry' \
                project_name='myProject'
 ```
+
+<!-- ci baseline check: touch only, do not merge -->
