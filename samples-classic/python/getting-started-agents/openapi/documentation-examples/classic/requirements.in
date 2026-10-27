@@ -1,0 +1,5 @@
+azure-ai-agents==1.1.0
+azure-ai-projects==1.0.0
+azure-identity==1.27.0
+jsonref==1.1.0
+openai==1.109.1

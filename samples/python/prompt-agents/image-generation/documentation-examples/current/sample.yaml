@@ -1,0 +1,4 @@
+name: AIProjectClient image generation (current)
+description: Isolated current SDK examples for image generation.
+build: "python -m pip install -r requirements.txt"
+validate: "python -m unittest discover -p 'test_*.py'"

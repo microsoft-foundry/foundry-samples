@@ -1,0 +1,4 @@
+name: AIProjectClient deep research (classic-preview)
+description: Isolated classic-preview SDK examples for deep research.
+build: "python -m pip install -r requirements.txt"
+validate: "python -m unittest discover -p 'test_*.py'"

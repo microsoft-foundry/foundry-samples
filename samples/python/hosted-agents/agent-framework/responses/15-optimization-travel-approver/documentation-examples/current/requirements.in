@@ -1,0 +1,4 @@
+azure-ai-agentserver-optimization==1.0.0b1
+azure-ai-projects==2.9.0
+azure-identity==1.27.0
+openai==3.35.1

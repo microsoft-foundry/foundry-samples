@@ -1,0 +1,4 @@
+name: AIProjectClient project migration (classic)
+description: Isolated classic SDK examples for project migration.
+build: "python -m pip install -r requirements.txt"
+validate: "python -m unittest discover -p 'test_*.py'"

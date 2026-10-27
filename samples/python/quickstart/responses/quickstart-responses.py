@@ -1,3 +1,4 @@
+# <doc_sdk_overview_make_your_first_foundry_sdk_call>
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 
@@ -20,3 +21,4 @@ if not response.output_text or not response.output_text.strip():
     raise RuntimeError("Response output text was empty.")
 
 print(f"Response output: {response.output_text}")
+# </doc_sdk_overview_make_your_first_foundry_sdk_call>
