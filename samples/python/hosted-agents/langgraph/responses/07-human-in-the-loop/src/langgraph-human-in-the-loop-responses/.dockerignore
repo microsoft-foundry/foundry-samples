@@ -24,3 +24,10 @@ README.md
 
 # Local environment (never bake credentials into the image)
 .env
+.env.*
+!.env.example
+.agentserver/
+response_store/
+.pytest_cache/
+.ruff_cache/
+tests/

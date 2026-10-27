@@ -3,9 +3,53 @@
 See the shared [Python startup configuration](../README.md#python-startup-configuration)
 for deployment environments and dependency compatibility.
 
-This directory contains samples that demonstrate how to use [LangGraph](https://langchain-ai.github.io/langgraph/) together with [`langchain_azure_ai.agents.hosting`](https://github.com/langchain-ai/langchain-azure/tree/main/libs/azure-ai/langchain_azure_ai/agents/hosting) to host agents on Foundry with different capabilities and configurations. Each sample includes a README with sample queries and any sample-specific notes.
+These samples combine the [LangChain Azure SDK](https://github.com/langchain-ai/langchain-azure) with LangChain agents, [LangGraph](https://langchain-ai.github.io/langgraph/) workflows, and Deep Agents research on Foundry. They demonstrate SDK and framework behavior together with platform configuration, deployment, and integration. Each sample includes a README with sample queries and any sample-specific notes.
 
 Use the configuration-driven `langchain_azure_ai.agents.hosting.run` entrypoint by default. Use a protocol-specific host class only when the agent must customize request translation, unsupported protocol options, readiness behavior, or the lifetime of async resources. The [Responses Custom Host](responses/12-custom-host/) and [Invocations Custom Host](invocations/04-custom-host/) samples demonstrate the request-translation case.
+
+## Scope and relationship to SDK samples
+
+Foundry samples include important examples of the LangChain Azure SDK together
+with LangChain, LangGraph, and Deep Agents, alongside platform configuration,
+deployment, and integration. They are not limited to infrastructure wrappers:
+the agent's middleware, graph state, tools, review flow, and research workflow
+are part of what the sample teaches.
+
+[LangChain Azure SDK samples](https://github.com/langchain-ai/langchain-azure/tree/main/samples)
+focus on SDK usage, including hosting, state, HITL, resilience, and extension
+points, with platform dependencies where needed. Reuse or adapt selected SDK
+examples here when useful; having a counterpart does not make either example
+out of scope. Preserve the defining SDK/framework behavior and document the
+Foundry-specific resources, identity, configuration, and deployment steps.
+
+### Choose the behavior, not just the deployment
+
+| Behavior | Foundry example | Related SDK example |
+| --- | --- | --- |
+| Host an existing compiled graph | [Run](responses/10-run/) | [Configuration-driven hosting](https://github.com/langchain-ai/langchain-azure/tree/main/samples/hosting/langgraph-hosted-agents/responses/09_run) |
+| Compose LangGraph nodes and state | [Workflows](responses/05-workflows/) | [SDK workflow](https://github.com/langchain-ai/langchain-azure/tree/main/samples/hosting/langgraph-hosted-agents/responses/05_workflows) |
+| Load managed tools | [Toolbox](responses/02-langgraph-toolbox/) | [SDK Toolbox](https://github.com/langchain-ai/langchain-azure/tree/main/samples/hosting/langgraph-hosted-agents/responses/04_foundry_toolbox) |
+| Review and resume a graph interrupt | [Human-in-the-Loop](responses/07-human-in-the-loop/) | [SDK graph HITL](https://github.com/langchain-ai/langchain-azure/tree/main/samples/hosting/langgraph-hosted-agents/responses/08_hitl) |
+| Recover background work | [Resilient](responses/09-resilient/) | [SDK resilient Responses](https://github.com/langchain-ai/langchain-azure/tree/main/samples/hosting/langgraph-hosted-agents/responses/10_resilient) |
+| Combine planning, delegation, research, and state-backed files | [Deep Agents](responses/11-deep-agents/) | [SDK Deep Research](https://github.com/langchain-ai/langchain-azure/tree/main/samples/hosting/langgraph-hosted-agents/responses/12_deep_agents) |
+| Supply application-owned state stores | [Custom Stores](responses/13-custom-store/) | [SDK hosting extension points](https://github.com/langchain-ai/langchain-azure/tree/main/libs/azure-ai/langchain_azure_ai/agents/hosting) |
+
+Graph interrupts are not the same extension point as native LangChain
+`HumanInTheLoopMiddleware`: approval, rejection, and rich edit/revise semantics
+must be explained and tested for the chosen implementation. Similarly,
+checkpoints, long-term memory, Deep Agents filesystem backends, and exported
+reports are distinct capabilities. The SDK collection also includes
+[Foundry Memory](https://github.com/langchain-ai/langchain-azure/tree/main/samples/foundry-memory),
+[Cosmos DB](https://github.com/langchain-ai/langchain-azure/tree/main/samples/cosmosdb-nosql),
+[Blob-backed Deep Agents workspaces](https://github.com/langchain-ai/langchain-azure/tree/main/samples/deepagents-storage-backend),
+and [document-processing examples](https://github.com/langchain-ai/langchain-azure/tree/main/samples/react-agent-docintelligence).
+Select and adapt these when the scenario needs them rather than treating a
+generic storage or chat sample as equivalent coverage.
+
+When adapting an SDK example, keep a source reference, preserve essential tools
+and outputs, and validate the claimed behavior with the real SDK. Deploying a
+container or receiving HTTP 200 is not sufficient evidence for human review,
+state recovery, or a saved research report.
 
 ## Samples
 

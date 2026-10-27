@@ -1,0 +1,16 @@
+.venv/
+venv/
+.git/
+.vscode/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.env
+.env.*
+!.env.example
+.agentserver/
+response_store/
+tests/
+Dockerfile
+.dockerignore

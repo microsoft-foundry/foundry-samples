@@ -14,11 +14,12 @@ START → draft → await_approval ──approve──► END (emit final draft)
                        └──reject──► host returns response.failed (interrupt_rejected)
 ```
 
-The graph state declares three channels:
+The graph state declares four channels:
 
 - **`messages`** — the channel the Responses host emits to the client. Only the **final approved draft** is appended to it.
 - **`draft`** — the current proposal text under review.
 - **`revision_history`** — list of `{draft, feedback}` pairs from prior revision rounds; each round seeds the next `draft` call with the rejected draft and the reviewer's feedback.
+- **`task_id`** — identifies the user message currently under review. Revision feedback stays with that task; a new request in the same conversation starts a new draft and clears the previous task's revision history.
 
 Routing out of `await_approval` is done by returning a [`Command(goto=...)`](https://langchain-ai.github.io/langgraph/how-tos/command/) instead of static edges, so the same node can finalize, loop, or stay paused depending on the resume value.
 
@@ -197,6 +198,26 @@ When the agent pauses with an approval request, the Inspector renders an interac
 3. On the **Basics** tab, choose deployment method (**Code** or **Container**) and confirm the agent name.
 4. On **Review + Deploy**, confirm runtime details, pick **CPU and Memory** size, and click **Deploy**.
 5. After deployment, invoke the agent in the Agent Playground and stream live logs from the **Logs** tab.
+
+## Behavior validation
+
+From `src/langgraph-human-in-the-loop-responses`, after `uv sync --frozen`, run:
+
+```bash
+uv run --frozen python -m unittest discover -s tests -v
+```
+
+These credential-free tests exercise the real LangGraph graph and
+`FoundryCheckpointSaver`, replacing only the external model service. They check
+that the draft remains paused until approval, that follow-up tasks use the latest
+user request, and that revision feedback does not leak into a later task.
+They also exercise approve/revise/reject through the real Responses host in
+both JSON and SSE modes.
+
+The repository cloud contract separately checks pending review and automatic
+approval through the hosted Responses endpoint. Its automatic-approval support
+does not validate the interactive reject/revise UI; use the documented review
+payloads to exercise those decisions.
 
 ## Troubleshooting
 
