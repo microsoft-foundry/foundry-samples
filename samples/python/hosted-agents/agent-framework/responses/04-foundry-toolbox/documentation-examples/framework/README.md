@@ -28,6 +28,8 @@ Set the required environment variables before running an example. `FOUNDRY_PROJE
 | `sharepoint-client.py` | `aip-python-103` | `FOUNDRY_MODEL_NAME`, `FOUNDRY_PROJECT_ENDPOINT` |
 | `web-search-client.py` | `aip-python-116` | `FOUNDRY_MODEL_NAME`, `FOUNDRY_PROJECT_ENDPOINT` |
 
+`FoundryToolbox` is a lazy export provided by the preview `agent-framework-foundry-hosting` package. `requirements.in` declares it explicitly, and `requirements.txt` pins its complete compatible dependency graph.
+
 ## Run
 
 Run from this directory. The explicit `--run` flag acknowledges that an example can create, update, or delete Azure resources and incur charges. Use an unused sample name for creation examples. Management examples require existing resources you own, not a production or shared agent. Read the selected function before running it.

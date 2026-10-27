@@ -30,13 +30,16 @@
     "minimal_host_tests": 2,
     "sdk_call_signatures": 1106,
     "sdk_model_constructions": 286,
-    "complete_dependency_consumer_graphs": 13,
+    "complete_dependency_consumer_graphs": 15,
+    "fresh_consumer_packages": 7,
+    "fresh_consumer_environments": 2,
+    "fresh_consumer_tests": 22,
     "repository_policies": {
       "hosted_dependency_policy": {
         "static_check": "passed",
         "resolution_check": "passed using a local wheelhouse",
         "regression_tests_passed": 46,
-        "cached_binary_artifacts": 51,
+        "cached_binary_artifacts": 111,
         "artifact_provenance": "Every cached wheel SHA256 matches the official public PyPI release metadata.",
         "public_index_transport": "Direct files.pythonhosted.org HTTPS requests fail locally during TLS negotiation. Certificate validation was not disabled.",
         "policy_exceptions_added": 0,
@@ -1389,7 +1392,7 @@
       "canonical_file_sha256": "5622e95bb002e5e4ff97d6e1e6e5480fb9c0c48e568e4deb6fb3b2fb6146c8f5",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/bring-your-own/responses/hello-world/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
+        "samples/python/hosted-agents/bring-your-own/responses/hello-world/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
         "samples/python/hosted-agents/bring-your-own/responses/hello-world/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
       },
       "asset_files": []
@@ -2003,8 +2006,8 @@
       "canonical_file_sha256": "ec41b60a9f8b10a826c2d9904d805f6bcd53c50b2381826ab0f6ea1af73fb46e",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/a2a/01-delegation/caller/documentation-examples/framework/requirements.in": "5c9957a65b34e915ac46ccc18b586e5c90e71090c5766a5f9823d957b6705de0",
-        "samples/python/hosted-agents/agent-framework/a2a/01-delegation/caller/documentation-examples/framework/requirements.txt": "658ea84e1e25ef527acce369c389d6266863f19ae20de8a5c08136eee5fa03d2"
+        "samples/python/hosted-agents/agent-framework/a2a/01-delegation/caller/documentation-examples/framework/requirements.in": "d2c12b548cd448778c361c1ced58fd64d7ff9ae51df6986ce03875b0ee194b97",
+        "samples/python/hosted-agents/agent-framework/a2a/01-delegation/caller/documentation-examples/framework/requirements.txt": "12207d456732ad96046ee83481ef69ea501ae67ed505da0c3e154b7100dda41a"
       },
       "asset_files": []
     },
@@ -2058,8 +2061,8 @@
       "canonical_file_sha256": "c745b01d951baec23c8dd1cce076791ff32550f71b05065ae1fcaed770d5ca43",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/11-azure-search-rag/documentation-examples/framework/requirements.in": "5c9957a65b34e915ac46ccc18b586e5c90e71090c5766a5f9823d957b6705de0",
-        "samples/python/hosted-agents/agent-framework/responses/11-azure-search-rag/documentation-examples/framework/requirements.txt": "658ea84e1e25ef527acce369c389d6266863f19ae20de8a5c08136eee5fa03d2"
+        "samples/python/hosted-agents/agent-framework/responses/11-azure-search-rag/documentation-examples/framework/requirements.in": "d2c12b548cd448778c361c1ced58fd64d7ff9ae51df6986ce03875b0ee194b97",
+        "samples/python/hosted-agents/agent-framework/responses/11-azure-search-rag/documentation-examples/framework/requirements.txt": "12207d456732ad96046ee83481ef69ea501ae67ed505da0c3e154b7100dda41a"
       },
       "asset_files": []
     },
@@ -2168,8 +2171,8 @@
       "canonical_file_sha256": "b90082cd165bd45696f64dda14abde3d5f3487ad556b0340ff8ad336471a935b",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "d5edbb6272ac28c84cfccbac644da0c5cfc1e2d706cb59a5536c2afc679077c2",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "1eb9a4b2feabde816f43a820d8471b4fe95d67cf1bd762399fecda6bc6c1dcb1"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "4aeb36afe6e67178f18902c89c860591d3987241825c00e912e7bc3090817bd2",
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "bb04f94d2de3d3e074d1d222f6645bcf5052058e08b92bdbfd47f4bc32272d22"
       },
       "asset_files": [
         {
@@ -2266,8 +2269,8 @@
       "canonical_file_sha256": "a47c72ecfe4317457d63f6db7bd84f1162e15401b39978404201f0f26e914357",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/14-browser-automation-agent/documentation-examples/framework/requirements.in": "5c9957a65b34e915ac46ccc18b586e5c90e71090c5766a5f9823d957b6705de0",
-        "samples/python/hosted-agents/agent-framework/responses/14-browser-automation-agent/documentation-examples/framework/requirements.txt": "658ea84e1e25ef527acce369c389d6266863f19ae20de8a5c08136eee5fa03d2"
+        "samples/python/hosted-agents/agent-framework/responses/14-browser-automation-agent/documentation-examples/framework/requirements.in": "eaa57bf9d9d4b7433a5b20fdebba0567141f7fbc3eb0f24859888878d3722992",
+        "samples/python/hosted-agents/agent-framework/responses/14-browser-automation-agent/documentation-examples/framework/requirements.txt": "12207d456732ad96046ee83481ef69ea501ae67ed505da0c3e154b7100dda41a"
       },
       "asset_files": []
     },
@@ -2321,8 +2324,8 @@
       "canonical_file_sha256": "d60fd5d7b4ad03fcabb91135f1fd84cf7505c77d7bd709c44bbaf461e70972d1",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "d5edbb6272ac28c84cfccbac644da0c5cfc1e2d706cb59a5536c2afc679077c2",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "1eb9a4b2feabde816f43a820d8471b4fe95d67cf1bd762399fecda6bc6c1dcb1"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "4aeb36afe6e67178f18902c89c860591d3987241825c00e912e7bc3090817bd2",
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "bb04f94d2de3d3e074d1d222f6645bcf5052058e08b92bdbfd47f4bc32272d22"
       },
       "asset_files": [
         {
@@ -2467,8 +2470,8 @@
       "canonical_file_sha256": "a0abe00645f47f4473cf5948ba9717b960c26567ac0d2ad072133a78cede3622",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "d5edbb6272ac28c84cfccbac644da0c5cfc1e2d706cb59a5536c2afc679077c2",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "1eb9a4b2feabde816f43a820d8471b4fe95d67cf1bd762399fecda6bc6c1dcb1"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "4aeb36afe6e67178f18902c89c860591d3987241825c00e912e7bc3090817bd2",
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "bb04f94d2de3d3e074d1d222f6645bcf5052058e08b92bdbfd47f4bc32272d22"
       },
       "asset_files": [
         {
@@ -2539,8 +2542,8 @@
       "canonical_file_sha256": "5552696954ea6c91d3d7adf108d8863c4d65733e310dc22133ed28841c9d9aab",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/prompt-agents/code-interpreter-custom/documentation-examples/framework/requirements.in": "5c9957a65b34e915ac46ccc18b586e5c90e71090c5766a5f9823d957b6705de0",
-        "samples/python/prompt-agents/code-interpreter-custom/documentation-examples/framework/requirements.txt": "658ea84e1e25ef527acce369c389d6266863f19ae20de8a5c08136eee5fa03d2"
+        "samples/python/prompt-agents/code-interpreter-custom/documentation-examples/framework/requirements.in": "d2c12b548cd448778c361c1ced58fd64d7ff9ae51df6986ce03875b0ee194b97",
+        "samples/python/prompt-agents/code-interpreter-custom/documentation-examples/framework/requirements.txt": "12207d456732ad96046ee83481ef69ea501ae67ed505da0c3e154b7100dda41a"
       },
       "asset_files": []
     },
@@ -2603,8 +2606,8 @@
       "canonical_file_sha256": "a45aa10603541dc3fde3f03792617db696a289f26a03e2c382e81fa6df1ed87a",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/toolbox-examples/fabric-iq/documentation-examples/framework/requirements.in": "5c9957a65b34e915ac46ccc18b586e5c90e71090c5766a5f9823d957b6705de0",
-        "samples/python/hosted-agents/toolbox-examples/fabric-iq/documentation-examples/framework/requirements.txt": "658ea84e1e25ef527acce369c389d6266863f19ae20de8a5c08136eee5fa03d2"
+        "samples/python/hosted-agents/toolbox-examples/fabric-iq/documentation-examples/framework/requirements.in": "d2c12b548cd448778c361c1ced58fd64d7ff9ae51df6986ce03875b0ee194b97",
+        "samples/python/hosted-agents/toolbox-examples/fabric-iq/documentation-examples/framework/requirements.txt": "12207d456732ad96046ee83481ef69ea501ae67ed505da0c3e154b7100dda41a"
       },
       "asset_files": []
     },
@@ -2641,8 +2644,8 @@
       "canonical_file_sha256": "a45aa10603541dc3fde3f03792617db696a289f26a03e2c382e81fa6df1ed87a",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/toolbox-examples/fabric-iq/documentation-examples/framework/requirements.in": "5c9957a65b34e915ac46ccc18b586e5c90e71090c5766a5f9823d957b6705de0",
-        "samples/python/hosted-agents/toolbox-examples/fabric-iq/documentation-examples/framework/requirements.txt": "658ea84e1e25ef527acce369c389d6266863f19ae20de8a5c08136eee5fa03d2"
+        "samples/python/hosted-agents/toolbox-examples/fabric-iq/documentation-examples/framework/requirements.in": "d2c12b548cd448778c361c1ced58fd64d7ff9ae51df6986ce03875b0ee194b97",
+        "samples/python/hosted-agents/toolbox-examples/fabric-iq/documentation-examples/framework/requirements.txt": "12207d456732ad96046ee83481ef69ea501ae67ed505da0c3e154b7100dda41a"
       },
       "asset_files": []
     },
@@ -2756,8 +2759,8 @@
       "canonical_file_sha256": "c705c529e62e0d7fc303ccae18efc78318b1207e9ba803cdf64189fab8ed2dd1",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/06-files/documentation-examples/framework/requirements.in": "5c9957a65b34e915ac46ccc18b586e5c90e71090c5766a5f9823d957b6705de0",
-        "samples/python/hosted-agents/agent-framework/responses/06-files/documentation-examples/framework/requirements.txt": "658ea84e1e25ef527acce369c389d6266863f19ae20de8a5c08136eee5fa03d2"
+        "samples/python/hosted-agents/agent-framework/responses/06-files/documentation-examples/framework/requirements.in": "d2c12b548cd448778c361c1ced58fd64d7ff9ae51df6986ce03875b0ee194b97",
+        "samples/python/hosted-agents/agent-framework/responses/06-files/documentation-examples/framework/requirements.txt": "12207d456732ad96046ee83481ef69ea501ae67ed505da0c3e154b7100dda41a"
       },
       "asset_files": [
         {
@@ -2868,8 +2871,8 @@
       "canonical_file_sha256": "f43e6f97423fa9fbcfde2251f1c91dc9ea59c8d6a93ba22939eb5dbccddb5feb",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "d5edbb6272ac28c84cfccbac644da0c5cfc1e2d706cb59a5536c2afc679077c2",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "1eb9a4b2feabde816f43a820d8471b4fe95d67cf1bd762399fecda6bc6c1dcb1"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "4aeb36afe6e67178f18902c89c860591d3987241825c00e912e7bc3090817bd2",
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "bb04f94d2de3d3e074d1d222f6645bcf5052058e08b92bdbfd47f4bc32272d22"
       },
       "asset_files": [
         {
@@ -2965,8 +2968,8 @@
       "canonical_file_sha256": "0a3ae2a1f537c3e1467be808b9d01f99cd1db174a573d694d4a59a8ead0e4b98",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "d5edbb6272ac28c84cfccbac644da0c5cfc1e2d706cb59a5536c2afc679077c2",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "1eb9a4b2feabde816f43a820d8471b4fe95d67cf1bd762399fecda6bc6c1dcb1"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "4aeb36afe6e67178f18902c89c860591d3987241825c00e912e7bc3090817bd2",
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "bb04f94d2de3d3e074d1d222f6645bcf5052058e08b92bdbfd47f4bc32272d22"
       },
       "asset_files": [
         {
@@ -3051,8 +3054,8 @@
       "canonical_file_sha256": "43f287ed21ff1374d99ddf908572750f2b007377a0fc060aa3079efc712b89de",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "d5edbb6272ac28c84cfccbac644da0c5cfc1e2d706cb59a5536c2afc679077c2",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "1eb9a4b2feabde816f43a820d8471b4fe95d67cf1bd762399fecda6bc6c1dcb1"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "4aeb36afe6e67178f18902c89c860591d3987241825c00e912e7bc3090817bd2",
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "bb04f94d2de3d3e074d1d222f6645bcf5052058e08b92bdbfd47f4bc32272d22"
       },
       "asset_files": [
         {
@@ -3293,7 +3296,7 @@
       "canonical_file_sha256": "ad88ddbe60b304f0871a976d17b4b0015a104fe2680d098599b40afba11c43e3",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
       },
       "asset_files": []
@@ -3322,7 +3325,7 @@
       "canonical_file_sha256": "0f2b409dd25f6a0e34ef4313352d2ad239d2432be973c75954837cb16002eb1a",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
       },
       "asset_files": []
@@ -3351,7 +3354,7 @@
       "canonical_file_sha256": "0f2b409dd25f6a0e34ef4313352d2ad239d2432be973c75954837cb16002eb1a",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
       },
       "asset_files": []
@@ -3406,8 +3409,8 @@
       "canonical_file_sha256": "f366f5c96eadc6871ba7c8ecfb13f7df0e553c939e42cf087b60caeda272a452",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "d5edbb6272ac28c84cfccbac644da0c5cfc1e2d706cb59a5536c2afc679077c2",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "1eb9a4b2feabde816f43a820d8471b4fe95d67cf1bd762399fecda6bc6c1dcb1"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "4aeb36afe6e67178f18902c89c860591d3987241825c00e912e7bc3090817bd2",
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "bb04f94d2de3d3e074d1d222f6645bcf5052058e08b92bdbfd47f4bc32272d22"
       },
       "asset_files": [
         {
@@ -3527,7 +3530,7 @@
       "canonical_file_sha256": "1d803ec612748f8289d6b47c202033b354cab40918b16b9672f9bf798d05cccd",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
       },
       "asset_files": []
@@ -3910,7 +3913,7 @@
       "canonical_file_sha256": "5622e95bb002e5e4ff97d6e1e6e5480fb9c0c48e568e4deb6fb3b2fb6146c8f5",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/bring-your-own/responses/hello-world/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
+        "samples/python/hosted-agents/bring-your-own/responses/hello-world/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
         "samples/python/hosted-agents/bring-your-own/responses/hello-world/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
       },
       "asset_files": []
@@ -4120,7 +4123,7 @@
       "canonical_file_sha256": "0f2b409dd25f6a0e34ef4313352d2ad239d2432be973c75954837cb16002eb1a",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
       },
       "asset_files": []
@@ -4158,7 +4161,7 @@
       "canonical_file_sha256": "aca2d5d1db3cdbfc72f316ad07637edc4cbbeed2e0a07370438b4d591fc2d137",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
       },
       "asset_files": []
@@ -4187,7 +4190,7 @@
       "canonical_file_sha256": "0f2b409dd25f6a0e34ef4313352d2ad239d2432be973c75954837cb16002eb1a",
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
       },
       "asset_files": []

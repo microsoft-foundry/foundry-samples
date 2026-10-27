@@ -1,3 +1,4 @@
 azure-ai-projects==2.9.0
+azure-core==1.41.0
 azure-identity==1.27.0
 openai==3.35.1
