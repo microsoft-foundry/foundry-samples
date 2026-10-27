@@ -77,7 +77,17 @@ def configure() -> None:
     ):
         raise ValueError("Storage lookup returned an unexpected resource scope.")
     container_id = f"{account_id}/blobServices/default/containers/{container}"
-    run_cli("az", "resource", "show", "--ids", container_id, "--output", "none")
+    run_cli(
+        "az",
+        "resource",
+        "show",
+        "--ids",
+        container_id,
+        "--subscription",
+        subscription,
+        "--output",
+        "none",
+    )
     agent = json.loads(run_cli("azd", "ai", "agent", "show", "--output", "json"))
     principal = agent.get("instance_identity", {}).get("principal_id", "")
     UUID(principal)
@@ -123,6 +133,8 @@ def configure() -> None:
                 "list",
                 "--scope",
                 scope,
+                "--subscription",
+                subscription,
                 "--include-inherited",
                 "--output",
                 "json",
@@ -150,6 +162,8 @@ def configure() -> None:
             role_id,
             "--scope",
             scope,
+            "--subscription",
+            subscription,
             "--name",
             assignment_name,
             "--only-show-errors",
@@ -170,6 +184,16 @@ def cleanup() -> None:
     principal = receipt["principal"]
     UUID(principal)
     account_id = receipt["account_id"]
+    account_scope = re.fullmatch(
+        r"/subscriptions/([^/]+)/resourceGroups/[^/]+/providers/"
+        r"Microsoft\.Storage/storageAccounts/[a-z0-9]{3,24}",
+        account_id,
+        re.IGNORECASE,
+    )
+    if account_scope is None:
+        raise ValueError("Role cleanup requires a recorded Storage account scope.")
+    subscription = account_scope.group(1)
+    UUID(subscription)
     for identifier in list(receipt["assignments"]):
         if not identifier.startswith(account_id + "/"):
             raise ValueError("Role cleanup escaped its recorded Storage account.")
@@ -185,6 +209,8 @@ def cleanup() -> None:
                 "list",
                 "--scope",
                 scope,
+                "--subscription",
+                subscription,
                 "--query",
                 f"[?name=='{identifier.rsplit('/', 1)[-1]}'] | [0]",
                 "--output",
@@ -206,6 +232,8 @@ def cleanup() -> None:
                 "delete",
                 "--ids",
                 identifier,
+                "--subscription",
+                subscription,
                 "--output",
                 "none",
             )

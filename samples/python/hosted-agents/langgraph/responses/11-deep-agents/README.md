@@ -1,14 +1,19 @@
 # What this sample demonstrates
 
-Host a Deep Agents research assistant on Microsoft Foundry over the **Responses
-protocol**: research a topic, save a cited report, revise a named copy, and download
-both versions from private Azure Blob Storage.
+Use the **LangChain Azure SDK with LangChain, LangGraph, and Deep Agents** to
+research a topic, save a cited report, revise a named copy, and download both
+versions from private Azure Blob Storage. Run the same native graph locally or
+host it on Microsoft Foundry over the **Responses protocol**.
 
-This ports the merged [LangChain Azure sample (#1207)](https://github.com/langchain-ai/langchain-azure/pull/1207)
-from commit `c480d810ca96e77860db64ba3403c3bf13d5dfcf`, based on LangChain's official
-[Deep Research example](https://github.com/langchain-ai/deepagents/tree/b6504f6654ee6f25e1cd923087291de9e51572cc/examples/deep_research).
-It extends the existing sample in place and retains this repository's `src/`
-layout, uv dependencies, inline Toolbox declaration, and direct-code deployment.
+The scenario brings together SDK model and tool integration, checkpointed Deep
+Agents state, a custom LangChain tool, and explicit resource lifetimes. Foundry
+project/model configuration, Toolbox deployment, Storage authorization, and cloud
+acceptance are included so that the SDK example can be run end to end.
+
+It reuses the selected [LangChain Azure Deep Research example](https://github.com/langchain-ai/langchain-azure/tree/c480d810ca96e77860db64ba3403c3bf13d5dfcf/samples/hosting/langgraph-hosted-agents/responses/12_deep_agents),
+adapted to this repository's `src/` layout, uv dependencies, inline Toolbox, and
+direct-code deployment. The integration points below explain how to adapt the
+framework workflow independently of its deployment.
 
 ## How it works
 
@@ -29,6 +34,21 @@ until the stock `ResponsesHostServer` shuts down. `agent.py` remains independent
 of hosting. Working files are **not** files on the hosted session filesystem;
 Blob Storage is an export destination, not a replacement backend.
 
+### SDK and framework integration points
+
+| Integration | Where to read / what it demonstrates |
+| --- | --- |
+| Azure model as a LangChain chat model | [`main.py`](src/langgraph-deep-agents/main.py) uses `AzureAIOpenAIApiChatModel` with `output_version="responses/v1"` for the native graph's model and tool-call messages. |
+| Deep Agents composition on LangGraph | [`agent.py`](src/langgraph-deep-agents/agent.py) uses `create_deep_agent`, a research `SubAgent`, and `TodoListMiddleware`, retaining the default `StateBackend`. The graph does not depend on its HTTP host. |
+| Foundry Toolbox as LangChain tools | [`research_agent/tools.py`](src/langgraph-deep-agents/research_agent/tools.py) loads `AzureAIProjectToolbox` and selects only `web_search`, alongside a local progress tool. |
+| Checkpointed framework state | [`main.py`](src/langgraph-deep-agents/main.py) supplies `FoundryCheckpointSaver`; reports and todos belong to conversation state rather than the container filesystem. |
+| State-aware custom tool | [`report_export.py`](src/langgraph-deep-agents/report_export.py) uses LangChain `ToolRuntime` to publish a selected saved file, not model-supplied upload content. Expected Storage failures become handled tool errors. |
+| SDK hosting and lifecycle | [`main.py`](src/langgraph-deep-agents/main.py) keeps credentials, model clients, and the checkpoint saver alive around `ResponsesHostServer`. [`client.py`](src/langgraph-deep-agents/client.py) demonstrates continuation and hosted-session cleanup. |
+
+The sections below add the platform resources, identities, configuration, and
+deployment needed by these integrations. Use the same `build_agent` function when
+adapting the research workflow; a different host does not require rewriting it.
+
 ### Configuration
 
 | Variable | Purpose |
@@ -38,6 +58,7 @@ Blob Storage is an export destination, not a replacement backend.
 | `TOOLBOX_NAME` | `deep-agents-tools`, declared in `azure.yaml`. |
 | `AZURE_STORAGE_ACCOUNT_NAME` | azd/CI input: existing report Storage account name. |
 | `AZURE_STORAGE_CONTAINER_NAME` | azd/CI input: existing private report container. |
+| `AZURE_STORAGE_SUBSCRIPTION_ID` | azd/CI input: subscription containing report Storage; defaults to `AZURE_SUBSCRIPTION_ID` when omitted. |
 | `REPORT_STORAGE_ACCOUNT_URL` | HTTPS Blob endpoint for your dedicated report account. |
 | `REPORT_STORAGE_CONTAINER` | Existing private container, for example `reports`. |
 | `AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED` | Defaults to `false`. |
@@ -54,7 +75,9 @@ values in `.env`; do not rely on azd to export its environment into another shel
 2. A Foundry project with a tool-capable model deployment and a Toolbox exposing
    `web_search`. Option 1 provisions these from `azure.yaml` if needed.
 3. A dedicated Azure Storage account and private report container. They are
-   **not** created by this manifest; setup commands are included below.
+   **not** created by this manifest; setup commands are included below. Storage
+   can use another subscription in the same tenant; configure its subscription
+   explicitly and ensure the deployer has the required access there.
 4. An authenticated Azure identity, for example through `az login`, plus the
    following permissions. Have an RBAC administrator apply missing grants;
    resource Contributor alone cannot assign roles.
@@ -125,11 +148,16 @@ az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id
 
 azd env set AZURE_STORAGE_ACCOUNT_NAME "$REPORT_STORAGE_ACCOUNT"
 azd env set AZURE_STORAGE_CONTAINER_NAME "$REPORT_STORAGE_CONTAINER"
+azd env set AZURE_STORAGE_SUBSCRIPTION_ID "$SUBSCRIPTION_ID"
 ```
 
 For automation, substitute the actual developer service-principal object ID and
 `ServicePrincipal` type. With an existing account, reuse its URL, container, and
-resource ID instead of running the create commands. Allow time for RBAC propagation.
+resource ID instead of running the create commands, and set
+`AZURE_STORAGE_SUBSCRIPTION_ID` to that account's subscription. Storage lookup and
+role operations use this value, not the Azure CLI's currently selected subscription.
+Retirement cleanup uses the subscription in the recorded Storage account scope.
+Allow time for RBAC propagation.
 
 ### Provision Azure resources (if needed)
 
@@ -288,6 +316,23 @@ Search queries still leave the application, and checkpoints still retain content
 Research budgets are prompt guidance, not enforced runtime limits. This sample
 shows checkpointed conversation state, not arbitrary in-flight crash recovery.
 
+## Adapt the SDK example
+
+- Change the research workflow or subagent responsibilities in
+  [`research_agent/prompts.py`](src/langgraph-deep-agents/research_agent/prompts.py)
+  and [`agent.py`](src/langgraph-deep-agents/agent.py), without changing the host.
+- Add SDK Toolbox integrations through
+  [`research_agent/tools.py`](src/langgraph-deep-agents/research_agent/tools.py),
+  keeping the exposed tools explicit rather than loading unrelated Toolbox tools.
+- Add state-aware LangChain tools alongside
+  [`report_export.py`](src/langgraph-deep-agents/report_export.py). Keep saved
+  framework state separate from exported artifacts and do not accept arbitrary
+  model-selected Storage destinations.
+- For human approval or durable background execution, follow the separate
+  [HITL](../07-human-in-the-loop/) and [Resilient Responses](../09-resilient/)
+  SDK integration examples. This research scenario does not implement those
+  additional execution policies.
+
 ## Validation and cleanup
 
 From `src/langgraph-deep-agents`:
@@ -335,7 +380,7 @@ only after confirming it contains no resources you need to keep.
 | Symptom | Check |
 | --- | --- |
 | Missing report Storage configuration | Set `AZURE_STORAGE_ACCOUNT_NAME` and `AZURE_STORAGE_CONTAINER_NAME` in azd/CI; use `REPORT_STORAGE_*` in the standalone runtime `.env`. |
-| Postdeploy role hook fails | Confirm the private container exists and the deployer can assign Storage roles, or have an RBAC administrator run the hook. Do not ignore the failure. |
+| Postdeploy role hook fails | Check the reported Azure error code, `AZURE_STORAGE_SUBSCRIPTION_ID`, the private container, and the deployer's role-assignment permission. An RBAC administrator can run the hook; do not ignore its failure. |
 | Toolbox does not expose `web_search` | Confirm the Toolbox name, project, provisioned tool, and project/developer roles. |
 | Publication returns a handled error / no download | Check the private container, network access, and the correct local or agent instance Blob grant. Do not fall back to account keys. |
 | Download digest mismatch | Do not accept the file; republish the selected saved filename and retry. |
@@ -343,6 +388,12 @@ only after confirming it contains no resources you need to keep.
 
 ## Next steps
 
+- [Human-in-the-Loop](../07-human-in-the-loop/) for SDK mapping of LangGraph approval interrupts.
 - [Files](../06-files/) for hosted session filesystem handling.
 - [Observability](../08-observability/) for other tracing/exporter configurations.
 - [Resilient Responses](../09-resilient/) for explicit durable background execution.
+
+## Source examples
+
+- [Merged LangChain Azure example (#1207)](https://github.com/langchain-ai/langchain-azure/pull/1207), used at commit `c480d810ca96e77860db64ba3403c3bf13d5dfcf`.
+- [Official Deep Research example](https://github.com/langchain-ai/deepagents/tree/b6504f6654ee6f25e1cd923087291de9e51572cc/examples/deep_research), the original framework workflow.

@@ -123,6 +123,58 @@ class ResearchStorageHookTests(unittest.TestCase):
         self.assertEqual(self.created, [])
         self.assertEqual(self.deleted, [])
 
+    def test_storage_subscription_is_used_for_lookup_grants_and_retirement(self):
+        storage_subscription = "44444444-4444-4444-4444-444444444444"
+        storage_id = ACCOUNT_ID.replace(SUBSCRIPTION, storage_subscription)
+
+        def storage_cli(*arguments):
+            if arguments == ("azd", "env", "get-values"):
+                return (
+                    self.cli(*arguments)
+                    + f'\nAZURE_STORAGE_SUBSCRIPTION_ID="{storage_subscription}"'
+                )
+            if arguments[0] == "az":
+                self.assertIn("--subscription", arguments)
+                self.assertEqual(
+                    arguments[arguments.index("--subscription") + 1],
+                    storage_subscription,
+                )
+            if arguments[:4] == ("az", "storage", "account", "list"):
+                return storage_id
+            return self.cli(*arguments)
+
+        with patch.object(module, "run_cli", side_effect=storage_cli):
+            module.configure()
+            module.cleanup()
+        self.assertEqual(len(self.created), 2)
+        self.assertEqual(len(self.deleted), 2)
+        for arguments in self.created:
+            self.assertTrue(
+                arguments[arguments.index("--scope") + 1].startswith(storage_id)
+            )
+
+    def test_retirement_rejects_malformed_recorded_storage_scope(self):
+        for account_id in [
+            ACCOUNT_ID.replace(SUBSCRIPTION, "invalid-subscription"),
+            ACCOUNT_ID + "/another/resource",
+        ]:
+            with self.subTest(account_id=account_id):
+                module.RECEIPT.write_text(
+                    json.dumps(
+                        {
+                            "principal": PRINCIPAL,
+                            "account_id": account_id,
+                            "assignments": [],
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                with patch.object(module, "run_cli") as cli, self.assertRaises(
+                    ValueError
+                ):
+                    module.cleanup()
+                cli.assert_not_called()
+
     def test_missing_identity_or_permission_fails_instead_of_skipping(self):
         self.principal = ""
         with patch.object(module, "run_cli", side_effect=self.cli), self.assertRaises(

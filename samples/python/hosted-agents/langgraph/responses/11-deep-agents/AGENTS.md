@@ -2,6 +2,15 @@
 
 This project is a **Microsoft Foundry hosted agent** built with LangGraph Deep Agents. It runs in [Foundry Agent Service](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents) and exposes the Responses protocol.
 
+## Sample scope
+
+Demonstrate the LangChain Azure SDK with LangChain, LangGraph, and Deep Agents,
+not only a deployment wrapper. Reuse or adapt the selected SDK research example
+while keeping its native graph, state, and tool extension points understandable.
+Keep the platform configuration, identity permissions, deployment, and end-to-end
+acceptance paths alongside the SDK example. See the collection's
+[sample scope](../../README.md#sample-scope) for the two repositories' roles.
+
 ## Key files
 
 - `azure.yaml` - Foundry hosted-agent manifest
