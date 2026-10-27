@@ -9,3 +9,5 @@
 .agentserver/
 response_store/
 tests/
+Dockerfile
+.dockerignore

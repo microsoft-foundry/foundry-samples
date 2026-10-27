@@ -109,8 +109,19 @@ A plain invocation of an email prompt pauses; it does not send an email.
 azd deploy
 ```
 
-This sample uses **direct code deployment** (`codeConfiguration`), like nearby
-samples. No Dockerfile or container build is required.
+The manifest defaults to **direct code deployment** (`codeConfiguration`). This
+path does not require Docker on your machine.
+
+The sample also includes a [Dockerfile](src/langgraph-middleware/Dockerfile) and
+[.dockerignore](src/langgraph-middleware/.dockerignore), matching neighboring
+samples. To use container deployment, install and start Docker, initialize a
+separate workspace with the same manifest URL and `--deploy-mode container`,
+then follow the same provision/deploy steps. The image uses Python 3.13 and
+uv 0.11.7 and installs only the frozen production dependencies.
+
+Repository cloud CI validates both container and direct-code deployment. The
+Dockerfile is excluded from direct-code uploads by `.agentignore`; local
+environments, secrets, tests, and generated state are excluded from the image.
 
 ### Invoke the deployed agent
 

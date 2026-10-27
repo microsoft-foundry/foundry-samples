@@ -9,8 +9,10 @@ the agent logic.
 
 ## Deployment mode
 
-- **Direct code deployment:** `codeConfiguration` declares the Python runtime and entry
-  point. A Dockerfile is not required.
+- **Direct code deployment (default):** `codeConfiguration` declares the Python
+  runtime and entry point. `.agentignore` excludes container-only build files.
+- **Container deployment:** initializing with `--deploy-mode container` uses the
+  included Dockerfile. Repository cloud CI validates both deployment modes.
 
 ## Key files
 
@@ -19,6 +21,8 @@ the agent logic.
 - `src/langgraph-middleware/main.py` - agent implementation and server
   entry point
 - `src/langgraph-middleware/pyproject.toml` and `uv.lock` - default, fully resolved Python runtime dependencies; use `requirements.txt` only as the backward-compatible fallback
+- `src/langgraph-middleware/Dockerfile` and `.dockerignore` - frozen production
+  image build and container context exclusions, aligned with neighboring samples
 - `README.md` - prerequisites and supported local run, test, and deployment paths
 
 Do not commit `.vscode` launch or
