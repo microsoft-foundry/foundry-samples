@@ -5,9 +5,9 @@ sample:
   experiences: [azd, vscode]
 
 tests:
-  - name: delegated-web-research
+  - name: research-and-revise-named-reports
     turns:
-      - input: Research the official LangGraph overview using delegated research. Reply briefly and include the exact URL https://docs.langchain.com/oss/python/langgraph/overview.
+      - input: Research how LangGraph checkpoints support multi-turn agents using delegated research. Include the heading '# LangGraph Checkpoints' and the exact primary-source URL https://docs.langchain.com/oss/python/langgraph/overview. Save the cited report as report-v1.md.
         assertions:
           - source: assistant_text
             type: contains
@@ -15,3 +15,34 @@ tests:
           - source: raw
             type: regex
             value: '"name"\s*:\s*"task"'
+          - source: raw
+            type: contains
+            value: /report-v1.md
+          - source: raw
+            type: regex
+            value: '"name"\s*:\s*"write_file"'
+      - input: Read the saved report-v1.md, then revise a copy named report-v2.md to add a section headed 'Recovery Limitations'. Preserve the original report, findings, and source URLs; do not repeat the research.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: Recovery Limitations
+          - source: assistant_text
+            type: contains
+            value: https://docs.langchain.com/oss/python/langgraph/overview
+          - source: raw
+            type: contains
+            value: /report-v2.md
+          - source: raw
+            type: regex
+            value: '"name"\s*:\s*"edit_file"'
+      - input: Show the complete original report-v1.md again, without editing it or researching again.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: '# LangGraph Checkpoints'
+          - source: assistant_text
+            type: contains
+            value: https://docs.langchain.com/oss/python/langgraph/overview
+          - source: raw
+            type: regex
+            value: '"name"\s*:\s*"read_file"'

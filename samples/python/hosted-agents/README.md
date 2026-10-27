@@ -180,6 +180,7 @@ See [`langgraph/README.md`](langgraph/) for the full list and the local-run guid
 | **[Files](langgraph/responses/06-files/)**                              | LangGraph agent with local filesystem tools and a Foundry-Toolbox `code_interpreter` for session-uploaded files.                       |
 | **[Human-in-the-Loop](langgraph/responses/07-human-in-the-loop/)**      | `StateGraph` that drafts a proposal and pauses for approval via `langgraph.types.interrupt`, serialized as `mcp_approval_request` + `function_call`. |
 | **[Observability](langgraph/responses/08-observability/)**              | GenAI OpenTelemetry tracing enabled with `enable_auto_tracing()` — spans, metrics, and logs flow to Application Insights.              |
+| **[Deep Agents](langgraph/responses/11-deep-agents/)**                  | Delegated web research, checkpointed named report revisions, and private Blob downloads with Deep Agents.                            |
 
 ### Invocations protocol
 

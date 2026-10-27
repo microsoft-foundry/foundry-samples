@@ -7,11 +7,13 @@ This project is a **Microsoft Foundry hosted agent** built with LangGraph Deep A
 - `azure.yaml` - Foundry hosted-agent manifest
 - `src/langgraph-deep-agents/main.py` - Foundry Responses host entry point
 - `src/langgraph-deep-agents/agent.py` - Deep Agents graph assembly
-- `src/langgraph-deep-agents/utils.py` - Foundry chat-model construction
+- `src/langgraph-deep-agents/report_export.py` - publish a saved named report to private Blob Storage
+- `src/langgraph-deep-agents/client.py` - research, revise, and verify both downloads
 - `src/langgraph-deep-agents/research_agent/prompts.py` - research workflow and subagent prompts
 - `src/langgraph-deep-agents/research_agent/tools.py` - Foundry Toolbox loading
 - `src/langgraph-deep-agents/pyproject.toml` - direct dependencies
 - `src/langgraph-deep-agents/uv.lock` - locked dependency graph
+- `src/langgraph-deep-agents/tests/` - offline workflow, publication, client, and lifecycle regressions
 
 ## Development workflow
 

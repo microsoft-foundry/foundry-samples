@@ -1,53 +1,48 @@
-"""Deep research agent assembly."""
+"""Compose the official Deep Research workflow independently of its host."""
 
-from datetime import datetime
-from typing import Any
+from __future__ import annotations
+
+from datetime import datetime, timezone
 
 from deepagents import SubAgent, create_deep_agent
 from langchain.agents.middleware import TodoListMiddleware
+from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
-from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.base import BaseCheckpointSaver
-
-from research_agent.prompts import (
-    RESEARCH_WORKFLOW_INSTRUCTIONS,
-    RESEARCHER_INSTRUCTIONS,
-    SUBAGENT_DELEGATION_INSTRUCTIONS,
-)
-
-MAX_CONCURRENT_RESEARCH_UNITS = 3
-MAX_RESEARCHER_ITERATIONS = 3
+from langgraph.graph.state import CompiledStateGraph
+from research_agent.prompts import RESEARCHER_INSTRUCTIONS, WORKFLOW_INSTRUCTIONS
 
 
 def build_agent(
-    model: ChatOpenAI,
-    checkpointer: BaseCheckpointSaver[Any],
+    model: BaseChatModel,
+    checkpointer: BaseCheckpointSaver,
     tools: list[BaseTool],
-):
-    """Build the coordinator and its focused research subagent."""
-    current_date = datetime.now().strftime("%Y-%m-%d")  # noqa: DTZ005
-    instructions = (
-        RESEARCH_WORKFLOW_INSTRUCTIONS
-        + "\n\n"
-        + "=" * 80
-        + "\n\n"
-        + SUBAGENT_DELEGATION_INSTRUCTIONS.format(
-            max_concurrent_research_units=MAX_CONCURRENT_RESEARCH_UNITS,
-            max_researcher_iterations=MAX_RESEARCHER_ITERATIONS,
-        )
-    )
-    research_sub_agent: SubAgent = {
+    report_export_tool: BaseTool,
+) -> CompiledStateGraph:
+    """Build a research coordinator with a focused research subagent.
+
+    Args:
+        model: A LangChain chat model supporting tool calls.
+        checkpointer: Store for conversation state, todos, and virtual files.
+        tools: The web search and research-progress tools shared with researchers.
+        report_export_tool: Publish the coordinator's saved report to Blob Storage.
+
+    Returns:
+        A native Deep Agents graph supporting invocation and streaming.
+    """
+    researcher: SubAgent = {
         "name": "research-agent",
-        "description": "Delegate research to the sub-agent. Give one topic at a time.",
-        "system_prompt": RESEARCHER_INSTRUCTIONS.format(date=current_date),
+        "description": "Research one topic and return findings with source URLs.",
+        "system_prompt": RESEARCHER_INSTRUCTIONS.format(
+            date=datetime.now(timezone.utc).date().isoformat()
+        ),
         "tools": tools,
     }
-
     return create_deep_agent(
         model=model,
-        tools=tools,
-        system_prompt=instructions,
-        subagents=[research_sub_agent],
+        tools=[*tools, report_export_tool],
+        system_prompt=WORKFLOW_INSTRUCTIONS,
+        subagents=[researcher],
         middleware=[TodoListMiddleware()],
         checkpointer=checkpointer,
         name="foundry-deep-research-agent",

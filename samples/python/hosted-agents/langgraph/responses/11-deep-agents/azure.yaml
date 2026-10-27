@@ -46,7 +46,7 @@ services:
     kind: hosted
     name: langgraph-deep-agents
     displayName: LangGraph Deep Agents (Responses)
-    description: 'A Deep Agents web research assistant hosted on Foundry over the Responses protocol. Demonstrates planning, Foundry web search, state-backed working files, and focused subagent delegation.'
+    description: 'Deep Research with planning, delegated Foundry web search, saved report revisions, and private Blob downloads over the Responses protocol.'
     protocols:
       - protocol: responses
         version: 2.0.0
@@ -54,6 +54,10 @@ services:
       PYTHONNOUSERSITE: "1"
       AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
       TOOLBOX_NAME: deep-agents-tools
+      REPORT_STORAGE_ACCOUNT_URL: ${REPORT_STORAGE_ACCOUNT_URL}
+      REPORT_STORAGE_CONTAINER: ${REPORT_STORAGE_CONTAINER}
+      AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED: 'false'
+      OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false'
     container:
       resources:
         cpu: '0.5'
