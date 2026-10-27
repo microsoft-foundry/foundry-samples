@@ -90,11 +90,15 @@ def discover_checks(repo: Path, base: str, head: str) -> list[RuntimeChecks]:
         if manifest["services"][service.service].get("host") != "azure.ai.agent":
             continue
         project_file = root / "pyproject.toml"
-        if project_file not in files:
-            continue
-        checks = parse_checks(policy.read_tree_file(repo, head, project_file), root)
+        checks = (
+            parse_checks(policy.read_tree_file(repo, head, project_file), root)
+            if project_file in files
+            else None
+        )
         if checks is None:
-            if project_file in changes and project_file in old_files:
+            if project_file in old_files and (
+                project_file not in files or project_file in changes
+            ):
                 previous = parse_checks(
                     policy.read_tree_file(repo, base, project_file), root
                 )

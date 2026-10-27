@@ -63,6 +63,22 @@ class RuntimeChecksTests(unittest.TestCase):
         self.write(ROOT / "uv.lock", "version = 1\n")
         self.write(ROOT / "main.py", "print('worker')\n")
 
+    def requirements_migration(self, *, declared=True, archive=False):
+        project = (
+            PROJECT if declared else PROJECT.split("[tool.hosted-agent-validation]")[0]
+        )
+        self.runtime(project=project)
+        base = self.commit()
+        project_file = self.repo / str(ROOT) / "pyproject.toml"
+        if archive:
+            self.git("config", "diff.renames", "true")
+            project_file.rename(project_file.with_name("pyproject.previous.toml"))
+        else:
+            project_file.unlink()
+        (self.repo / str(ROOT) / "uv.lock").unlink()
+        self.write(ROOT / "requirements.txt", "ruff==0.9.4\n")
+        return base, self.commit()
+
     def test_discovers_a_generic_service_project(self):
         self.runtime()
         checks = module.discover_checks(self.repo, self.base, self.commit())
@@ -115,6 +131,56 @@ class RuntimeChecksTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "cannot remove validation"):
             module.discover_checks(self.repo, base, self.commit())
+
+    def test_removing_project_manifest_fails_closed(self):
+        self.runtime()
+        base = self.commit()
+        (self.repo / str(ROOT) / "pyproject.toml").unlink()
+        with self.assertRaisesRegex(ValueError, "cannot remove validation"):
+            module.discover_checks(self.repo, base, self.commit())
+
+    def test_requirements_migration_fails_closed(self):
+        base, head = self.requirements_migration()
+        with self.assertRaisesRegex(ValueError, "cannot remove validation"):
+            module.discover_checks(self.repo, base, head)
+
+    def test_requirements_migration_cli_fails_closed(self):
+        base, head = self.requirements_migration()
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--repo",
+                str(self.repo),
+                "--base",
+                base,
+                "--head",
+                head,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("cannot remove validation", result.stderr)
+        self.assertNotIn("Validated", result.stdout)
+
+    def test_archived_project_cannot_disable_validation(self):
+        base, head = self.requirements_migration(archive=True)
+        changes = self.git("diff", "--name-only", f"{base}..{head}").splitlines()
+        self.assertNotIn(str(ROOT / "pyproject.toml"), changes)
+        with self.assertRaisesRegex(ValueError, "cannot remove validation"):
+            module.discover_checks(self.repo, base, head)
+
+    def test_legacy_requirements_migration_remains_grandfathered(self):
+        base, head = self.requirements_migration(declared=False)
+        self.assertEqual(module.discover_checks(self.repo, base, head), [])
+
+    def test_removed_hosted_service_is_not_required_to_keep_validation(self):
+        self.runtime()
+        base = self.commit()
+        (self.repo / str(ROOT.parent.parent) / "azure.yaml").unlink()
+        self.assertEqual(module.discover_checks(self.repo, base, self.commit()), [])
 
     def test_non_hosted_service_is_not_selected(self):
         self.runtime(manifest=MANIFEST.replace("azure.ai.agent", "azure.ai.project"))

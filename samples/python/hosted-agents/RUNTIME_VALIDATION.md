@@ -33,7 +33,9 @@ Python service roots from `azure.yaml`, not sample names. Changes under a declar
 runtime or to its service manifest select it. Changes to the shared runner,
 dependency-discovery helper, runner tests, tooling requirements, or workflow run
 all declared runtimes. Legacy runtimes without declarations are not claimed as
-tested; removing an existing runtime's declaration fails validation.
+tested; removing an existing runtime's declaration fails validation. Deleting or
+renaming its `pyproject.toml`, including a switch to `requirements.txt`, cannot
+disable previously declared checks while the hosted service remains.
 
 For each selected runtime, the runner uses its service root as the working
 directory, runs `uv sync --frozen --group dev`, then executes each declared command
