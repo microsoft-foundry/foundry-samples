@@ -1,5 +1,5 @@
 # Complete runtime graph resolved from requirements.in for Python 3.13.
-# Regenerate with uv pip compile --python-version 3.13 --prerelease allow --no-strip-extras requirements.in -o requirements.txt
+# Regenerate with uv pip compile --universal --python-version 3.13 --prerelease allow --no-strip-extras requirements.in -o requirements.txt
 agent-framework-core==1.22.0
 agent-framework-foundry==1.15.0
 agent-framework-openai==1.17.0

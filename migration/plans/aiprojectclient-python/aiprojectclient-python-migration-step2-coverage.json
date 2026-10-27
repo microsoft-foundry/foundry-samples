@@ -34,6 +34,21 @@
     "fresh_consumer_packages": 7,
     "fresh_consumer_environments": 2,
     "fresh_consumer_tests": 22,
+    "platform_marker_validation": {
+      "success": true,
+      "target_platforms": [
+        "Windows",
+        "Linux",
+        "macOS"
+      ],
+      "python_versions": [
+        "3.12",
+        "3.13",
+        "3.14"
+      ],
+      "graph_environment_checks": 27,
+      "scope": "Dependency metadata and marker checks only, not execution on every target platform."
+    },
     "repository_policies": {
       "hosted_dependency_policy": {
         "static_check": "passed",
@@ -90,7 +105,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/connected-agents/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/getting-started-agents/connected-agents/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/getting-started-agents/connected-agents/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -116,7 +131,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -142,7 +157,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -174,7 +189,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -200,7 +215,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -226,7 +241,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/bing-custom-search/documentation-examples/classic-preview/requirements.in": "74e7b72ccd43d99aa8cbbc98c0bed56128e94b48a28c2929866a855ef8be8666",
-        "samples-classic/python/getting-started-agents/bing-custom-search/documentation-examples/classic-preview/requirements.txt": "eb83a92d80fc08fa6a11419b615eeded802cb6f2741618fc5a2330ed9fd5a221"
+        "samples-classic/python/getting-started-agents/bing-custom-search/documentation-examples/classic-preview/requirements.txt": "73bfe6799d350c4e2cea1e51c35c81e0eee69574437a0cef656d6258e9639d66"
       },
       "asset_files": []
     },
@@ -258,7 +273,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/browser-automation/documentation-examples/classic-preview/requirements.in": "74e7b72ccd43d99aa8cbbc98c0bed56128e94b48a28c2929866a855ef8be8666",
-        "samples-classic/python/getting-started-agents/browser-automation/documentation-examples/classic-preview/requirements.txt": "eb83a92d80fc08fa6a11419b615eeded802cb6f2741618fc5a2330ed9fd5a221"
+        "samples-classic/python/getting-started-agents/browser-automation/documentation-examples/classic-preview/requirements.txt": "73bfe6799d350c4e2cea1e51c35c81e0eee69574437a0cef656d6258e9639d66"
       },
       "asset_files": []
     },
@@ -290,7 +305,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/computer-use/documentation-examples/classic-preview/requirements.in": "74e7b72ccd43d99aa8cbbc98c0bed56128e94b48a28c2929866a855ef8be8666",
-        "samples-classic/python/getting-started-agents/computer-use/documentation-examples/classic-preview/requirements.txt": "eb83a92d80fc08fa6a11419b615eeded802cb6f2741618fc5a2330ed9fd5a221"
+        "samples-classic/python/getting-started-agents/computer-use/documentation-examples/classic-preview/requirements.txt": "73bfe6799d350c4e2cea1e51c35c81e0eee69574437a0cef656d6258e9639d66"
       },
       "asset_files": []
     },
@@ -325,7 +340,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/deep-research/documentation-examples/classic-preview/requirements.in": "74e7b72ccd43d99aa8cbbc98c0bed56128e94b48a28c2929866a855ef8be8666",
-        "samples-classic/python/getting-started-agents/deep-research/documentation-examples/classic-preview/requirements.txt": "eb83a92d80fc08fa6a11419b615eeded802cb6f2741618fc5a2330ed9fd5a221"
+        "samples-classic/python/getting-started-agents/deep-research/documentation-examples/classic-preview/requirements.txt": "73bfe6799d350c4e2cea1e51c35c81e0eee69574437a0cef656d6258e9639d66"
       },
       "asset_files": []
     },
@@ -351,7 +366,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/fabric/documentation-examples/classic-preview/requirements.in": "74e7b72ccd43d99aa8cbbc98c0bed56128e94b48a28c2929866a855ef8be8666",
-        "samples-classic/python/getting-started-agents/fabric/documentation-examples/classic-preview/requirements.txt": "eb83a92d80fc08fa6a11419b615eeded802cb6f2741618fc5a2330ed9fd5a221"
+        "samples-classic/python/getting-started-agents/fabric/documentation-examples/classic-preview/requirements.txt": "73bfe6799d350c4e2cea1e51c35c81e0eee69574437a0cef656d6258e9639d66"
       },
       "asset_files": []
     },
@@ -377,7 +392,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -406,7 +421,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/getting-started-agents/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -441,7 +456,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/documentation-examples/classic-preview/requirements.in": "74e7b72ccd43d99aa8cbbc98c0bed56128e94b48a28c2929866a855ef8be8666",
-        "samples-classic/python/getting-started-agents/documentation-examples/classic-preview/requirements.txt": "eb83a92d80fc08fa6a11419b615eeded802cb6f2741618fc5a2330ed9fd5a221"
+        "samples-classic/python/getting-started-agents/documentation-examples/classic-preview/requirements.txt": "73bfe6799d350c4e2cea1e51c35c81e0eee69574437a0cef656d6258e9639d66"
       },
       "asset_files": []
     },
@@ -470,7 +485,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/openapi/documentation-examples/classic/requirements.in": "13a33a927bc572cec21f929ed6b620c36e7c4622d12e612984d6c009d619e55f",
-        "samples-classic/python/getting-started-agents/openapi/documentation-examples/classic/requirements.txt": "228489406a7e6d75a6998207c77aab97a2da514aa26ed7b339190e9cb9dacb50"
+        "samples-classic/python/getting-started-agents/openapi/documentation-examples/classic/requirements.txt": "97f7884a307f094df1400d05e50db38ac9f61ad1050559ffd0a136a3258a1ed0"
       },
       "asset_files": []
     },
@@ -496,7 +511,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/sharepoint/documentation-examples/classic-preview/requirements.in": "74e7b72ccd43d99aa8cbbc98c0bed56128e94b48a28c2929866a855ef8be8666",
-        "samples-classic/python/getting-started-agents/sharepoint/documentation-examples/classic-preview/requirements.txt": "eb83a92d80fc08fa6a11419b615eeded802cb6f2741618fc5a2330ed9fd5a221"
+        "samples-classic/python/getting-started-agents/sharepoint/documentation-examples/classic-preview/requirements.txt": "73bfe6799d350c4e2cea1e51c35c81e0eee69574437a0cef656d6258e9639d66"
       },
       "asset_files": []
     },
@@ -525,7 +540,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/getting-started-agents/code_interpreter/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/getting-started-agents/code_interpreter/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/getting-started-agents/code_interpreter/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -557,7 +572,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/evaluation/continuous-evaluation/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/evaluation/continuous-evaluation/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/evaluation/continuous-evaluation/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -586,7 +601,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/evaluation/evaluate-agent/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/evaluation/evaluate-agent/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/evaluation/evaluate-agent/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -612,7 +627,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/evaluation/cloud-evaluation/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/evaluation/cloud-evaluation/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/evaluation/cloud-evaluation/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -638,7 +653,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/integrations/langchain/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/integrations/langchain/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/integrations/langchain/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -673,7 +688,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/evaluation/red-teaming/documentation-examples/red-team-preview/requirements.in": "3006f9be0a9ab2e676bc491de95765148ac23e17efa6ba6193e2955a79c9b7f4",
-        "samples-classic/python/evaluation/red-teaming/documentation-examples/red-team-preview/requirements.txt": "a2650d2a481cad87e5c25793186a955045833b0535e148c8f391de24a957a46b"
+        "samples-classic/python/evaluation/red-teaming/documentation-examples/red-team-preview/requirements.txt": "f328cabe0a1f31aaa6f4bd608da2d16c410f0e5da26d5a57ae1de9b986b8a077"
       },
       "asset_files": []
     },
@@ -699,7 +714,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/quickstart/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/quickstart/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/quickstart/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -725,7 +740,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/observability/trace-agents/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/observability/trace-agents/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/observability/trace-agents/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -751,7 +766,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/observability/trace-application/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/observability/trace-application/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/observability/trace-application/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -777,7 +792,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/project-migration/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/project-migration/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/project-migration/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -803,7 +818,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/hub-projects/rag-setup/documentation-examples/hub-preview/requirements.in": "6f6b19f348aaec62e91c0811a0fd52ec904a20a8483d35fbc15ca60a681e49f1",
-        "samples-classic/python/hub-projects/rag-setup/documentation-examples/hub-preview/requirements.txt": "f5c766378a3f0d92b8e151d6d4df49102d78d755d51dd540adca77c6b1a5dbdd"
+        "samples-classic/python/hub-projects/rag-setup/documentation-examples/hub-preview/requirements.txt": "0acff0654d4427c9d13f58736859f3bcd2f328a583b0efe72f4a005383d64269"
       },
       "asset_files": []
     },
@@ -829,7 +844,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/hub-projects/rag-setup/documentation-examples/hub-preview/requirements.in": "6f6b19f348aaec62e91c0811a0fd52ec904a20a8483d35fbc15ca60a681e49f1",
-        "samples-classic/python/hub-projects/rag-setup/documentation-examples/hub-preview/requirements.txt": "f5c766378a3f0d92b8e151d6d4df49102d78d755d51dd540adca77c6b1a5dbdd"
+        "samples-classic/python/hub-projects/rag-setup/documentation-examples/hub-preview/requirements.txt": "0acff0654d4427c9d13f58736859f3bcd2f328a583b0efe72f4a005383d64269"
       },
       "asset_files": []
     },
@@ -855,7 +870,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/hub-projects/rag-setup/documentation-examples/hub-preview/requirements.in": "6f6b19f348aaec62e91c0811a0fd52ec904a20a8483d35fbc15ca60a681e49f1",
-        "samples-classic/python/hub-projects/rag-setup/documentation-examples/hub-preview/requirements.txt": "f5c766378a3f0d92b8e151d6d4df49102d78d755d51dd540adca77c6b1a5dbdd"
+        "samples-classic/python/hub-projects/rag-setup/documentation-examples/hub-preview/requirements.txt": "0acff0654d4427c9d13f58736859f3bcd2f328a583b0efe72f4a005383d64269"
       },
       "asset_files": []
     },
@@ -884,7 +899,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/sdk/azure-government/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/sdk/azure-government/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/sdk/azure-government/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -927,7 +942,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/quickstart/create-agent/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/quickstart/create-agent/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/quickstart/create-agent/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -953,7 +968,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/web-search/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/web-search/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/web-search/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -982,7 +997,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/quickstart/chat-with-agent/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/quickstart/chat-with-agent/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/quickstart/chat-with-agent/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1011,7 +1026,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/quickstart/responses/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/quickstart/responses/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/quickstart/responses/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1040,7 +1055,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/quickstart/responses/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/quickstart/responses/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/quickstart/responses/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1066,7 +1081,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/quickstart/conversations/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/quickstart/conversations/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/quickstart/conversations/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1095,7 +1110,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/quickstart/chat-with-agent/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/quickstart/chat-with-agent/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/quickstart/chat-with-agent/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1124,7 +1139,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/quickstart/responses/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/quickstart/responses/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/quickstart/responses/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1153,7 +1168,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/quickstart/responses/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/quickstart/responses/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/quickstart/responses/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1179,7 +1194,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1211,7 +1226,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/management/guardrails/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/hosted-agents/management/guardrails/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/management/guardrails/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1257,7 +1272,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -1283,7 +1298,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/management/configure-agent/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/hosted-agents/management/configure-agent/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/management/configure-agent/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1309,7 +1324,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/management/configure-agent/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/hosted-agents/management/configure-agent/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/management/configure-agent/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1335,7 +1350,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/management/configure-agent/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/hosted-agents/management/configure-agent/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/management/configure-agent/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1364,7 +1379,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -1393,7 +1408,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/bring-your-own/responses/hello-world/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/bring-your-own/responses/hello-world/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/bring-your-own/responses/hello-world/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1422,7 +1437,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/deployment/container/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/hosted-agents/deployment/container/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/deployment/container/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1451,7 +1466,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/management/a2a/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/hosted-agents/management/a2a/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/management/a2a/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1477,7 +1492,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/agent-to-agent/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/agent-to-agent/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/agent-to-agent/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1503,7 +1518,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/foundry-iq/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/foundry-iq/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/foundry-iq/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1529,7 +1544,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/management/agents/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/hosted-agents/management/agents/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/management/agents/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1555,7 +1570,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/management/sessions/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/hosted-agents/management/sessions/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/management/sessions/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1584,7 +1599,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/mcp-authentication/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/mcp-authentication/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/mcp-authentication/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1616,7 +1631,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1648,7 +1663,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -1674,7 +1689,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/quickstart/responses/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/quickstart/responses/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/quickstart/responses/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1706,7 +1721,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/deployment/private-registry/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/hosted-agents/deployment/private-registry/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/deployment/private-registry/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1732,7 +1747,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/external-agents/observability/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/external-agents/observability/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/external-agents/observability/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -1758,7 +1773,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": [
         {
@@ -1789,7 +1804,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": [
         {
@@ -1820,7 +1835,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": [
         {
@@ -1857,7 +1872,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": [
         {
@@ -1888,7 +1903,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": [
         {
@@ -1919,7 +1934,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": [
         {
@@ -1950,7 +1965,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/structured-inputs/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": [
         {
@@ -1981,7 +1996,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/agent-to-agent/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/agent-to-agent/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/agent-to-agent/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2007,7 +2022,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/a2a/01-delegation/caller/documentation-examples/framework/requirements.in": "d2c12b548cd448778c361c1ced58fd64d7ff9ae51df6986ce03875b0ee194b97",
-        "samples/python/hosted-agents/agent-framework/a2a/01-delegation/caller/documentation-examples/framework/requirements.txt": "12207d456732ad96046ee83481ef69ea501ae67ed505da0c3e154b7100dda41a"
+        "samples/python/hosted-agents/agent-framework/a2a/01-delegation/caller/documentation-examples/framework/requirements.txt": "58e2b4a2e09c3a7c4fab391b998af4834f95ad13860ff76369ad4cae08a2c2cc"
       },
       "asset_files": []
     },
@@ -2033,7 +2048,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/ai-search/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/ai-search/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/ai-search/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2062,7 +2077,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/11-azure-search-rag/documentation-examples/framework/requirements.in": "d2c12b548cd448778c361c1ced58fd64d7ff9ae51df6986ce03875b0ee194b97",
-        "samples/python/hosted-agents/agent-framework/responses/11-azure-search-rag/documentation-examples/framework/requirements.txt": "12207d456732ad96046ee83481ef69ea501ae67ed505da0c3e154b7100dda41a"
+        "samples/python/hosted-agents/agent-framework/responses/11-azure-search-rag/documentation-examples/framework/requirements.txt": "58e2b4a2e09c3a7c4fab391b998af4834f95ad13860ff76369ad4cae08a2c2cc"
       },
       "asset_files": []
     },
@@ -2088,7 +2103,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/ai-search/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/ai-search/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/ai-search/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2117,7 +2132,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/azure-functions/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/azure-functions/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/azure-functions/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2143,7 +2158,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/bing-grounding/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/bing-grounding/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/bing-grounding/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2172,7 +2187,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "4aeb36afe6e67178f18902c89c860591d3987241825c00e912e7bc3090817bd2",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "bb04f94d2de3d3e074d1d222f6645bcf5052058e08b92bdbfd47f4bc32272d22"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "a56f57cfd4f89b835e027066045ce241e247f14b55c0397a04937c238ab5f450"
       },
       "asset_files": [
         {
@@ -2203,7 +2218,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/bing-custom-search/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/bing-custom-search/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/bing-custom-search/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2238,7 +2253,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/browser-automation/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/prompt-agents/browser-automation/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/browser-automation/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2270,7 +2285,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/14-browser-automation-agent/documentation-examples/framework/requirements.in": "eaa57bf9d9d4b7433a5b20fdebba0567141f7fbc3eb0f24859888878d3722992",
-        "samples/python/hosted-agents/agent-framework/responses/14-browser-automation-agent/documentation-examples/framework/requirements.txt": "12207d456732ad96046ee83481ef69ea501ae67ed505da0c3e154b7100dda41a"
+        "samples/python/hosted-agents/agent-framework/responses/14-browser-automation-agent/documentation-examples/framework/requirements.txt": "58e2b4a2e09c3a7c4fab391b998af4834f95ad13860ff76369ad4cae08a2c2cc"
       },
       "asset_files": []
     },
@@ -2296,7 +2311,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/code-interpreter/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/code-interpreter/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/code-interpreter/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2325,7 +2340,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "4aeb36afe6e67178f18902c89c860591d3987241825c00e912e7bc3090817bd2",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "bb04f94d2de3d3e074d1d222f6645bcf5052058e08b92bdbfd47f4bc32272d22"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "a56f57cfd4f89b835e027066045ce241e247f14b55c0397a04937c238ab5f450"
       },
       "asset_files": [
         {
@@ -2352,7 +2367,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/openai-computer-tool/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/openai-computer-tool/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/openai-computer-tool/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": [
         {
@@ -2391,7 +2406,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/openai-computer-tool/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/openai-computer-tool/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/openai-computer-tool/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": [
         {
@@ -2436,7 +2451,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/managed-connectors/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/managed-connectors/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/managed-connectors/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2471,7 +2486,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "4aeb36afe6e67178f18902c89c860591d3987241825c00e912e7bc3090817bd2",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "bb04f94d2de3d3e074d1d222f6645bcf5052058e08b92bdbfd47f4bc32272d22"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "a56f57cfd4f89b835e027066045ce241e247f14b55c0397a04937c238ab5f450"
       },
       "asset_files": [
         {
@@ -2508,7 +2523,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/code-interpreter-custom/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/code-interpreter-custom/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/code-interpreter-custom/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2543,7 +2558,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/code-interpreter-custom/documentation-examples/framework/requirements.in": "d2c12b548cd448778c361c1ced58fd64d7ff9ae51df6986ce03875b0ee194b97",
-        "samples/python/prompt-agents/code-interpreter-custom/documentation-examples/framework/requirements.txt": "12207d456732ad96046ee83481ef69ea501ae67ed505da0c3e154b7100dda41a"
+        "samples/python/prompt-agents/code-interpreter-custom/documentation-examples/framework/requirements.txt": "58e2b4a2e09c3a7c4fab391b998af4834f95ad13860ff76369ad4cae08a2c2cc"
       },
       "asset_files": []
     },
@@ -2575,7 +2590,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/fabric-iq/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/fabric-iq/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/fabric-iq/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2607,7 +2622,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/toolbox-examples/fabric-iq/documentation-examples/framework/requirements.in": "d2c12b548cd448778c361c1ced58fd64d7ff9ae51df6986ce03875b0ee194b97",
-        "samples/python/hosted-agents/toolbox-examples/fabric-iq/documentation-examples/framework/requirements.txt": "12207d456732ad96046ee83481ef69ea501ae67ed505da0c3e154b7100dda41a"
+        "samples/python/hosted-agents/toolbox-examples/fabric-iq/documentation-examples/framework/requirements.txt": "58e2b4a2e09c3a7c4fab391b998af4834f95ad13860ff76369ad4cae08a2c2cc"
       },
       "asset_files": []
     },
@@ -2645,7 +2660,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/toolbox-examples/fabric-iq/documentation-examples/framework/requirements.in": "d2c12b548cd448778c361c1ced58fd64d7ff9ae51df6986ce03875b0ee194b97",
-        "samples/python/hosted-agents/toolbox-examples/fabric-iq/documentation-examples/framework/requirements.txt": "12207d456732ad96046ee83481ef69ea501ae67ed505da0c3e154b7100dda41a"
+        "samples/python/hosted-agents/toolbox-examples/fabric-iq/documentation-examples/framework/requirements.txt": "58e2b4a2e09c3a7c4fab391b998af4834f95ad13860ff76369ad4cae08a2c2cc"
       },
       "asset_files": []
     },
@@ -2671,7 +2686,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/fabric/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/fabric/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/fabric/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2700,7 +2715,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/toolbox-examples/fabric/documentation-examples/framework/requirements.in": "5c9957a65b34e915ac46ccc18b586e5c90e71090c5766a5f9823d957b6705de0",
-        "samples/python/hosted-agents/toolbox-examples/fabric/documentation-examples/framework/requirements.txt": "658ea84e1e25ef527acce369c389d6266863f19ae20de8a5c08136eee5fa03d2"
+        "samples/python/hosted-agents/toolbox-examples/fabric/documentation-examples/framework/requirements.txt": "898f9ac79ec8a7fed5e5ce50c24d1e124a01b5efc1157e1cbb0b57010de5596a"
       },
       "asset_files": []
     },
@@ -2726,7 +2741,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/file-search/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/file-search/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/file-search/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": [
         {
@@ -2760,7 +2775,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/06-files/documentation-examples/framework/requirements.in": "d2c12b548cd448778c361c1ced58fd64d7ff9ae51df6986ce03875b0ee194b97",
-        "samples/python/hosted-agents/agent-framework/responses/06-files/documentation-examples/framework/requirements.txt": "12207d456732ad96046ee83481ef69ea501ae67ed505da0c3e154b7100dda41a"
+        "samples/python/hosted-agents/agent-framework/responses/06-files/documentation-examples/framework/requirements.txt": "58e2b4a2e09c3a7c4fab391b998af4834f95ad13860ff76369ad4cae08a2c2cc"
       },
       "asset_files": [
         {
@@ -2791,7 +2806,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/function-calling/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/function-calling/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/function-calling/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2817,7 +2832,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/image-generation/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/image-generation/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/image-generation/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2843,7 +2858,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/mcp/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/mcp/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/mcp/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2872,7 +2887,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "4aeb36afe6e67178f18902c89c860591d3987241825c00e912e7bc3090817bd2",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "bb04f94d2de3d3e074d1d222f6645bcf5052058e08b92bdbfd47f4bc32272d22"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "a56f57cfd4f89b835e027066045ce241e247f14b55c0397a04937c238ab5f450"
       },
       "asset_files": [
         {
@@ -2906,7 +2921,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/quickstart/responses/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/quickstart/responses/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/quickstart/responses/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -2932,7 +2947,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/openapi/documentation-examples/current/requirements.in": "e246802967efb7666d30c924eb450b7ac9ac3ef05b65896463397b165414f56c",
-        "samples/python/prompt-agents/openapi/documentation-examples/current/requirements.txt": "bf9d49589593d265271b0789eea67418cf4f72bc7a6c1c47567d091e24400ba1"
+        "samples/python/prompt-agents/openapi/documentation-examples/current/requirements.txt": "b7498e02d08fa954a4662381ef646820ba74b24c712336e585cbf131ea0165bf"
       },
       "asset_files": [
         {
@@ -2969,7 +2984,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "4aeb36afe6e67178f18902c89c860591d3987241825c00e912e7bc3090817bd2",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "bb04f94d2de3d3e074d1d222f6645bcf5052058e08b92bdbfd47f4bc32272d22"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "a56f57cfd4f89b835e027066045ce241e247f14b55c0397a04937c238ab5f450"
       },
       "asset_files": [
         {
@@ -3000,7 +3015,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/toolbox-examples/reminder/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/hosted-agents/toolbox-examples/reminder/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/toolbox-examples/reminder/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3026,7 +3041,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/sharepoint/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/sharepoint/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/sharepoint/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3055,7 +3070,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "4aeb36afe6e67178f18902c89c860591d3987241825c00e912e7bc3090817bd2",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "bb04f94d2de3d3e074d1d222f6645bcf5052058e08b92bdbfd47f4bc32272d22"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "a56f57cfd4f89b835e027066045ce241e247f14b55c0397a04937c238ab5f450"
       },
       "asset_files": [
         {
@@ -3086,7 +3101,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3112,7 +3127,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3141,7 +3156,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3167,7 +3182,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3193,7 +3208,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3219,7 +3234,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3245,7 +3260,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/agent-identity-and-skills/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3271,7 +3286,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/mcp-authentication/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/mcp-authentication/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/mcp-authentication/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3297,7 +3312,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3326,7 +3341,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3355,7 +3370,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3381,7 +3396,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/web-search/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/web-search/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/web-search/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3410,7 +3425,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.in": "4aeb36afe6e67178f18902c89c860591d3987241825c00e912e7bc3090817bd2",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "bb04f94d2de3d3e074d1d222f6645bcf5052058e08b92bdbfd47f4bc32272d22"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/framework/requirements.txt": "a56f57cfd4f89b835e027066045ce241e247f14b55c0397a04937c238ab5f450"
       },
       "asset_files": [
         {
@@ -3447,7 +3462,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/web-search/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/web-search/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/web-search/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3473,7 +3488,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/web-search/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/web-search/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/web-search/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3502,7 +3517,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/work-iq/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/work-iq/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/work-iq/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3531,7 +3546,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3560,7 +3575,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/routines/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/routines/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/routines/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3589,7 +3604,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/prompt-agents/routines/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/prompt-agents/routines/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/prompt-agents/routines/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3618,7 +3633,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -3647,7 +3662,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -3673,7 +3688,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -3699,7 +3714,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -3728,7 +3743,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -3760,7 +3775,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -3792,7 +3807,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -3821,7 +3836,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -3850,7 +3865,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -3879,7 +3894,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -3914,7 +3929,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/bring-your-own/responses/hello-world/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/bring-your-own/responses/hello-world/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/bring-your-own/responses/hello-world/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3949,7 +3964,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -3987,7 +4002,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4013,7 +4028,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4042,7 +4057,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4095,7 +4110,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/15-optimization-travel-approver/documentation-examples/current/requirements.in": "d8efe09928788289d87050a37a1d45fad1f4ade2e39771facee56787c0944013",
-        "samples/python/hosted-agents/agent-framework/responses/15-optimization-travel-approver/documentation-examples/current/requirements.txt": "4fbcfc4d3d8a914bbcaaefd9b5aba3dd760dab4e5da3b8380f351e4aa35030ba"
+        "samples/python/hosted-agents/agent-framework/responses/15-optimization-travel-approver/documentation-examples/current/requirements.txt": "212451ed232d8fd03094a59129c17a185d2134b09803fd8d9ab6fe488aff5efd"
       },
       "asset_files": []
     },
@@ -4124,7 +4139,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4162,7 +4177,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4191,7 +4206,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4220,7 +4235,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/evaluation/custom-evaluators/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/evaluation/custom-evaluators/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/evaluation/custom-evaluators/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4263,7 +4278,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.in": "a5ad2a0395c0f66c1c32b3622504a231b01f1a8ed8b61fe724c7b5720909ac10",
-        "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/hosted-agents/agent-framework/responses/13-foundry-memory/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4289,7 +4304,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/foundry-models/langchain/foundry-tools/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/foundry-models/langchain/foundry-tools/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/foundry-models/langchain/foundry-tools/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": [
         {
@@ -4323,7 +4338,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/evaluation/red-teaming/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/evaluation/red-teaming/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/evaluation/red-teaming/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4369,7 +4384,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/finetuning/healthcare-premium/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/finetuning/healthcare-premium/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/finetuning/healthcare-premium/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4401,7 +4416,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -4427,7 +4442,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/voice-agents/documentation-examples/current/requirements.in": "2ca5ba96513a8db4cb63556109950a45e88fbe627021ec41915a1397081341c8",
-        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "38a30f4c3dbcd83a23891cc8859153fc4c235ef5a96c189f3548c6693e4c90ec"
+        "samples/python/voice-agents/documentation-examples/current/requirements.txt": "6450aafdee6701e6189f7077f1d408be719dc009dc03cd0d1ee489157a42782f"
       },
       "asset_files": []
     },
@@ -4453,7 +4468,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/finetuning/client-setup/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/finetuning/client-setup/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/finetuning/client-setup/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4479,7 +4494,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/sdk/resiliency/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/sdk/resiliency/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/sdk/resiliency/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4505,7 +4520,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/observability/agent-insights/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/observability/agent-insights/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/observability/agent-insights/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4534,7 +4549,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/evaluation/conversations/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/evaluation/conversations/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/evaluation/conversations/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4563,7 +4578,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/evaluation/deployed-conversations/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/evaluation/deployed-conversations/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/evaluation/deployed-conversations/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4598,7 +4613,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/evaluation/deployed-conversations/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/evaluation/deployed-conversations/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/evaluation/deployed-conversations/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4633,7 +4648,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/evaluation/simulated-conversations/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/evaluation/simulated-conversations/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/evaluation/simulated-conversations/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4665,7 +4680,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/evaluation/synthetic-conversations/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/evaluation/synthetic-conversations/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/evaluation/synthetic-conversations/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4700,7 +4715,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/evaluation/cloud-evaluation/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/evaluation/cloud-evaluation/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/evaluation/cloud-evaluation/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4729,7 +4744,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/evaluation/agents/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/evaluation/agents/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/evaluation/agents/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4755,7 +4770,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/evaluation/client-setup/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/evaluation/client-setup/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/evaluation/client-setup/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4787,7 +4802,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/observability/agent-monitoring/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/observability/agent-monitoring/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/observability/agent-monitoring/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4816,7 +4831,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/observability/client-side-tracing/documentation-examples/current/requirements.in": "e3197208cb8fb2194f83797cc6e913af2a3c0e348fcc652ffbac2d48cf49119c",
-        "samples/python/observability/client-side-tracing/documentation-examples/current/requirements.txt": "1b9e36e9fff7cf25dcb6a6792d0ce23ff8bad6c454046c8d9f3932b784bd0b56"
+        "samples/python/observability/client-side-tracing/documentation-examples/current/requirements.txt": "e9100c4c9deb02bed301361cba5802dfc3cc85fe3d494f00bcaf9cd5189d048e"
       },
       "asset_files": []
     },
@@ -4842,7 +4857,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/evaluation/client-setup/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/evaluation/client-setup/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/evaluation/client-setup/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4871,7 +4886,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/evaluation/hosted-agents/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/evaluation/hosted-agents/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/evaluation/hosted-agents/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -4897,7 +4912,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/model-router/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/model-router/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/model-router/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -4926,7 +4941,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/model-router/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/model-router/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/model-router/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -4972,7 +4987,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples-classic/python/quickstart/documentation-examples/classic/requirements.in": "659a1489fccd916d7a0a27c8541912972a1e35829280b2251685008e3b3c6243",
-        "samples-classic/python/quickstart/documentation-examples/classic/requirements.txt": "0ce55aac0b9d5ed4aeb83846f4231438f962a06a7d79cde7027f8772d1734ae1"
+        "samples-classic/python/quickstart/documentation-examples/classic/requirements.txt": "632f3780fb852ef293f13749921cd19838be4670bcc7d6c38fa66ae2596a2982"
       },
       "asset_files": []
     },
@@ -4998,7 +5013,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/agentic-retrieval/project-client/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/agentic-retrieval/project-client/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/agentic-retrieval/project-client/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     },
@@ -5024,7 +5039,7 @@
       "status": "offline-ready-for-pilot",
       "dependency_artifacts": {
         "samples/python/quickstart/project-client/documentation-examples/current/requirements.in": "6e652d2013c94480b8a1c40ebeb629e2f022968a9ab68a6ed4467d8a49ae7427",
-        "samples/python/quickstart/project-client/documentation-examples/current/requirements.txt": "7a1d98fa6b1a8a12a20a411b995e01a5332bf07d07c724b622886f489b342f66"
+        "samples/python/quickstart/project-client/documentation-examples/current/requirements.txt": "b25b99b0f7834ffd49c9c0535a500ae7439775bcdfd479cf8dc75a89beb5a875"
       },
       "asset_files": []
     }

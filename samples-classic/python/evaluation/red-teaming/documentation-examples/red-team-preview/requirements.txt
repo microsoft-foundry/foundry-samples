@@ -1,5 +1,5 @@
 # Complete runtime graph resolved from requirements.in for Python 3.13.
-# Regenerate with uv pip compile --python-version 3.13 --prerelease allow --no-strip-extras requirements.in -o requirements.txt
+# Regenerate with uv pip compile --universal --python-version 3.13 --prerelease allow --no-strip-extras requirements.in -o requirements.txt
 azure-ai-agents==1.2.0b6
 azure-ai-projects==1.1.0b3
 azure-core==1.41.0
