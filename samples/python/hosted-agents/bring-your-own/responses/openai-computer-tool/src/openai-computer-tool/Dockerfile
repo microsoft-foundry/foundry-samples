@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=utf-8 \
+    PYTHONNOUSERSITE=1 \
     UV_SYSTEM_CERTS=1 \
     DISPLAY=:99 \
     XAUTHORITY=/tmp/.Xauthority \
