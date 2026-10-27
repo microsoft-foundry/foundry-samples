@@ -100,16 +100,19 @@ class AzureCLI:
         arguments = ["rest", "--method", method, "--url", f"{ARM}{resource_id}?api-version={version}"]
         if body is None and not headers:
             return self.run(*arguments)
-        with tempfile.TemporaryDirectory() as directory:
-            if headers:
-                path = Path(directory) / "headers.json"
-                path.write_text(json.dumps(headers), encoding="utf-8")
-                arguments.extend(("--headers", f"@{path}"))
-            if body is not None:
-                path = Path(directory) / "body.json"
-                path.write_text(json.dumps(body), encoding="utf-8")
-                arguments.extend(("--body", f"@{path}"))
-            return self.run(*arguments)
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                if headers:
+                    path = Path(directory) / "headers.json"
+                    path.write_text(json.dumps(headers), encoding="utf-8")
+                    arguments.extend(("--headers", f"@{path}"))
+                if body is not None:
+                    path = Path(directory) / "body.json"
+                    path.write_text(json.dumps(body), encoding="utf-8")
+                    arguments.extend(("--body", f"@{path}"))
+                return self.run(*arguments)
+        except OSError as exc:
+            raise AzureError(f"Azure CLI request file operation failed: {exc}") from exc
 
     def list(self, resource_id: str, version: str) -> list[dict[str, Any]]:
         result = self.rest("get", resource_id, version)
@@ -386,10 +389,13 @@ def _prepare_locked(
     location = project.get("location")
     if not location:
         raise AzureError("The project has no location")
-    resource_group = project_id[:project_id.lower().index("/providers/")]
+    resource_group = "/".join(project_id.split("/")[:5])
     owner = uuid.uuid4().hex
     suffix = owner[:12]
-    tags = {"foundry-tracing-project": project_id, "foundry-tracing-owner": owner}
+    tags = {
+        "foundry-tracing-project": str(uuid.uuid5(uuid.NAMESPACE_URL, project_id.lower())),
+        "foundry-tracing-owner": owner,
+    }
     workspace_id = f"{resource_group}/providers/Microsoft.OperationalInsights/workspaces/agent-traces-{suffix}"
     component_id = application_insights or f"{resource_group}/providers/Microsoft.Insights/components/agent-traces-{suffix}"
     insights_id(component_id)

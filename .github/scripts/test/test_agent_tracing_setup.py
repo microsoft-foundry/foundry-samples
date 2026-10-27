@@ -2,6 +2,7 @@
 
 import contextlib
 from concurrent.futures import ThreadPoolExecutor
+import errno
 import io
 import json
 from pathlib import Path
@@ -80,12 +81,12 @@ class ProvisioningTests(unittest.TestCase):
         self.setup_lock = lock.start()
         self.addCleanup(lock.stop)
 
-    def cli(self):
+    def cli(self, project_id=PROJECT):
         cli = mock.Mock()
         cli.list.return_value = []
         cli.rest.side_effect = lambda method, resource, version, *body: (
             {"location": "westus3", "identity": {"principalId": "principal"}}
-            if method == "get" and resource == PROJECT else {}
+            if method == "get" and resource == project_id else {}
         )
         return cli
 
@@ -104,6 +105,92 @@ class ProvisioningTests(unittest.TestCase):
         self.assertEqual("ProjectManagedIdentity", bodies[-1]["properties"]["authType"])
         self.assertNotIn("credentials", bodies[-1]["properties"])
         self.assertNotIn("placeholder", json.dumps(result))
+
+    @mock.patch.object(setup, "connection", return_value=None)
+    @mock.patch.object(setup, "wait_ready", return_value={"properties": {"ConnectionString": "placeholder"}})
+    def test_resource_group_named_providers_preserves_resource_scope(self, _ready, _connection):
+        for group in ("providers", "Providers"):
+            project = PROJECT.replace("/resourceGroups/rg/", f"/resourceGroups/{group}/")
+            scope = f"/subscriptions/sub/resourceGroups/{group}"
+            cli = self.cli(project)
+            with self.subTest(group=group):
+                result = setup.prepare(cli, project)
+                self.assertEqual("configured", result["status"])
+                cli.list.assert_any_call(f"{scope}/resources", "2021-04-01")
+                resources = [call.args[1] for call in cli.rest.call_args_list
+                             if call.args[0] == "put" and "tags" in call.args[3]]
+                self.assertEqual(2, len(resources))
+                self.assertTrue(all(resource.startswith(f"{scope}/providers/") for resource in resources))
+
+    @mock.patch.object(setup, "connection", return_value=None)
+    @mock.patch.object(setup, "wait_ready", return_value={"properties": {"ConnectionString": "placeholder"}})
+    def test_long_project_ids_have_bounded_stable_tags_and_full_output(self, _ready, _connection):
+        project = (
+            "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/"
+            + "r" * 90 + "/providers/Microsoft.CognitiveServices/accounts/" + "a" * 64 + "/projects/project"
+        )
+        self.assertGreater(len(project), 256)
+        project_tags = []
+        for project_id in (project, project.upper(), project + "-other"):
+            cli = self.cli(project_id)
+            with self.subTest(project=project_id):
+                result = setup.prepare(cli, project_id)
+                tags = [call.args[3]["tags"] for call in cli.rest.call_args_list
+                        if call.args[0] == "put" and "tags" in call.args[3]]
+                self.assertEqual(2, len(tags))
+                self.assertEqual(tags[0], tags[1])
+                project_tags.append(tags[0]["foundry-tracing-project"])
+                self.assertTrue(all(len(value) <= 256 for resource in tags for value in resource.values()))
+                self.assertEqual(project_id, result["project_id"])
+        self.assertEqual(project_tags[0], project_tags[1])
+        self.assertNotEqual(project_tags[0], project_tags[2])
+
+    def test_request_filesystem_error_rolls_back_created_resources_and_returns_exit_two(self):
+        cli = setup.AzureCLI()
+        resources = {}
+        deleted = []
+        write_text = Path.write_text
+
+        def write(path, text, *args, **kwargs):
+            properties = json.loads(text).get("properties", {})
+            if properties.get("roleDefinitionId", "").endswith(setup.READER):
+                self.assertEqual(3, len(resources))
+                raise OSError(errno.ENOSPC, "Disk full")
+            return write_text(path, text, *args, **kwargs)
+
+        def run(*arguments):
+            method = arguments[arguments.index("--method") + 1]
+            resource = arguments[arguments.index("--url") + 1].removeprefix(setup.ARM).split("?", 1)[0]
+            if method == "get":
+                if resource == PROJECT:
+                    return {"location": "westus3", "identity": {"principalId": "principal"}}
+                if resource.endswith(("/resources", "/roleAssignments")):
+                    return {"value": []}
+                if resource in resources:
+                    return resources[resource]
+                raise setup.AzureError("Not found", "ResourceNotFound")
+            if method == "put":
+                body = json.loads(Path(arguments[arguments.index("--body") + 1][1:]).read_text())
+                if "/components/" in resource:
+                    body["properties"]["ConnectionString"] = "placeholder"
+                resources[resource] = body
+                return {}
+            if method == "delete":
+                del resources[resource]
+                deleted.append(resource)
+                return {}
+            self.fail(f"Unexpected request: {method} {resource}")
+
+        with mock.patch.object(setup, "connection", return_value=None), \
+                mock.patch.object(cli, "run", side_effect=run), \
+                mock.patch.object(setup, "AzureCLI", return_value=cli), \
+                mock.patch.object(Path, "write_text", new=write), \
+                mock.patch.object(sys, "argv", ["setup", "--project-id", PROJECT]), \
+                contextlib.redirect_stderr(io.StringIO()) as stderr:
+            self.assertEqual(2, setup.main())
+        self.assertEqual({}, resources)
+        self.assertEqual(3, len(deleted))
+        self.assertIn("Disk full", stderr.getvalue())
 
     @mock.patch.object(setup, "connection", return_value=None)
     def test_missing_identity_is_explicit(self, _connection):
@@ -490,6 +577,21 @@ class ProjectLockTests(unittest.TestCase):
 
 
 class AzureCLITests(unittest.TestCase):
+    def test_request_filesystem_failures_are_converted_to_azure_errors(self):
+        for stage in ("directory", "headers", "body"):
+            failure = OSError(errno.ENOSPC, "Disk full")
+            patch = (
+                mock.patch.object(setup.tempfile, "TemporaryDirectory", side_effect=failure)
+                if stage == "directory" else mock.patch.object(Path, "write_text", side_effect=failure)
+            )
+            cli = setup.AzureCLI()
+            with self.subTest(stage=stage), patch, mock.patch.object(cli, "run") as run:
+                with self.assertRaises(setup.AzureError) as raised:
+                    cli.rest("patch", PROJECT, setup.FOUNDRY_VERSION, {},
+                             headers={"If-Match": "etag"} if stage == "headers" else None)
+                self.assertIs(failure, raised.exception.__cause__)
+                run.assert_not_called()
+
     def test_conditional_headers_are_preserved_via_json_file(self):
         cli = setup.AzureCLI()
         etag = '"quoted-etag"'
