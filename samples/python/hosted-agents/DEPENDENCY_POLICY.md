@@ -174,6 +174,10 @@ For a uv-native project, the check runs `uv lock --check` and a frozen productio
 
 The PR check validates the Hosted Agent runtime's primary Linux/Python CI environment. Required merge checks are configured separately in repository rules. Environment markers are accepted, but authors remain responsible for verifying additional platforms and supported Python versions documented by the sample.
 
+Credential-free sample tests, lint, and formatting run in a separate generic
+[hosted-runtime validation job](RUNTIME_VALIDATION.md). Dependency closure and
+policy-framework tests alone do not establish sample behavior coverage.
+
 ## Exceptions
 
 Exceptions must be narrow, temporary, and reviewable. Contributors propose them

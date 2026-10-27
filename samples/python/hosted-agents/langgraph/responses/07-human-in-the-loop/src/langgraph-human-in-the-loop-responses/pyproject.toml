@@ -13,3 +13,13 @@ dependencies = [
     "python-dotenv",
     "debugpy",
 ]
+
+[dependency-groups]
+dev = ["ruff==0.9.4"]
+
+[tool.hosted-agent-validation]
+commands = [
+    ["python", "-m", "unittest", "discover", "-s", "tests", "-v"],
+    ["ruff", "check", "."],
+    ["ruff", "format", "--check", "."],
+]

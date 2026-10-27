@@ -28,7 +28,19 @@ class ReviewTests(unittest.IsolatedAsyncioTestCase):
         self.original_directory = os.getcwd()
         self.directory = tempfile.TemporaryDirectory()
         os.chdir(self.directory.name)
-        self.environment = patch.dict(os.environ, {"OTEL_SDK_DISABLED": "true"})
+        self.environment = patch.dict(
+            os.environ,
+            {
+                "OTEL_SDK_DISABLED": "true",
+                "AGENTSERVER_STATE_ROOT": os.path.join(
+                    self.directory.name, "agentserver"
+                ),
+                "LANGSMITH_TRACING": "false",
+                "LANGSMITH_TRACING_V2": "false",
+                "LANGCHAIN_TRACING": "false",
+                "LANGCHAIN_TRACING_V2": "false",
+            },
+        )
         self.environment.start()
         self.model = DraftModel()
         self.graph = _build_graph(self.model)

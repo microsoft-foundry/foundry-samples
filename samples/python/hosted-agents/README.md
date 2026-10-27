@@ -188,6 +188,7 @@ See [`langgraph/README.md`](langgraph/) for the full list and the local-run guid
 | **[Deep Agents](langgraph/responses/11-deep-agents/)** | Planning, delegated web research, state-backed working files, and Foundry checkpoints. |
 | **[Custom Host](langgraph/responses/12-custom-host/)** | Request-translation extension points in the Responses host. |
 | **[Custom Stores](langgraph/responses/13-custom-store/)** | Application-owned response, conversation, checkpoint, and memory stores. |
+| **[Middleware](langgraph/responses/14-middleware/)** | Native LangChain middleware with approve/edit/reject of simulated email tools; contrasts with the explicit review node in the graph HITL sample. |
 
 ### Invocations protocol
 
