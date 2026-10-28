@@ -118,7 +118,7 @@ resource "azapi_resource" "project_connection" {
       category      = "AppInsights"
       target        = data.azurerm_application_insights.appi.id
       authType      = "ApiKey"
-      isSharedToAll = var.is_shared_to_all
+      isSharedToAll = false # project connections are always project-scoped; the service ignores true
       credentials = {
         key = data.azurerm_application_insights.appi.connection_string
       }

@@ -44,7 +44,7 @@ resource "azapi_resource" "application_insights_connection" {
       category      = "AppInsights"
       target        = azurerm_application_insights.app_insights.id
       authType      = "ApiKey"
-      isSharedToAll = true
+      isSharedToAll = false
       credentials = {
         key = azurerm_application_insights.app_insights.connection_string
       }
