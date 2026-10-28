@@ -519,6 +519,18 @@ stages:
                 }
 
                 for deployment_file in "${deployment_files[@]}"; do
+                  # Temporarily exclude these samples from live deployment while owners address CI readiness.
+                  case "$(dirname "$deployment_file")" in
+                    "$(BICEP_ROOT)/31-customer-managed-keys-standard-agent" | \
+                    "$(BICEP_ROOT)/40-basic-agent-setup" | \
+                    "$(BICEP_ROOT)/41-standard-agent-setup" | \
+                    "$(BICEP_ROOT)/42-basic-agent-setup-with-customization" | \
+                    "$(BICEP_ROOT)/43-standard-agent-setup-with-customization")
+                      echo "##vso[task.logissue type=warning]Skipping live deployment of $deployment_file: temporarily excluded pending owner verification of CI readiness. Static validation remains required; live deployment is NOT validated. See .azure-pipelines/README.md."
+                      continue
+                      ;;
+                  esac
+
                   echo "Deploying $deployment_file in $primary_location"
                   if deploy_with_location "$deployment_file" "$primary_location" "primary"; then
                     continue
