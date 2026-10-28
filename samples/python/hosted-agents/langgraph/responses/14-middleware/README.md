@@ -7,9 +7,7 @@ no real email is sent.
 Ported from [langchain-ai/langchain-azure PR #1179](https://github.com/langchain-ai/langchain-azure/pull/1179),
 using the [merged sample at `ed7b1ee`](https://github.com/langchain-ai/langchain-azure/tree/ed7b1ee2d9b7b94ddaa3ae5d73317b6bc504952e/samples/hosting/langgraph-hosted-agents/responses/11_middleware)
 as the baseline. Built-in `HumanInTheLoopMiddleware` provides tool approval
-for a standard LangChain agent. The separate
-[07-human-in-the-loop](../07-human-in-the-loop/) example demonstrates a custom
-LangGraph review workflow; neither sample depends on the other.
+for a standard LangChain agent.
 
 ### Port boundary
 
@@ -332,10 +330,9 @@ absence of every vendor diagnostic under untouched defaults.
 
 The generic [hosted-runtime checks](../../../RUNTIME_VALIDATION.md) discover
 this runtime from its manifest and run its declared tests, lint, and format
-commands with frozen dev dependencies and no Azure credentials. Validation is
-independent of the graph-HITL sample. Policy-framework tests are a separate
-layer, not a substitute for running the sample suite. Dev dependencies and tests
-remain outside production packages.
+commands with frozen dev dependencies and no Azure credentials. Policy-framework
+tests are a separate layer, not a substitute for running the sample suite. Dev
+dependencies and tests remain outside production packages.
 
 The repository's [cloud behavior contract](../../../../../../.azure-pipelines/hosted-agent-tests/python/langgraph/responses/14-middleware/test-spec.yml)
 checks the pending email review and that a specifically approved email executes.
@@ -394,6 +391,5 @@ extension; do not add `--force` just to bypass active-session protection.
 
 ## Next steps
 
-- [Human-in-the-Loop graph sample](../07-human-in-the-loop/)
 - [Observability sample](../08-observability/)
 - [Deploy a hosted agent](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/deploy-hosted-agent)
