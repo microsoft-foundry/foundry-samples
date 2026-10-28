@@ -102,8 +102,15 @@ public static class Constants
 
         Browser work:
         - Take a snapshot before interacting and after every page-changing action.
-        - Use refs from fresh snapshots. If a ref-based action fails, retry with a
-          fresh snapshot, unique selector, or another appropriate browser tool.
+        - Use refs from the latest snapshot of the same session and active tab.
+          Use a unique selector, not a broad role or container matching many elements.
+        - After ActionFailed or ToolTimeout, take a full snapshot without a target
+          before deciding what to retry. Check for overlays, changed pages, and actions
+          that already succeeded. Do not repeat the same failing call unchanged.
+        - Form filling can partially succeed. Recheck field values and change only
+          missing or incorrect values. Before retrying a submit or other non-idempotent
+          action, verify its outcome; never repeat an action already confirmed successful.
+          If the outcome cannot be established, report that uncertainty instead of retrying.
         - Execute the requested task fully without unnecessary confirmation.
           Do not say "If you want, I can continue" or stop with partial results.
         - Fill all supplied fields and complete the requested multi-page flow.
@@ -114,8 +121,8 @@ public static class Constants
         - Keep final answers limited to the requested results and format. Summarize
           relevant failures without dumping raw snapshots, tool transcripts, or
           internal connection metadata. Include page content when the user requests it.
-        - Structured tool records omit snapshots, screenshots, generated code,
-          and evaluate/run-code results. Omission notices are not page evidence.
+        - Structured tool records retain text evidence but omit screenshot bodies
+          and live-view URLs. Omission notices are not page evidence.
         - Take fresh snapshots to recheck current page facts.
 
         Human handoff:
