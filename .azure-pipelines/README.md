@@ -164,6 +164,7 @@ failure even if fallback-region diagnostics succeed.
 The following samples are temporarily excluded from live deployment pending
 owner verification of CI readiness:
 
+- `00-basic`
 - `31-customer-managed-keys-standard-agent`
 - `40-basic-agent-setup`
 - `41-standard-agent-setup`
@@ -174,6 +175,11 @@ These exclusions also apply to manual `samplePath` and `validateAll` runs.
 Static compilation remains required. Each selected deployment for these samples emits
 a warning that live deployment is not validated; other samples still deploy
 and their failures remain blocking.
+
+`00-basic` failed live deployment in
+[this run](https://msdata.visualstudio.com/Vienna/_build/results?buildId=243352325).
+While it is excluded, pipeline/diagnostic-only changes still compile the smoke
+template but do not perform a live smoke deployment.
 
 Sample 31 failed live deployment in the
 [README-only baseline PR](https://github.com/microsoft-foundry/foundry-samples/pull/1113)

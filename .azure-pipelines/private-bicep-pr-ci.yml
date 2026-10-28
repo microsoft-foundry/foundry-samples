@@ -521,6 +521,7 @@ stages:
                 for deployment_file in "${deployment_files[@]}"; do
                   # Temporarily exclude these samples from live deployment while owners address CI readiness.
                   case "$(dirname "$deployment_file")" in
+                    "$(BICEP_ROOT)/00-basic" | \
                     "$(BICEP_ROOT)/31-customer-managed-keys-standard-agent" | \
                     "$(BICEP_ROOT)/40-basic-agent-setup" | \
                     "$(BICEP_ROOT)/41-standard-agent-setup" | \

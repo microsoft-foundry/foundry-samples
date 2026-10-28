@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[3]
 PIPELINE = ROOT / ".azure-pipelines/private-bicep-pr-ci.yml"
 SAMPLE_ROOT = "infrastructure/infrastructure-setup-bicep"
 EXCLUDED_SAMPLES = (
+    "00-basic",
     "31-customer-managed-keys-standard-agent",
     "40-basic-agent-setup",
     "41-standard-agent-setup",
@@ -72,7 +73,7 @@ class BicepPipelineTests(unittest.TestCase):
             git("init", "-q")
             git("config", "user.name", "CI")
             git("config", "user.email", "ci@example.com")
-            for name in ("00-basic", "01-example", *EXCLUDED_SAMPLES):
+            for name in ("01-example", *EXCLUDED_SAMPLES):
                 template = repo / SAMPLE_ROOT / name / "main.bicep"
                 template.parent.mkdir(parents=True)
                 template.write_text("param location string\n", encoding="utf-8")
@@ -119,7 +120,7 @@ bicepparam_supports_location() { return 0; }
 """
         excluded_dirs = {f"{SAMPLE_ROOT}/{name}" for name in EXCLUDED_SAMPLES}
         excluded_files = [f"{SAMPLE_ROOT}/{name}/main.bicep" for name in EXCLUDED_SAMPLES]
-        other = f"{SAMPLE_ROOT}/00-basic/main.bicep"
+        other = f"{SAMPLE_ROOT}/01-connections/main.bicep"
         lookalikes = [f"{SAMPLE_ROOT}/{name}-other/main.bicep" for name in EXCLUDED_SAMPLES]
         for files, deploy_exit_code, expected_exit_code in (
             *(([file], 0, 0) for file in excluded_files),
