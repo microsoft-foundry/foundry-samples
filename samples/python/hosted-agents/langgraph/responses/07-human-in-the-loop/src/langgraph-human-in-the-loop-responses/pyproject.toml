@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A Microsoft Foundry hosted agent built with LangGraph."
 requires-python = ">=3.12"
 dependencies = [
-    "langchain-azure-ai[hosting]>=1.2.12,<2",
+    "langchain-azure-ai[hosting]>=1.2.9",
     "azure-ai-projects",
     "openai<3",
     "httpx<1",
@@ -12,14 +12,4 @@ dependencies = [
     "langchain-openai",
     "python-dotenv",
     "debugpy",
-]
-
-[dependency-groups]
-dev = ["ruff==0.9.4"]
-
-[tool.hosted-agent-validation]
-commands = [
-    ["python", "-m", "unittest", "discover", "-s", "tests", "-v"],
-    ["ruff", "check", "."],
-    ["ruff", "format", "--check", "."],
 ]

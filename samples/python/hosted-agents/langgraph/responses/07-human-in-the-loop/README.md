@@ -6,7 +6,7 @@ A [LangGraph](https://langchain-ai.github.io/langgraph/) **human-in-the-loop** a
 
 ### Graph shape
 
-```text
+```
 START → draft → await_approval ──approve──► END (emit final draft)
                        │
                        └──revise(feedback)──► draft (loop)
@@ -14,30 +14,15 @@ START → draft → await_approval ──approve──► END (emit final draft)
                        └──reject──► host returns response.failed (interrupt_rejected)
 ```
 
-The graph state declares four channels:
+The graph state declares three channels:
 
-- **`messages`** — graph message state. The graph appends the **final approved draft** here; this is not a filter over all host callback output.
+- **`messages`** — the channel the Responses host emits to the client. Only the **final approved draft** is appended to it.
 - **`draft`** — the current proposal text under review.
 - **`revision_history`** — list of `{draft, feedback}` pairs from prior revision rounds; each round seeds the next `draft` call with the rejected draft and the reviewer's feedback.
-- **`task_id`** — identifies the user message currently under review. Revision feedback stays with that task; a new request in the same conversation starts a new draft and clears the previous task's revision history.
 
 Routing out of `await_approval` is done by returning a [`Command(goto=...)`](https://langchain-ai.github.io/langgraph/how-tos/command/) instead of static edges, so the same node can finalize, loop, or stay paused depending on the resume value.
 
 State is persisted by `FoundryCheckpointSaver` and keyed by the `conversation.id` from the Responses request, so follow-up requests continue the paused run even after a process restart. The saver uses Foundry State Store when hosted and a local file-backed store during local development. See [main.py](src/langgraph-human-in-the-loop-responses/main.py) for the full implementation.
-
-### Output visibility before approval
-
-Approval gates graph finalization, not visibility of model-generated text.
-With real LangChain model callbacks, the host can emit the draft as an ordinary
-completed assistant message **before approval**, alongside the approval request,
-in both JSON and SSE responses. The review payload also deliberately contains
-the draft. A completed response/message does not mean the reviewer approved it;
-clients must inspect the pending `mcp_approval_request`.
-
-The callback-aware regression suite records this inherited behavior. Do not use
-this sample as a confidential-output barrier. If an application must publish or
-perform an external action only after approval, put that action in an explicit
-post-approval step rather than treating assistant text as authorization.
 
 ### Review decisions
 
@@ -213,49 +198,35 @@ When the agent pauses with an approval request, the Inspector renders an interac
 4. On **Review + Deploy**, confirm runtime details, pick **CPU and Memory** size, and click **Deploy**.
 5. After deployment, invoke the agent in the Agent Playground and stream live logs from the **Logs** tab.
 
-## Behavior validation
-
-From `src/langgraph-human-in-the-loop-responses`, after `uv sync --frozen`, run:
-
-```bash
-uv run --frozen python -m unittest discover -s tests -v
-```
-
-These credential-free tests exercise the real LangGraph graph and
-`FoundryCheckpointSaver`, replacing only the external model service. They check
-that graph finalization remains paused until approval, that follow-up tasks use the latest
-user request, and that revision feedback does not leak into a later task.
-They also exercise approve/revise/reject through the real Responses host in
-both JSON and SSE modes.
-The model substitute derives from `BaseChatModel`, so these tests exercise real
-callbacks and assert the pre-approval assistant output described above.
-
-The repository cloud contract separately checks pending review and automatic
-approval through the hosted Responses endpoint. Its automatic-approval support
-does not validate the interactive reject/revise UI; use the documented review
-payloads to exercise those decisions.
-
 ## Troubleshooting
 
-### Project Responses authentication or permissions (401/403)
+### Azure OpenAI Permission Denied (401)
 
-This sample uses the project's OpenAI-compatible **Responses API** through
-`AIProjectClient.get_openai_client()` and `ChatOpenAI(use_responses_api=True)`.
-Using the `ChatOpenAI` class does not make this an account-level Chat Completions
-call or, by itself, require an additional runtime role assignment.
+If you see an error like:
 
-Check the failing identity and endpoint before changing RBAC:
+```
+Error calling Azure OpenAI: Error code: 401 - {'error': {'code': 'PermissionDenied', 'message': 'The principal <principal-id> lacks the required data action Microsoft.CognitiveServices/accounts/OpenAI/deployments/chat/completions/action to perform POST /openai/deployments/{deployment-id}/chat/completions operation.'}}
+```
 
-- **Local developer:** check Azure login/tenant, `FOUNDRY_PROJECT_ENDPOINT`, and
-  the deployment name. `Foundry User` at project scope supports local inference.
-- **Hosted agent identity:** standard inference through its own project has
-  implicit access. Diagnose an actual missing permission before adding roles.
-- **Project managed identity:** the project proxies model calls to the account;
-  its account-scoped `Foundry User` access is normally handled during setup.
-- **Agent endpoint caller:** `Foundry Agent Consumer` at project/agent scope is
-  sufficient for invocation; it is not the runtime's model-inference identity.
+This sample uses its own LangChain (`ChatOpenAI`) client to call the project's Chat Completions endpoint directly, so the agent's managed identity needs the **Foundry User** role on the project — an ["Agent access beyond defaults"](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agent-permissions#agent-access-beyond-defaults) case:
 
-Intentional account-level calls, external tools, or advanced cases without
-implicit access need their own narrowly scoped grants. Use the actual error's
-principal and resource scope, not a blanket grant to every identity. See
-[agent access beyond defaults](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agent-permissions#agent-access-beyond-defaults).
+- **Foundry User**
+
+Use the Azure CLI to assign it:
+
+```bash
+# Set your variables
+SUBSCRIPTION_ID="<your-subscription-id>"
+RESOURCE_GROUP="<your-resource-group>"
+ACCOUNT_NAME="<your-ai-foundry-account-name>"
+PROJECT_NAME="<your-ai-foundry-project-name>"
+PRINCIPAL_ID="<principal-id-from-error-message>"
+
+# Assign "Foundry User" role
+az role assignment create \
+  --assignee "$PRINCIPAL_ID" \
+  --role "Foundry User" \
+  --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.CognitiveServices/accounts/$ACCOUNT_NAME/projects/$PROJECT_NAME"
+```
+
+> **Note:** It may take a few minutes for role assignments to propagate. Retry the request after waiting.

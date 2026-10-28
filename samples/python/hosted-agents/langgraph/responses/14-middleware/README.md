@@ -6,8 +6,10 @@ no real email is sent.
 
 Ported from [langchain-ai/langchain-azure PR #1179](https://github.com/langchain-ai/langchain-azure/pull/1179),
 using the [merged sample at `ed7b1ee`](https://github.com/langchain-ai/langchain-azure/tree/ed7b1ee2d9b7b94ddaa3ae5d73317b6bc504952e/samples/hosting/langgraph-hosted-agents/responses/11_middleware)
-as the baseline. Unlike [07-human-in-the-loop](../07-human-in-the-loop/), which
-implements its own review node, this sample uses native LangChain middleware.
+as the baseline. Built-in `HumanInTheLoopMiddleware` provides tool approval
+for a standard LangChain agent. The separate
+[07-human-in-the-loop](../07-human-in-the-loop/) example demonstrates a custom
+LangGraph review workflow; neither sample depends on the other.
 
 ### Port boundary
 
@@ -16,7 +18,6 @@ implements its own review node, this sample uses native LangChain middleware.
 | `agent.py`, `client.py` | Unchanged upstream implementation, including the native review protocol and simulated tool. |
 | `main.py` | Preserves explicit credential/model/checkpoint lifetimes; adapts the fallback model and delegates telemetry to the stock host instead of also registering the upstream auto-tracer/provider. |
 | Foundry integration | Repository-native `azure.yaml`, `src/<service>` layout, code/container packaging, frozen uv runtime/dev dependencies, indexes, and acceptance tests. |
-| `07-human-in-the-loop` | Separate repair of the existing graph-review example, not part of the upstream middleware implementation. |
 
 ## How it works
 
@@ -329,12 +330,12 @@ redirect Azure Monitor live metrics locally to isolate external services; they
 do not establish cloud telemetry delivery, production execution counts, or the
 absence of every vendor diagnostic under untouched defaults.
 
-The PR's generic [hosted-runtime checks](../../../RUNTIME_VALIDATION.md) discover
-this runtime and the graph-HITL runtime from their manifests and run each one's
-declared tests, lint, and format commands with frozen dev dependencies and no
-Azure credentials. Policy-framework tests are a separate layer, not a substitute
-for running these suites. Dev dependencies and tests remain outside production
-packages.
+The generic [hosted-runtime checks](../../../RUNTIME_VALIDATION.md) discover
+this runtime from its manifest and run its declared tests, lint, and format
+commands with frozen dev dependencies and no Azure credentials. Validation is
+independent of the graph-HITL sample. Policy-framework tests are a separate
+layer, not a substitute for running the sample suite. Dev dependencies and tests
+remain outside production packages.
 
 The repository's [cloud behavior contract](../../../../../../.azure-pipelines/hosted-agent-tests/python/langgraph/responses/14-middleware/test-spec.yml)
 checks the pending email review and that a specifically approved email executes.

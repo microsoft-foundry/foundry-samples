@@ -83,43 +83,26 @@ class State(TypedDict):
     ``messages`` is the channel the Responses host reads — only the
     final approved draft is appended to it. ``draft`` holds the current
     proposal text, and ``revision_history`` accumulates prior drafts
-    with the feedback that prompted each revision. ``task_id`` keeps
-    that history scoped to the current user request.
+    with the feedback that prompted each revision.
     """
 
     messages: Annotated[list[BaseMessage], add_messages]
     draft: str
     revision_history: list[dict]
-    task_id: str
 
 
 def _build_graph(model: ChatOpenAI):
     async def draft(state: State) -> dict:
-        task_message = next(
-            message
-            for message in reversed(state["messages"])
-            if isinstance(message, HumanMessage)
-        )
-        revision_history = (
-            state.get("revision_history", [])
-            if state.get("task_id") == task_message.id
-            else []
-        )
+        task = state["messages"][0].content
         msgs: list[BaseMessage] = [
             SystemMessage(content=_DRAFT_PROMPT),
-            HumanMessage(content=f"Task: {task_message.content}"),
+            HumanMessage(content=f"Task: {task}"),
         ]
-        for revision in revision_history:
-            msgs.append(AIMessage(content=revision["draft"]))
-            msgs.append(
-                HumanMessage(content=f"Revision feedback: {revision['feedback']}")
-            )
+        for rev in state.get("revision_history", []):
+            msgs.append(AIMessage(content=rev["draft"]))
+            msgs.append(HumanMessage(content=f"Revision feedback: {rev['feedback']}"))
         result = await model.ainvoke(msgs)
-        return {
-            "draft": result.content,
-            "task_id": task_message.id,
-            "revision_history": revision_history,
-        }
+        return {"draft": result.content}
 
     def await_approval(state: State) -> Command:
         # Pause until the client returns a decision. On approve=True the
