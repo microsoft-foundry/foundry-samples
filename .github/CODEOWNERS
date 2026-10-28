@@ -151,6 +151,8 @@
 /samples/python/hosted-agents/bring-your-own/invocations/github-copilot/       @ankitbko @huimiu
 /samples/python/hosted-agents/bring-your-own/invocations/human-in-the-loop/    @ankitbko @huimiu
 /samples/python/hosted-agents/bring-your-own/responses/langgraph-toolbox/      @antriksh30 @lindazqli
+/samples/python/hosted-agents/langgraph/responses/11-deep-agents/              @microsoft-foundry/hosted-agents @Jiahui-Gu
+/.azure-pipelines/hosted-agent-tests/python/langgraph/responses/11-deep-agents/ @microsoft-foundry/hosted-agents @Jiahui-Gu
 
 # Migration scripts — v1-to-v2 migration tooling (issue #807)
 /migration/ @nikhowlettMicrosoft
