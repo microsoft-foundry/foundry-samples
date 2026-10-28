@@ -14,7 +14,7 @@ hosted-agent pipeline (`.azure-pipelines/hosted-agents-samples-ci.yml`):
 |---|---|---|---|---|
 | `samples/<python\|csharp>/hosted-agents/<path>` | `.azure-pipelines/hosted-agent-tests/<python\|csharp>/<path>/test-spec.yml` | `hosted` | string, JSON mapping, or sequence | `assistant_text`, `raw`, `session_files`, `console_log`, `trace`, plus `approvals.mcp` |
 | `samples/cli/prompt-agents/<path>` (no `harness`) | `.azure-pipelines/prompt-agent-tests/cli/<path>/test-spec.yml` | `prompt` | string only | `assistant_text` only (`contains`, `equals`, `regex`) |
-| `samples/cli/prompt-agents/<path>` (`harness.type: github_copilot_preview`) | `.azure-pipelines/prompt-agent-tests/cli/<path>/test-spec.yml` | `managed` | string only | `assistant_text` only (`contains`, `equals`, `regex`) |
+| `samples/cli/prompt-agents/<path>` (`harness.type` set) | `.azure-pipelines/prompt-agent-tests/cli/<path>/test-spec.yml` | `managed` | string only | `assistant_text` only (`contains`, `equals`, `regex`) |
 
 Every non-excluded sample under `samples/cli/prompt-agents/` must either:
 

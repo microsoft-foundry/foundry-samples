@@ -3,7 +3,7 @@
 An [Agent Framework](https://github.com/microsoft/agent-framework) agent that uses **Foundry Toolbox** for tool discovery, hosted on Microsoft Foundry using the **Responses protocol**. Foundry Toolbox is a managed tool registry in Microsoft Foundry that lets you define tools centrally and share them across agents.
 
 ## Foundry Toolbox configuration
-The [`azure.yaml`](azure.yaml) declares the `agent-tools` toolbox and its authenticated connections as separate services. `azd up` deploys them before the agent and passes the versioned MCP endpoint to `TOOLBOX_ENDPOINT`.
+The [`azure.yaml`](azure.yaml) declares the `agent-tools` toolbox and its authenticated connections as separate services. `azd deploy --all` deploys them before the agent and passes the versioned MCP endpoint to `TOOLBOX_ENDPOINT`.
 
 To use your own tools, choose the tool type and authentication mode from the table below, then follow the linked guide to configure that tool in your toolbox.
 
@@ -49,42 +49,109 @@ See [main.py](src/agent-framework-agent-with-foundry-toolbox-responses/main.py) 
    azd auth login
    ```
 
+The sample manifest declares three authenticated connections: `ghmcppat` (GitHub MCP, PAT), `langmcpconn` (Azure Language MCP, project managed identity), and `foundrymcpconn` (Foundry MCP, user Entra token). **Have the following two values ready** before running `azd ai agent init` as initialization prompts for them.
+
+| Prompt | How to obtain the value |
+|--------|-------------------------|
+| `GITHUB_MCP_PAT` | [Create a GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens). Prefer a fine-grained token limited to the repositories and permissions needed by the GitHub tools you intend to call (for example, read-only **Contents** access for reading repository files). Follow any organization approval or SSO requirements. See the [GitHub remote MCP server guide](https://github.com/github/github-mcp-server/blob/main/docs/remote-server.md) for authentication details. Enter only the token, **without** the `Bearer ` prefix; the manifest adds it. |
+| `AZURE_LANGUAGE_MCP_ENDPOINT` | Use an Azure **Language service** resource, not **Language Understanding** (LUIS). Follow the portal steps below to create the resource and obtain its full MCP URL. Enter the full MCP URL, not just the resource endpoint or an API key. |
+
+To create the Language resource and get its MCP URL:
+
+1. In the [Azure portal](https://portal.azure.com/), select **Create a resource**, search for **Language service**, and select the Microsoft offering. Alternatively, [open the Language resource creation page directly](https://portal.azure.com/#create/Microsoft.CognitiveServicesTextAnalytics), as linked in the [official resource creation instructions](https://learn.microsoft.com/en-us/azure/ai-services/language-service/language-detection/quickstart#create-an-azure-resource).
+2. If the **Select additional features** page appears, select **Continue to create your resource**. Choose your subscription, resource group, region, resource name, and pricing tier; accept the required terms, then select **Review + create** > **Create**.
+3. After deployment, select **Go to resource** > **Keys and Endpoint** and copy the custom-subdomain endpoint, such as `https://<language-service>.cognitiveservices.azure.com/`.
+4. Append `language/mcp?api-version=2025-11-15-preview` to that endpoint. The value to enter for `AZURE_LANGUAGE_MCP_ENDPOINT` is:
+
+   ```text
+   https://<language-service>.cognitiveservices.azure.com/language/mcp?api-version=2025-11-15-preview
+   ```
+
+This sample does **not** provision the external Azure Language resource or create a GitHub PAT. Keep the PAT out of source control and do not share it in logs or screenshots.
+
+This sample calls Azure Language using the Foundry **project's system-assigned managed identity**, not your signed-in user account. After provisioning, you must grant that identity the **Cognitive Services Language Owner** role on the **Language service resource** to invoke the Language MCP endpoint. You need permission to create Azure role assignments at that resource's scope (for example, **Role Based Access Control Administrator**, **User Access Administrator**, or **Owner**), or help from an administrator. Follow [Authorize the project managed identity](#authorize-the-project-managed-identity) below before invoking the agent.
+
+The separate Foundry MCP connection needs no additional secret; it uses the calling user's Entra token and requires that user to have access to the target Foundry resources.
+
 #### Initialize the agent project
 
-No cloning required. Create a new folder and initialize from the manifest:
+No cloning required. Create a new empty folder and initialize from the manifest. Initialization reports the output directory containing `azure.yaml` and the downloaded sample files; use that directory for the subsequent commands:
 
 ```bash
 mkdir my-toolbox-agent && cd my-toolbox-agent
 
-azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/azure.yaml
+azd ai agent init -t https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox/azure.yaml
 ```
 
-Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one. Initializing also sets the selected project as the active project for the `azd ai` commands that follow.
+Follow the prompts to configure your Foundry project and model deployment, and enter the PAT and Language MCP URL prepared above when prompted. If you don't have an existing Foundry project, `azd ai agent init` will guide you through configuring a new one; `azd provision` creates its Azure resources.
 
-#### Configure external dependencies
+**Run every subsequent command from the initialized project directory containing `azure.yaml`.** If initialization reports a different output directory, change to that directory first. Selecting an active Foundry project for `azd ai` commands is not a substitute for being in the local azd project directory.
 
-`azure.yaml` declares `ghmcppat` (GitHub MCP, PAT), `langmcpconn` (Azure Language MCP, project managed identity), and `foundrymcpconn` (Foundry MCP, user Entra token). The toolbox depends on all three connections.
+#### Optional: correct the values entered during initialization
 
-Before `azd up`, supply a GitHub MCP PAT and the endpoint of an existing Azure Language resource in the azd environment:
+If you supplied the correct values during initialization, **skip this step**. You do not need to enter them again. To replace a placeholder, correct a URL, or rotate a token, run these commands from the initialized project directory:
 
 ```bash
 azd env set GITHUB_MCP_PAT "<your-GitHub-MCP-PAT>"
 azd env set AZURE_LANGUAGE_MCP_ENDPOINT "https://<language-service>.cognitiveservices.azure.com/language/mcp?api-version=2025-11-15-preview"
 ```
 
-Keep the PAT out of source control. Grant the project's managed identity access to the Azure Language resource; calls through the Foundry MCP connection require the calling user's access. For other tool types, consult the [tool type guides](#toolbox-tool-types) and edit the connection and toolbox services in `azure.yaml`. Changing `ghmcppat` from PAT to OAuth requires updating its auth configuration.
+If these commands report `ERROR: no project exists`, see [Local azd project not found](#local-azd-project-not-found). Do not run `azd env set` before initialization or from the agent's source subdirectory.
 
-#### Provision and deploy
+For other tool types, consult the [tool type guides](#toolbox-tool-types) and edit the connection and toolbox services in `azure.yaml`. Changing `ghmcppat` from PAT to OAuth requires updating its auth configuration.
+
+#### Provision the Foundry resources
+
+Provision before deploying so that the project's managed identity exists and can be authorized:
 
 ```bash
-azd up
+azd provision
 ```
 
-The agent's `TOOLBOX_ENDPOINT` maps to `TOOLBOX_AGENT_TOOLS_MCP_ENDPOINT` produced by this toolbox deployment. After editing tools, connections, or agent code, run `azd deploy --all`; the agent uses the new toolbox version without publishing it as the default or switching older agents.
+#### Authorize the project managed identity
 
-#### Run the agent locally
+The `langmcpconn` connection uses `ProjectManagedIdentity` authentication. Grant the **Foundry project's identity** access to the **Language service resource**, as follows.
 
-Run `azd up` first: `azd ai agent run` starts the host locally but does not create the remote connections or toolbox.
+**1. Identify the project's managed identity**
+
+After `azd provision` completes:
+
+1. In the [Azure portal](https://portal.azure.com/), open your **Foundry project** resource, not the parent Foundry account.
+2. In the project's menu, select **Resource Management** > **Identity**.
+3. On the **System assigned** tab, copy the **Object (principal) ID**.
+
+This GUID identifies the project's managed identity. It is not the project's Azure resource ID or an application (client) ID. Do not substitute your user ID, the parent Foundry account's identity, or an agent-specific identity.
+
+**2. Assign the role on the Language resource**
+
+1. Open the **Language service resource** whose endpoint you supplied as `AZURE_LANGUAGE_MCP_ENDPOINT`.
+2. Select **Access control (IAM)** > **Add** > **Add role assignment**.
+3. Search for and select **Cognitive Services Language Owner**, then select **Next**.
+4. Under **Members**, choose **User, group, or service principal**, select **Select members**, and search using the **Object (principal) ID** copied above. Select the matching identity.
+5. Select **Review + assign** to complete the assignment.
+
+The assignment's **scope must be the Language service resource**, not the Foundry project. This grants Language API access without granting subscription-wide access. If **Add role assignment** is disabled or the assignment fails because you lack permission, ask an administrator to perform this step.
+
+For more background on the required Language data actions, see the [managed-identity authorization guide](../../../SUPPORTED_TOOLBOX_SCENARIOS/tools/mcp-microsoft-entra.md#step-2--authorize-the-identity).
+
+#### Deploy and invoke the agent
+
+Deploy all services together so that the connections and toolbox are deployed before the agent:
+
+```bash
+azd deploy --all
+azd ai agent invoke "What tools do you have?"
+```
+
+If invocation fails with `language-mcp`, `HTTP_401`, and a message that a principal lacks `Microsoft.CognitiveServices/accounts/Language/mcp/action`, compare the principal ID in the error with the project's **Object (principal) ID** and verify the role was assigned on the correct Language resource. A failure from `language-mcp` can prevent discovery of **all** toolbox tools, even when the other sources succeed.
+
+The agent's `TOOLBOX_ENDPOINT` maps to `TOOLBOX_AGENT_TOOLS_MCP_ENDPOINT` produced by this toolbox deployment. After editing tools, connections, or agent code, run `azd deploy --all` again; the agent uses the new toolbox version without publishing it as the default or switching older agents.
+
+For the full deployment guide, see [Deploy a hosted agent](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/deploy-hosted-agent).
+
+#### Optional: run the agent locally
+
+Complete provisioning, authorization, and deployment above first: `azd ai agent run` starts the host locally but does not create the remote connections or toolbox.
 
 ```bash
 azd ai agent run
@@ -100,42 +167,26 @@ In a separate terminal, from the project directory:
 azd ai agent invoke --local "What tools do you have?"
 ```
 
-#### Deploy to Foundry
-
-After changing the toolbox or agent, deploy all services together:
-
-```bash
-azd deploy --all
-```
-
-For the full deployment guide, see [Deploy a hosted agent](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/deploy-hosted-agent).
-
-#### Invoke the deployed agent
-
-```bash
-azd ai agent invoke "What tools do you have?"
-```
-
 ### Option 2: VS Code (Foundry Toolkit)
 
 #### Prerequisites
 
 1. **VS Code** with the **[Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)** extension installed.
 2. For debugging Python in VS Code, install the **[Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)** extension pack.
+3. **Python 3.13 or later** and [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment.
 
 #### Set up the Python virtual environment
 
-- With Python 3.13 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
+- Create and synchronize the locked environment:
 
   ```bash
-   pipx install uv==0.11.7
-   uv sync --frozen --python 3.13
+   uv sync --frozen
   ```
 - Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
 
 #### Prepare remote dependencies
 
-Run `azd up` from the initialized project directory first. For F5 or standalone Python, set `TOOLBOX_ENDPOINT` in `.env` to the versioned endpoint available via `azd env get-value TOOLBOX_AGENT_TOOLS_MCP_ENDPOINT`. The VS Code deploy wizard deploys the agent only; use `azd deploy --all` when changing the toolbox or its connections.
+Complete the external-dependency preparation, initialization, provisioning, managed-identity authorization, and deployment in [Option 1](#option-1-azure-developer-cli-azd) first. For F5 or standalone Python, set `TOOLBOX_ENDPOINT` in `.env` to the versioned endpoint available via `azd env get-value TOOLBOX_AGENT_TOOLS_MCP_ENDPOINT` from the initialized project directory. The VS Code deploy wizard deploys the agent only; use `azd deploy --all` when changing the toolbox or its connections.
 
 #### Run and debug the agent
 
@@ -185,6 +236,17 @@ Use the `resource` value (`https://mcp.ai.azure.com`) as the audience.
 > For connector-backed MCP servers (for example Microsoft 365 / WorkIQ servers such as Outlook Mail), the audience is instead published in the Foundry Tools Catalog. Look it up with the helper scripts in [`scripts/`](src/agent-framework-agent-with-foundry-toolbox-responses/scripts/): run `./scripts/list-foundry-connectors.ps1 -ConnectorName <name>` (or `./scripts/list-foundry-connectors.sh -n <name>`) and read `AzureActiveDirectoryResourceId` (equivalently `resourceUri`) under `properties.x-ms-connection-parameters`. Run the script with no connector name to list every connector with its name, title, and auth type.
 
 ## Troubleshooting
+
+### Local azd project not found
+
+`azd env set` and the core `azd provision` / `azd deploy` commands require a local project containing `azure.yaml`. If you see `ERROR: no project exists; to create a new project, run azd init` after `azd ai agent init`:
+
+1. Check the initialization output for the generated project directory.
+2. Change to that directory and verify that it contains `azure.yaml`, rather than running from its parent or a source subdirectory. Alternatively, use `azd --cwd "<initialized-project-directory>" env set ...`.
+3. If you have multiple azd environments, select the one created during initialization with `azd env select`.
+4. Retry the command. If the values entered during initialization were already correct, skip `azd env set` and continue with `azd provision`.
+
+Do not run a second, unrelated `azd init` just to clear the error. If no `azure.yaml` was generated, initialization did not produce the local project required by this workflow; check the CLI/extension prerequisites and the initialization output before retrying in a new empty directory.
 
 ### A single failing MCP source can fail the whole agent
 

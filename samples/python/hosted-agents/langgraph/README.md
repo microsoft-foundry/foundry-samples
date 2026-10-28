@@ -1,5 +1,8 @@
 # LangGraph Samples
 
+See the shared [Python startup configuration](../README.md#python-startup-configuration)
+for deployment environments and dependency compatibility.
+
 This directory contains samples that demonstrate how to use [LangGraph](https://langchain-ai.github.io/langgraph/) together with [`langchain_azure_ai.agents.hosting`](https://github.com/langchain-ai/langchain-azure/tree/main/libs/azure-ai/langchain_azure_ai/agents/hosting) to host agents on Foundry with different capabilities and configurations. Each sample includes a README with sample queries and any sample-specific notes.
 
 Use the configuration-driven `langchain_azure_ai.agents.hosting.run` entrypoint by default. Use a protocol-specific host class only when the agent must customize request translation, unsupported protocol options, readiness behavior, or the lifetime of async resources. The [Responses Custom Host](responses/12-custom-host/) and [Invocations Custom Host](invocations/04-custom-host/) samples demonstrate the request-translation case.

@@ -91,7 +91,7 @@ SDK invocation. Bash owns command sequencing, timeouts, and EXIT-trap cleanup.
 `prompt_agent_helpers.py` handles only local manifest/contract validation, text
 evidence, and exact-target absence parsing; the shared Python evaluator is reused.
 The runner supports string inputs and assistant-text assertions for plain prompt
-agents and `github_copilot_preview` managed agents. Managed manifests must declare
+agents and managed-harness prompt agents (any valid `harness.type` identifier). Managed manifests must declare
 one project, one agent, and one toolbox containing only built-in
 `web_search`. Skills, connections, additional dependencies, and lifecycle hooks
 are rejected before deployment. This is capability validation, not a sample-name

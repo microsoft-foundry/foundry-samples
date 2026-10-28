@@ -27,17 +27,33 @@ class DiscoveryTests(unittest.TestCase):
         blacklist.write_text("{}", encoding="utf-8")
 
 
-    def sample(self, name="01-basic", *, managed=False):
+    def sample(self, name="01-basic", *, managed=False, harness_type="microsoft_copilot_preview"):
         path = self.repo / SAMPLE_ROOT / name / "azure.yaml"
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         agent = {"host": "azure.ai.agent", "kind": "prompt", "uses": ["project"]}
         if managed:
-            agent["harness"] = {"type": "github_copilot_preview"}
+            agent["harness"] = {"type": harness_type}
         document = {"name": name, "services": {
             "project": {"host": "azure.ai.project"}, "agent": agent,
         }}
         path.write_text(yaml.safe_dump(document), encoding="utf-8")
         return path
+
+    def test_accepts_multiple_harness_identifiers_and_rejects_invalid_harness(self):
+        for harness_type in ("github_copilot_preview", "microsoft_copilot_preview"):
+            with self.subTest(harness_type=harness_type):
+                self.sample("04-foundry-toolbox", managed=True, harness_type=harness_type)
+                entry = discovery.discover(self.repo)["entries"][0]
+                self.assertEqual(entry["executionProfile"], "managed")
+                self.assertEqual(entry["harnessType"], harness_type)
+        for bad_harness in ("", "bad harness", {"type": ""}, {"type": "ok", "extra": 1}):
+            with self.subTest(bad_harness=bad_harness):
+                manifest = self.sample("04-foundry-toolbox")
+                doc = yaml.safe_load(manifest.read_text(encoding="utf-8"))
+                doc["services"]["agent"]["harness"] = bad_harness
+                manifest.write_text(yaml.safe_dump(doc), encoding="utf-8")
+                with self.assertRaisesRegex(discovery.DiscoveryError, "harness.type must be a nonempty identifier"):
+                    discovery.discover(self.repo)
 
     def test_profiles_fixture_changes_and_full_run_paths(self):
         self.sample()
