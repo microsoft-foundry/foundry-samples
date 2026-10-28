@@ -7,20 +7,32 @@ import unittest
 from unittest.mock import patch
 from uuid import uuid4
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 from langgraph.types import Command
 from langchain_azure_ai.agents.hosting import ResponsesHostServer
 from main import _build_graph
+from pydantic import Field
 from starlette.testclient import TestClient
 
 
-class DraftModel:
-    def __init__(self):
-        self.calls = []
+class DraftModel(BaseChatModel):
+    calls: list[list[BaseMessage]] = Field(default_factory=list)
 
-    async def ainvoke(self, messages):
-        self.calls.append(messages)
-        return AIMessage(content="Draft: " + str(messages[1].content))
+    @property
+    def _llm_type(self):
+        return "test-draft-model"
+
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+        self.calls.append(list(messages))
+        return ChatResult(
+            generations=[
+                ChatGeneration(
+                    message=AIMessage(content="Draft: " + str(messages[1].content))
+                )
+            ]
+        )
 
 
 class ReviewTests(unittest.IsolatedAsyncioTestCase):
@@ -60,7 +72,7 @@ class ReviewTests(unittest.IsolatedAsyncioTestCase):
     async def approve(self):
         return await self.graph.ainvoke(Command(resume={"approved": True}), self.config)
 
-    async def test_only_approval_emits_the_draft(self):
+    async def test_only_approval_appends_final_draft_to_graph_messages(self):
         paused = await self.begin("FIRST-TASK")
         self.assertTrue(paused["__interrupt__"])
         self.assertFalse(
@@ -112,6 +124,39 @@ class ReviewTests(unittest.IsolatedAsyncioTestCase):
         ]
         self.assertEqual(len(terminal), 1)
         return terminal[0]["response"]
+
+    async def test_pending_wire_response_includes_callback_draft(self):
+        for stream in (False, True):
+            with self.subTest(stream=stream):
+                host = ResponsesHostServer(self.graph)
+                with TestClient(host.app) as client:
+                    paused = self.post_response(
+                        client,
+                        {
+                            "input": "CALLBACK-VISIBLE-DRAFT",
+                            "conversation": {"id": "conv_" + uuid4().hex},
+                            "stream": stream,
+                        },
+                    )
+                self.assertEqual(paused["status"], "completed")
+                messages = [
+                    item for item in paused["output"] if item["type"] == "message"
+                ]
+                self.assertTrue(messages, paused)
+                self.assertTrue(
+                    any(
+                        message["role"] == "assistant"
+                        and message["status"] == "completed"
+                        for message in messages
+                    )
+                )
+                self.assertIn("CALLBACK-VISIBLE-DRAFT", json.dumps(messages))
+                self.assertTrue(
+                    any(
+                        item["type"] == "mcp_approval_request"
+                        for item in paused["output"]
+                    )
+                )
 
     async def test_responses_review_decisions(self):
         for stream in (False, True):

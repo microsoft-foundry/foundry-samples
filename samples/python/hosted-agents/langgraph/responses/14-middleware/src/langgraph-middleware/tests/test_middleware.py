@@ -26,7 +26,7 @@ from langchain_azure_ai.agents.hosting import (
 )
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
-from main import _configure_tracing
+from main import _create_host
 from openai import OpenAI
 from pydantic import Field
 from starlette.testclient import TestClient
@@ -87,10 +87,13 @@ class EmailModel(BaseChatModel):
 @contextmanager
 def open_review_client(email_actions: list[dict[str, str]]):
     model = EmailModel(email_actions=[dict(action) for action in email_actions])
-    host = ResponsesHostServer(build_agent(model, InMemorySaver()))
+    host = _create_host(build_agent(model, InMemorySaver()))
     with TestClient(host.app) as transport:
         with OpenAI(
-            base_url="http://testserver", api_key="local", http_client=transport
+            base_url="http://testserver",
+            api_key="local",
+            http_client=transport,
+            max_retries=0,
         ) as client:
             yield client, model
 
@@ -255,8 +258,8 @@ def test_tracing_defaults_are_explicit(monkeypatch: pytest.MonkeyPatch) -> None:
     ]
     for name in names:
         monkeypatch.delenv(name)
-    with _configure_tracing(None):
-        assert all(os.environ[name] == "false" for name in names)
+    _create_host(build_agent(EmailModel(), InMemorySaver()))
+    assert all(os.environ[name] == "false" for name in names)
 
 
 @pytest.mark.parametrize("capture_content", [False, True])
@@ -284,7 +287,6 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from test_middleware import exercise_openai_review
-from main import _configure_tracing
 
 exporter = InMemorySpanExporter()
 provider = TracerProvider()
@@ -296,13 +298,12 @@ markers = {
     "subject": "PRIVATE-SUBJECT-761e3a",
     "body": "PRIVATE-EMAIL-CONTENT-24f03c",
 }
-with _configure_tracing(None):
-    exercise_openai_review(
-        stream=False,
-        decision="approve",
-        prompt=markers["prompt"],
-        email_actions=[{key: value for key, value in markers.items() if key != "prompt"}],
-    )
+exercise_openai_review(
+    stream=False,
+    decision="approve",
+    prompt=markers["prompt"],
+    email_actions=[{key: value for key, value in markers.items() if key != "prompt"}],
+)
 provider.force_flush()
 spans = exporter.get_finished_spans()
 assert spans, "No real spans were exported"
@@ -444,8 +445,9 @@ def test_sdk_state_stays_in_test_owned_root(
 
 
 @pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("decision", ["approve", "edit", "reject"])
 def test_responses_review_survives_process_restart(
-    stream: bool, tmp_path: Path
+    stream: bool, decision: str, tmp_path: Path
 ) -> None:
     source = Path(__file__).resolve().parents[1]
     environment = dict(os.environ)
@@ -463,7 +465,7 @@ from starlette.testclient import TestClient
 from test_middleware import EmailModel, post_response
 
 logging.basicConfig(level=logging.INFO)
-phase, directory, streaming = sys.argv[1:]
+phase, directory, streaming, decision = sys.argv[1:]
 path = Path(directory) / "paused.json"
 stream = streaming == "true"
 
@@ -481,24 +483,38 @@ async def run():
                 assert stored.status_code == 200, stored.text
                 assert stored.json()["id"] == paused["id"]
                 resumed = post_response(client, {
-                    "input": build_resume_items(paused, "approve"),
+                    "input": build_resume_items(paused, decision, "bob@example.com"),
                     "previous_response_id": paused["id"],
                     "stream": stream,
                 })
                 assert not any(item["type"] == "mcp_approval_request" for item in resumed["output"])
-                assert "Simulated email to alice@example.com: Project update" in json.dumps(resumed)
+                if decision == "reject":
+                    assert "Simulated email to" not in json.dumps(resumed)
+                else:
+                    recipient = "bob@example.com" if decision == "edit" else "alice@example.com"
+                    receipt = f"Simulated email to {recipient}: Project update" + chr(10) + "The review starts at 10:00."
+                    assert json.dumps(receipt)[1:-1] in json.dumps(resumed)
 
 asyncio.run(run())
 """
     for phase in ("pause", "resume"):
         result = subprocess.run(
-            [sys.executable, "-c", script, phase, str(tmp_path), str(stream).lower()],
+            [
+                sys.executable,
+                "-c",
+                script,
+                phase,
+                str(tmp_path),
+                str(stream).lower(),
+                decision,
+            ],
             env=environment,
             capture_output=True,
             text=True,
             timeout=90,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         assert result.returncode == 0, result.stdout + result.stderr
         assert result.stderr.count("Simulated send_email tool executed") == (
-            phase == "resume"
+            phase == "resume" and decision != "reject"
         )

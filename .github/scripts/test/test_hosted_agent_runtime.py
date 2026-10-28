@@ -79,6 +79,44 @@ class RuntimeChecksTests(unittest.TestCase):
         self.write(ROOT / "requirements.txt", "ruff==0.9.4\n")
         return base, self.commit()
 
+    def relocate_runtime(self, *, old_project=PROJECT, new_project=PROJECT):
+        self.runtime(project=old_project)
+        base = self.commit()
+        relocated = ROOT.with_name("worker-v2")
+        for name in ("main.py", "uv.lock"):
+            original = self.repo / str(ROOT / name)
+            self.write(relocated / name, original.read_text(encoding="utf-8"))
+            original.unlink()
+        (self.repo / str(ROOT / "pyproject.toml")).unlink()
+        if new_project is None:
+            (self.repo / str(relocated / "uv.lock")).unlink()
+            self.write(relocated / "requirements.txt", "ruff==0.9.4\n")
+        else:
+            self.write(relocated / "pyproject.toml", new_project)
+        self.write(
+            ROOT.parent.parent / "azure.yaml",
+            MANIFEST.replace("src/worker", "src/worker-v2"),
+        )
+        return base, self.commit(), relocated
+
+    def run_cli(self, base, head, *arguments):
+        return subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--repo",
+                str(self.repo),
+                "--base",
+                base,
+                "--head",
+                head,
+                *arguments,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
     def test_discovers_a_generic_service_project(self):
         self.runtime()
         checks = module.discover_checks(self.repo, self.base, self.commit())
@@ -181,6 +219,89 @@ class RuntimeChecksTests(unittest.TestCase):
         base = self.commit()
         (self.repo / str(ROOT.parent.parent) / "azure.yaml").unlink()
         self.assertEqual(module.discover_checks(self.repo, base, self.commit()), [])
+
+    def test_relocated_service_cannot_drop_validation(self):
+        base, head, relocated = self.relocate_runtime(
+            new_project=PROJECT.split("[tool.hosted-agent-validation]")[0]
+        )
+        result = self.run_cli(base, head)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("cannot remove validation", result.stderr)
+        self.assertIn(str(relocated), result.stderr)
+        self.assertNotIn("Validated", result.stdout)
+
+    def test_relocated_service_cannot_switch_to_undeclared_requirements(self):
+        base, head, relocated = self.relocate_runtime(new_project=None)
+        result = self.run_cli(base, head)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("cannot remove validation", result.stderr)
+        self.assertIn(str(relocated), result.stderr)
+
+    def test_relocated_declared_runtime_is_selected(self):
+        base, head, relocated = self.relocate_runtime()
+        self.assertEqual(
+            [checks.root for checks in module.discover_checks(self.repo, base, head)],
+            [relocated],
+        )
+
+    def test_relocated_legacy_runtime_remains_grandfathered(self):
+        legacy = PROJECT.split("[tool.hosted-agent-validation]")[0]
+        base, head, relocated = self.relocate_runtime(
+            old_project=legacy, new_project=None
+        )
+        self.assertEqual(module.discover_checks(self.repo, base, head), [])
+
+    def test_new_shared_root_alias_cannot_hide_a_relocated_service(self):
+        legacy = PROJECT.split("[tool.hosted-agent-validation]")[0]
+        base, head, relocated = self.relocate_runtime(new_project=legacy)
+        manifest = MANIFEST.replace("src/worker", "src/worker-v2")
+        manifest += "  new-alias:\n    host: azure.ai.agent\n    language: python\n    project: src/worker-v2\n"
+        self.write(ROOT.parent.parent / "azure.yaml", manifest)
+        with self.assertRaisesRegex(ValueError, "cannot remove validation"):
+            module.discover_checks(self.repo, base, self.commit())
+
+    def test_shared_runtime_aliases_run_once(self):
+        self.runtime()
+        base = self.commit()
+        manifest = (
+            MANIFEST
+            + "  alias:\n    host: azure.ai.agent\n    language: python\n    project: src/worker\n"
+        )
+        self.write(ROOT.parent.parent / "azure.yaml", manifest)
+        self.assertEqual(
+            [
+                checks.root
+                for checks in module.discover_checks(self.repo, base, self.commit())
+            ],
+            [ROOT],
+        )
+
+    def test_source_renamed_out_of_runtime_selects_original_root(self):
+        self.runtime()
+        self.git("config", "diff.renames", "true")
+        base = self.commit()
+        source = self.repo / str(ROOT / "main.py")
+        source.rename(self.repo / str(ROOT.parent.parent / "archived-worker.py"))
+        head = self.commit()
+        self.assertNotIn(
+            str(ROOT / "main.py"),
+            self.git("diff", "--name-only", f"{base}..{head}").splitlines(),
+        )
+        self.assertEqual(
+            [checks.root for checks in module.discover_checks(self.repo, base, head)],
+            [ROOT],
+        )
+
+    def test_source_rename_cli_cannot_hide_runtime_failure(self):
+        self.runtime()
+        self.write(ROOT / "sync", "raise SystemExit(17)\n")
+        base = self.commit()
+        source = self.repo / str(ROOT / "main.py")
+        source.rename(self.repo / str(ROOT.parent.parent / "archived-worker.py"))
+        result = self.run_cli(base, self.commit(), "--uv", sys.executable)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("non-zero exit status 17", result.stderr)
+        self.assertNotIn("Validated 0", result.stdout)
 
     def test_non_hosted_service_is_not_selected(self):
         self.runtime(manifest=MANIFEST.replace("azure.ai.agent", "azure.ai.project"))

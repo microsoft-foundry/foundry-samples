@@ -18,12 +18,19 @@ the agent logic.
 
 - `azure.yaml` - `azd` manifest for the Foundry project, hosted agent, dependencies,
   environment variables, and deployment mode
-- `src/langgraph-middleware/main.py` - agent implementation and server
-  entry point
+- `src/langgraph-middleware/agent.py` - native `create_agent` middleware,
+  message limit, and simulated email tool; keep it independent of hosting
+- `src/langgraph-middleware/main.py` - explicit credential/model/checkpoint
+  lifetime and stock-host factory; the stock host is the sole LangChain
+  instrumentation owner, so do not also enable the SDK auto-tracer
+- `src/langgraph-middleware/client.py` - JSON/SSE approve/edit/reject review
+  client; one decision applies to all proposed actions and one review round
 - `src/langgraph-middleware/pyproject.toml` and `uv.lock` - default, fully resolved Python runtime dependencies; use `requirements.txt` only as the backward-compatible fallback
 - `src/langgraph-middleware/Dockerfile` and `.dockerignore` - frozen production
   image build and container context exclusions, aligned with neighboring samples
 - `README.md` - prerequisites and supported local run, test, and deployment paths
+- `src/langgraph-middleware/tests/` - real SDK/host/client recovery, lifecycle,
+  privacy/actual-exporter, session-isolation, and failure-path regressions
 
 Do not commit `.vscode` launch or
 task files generated when the Foundry Toolkit scaffolds a local workspace.
@@ -55,20 +62,49 @@ deliberate sample-owned log event, not mutable framework or dependency wording.
 
 ## Development workflow
 
-The **Azure Developer CLI (`azd`)** manages the hosted-agent lifecycle. From an
-initialized agent project:
+The **Azure Developer CLI (`azd`)** manages the hosted-agent lifecycle. Follow
+the README's new-project or reused-project path; provision only missing,
+intentionally owned dependencies. From the initialized sample root:
 
 ```bash
-azd provision                              # Provision declared Azure resources, if needed
-azd ai agent run                           # Run locally on http://localhost:8088
-azd ai agent invoke --local "your message" # Test the local agent
-azd deploy                                 # Deploy to Foundry
-azd ai agent invoke "your message"         # Invoke the deployed agent
-azd down                                   # Remove resources created for the project
+azd ai agent run --no-client
+azd ai agent invoke --local "Hello!"
 ```
 
-Adapt this sequence when the sample is deploy-first or requires another client or
-protocol.
+A greeting only checks invocation. Exercise [the real review flow](README.md#review-an-email)
+from `src/langgraph-middleware` in another terminal:
+
+```bash
+uv sync --frozen --group dev
+uv run --frozen client.py --decision approve
+uv run --frozen client.py --decision edit --recipient bob@example.com
+uv run --frozen client.py --stream --decision reject
+uv run --frozen --group dev python -m pytest tests -q
+uv run --frozen --group dev ruff check .
+uv run --frozen --group dev ruff format --check .
+```
+
+After local validation, run `azd deploy` from the initialized sample root and
+repeat the review commands with the deployed `--agent-name`.
+
+Use the [generic runtime validation](../../../RUNTIME_VALIDATION.md) rather than a
+sample-specific CI job. Keep tests/dev tools out of production packages. Do not
+replace real middleware/host/checkpointer behavior with mocked SDK interfaces.
+Headless DAP, local tests, and cloud E2E are distinct from the
+[manual Toolkit/Inspector acceptance](README.md#frontend-coverage-and-acceptance-boundary).
+
+## Resource and state cleanup
+
+Follow the README's [ownership-aware cleanup](README.md#cleanup-and-local-state).
+`azd down` can delete an entire newly provisioned resource group; it does not
+remove a hosted agent from a reused project. Delete only the agent/version owned
+by this exercise, not shared projects/models or another owner's versions. Do not
+use forced deletion to bypass active-session protection without checking scope.
+
+Local state defaults to shared `~/.agentserver`. Prefer a sample-owned absolute
+`AGENTSERVER_STATE_ROOT`, preserve it for paused-review recovery, and never
+recursively delete the shared home directory. Tests and their subprocesses must
+use owned temporary state roots. Content-capture flags do not erase persistence.
 
 ## Microsoft Foundry Skill
 

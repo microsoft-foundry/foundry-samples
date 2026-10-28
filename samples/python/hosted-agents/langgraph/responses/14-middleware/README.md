@@ -14,7 +14,7 @@ implements its own review node, this sample uses native LangChain middleware.
 | Area | Relationship to the fixed upstream baseline |
 | --- | --- |
 | `agent.py`, `client.py` | Unchanged upstream implementation, including the native review protocol and simulated tool. |
-| `main.py` | Same explicit resource/tracing ownership; only the fallback model name changes from `gpt-4.1-mini` to the manifest's `gpt-5.4-mini`. |
+| `main.py` | Preserves explicit credential/model/checkpoint lifetimes; adapts the fallback model and delegates telemetry to the stock host instead of also registering the upstream auto-tracer/provider. |
 | Foundry integration | Repository-native `azure.yaml`, `src/<service>` layout, code/container packaging, frozen uv runtime/dev dependencies, indexes, and acceptance tests. |
 | `07-human-in-the-loop` | Separate repair of the existing graph-review example, not part of the upstream middleware implementation. |
 
@@ -52,14 +52,25 @@ tool action is middleware feedback, not a rejected host-level interrupt.
 
 Both `AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED` and
 `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` default to `false` in the
-host and deployment manifest. Enabling either can export messages, tool
-arguments, and results. These switches control telemetry, not checkpoint or
+host and deployment manifest. Opting into content capture can export messages,
+tool arguments, and results. These switches control telemetry, not checkpoint or
 Responses persistence; stored conversations and checkpoints still contain
 message/tool content. Use only synthetic email data when trying the sample.
 
-Tracing uses Application Insights when available, or an OTLP HTTP exporter when
-`OTEL_EXPORTER_OTLP_ENDPOINT` or `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set.
-Set `OTEL_SDK_DISABLED=true` to disable tracing locally.
+The stock host owns LangChain instrumentation, exporters, and Foundry span
+enrichment. Do **not** also call `enable_auto_tracing()` or install a second
+LangChain tracer: composing both with the locked SDK duplicates model/tool
+spans. This is an intentional adaptation of the upstream entry point, not a
+replacement for native middleware. Global telemetry lifetime follows the host
+SDK; the sample does not replace or shut down an externally supplied provider.
+
+Set `APPLICATIONINSIGHTS_CONNECTION_STRING` for Azure Monitor or
+`OTEL_EXPORTER_OTLP_ENDPOINT` for OTLP HTTP export. With signal-specific OTLP
+configuration, set the traces, logs, and metrics endpoints explicitly; unset
+signals can use exporter defaults rather than becoming disabled.
+`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` controls the stock
+LangChain instrumentation's content capture. Keep both content flags false for
+the default redacted path. Set `OTEL_SDK_DISABLED=true` to disable telemetry.
 
 ## Prerequisites
 
@@ -205,6 +216,13 @@ Cloning this repository does **not** create a debug workspace. Before using F5,
 use the Toolkit's [Copilot configuration tools](https://code.visualstudio.com/docs/intelligentapps/copilot-tools#generate-and-test-agent-code)
 in the sample root and request configuration for the **existing** project:
 
+This configuration-generation route requires **GitHub Copilot Chat access in
+VS Code**, enabled Foundry Toolkit tools, and the sample folder opened as the
+workspace; see the [Copilot tools prerequisites](https://code.visualstudio.com/docs/intelligentapps/copilot-tools#prerequisites).
+Without that access, use the manual run below or `azd`; running this sample does
+not itself require Copilot. Neither route counts as completed UI acceptance
+until F5/Inspector has actually been exercised and recorded.
+
 ```text
 Configure this existing LangChain hosted agent for local debugging with
 Foundry Toolkit and Agent Inspector. Preserve agent.py, main.py, and client.py.
@@ -296,11 +314,20 @@ uv run --frozen --group dev ruff format --check .
 ```
 
 The tests use real LangChain middleware and the real Responses host, replacing
-external model/network/export boundaries. They cover the actual review client,
-JSON/SSE decisions, multi-action edit preservation, near-limit approval,
-cross-process persisted Responses recovery, resource cleanup on exit/failure/
-cancellation, tracing ownership, and real-span redaction with an enabled-content
-positive control. A headless debugpy attach also starts and probes the real host.
+external model/network boundaries. They cover the actual review client,
+JSON/SSE decisions and failures, multi-action edit preservation, near-limit
+approval, cross-process persisted approve/edit/reject recovery, concurrent/new
+conversation isolation, and resource cleanup on exit/failure/cancellation.
+A headless debugpy attach also starts and probes the real host.
+
+Fresh-process telemetry tests use the same host factory as `main.py` and real
+OTLP/Azure Monitor exporters against loopback receivers. They assert two model
+calls produce two chat spans, one tool execution produces one tool span, and
+Foundry enrichment remains present. Default/explicit redaction has an enabled
+content positive control. These probes disable SDKStats/resource discovery and
+redirect Azure Monitor live metrics locally to isolate external services; they
+do not establish cloud telemetry delivery, production execution counts, or the
+absence of every vendor diagnostic under untouched defaults.
 
 The PR's generic [hosted-runtime checks](../../../RUNTIME_VALIDATION.md) discover
 this runtime and the graph-HITL runtime from their manifests and run each one's

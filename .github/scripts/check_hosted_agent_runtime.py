@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import importlib.util
 import os
 from pathlib import Path, PurePosixPath
+import posixpath
 import subprocess
 import sys
 import tempfile
@@ -76,45 +77,72 @@ def parse_checks(content: bytes, root: PurePosixPath) -> RuntimeChecks | None:
     return RuntimeChecks(root, tuple(tuple(command) for command in commands))
 
 
+def discover_runtime_services(
+    repo: Path, revision: str, files: set[PurePosixPath]
+) -> dict[tuple[PurePosixPath, str], PurePosixPath]:
+    roots = policy.discover_services(repo, revision, files)
+    services = {}
+    for manifest in sorted({service.manifest for service in roots.values()}):
+        document = yaml.safe_load(policy.read_tree_file(repo, revision, manifest))
+        for name, configuration in document["services"].items():
+            if not isinstance(configuration, dict):
+                continue
+            project = configuration.get("project")
+            if (
+                configuration.get("host") != "azure.ai.agent"
+                or str(configuration.get("language", "")).lower() != "python"
+                or not isinstance(project, str)
+                or not project.strip()
+            ):
+                continue
+            root = PurePosixPath(posixpath.normpath(str(manifest.parent / project)))
+            if root in roots:
+                services[(manifest, str(name))] = root
+    return services
+
+
+def read_checks(
+    repo: Path, revision: str, files: set[PurePosixPath], root: PurePosixPath
+) -> RuntimeChecks | None:
+    project_file = root / "pyproject.toml"
+    if project_file not in files:
+        return None
+    return parse_checks(policy.read_tree_file(repo, revision, project_file), root)
+
+
 def discover_checks(repo: Path, base: str, head: str) -> list[RuntimeChecks]:
     files = policy.tree_files(repo, head)
     old_files = policy.tree_files(repo, base)
     output = policy.git(
-        repo, "diff", "--name-only", "-z", f"{base}..{head}", text=False
+        repo, "diff", "--name-only", "--no-renames", "-z", f"{base}..{head}", text=False
     )
     changes = {PurePosixPath(path.decode()) for path in output.split(b"\0") if path}
     shared_changed = bool({str(path) for path in changes} & SHARED_INPUTS)
+    services = discover_runtime_services(repo, head, files)
+    old_services = discover_runtime_services(repo, base, old_files)
     selected = []
-    for root, service in sorted(policy.discover_services(repo, head, files).items()):
-        manifest = yaml.safe_load(policy.read_tree_file(repo, head, service.manifest))
-        if manifest["services"][service.service].get("host") != "azure.ai.agent":
-            continue
-        project_file = root / "pyproject.toml"
-        checks = (
-            parse_checks(policy.read_tree_file(repo, head, project_file), root)
-            if project_file in files
-            else None
-        )
+    selected_roots = set()
+    for service_id, root in sorted(services.items()):
+        checks = read_checks(repo, head, files, root)
         if checks is None:
-            if project_file in old_files and (
-                project_file not in files or project_file in changes
-            ):
-                previous = parse_checks(
-                    policy.read_tree_file(repo, base, project_file), root
-                )
-                if previous is not None:
+            previous_roots = {root}
+            if service_id in old_services:
+                previous_roots.add(old_services[service_id])
+            for previous_root in previous_roots:
+                if read_checks(repo, base, old_files, previous_root) is not None:
                     raise ValueError(
                         f"{root}: cannot remove validation from an existing runtime"
                     )
             continue
         if root / "uv.lock" not in files:
             raise ValueError(f"{root}: validation requires uv.lock")
-        if (
+        if root not in selected_roots and (
             shared_changed
-            or service.manifest in changes
+            or service_id[0] in changes
             or any(policy.is_under(path, root) for path in changes)
         ):
             selected.append(checks)
+            selected_roots.add(root)
     return selected
 
 

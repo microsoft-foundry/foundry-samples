@@ -36,6 +36,10 @@ all declared runtimes. Legacy runtimes without declarations are not claimed as
 tested; removing an existing runtime's declaration fails validation. Deleting or
 renaming its `pyproject.toml`, including a switch to `requirements.txt`, cannot
 disable previously declared checks while the hosted service remains.
+The guard follows the manifest and service name when `project` moves to another
+directory. Git renames contribute both source and destination paths, so moving
+code out of a runtime still selects its checks. Services sharing one runtime are
+checked once without discarding any service's previous declaration.
 
 For each selected runtime, the runner uses its service root as the working
 directory, runs `uv sync --frozen --group dev`, then executes each declared command
