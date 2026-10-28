@@ -7,7 +7,6 @@ import {
     Item,
     Request
 } from 'foundry-local-sdk';
-import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'url';
 import path from 'path';
 // </imports>
@@ -48,11 +47,9 @@ console.log('Speech model loaded.');
 
 // Transcribe the audio file
 const audioSession = new AudioSession(speechModel);
-const audioBytes = new Uint8Array(await readFile(
-    path.join(__dirname, 'meeting-notes.wav')
-));
+const audioFile = path.join(__dirname, 'meeting-notes.wav');
 const transcriptionResponse = await audioSession.processRequest(
-    new Request().addItem(Item.audioFromData('wav', audioBytes))
+    new Request().addItem(Item.audioFromUri(audioFile))
 );
 const transcription = transcriptionResponse.output.find(
     (item) => item.type === 'speechResult'

@@ -58,9 +58,9 @@ client = openai.OpenAI(
 )
 # </rest_client>
 
-# <chat_completion>
-# Make a chat completion request via the REST API
 try:
+    # <chat_completion>
+    # Make a chat completion request via the REST API
     response = client.chat.completions.create(
         model=model.id,
         messages=[
@@ -74,7 +74,7 @@ try:
         if chunk.choices and chunk.choices[0].delta.content is not None:
             print(chunk.choices[0].delta.content, end="", flush=True)
     print()
-# </chat_completion>
+    # </chat_completion>
 finally:
     # Clean up
     client.close()

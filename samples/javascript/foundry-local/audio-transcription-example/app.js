@@ -6,8 +6,6 @@ import {
     Item,
     Request
 } from 'foundry-local-sdk';
-import { readFile } from 'node:fs/promises';
-import { extname } from 'node:path';
 // </imports>
 
 // Initialize the Foundry Local SDK
@@ -59,11 +57,9 @@ console.log('✓ Audio session created');
 
 // Example audio transcription
 const audioFile = process.argv[2] || './Recording.mp3';
-const audioBytes = new Uint8Array(await readFile(audioFile));
-const audioFormat = extname(audioFile).slice(1) || 'mp3';
 console.log(`\nTranscribing ${audioFile}...`);
 const response = await audioSession.processRequest(
-    new Request().addItem(Item.audioFromData(audioFormat, audioBytes))
+    new Request().addItem(Item.audioFromUri(audioFile))
 );
 const transcription = response.output.find((item) => item.type === 'speechResult');
 
@@ -74,7 +70,7 @@ console.log('✓ Audio transcription completed');
 // Same example but with streaming transcription using async iteration
 console.log('\nTesting streaming audio transcription...');
 const stream = audioSession.processStreamingRequest(
-    new Request().addItem(Item.audioFromData(audioFormat, audioBytes))
+    new Request().addItem(Item.audioFromUri(audioFile))
 );
 for await (const item of stream) {
     if (item.type === 'speechSegment' && item.text) {

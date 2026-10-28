@@ -8,7 +8,6 @@ import {
   Item,
   Request,
 } from "foundry-local-sdk";
-import { readFile } from "node:fs/promises";
 import path from "path";
 
 // Model aliases
@@ -80,9 +79,8 @@ async function main() {
   console.log("=== Step 1: Audio Transcription ===");
   const audioSession = new AudioSession(whisperModel);
   const audioFilePath = path.resolve("recording.mp3");
-  const audioBytes = new Uint8Array(await readFile(audioFilePath));
   const audioRequest = new Request()
-    .addItem(Item.audioFromData("mp3", audioBytes))
+    .addItem(Item.audioFromUri(audioFilePath))
     .setOptions({ additionalOptions: { language: "en" } });
   const audioResponse = await audioSession.processRequest(audioRequest);
   const transcription = audioResponse.output.find((item) => item.type === "speechResult");

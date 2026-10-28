@@ -61,25 +61,25 @@ llm = ChatOpenAI(
 )
 # </langchain_setup>
 
-# <chat_completion>
-# Create a translation chain
-prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            "You are a translator. Translate the following text to {language}. Only output the translation, nothing else.",
-        ),
-        ("user", "{text}"),
-    ]
-)
-
 try:
+    # <chat_completion>
+    # Create a translation chain
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                "You are a translator. Translate the following text to {language}. Only output the translation, nothing else.",
+            ),
+            ("user", "{text}"),
+        ]
+    )
+
     chain = prompt | llm | StrOutputParser()
 
     # Run the chain
     result = chain.invoke({"language": "Spanish", "text": "Hello, how are you today?"})
     print(f"Translation: {result}")
-# </chat_completion>
+    # </chat_completion>
 finally:
     # Clean up
     manager.stop_web_service()
