@@ -69,6 +69,10 @@ stages:
 
               if [ -n "${{ parameters.samplePath }}" ]; then
                 sample_path="${{ parameters.samplePath }}"
+                if ! sample_path="$(realpath -e --relative-to=. -- "$sample_path")"; then
+                  echo "##vso[task.logissue type=error]samplePath must resolve to an existing directory under $(BICEP_ROOT)."
+                  exit 1
+                fi
                 if [[ "$sample_path" != "$(BICEP_ROOT)"/* ]] || [ ! -d "$sample_path" ]; then
                   echo "##vso[task.logissue type=error]samplePath must be an existing directory under $(BICEP_ROOT)."
                   exit 1
@@ -207,6 +211,10 @@ stages:
 
                 if [ -n "${{ parameters.samplePath }}" ]; then
                   sample_path="${{ parameters.samplePath }}"
+                  if ! sample_path="$(realpath -e --relative-to=. -- "$sample_path")"; then
+                    echo "##vso[task.logissue type=error]samplePath must resolve to an existing directory under $(BICEP_ROOT)."
+                    exit 1
+                  fi
                   if [[ "$sample_path" != "$(BICEP_ROOT)"/* ]] || [ ! -d "$sample_path" ]; then
                     echo "##vso[task.logissue type=error]samplePath must be an existing directory under $(BICEP_ROOT)."
                     exit 1

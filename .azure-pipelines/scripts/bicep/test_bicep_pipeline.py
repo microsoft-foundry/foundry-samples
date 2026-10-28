@@ -101,6 +101,56 @@ class BicepPipelineTests(unittest.TestCase):
                     self.assertIn(f"bicep build --file {SAMPLE_ROOT}/{expected}/main.bicep", calls)
                     (repo / "calls.txt").unlink()
 
+    def test_manual_sample_paths_are_normalized_and_contained(self):
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "Bash is required for pipeline selection checks")
+        static = self.pipeline["stages"][0]["jobs"][0]["steps"][1]["bash"]
+        live = self.pipeline["stages"][2]["jobs"][0]["steps"][1]["inputs"]["inlineScript"]
+        sample = "42-basic-agent-setup-with-customization"
+        canonical = f"{SAMPLE_ROOT}/{sample}"
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            template = repo / canonical / "main.bicep"
+            template.parent.mkdir(parents=True)
+            template.write_text("param location string\n", encoding="utf-8")
+            (repo / "outside").mkdir()
+            (repo / f"{SAMPLE_ROOT}-other").mkdir()
+            for stage, script in (("static", static), ("live", live)):
+                start = script.index('if [ -n "${{ parameters.samplePath }}" ]; then')
+                end = script.index('elif [ "${{ parameters.validateAll }}" = "true" ]; then', start)
+                selection = script[start:end] + 'fi\nprintf "SELECTED %s\\n" "$sample_path"\n'
+                selection = selection.replace("$(BICEP_ROOT)", SAMPLE_ROOT)
+                if stage == "live":
+                    loop = script[script.index('for deployment_file in "${deployment_files[@]}"; do'):]
+                    selection += loop.replace("$(BICEP_ROOT)", SAMPLE_ROOT)
+                for path, accepted in (
+                    (canonical, True),
+                    (f"{SAMPLE_ROOT}/./{sample}", True),
+                    (f"./{SAMPLE_ROOT}//{sample}/", True),
+                    (f"{canonical}/../{sample}", True),
+                    (SAMPLE_ROOT, False),
+                    (f"{SAMPLE_ROOT}/../../outside", False),
+                    (f"{SAMPLE_ROOT}/../infrastructure-setup-bicep-other", False),
+                    (f"{SAMPLE_ROOT}/missing", False),
+                    (f"{canonical}/main.bicep", False),
+                ):
+                    with self.subTest(stage=stage, path=path):
+                        result = subprocess.run(
+                            [
+                                bash, "-c",
+                                "set -euo pipefail\n" + selection.replace("${{ parameters.samplePath }}", path),
+                            ],
+                            cwd=repo, capture_output=True, text=True,
+                        )
+                        self.assertEqual(0 if accepted else 1, result.returncode, result.stdout + result.stderr)
+                        if accepted:
+                            self.assertIn(f"SELECTED {canonical}\n", result.stdout)
+                            if stage == "live":
+                                self.assertIn(f"Skipping live deployment of {canonical}/main.bicep", result.stdout)
+                                self.assertIn("live deployment is NOT validated", result.stdout)
+                        else:
+                            self.assertIn("##vso[task.logissue type=error]", result.stdout)
+
     def test_live_deployment_exclusion_is_sample_specific_and_preserves_failures(self):
         bash = shutil.which("bash")
         self.assertIsNotNone(bash, "Bash is required for pipeline deployment checks")

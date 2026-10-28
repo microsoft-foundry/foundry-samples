@@ -172,6 +172,8 @@ owner verification of CI readiness:
 - `43-standard-agent-setup-with-customization`
 
 These exclusions also apply to manual `samplePath` and `validateAll` runs.
+Manual paths are normalized relative to the checkout and must resolve to an
+existing directory below the Bicep root; equivalent paths receive the same exclusion.
 Static compilation remains required. Each selected deployment for these samples emits
 a warning that live deployment is not validated; other samples still deploy
 and their failures remain blocking.
