@@ -85,7 +85,7 @@ data "azurerm_application_insights" "appi" {
 # Create the account-level connection
 resource "azapi_resource" "account_connection" {
   type                      = "Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview"
-  name                      = "${var.ai_foundry_name}-appinsights"
+  name                      = "appinsights"
   parent_id                 = data.azapi_resource.ai_foundry.id
   schema_validation_enabled = false
 
@@ -109,7 +109,7 @@ resource "azapi_resource" "account_connection" {
 # Create the project-level connection
 resource "azapi_resource" "project_connection" {
   type                      = "Microsoft.CognitiveServices/accounts/projects/connections@2025-04-01-preview"
-  name                      = var.application_insights_name
+  name                      = "appinsights"
   parent_id                 = data.azapi_resource.ai_project.id
   schema_validation_enabled = false
 
