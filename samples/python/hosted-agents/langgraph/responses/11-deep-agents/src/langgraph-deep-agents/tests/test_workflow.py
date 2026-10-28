@@ -8,6 +8,7 @@ import sys
 import unittest
 from collections.abc import Sequence
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -23,6 +24,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from agent import build_agent
 from report_export import create_report_export_tool
+
+
+def setUpModule() -> None:
+    state_root = unittest.enterModuleContext(
+        TemporaryDirectory(prefix="deep-agents-tests-")
+    )
+    unittest.enterModuleContext(
+        patch.dict(os.environ, {"AGENTSERVER_STATE_ROOT": state_root})
+    )
+
 
 REPORT = "# Report v1\nEvidence [1].\n\n[1] https://example.org/source"
 REVISION = REPORT + "\n\n## Recovery limitations\nOnly saved state is restored."
