@@ -1,0 +1,10 @@
+[project]
+name = "agent-framework-agent-basic-responses-byoaks"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent running on a customer-managed AKS cluster."
+requires-python = ">=3.13"
+dependencies = [
+    "agent-framework-foundry",
+    "agent-framework-foundry-hosting>=1.0.0b260813",
+    "debugpy",
+]
