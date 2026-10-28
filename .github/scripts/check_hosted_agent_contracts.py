@@ -185,7 +185,7 @@ def check_new_samples(repo: Path, samples: Iterable[PurePosixPath]) -> list[str]
             continue
         try:
             document = load_spec(spec_path)
-            build_plan(document, protocol=protocol, verifier_directory=spec_path.parent)
+            build_plan(document, protocol=protocol)
         except SpecError as error:
             errors.append(_invalid_contract_error(relative_spec, protocol, error))
     return errors

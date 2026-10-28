@@ -197,32 +197,11 @@ tests:
 | test | `when` | Optional mapping. `toolbox_label` is its only supported field. |
 | test | `turns` | Required non-empty sequence. |
 | test | `assertions` | Optional sequence of test-scope assertions. |
-| test | `verifier` | Optional sibling Python filename for a hosted-only evidence verifier; paths and shell commands are not accepted. |
 | turn | `input` | Required string, mapping, or sequence. Nested mappings require string keys and may contain strings, finite numbers, Booleans, null, mappings, and sequences. YAML-specific timestamps, sets, binary values, recursive aliases, and other non-JSON values are rejected. Numbers, Booleans, and null are not valid top-level inputs. |
 | turn | `approvals` | Optional Responses-only MCP policy. |
 | turn | `assertions` | Optional sequence of turn-scope assertions. |
 
 Unknown fields and duplicate YAML keys are rejected at every scope.
-
-### Sample-owned evidence verifiers
-
-For behavior that cannot be established by text matches, set `verifier: verify.py`
-on the test and commit that standard-library-only script beside `test-spec.yml`.
-Validation and planning check its location without executing it. The cloud
-evaluator invokes it without a shell, with `--evidence-dir <directory> --turns
-<global-turn> ...`, using its own Python interpreter and inherited CI environment.
-The runner supplies `evaluate --verifier-directory <fixture-directory>` separately;
-execution plans contain only the sibling filename, not machine-specific paths.
-The timeout is 240 seconds. It runs only for applicable tests and must tolerate
-partial/failed turn evidence and scope any cleanup to resources observed there.
-
-Exit zero and emit one JSON object with `status: passed` and a short `reason`
-identifier to pass. Other exits, invalid output, exceptions and timeouts fail
-closed. `reason` accepts only lowercase letters, digits and underscores (maximum
-64 characters); stdout/stderr are not copied into the assertion report. Keep
-tokens, signed URLs and downloaded content out of verifier diagnostics. The
-verifier result is an additional gate, not a replacement for turn completion or
-the declared assertions. Repeated evaluation must be safe and idempotent.
 
 ## Tests, turns, and inputs
 

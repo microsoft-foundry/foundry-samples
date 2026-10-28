@@ -1821,7 +1821,6 @@ while [ "$attempt" -le "$max_evidence_attempts" ]; do
     --evidence-dir "$evidence_dir" \
     --console-log "$evidence_log" \
     --trace-file "$trace_file" \
-    --verifier-directory "$fixture_dir" \
     --report "$report_file"
   validation_exit=$?
   set -e

@@ -7,14 +7,7 @@ import unittest
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from hosted_agent_fixture import (
-    CI_SKIPLIST,
-    CODE_CI_SKIPLIST,
-    FIXTURE_ROOT,
-    PROMPT_FIXTURE_ROOT,
-    load_skiplist,
-    sample_dir_for_fixture,
-)
+from hosted_agent_fixture import CI_SKIPLIST, CODE_CI_SKIPLIST, FIXTURE_ROOT, PROMPT_FIXTURE_ROOT, load_skiplist, sample_dir_for_fixture
 from hosted_agent_test_spec import build_plan, load_spec
 
 
@@ -30,8 +23,7 @@ class PublishedFixtureTests(unittest.TestCase):
 
     def test_all_fixtures_map_to_public_samples(self):
         fixtures = sorted(
-            path
-            for fixture_root in (FIXTURE_ROOT, PROMPT_FIXTURE_ROOT)
+            path for fixture_root in (FIXTURE_ROOT, PROMPT_FIXTURE_ROOT)
             for path in (ROOT / fixture_root).rglob("*")
             if path.name in {"test-spec.yml", "test-payload.txt"}
         )
@@ -52,23 +44,11 @@ class PublishedFixtureTests(unittest.TestCase):
                     for entry in service.get("protocols", [])
                 }
                 protocol = "invocations" if "invocations" in protocols else "responses"
-                profile = (
-                    "managed"
-                    if any(
-                        service.get("host") == "azure.ai.agent"
-                        and service.get("harness")
-                        for service in document["services"].values()
-                    )
-                    else "prompt"
-                    if fixture.is_relative_to(ROOT / PROMPT_FIXTURE_ROOT)
-                    else "hosted"
-                )
-                build_plan(
-                    load_spec(fixture),
-                    protocol=protocol,
-                    profile=profile,
-                    verifier_directory=fixture.parent,
-                )
+                profile = "managed" if any(
+                    service.get("host") == "azure.ai.agent" and service.get("harness")
+                    for service in document["services"].values()
+                ) else "prompt" if fixture.is_relative_to(ROOT / PROMPT_FIXTURE_ROOT) else "hosted"
+                build_plan(load_spec(fixture), protocol=protocol, profile=profile)
 
 
 if __name__ == "__main__":

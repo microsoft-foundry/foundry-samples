@@ -6,9 +6,8 @@ sample:
 
 tests:
   - name: research-and-revise-named-reports
-    verifier: verify_reports.py
     turns:
-      - input: Research how LangGraph checkpoints support multi-turn agents using delegated research. Include the heading '# LangGraph Checkpoints' and the exact primary-source URL https://docs.langchain.com/oss/python/langgraph/overview. Save the cited report as report-v1.md.
+      - input: Research how LangGraph checkpoints support multi-turn agents using delegated research. Include the heading '# LangGraph Checkpoints' and the exact primary-source URL https://docs.langchain.com/oss/python/langgraph/overview. Save the cited report as report-v1.md and give me a download link.
         assertions:
           - source: assistant_text
             type: contains
@@ -22,7 +21,13 @@ tests:
           - source: raw
             type: regex
             value: '"name"\s*:\s*"write_file"'
-      - input: Read the saved report-v1.md, then revise a copy named report-v2.md to add a section headed 'Recovery Limitations'. Preserve the original report, findings, and source URLs; do not repeat the research.
+          - source: raw
+            type: regex
+            value: '"name"\s*:\s*"publish_report"'
+          - source: assistant_text
+            type: regex
+            value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/report-v1\.md\?[^\s]*sig='
+      - input: Read the saved report-v1.md, then revise a copy named report-v2.md to add a section headed 'Recovery Limitations'. Preserve the original report, findings, and source URLs; do not repeat the research. Give me a download link for report-v2.md.
         assertions:
           - source: assistant_text
             type: contains
@@ -36,6 +41,12 @@ tests:
           - source: raw
             type: regex
             value: '"name"\s*:\s*"edit_file"'
+          - source: raw
+            type: regex
+            value: '"name"\s*:\s*"publish_report"'
+          - source: assistant_text
+            type: regex
+            value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/report-v2\.md\?[^\s]*sig='
       - input: Read the complete original report-v1.md again, without editing it or researching again, and give me a fresh download link for that original named version.
         assertions:
           - source: assistant_text
@@ -47,3 +58,9 @@ tests:
           - source: raw
             type: regex
             value: '"name"\s*:\s*"read_file"'
+          - source: raw
+            type: regex
+            value: '"name"\s*:\s*"publish_report"'
+          - source: assistant_text
+            type: regex
+            value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/report-v1\.md\?[^\s]*sig='

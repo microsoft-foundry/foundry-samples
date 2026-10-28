@@ -64,11 +64,3 @@ services:
         memory: 1Gi
 infra:
   provider: microsoft.foundry
-hooks:
-  postdeploy:
-    windows:
-      shell: pwsh
-      run: python hooks/configure-report-storage.py
-    posix:
-      shell: sh
-      run: python3 hooks/configure-report-storage.py

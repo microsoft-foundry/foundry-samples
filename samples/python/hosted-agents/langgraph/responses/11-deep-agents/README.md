@@ -1,100 +1,78 @@
 # What this sample demonstrates
 
 Use the **LangChain Azure SDK with LangChain, LangGraph, and Deep Agents** to
-research a topic, save a cited report, revise a named copy, and download both
-versions from private Azure Blob Storage. Run the same native graph locally or
-host it on Microsoft Foundry over the **Responses protocol**.
+research a topic, revise a saved report, and download both named versions from
+private Azure Blob Storage. Run the same native graph locally or host it on
+Microsoft Foundry over the **Responses protocol**.
 
-The scenario brings together SDK model and tool integration, checkpointed Deep
-Agents state, a custom LangChain tool, and explicit resource lifetimes. Foundry
-project/model configuration, Toolbox deployment, Storage authorization, and cloud
-acceptance are included so that the SDK example can be run end to end.
-
-It reuses the selected [LangChain Azure Deep Research example](https://github.com/langchain-ai/langchain-azure/tree/c480d810ca96e77860db64ba3403c3bf13d5dfcf/samples/hosting/langgraph-hosted-agents/responses/12_deep_agents),
-adapted to this repository's `src/` layout, uv dependencies, inline Toolbox, and
-direct-code deployment. The integration points below explain how to adapt the
-framework workflow independently of its deployment.
+The workflow reuses the [LangChain Azure Deep Research sample](https://github.com/langchain-ai/langchain-azure/tree/c480d810ca96e77860db64ba3403c3bf13d5dfcf/samples/hosting/langgraph-hosted-agents/responses/12_deep_agents),
+adapted to this repository's `src/` layout, uv lock, inline Toolbox, and deployment
+conventions. The SDK sample is based on LangChain's official Deep Research example;
+named revisions and Blob publication extend its original research workflow.
 
 ## How it works
 
 1. `create_deep_agent` plans work and delegates focused searches to
-   `research-agent`. Foundry Toolbox supplies `web_search`; a local `think_tool`
-   records concise factual progress, not private reasoning.
+   `research-agent`. `AzureAIProjectToolbox` supplies `web_search`; a local
+   `think_tool` records concise progress rather than private reasoning.
 2. The coordinator saves `/report-v1.md`. Deep Agents' default `StateBackend`
    stores virtual files in conversation state; `FoundryCheckpointSaver` persists
    that state locally or in Foundry State Store when hosted.
-3. A follow-up reads the original, writes `/report-v2.md`, edits that copy, and
-   reads it back. The original findings and citations remain available.
-4. `publish_report(report_name)` reads the selected saved file, uploads a separate
-   private Blob snapshot, and returns its SHA256 and a one-hour, read-only HTTPS
-   user-delegation SAS. It never accepts a model-supplied upload body or destination.
+3. A follow-up reads the original, saves `/report-v2.md`, edits that copy, and
+   reads it back without replacing the original findings and citations.
+4. `publish_report(report_name)` reads the selected saved file and uploads a new
+   private Blob snapshot. It returns SHA256 and a one-hour, read-only HTTPS
+   user-delegation SAS, never accepting model-supplied upload content or a destination.
 
-`main.py` owns the Azure credential, default model clients, and checkpoint saver
-until the stock `ResponsesHostServer` shuts down. `agent.py` remains independent
-of hosting. Working files are **not** files on the hosted session filesystem;
-Blob Storage is an export destination, not a replacement backend.
-
-### SDK and framework integration points
-
-| Integration | Where to read / what it demonstrates |
-| --- | --- |
-| Azure model as a LangChain chat model | [`main.py`](src/langgraph-deep-agents/main.py) uses `AzureAIOpenAIApiChatModel` with `output_version="responses/v1"` for the native graph's model and tool-call messages. |
-| Deep Agents composition on LangGraph | [`agent.py`](src/langgraph-deep-agents/agent.py) uses `create_deep_agent`, a research `SubAgent`, and `TodoListMiddleware`, retaining the default `StateBackend`. The graph does not depend on its HTTP host. |
-| Foundry Toolbox as LangChain tools | [`research_agent/tools.py`](src/langgraph-deep-agents/research_agent/tools.py) loads `AzureAIProjectToolbox` and selects only `web_search`, alongside a local progress tool. |
-| Checkpointed framework state | [`main.py`](src/langgraph-deep-agents/main.py) supplies `FoundryCheckpointSaver`; reports and todos belong to conversation state rather than the container filesystem. |
-| State-aware custom tool | [`report_export.py`](src/langgraph-deep-agents/report_export.py) uses LangChain `ToolRuntime` to publish a selected saved file, not model-supplied upload content. Expected Storage failures become handled tool errors. |
-| SDK hosting and lifecycle | [`main.py`](src/langgraph-deep-agents/main.py) keeps credentials, model clients, and the checkpoint saver alive around `ResponsesHostServer`. [`client.py`](src/langgraph-deep-agents/client.py) demonstrates continuation and hosted-session cleanup. |
-
-The sections below add the platform resources, identities, configuration, and
-deployment needed by these integrations. Use the same `build_agent` function when
-adapting the research workflow; a different host does not require rewriting it.
+[`agent.py`](src/langgraph-deep-agents/agent.py) assembles the native graph,
+research subagent, and `TodoListMiddleware` independently of hosting.
+[`main.py`](src/langgraph-deep-agents/main.py) owns `AzureAIOpenAIApiChatModel`,
+the credential, default model clients, and saver until `ResponsesHostServer`
+shuts down. [`report_export.py`](src/langgraph-deep-agents/report_export.py)
+uses LangChain `ToolRuntime` to read conversation files. Blob is an export
+destination, not a replacement filesystem or checkpointer.
 
 ### Configuration
 
 | Variable | Purpose |
 | --- | --- |
-| `FOUNDRY_PROJECT_ENDPOINT` | Foundry project endpoint; injected by Foundry/azd, set manually for a direct local run. |
+| `FOUNDRY_PROJECT_ENDPOINT` | Foundry project endpoint; injected by Foundry/azd, set in `.env` for direct local execution. |
 | `AZURE_AI_MODEL_DEPLOYMENT_NAME` | Model deployment selected during initialization. |
 | `TOOLBOX_NAME` | `deep-agents-tools`, declared in `azure.yaml`. |
-| `AZURE_STORAGE_ACCOUNT_NAME` | azd/CI input: existing report Storage account name. |
-| `AZURE_STORAGE_CONTAINER_NAME` | azd/CI input: existing private report container. |
-| `AZURE_STORAGE_SUBSCRIPTION_ID` | azd/CI input: subscription containing report Storage; defaults to `AZURE_SUBSCRIPTION_ID` when omitted. |
-| `REPORT_STORAGE_ACCOUNT_URL` | HTTPS Blob endpoint for your dedicated report account. |
-| `REPORT_STORAGE_CONTAINER` | Existing private container, for example `reports`. |
-| `AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED` | Defaults to `false`. |
-| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | Defaults to `false`. |
+| `AZURE_STORAGE_ACCOUNT_NAME` | azd/CI input: report Storage account name. |
+| `AZURE_STORAGE_CONTAINER_NAME` | azd/CI input: private report container. |
+| `REPORT_STORAGE_ACCOUNT_URL`, `REPORT_STORAGE_CONTAINER` | Runtime settings mapped from the two azd inputs; set directly in `.env` for manual execution. |
 
-`azure.yaml` maps the standard `AZURE_STORAGE_*` inputs to the upstream
-`REPORT_STORAGE_*` runtime variables. For standalone Python, fill the latter
-values in `.env`; do not rely on azd to export its environment into another shell.
+Both telemetry content-capture flags default to `false`. To opt in to content
+recording, see the shared [tracing guide](../08-observability/). Queries still go
+to the search service, and conversation checkpoints still contain report content.
 
 ## Prerequisites
 
 1. **Python 3.13+** and [uv](https://docs.astral.sh/uv/getting-started/installation/)
    **0.11.7+** on `PATH`.
 2. A Foundry project with a tool-capable model deployment and a Toolbox exposing
-   `web_search`. Option 1 provisions these from `azure.yaml` if needed.
-3. A dedicated Azure Storage account and private report container. They are
-   **not** created by this manifest; setup commands are included below. Storage
-   can use another subscription in the same tenant; configure its subscription
-   explicitly and ensure the deployer has the required access there.
-4. An authenticated Azure identity, for example through `az login`, plus the
-   following permissions. Have an RBAC administrator apply missing grants;
-   resource Contributor alone cannot assign roles.
+   `web_search`. Option 1 provisions and deploys these from `azure.yaml` if needed.
+3. A dedicated Azure Storage account and private container. The manifest does
+   **not** create them or grant Blob access; follow the setup below.
+4. An authenticated Azure identity and the required permissions. Resource
+   Contributor alone cannot assign roles; ask an RBAC administrator for missing grants.
 
 | Identity / operation | Required access |
 | --- | --- |
-| Developer: project and Toolbox access | `Azure AI User` on the Foundry project and Reader on its parent account. |
-| Provisioner / deployer | Contributor on the intended resource group, `Azure AI Project Manager` on an existing project, and permission to assign the two Storage roles below. |
-| Project managed identity: managed tools | `Azure AI User` on the parent Foundry account when not already provisioned. |
-| Local developer: publish reports | `Storage Blob Data Contributor` on the dedicated report **account**. |
-| Deployed agent instance identity: publish reports | Container-scoped `Storage Blob Data Contributor` plus account-scoped `Storage Blob Delegator`; the postdeploy hook configures these **separately** from developer access. |
+| Developer: project and Toolbox access | `Foundry User` on the Foundry project and Reader on its parent account. |
+| Provisioner / deployer | Contributor on the resource group, `Foundry Project Manager` on an existing project, and the required Foundry role-assignment permissions when provisioning. |
+| Project managed identity: managed tools | `Foundry User` on the parent Foundry account when not already provisioned. |
+| Local developer and deployed agent: report publication | Each principal separately needs container-scoped `Storage Blob Data Contributor` and account-scoped `Storage Blob Delegator`. |
 
-The account-scoped Blob role allows both uploading and requesting the user
-delegation key. A narrower alternative is container-scoped `Storage Blob Data
-Contributor` plus account-scoped `Storage Blob Delegator`. The project managed
-identity and agent `instance_identity.principal_id` are different principals;
-the developer's Blob permission does not transfer to the hosted agent.
+Foundry roles were previously named Azure AI User / Azure AI Project Manager;
+their role IDs are unchanged. See the [hosted-agent permissions reference](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agent-permissions).
+
+Storage's delegation-key operation requires account-level scope; a data role on
+only the container cannot sign download links. The developer, project identity,
+and agent `instance_identity.principal_id` are different principals. Follow the
+same [manual downstream-resource RBAC pattern](../../../agent-framework/responses/10-downstream-azure/#granting-the-agent-data-plane-access)
+as the other Azure integration samples.
 
 ## Option 1: Azure Developer CLI (`azd`)
 
@@ -120,71 +98,79 @@ azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/m
 ```
 
 Follow the prompts to select a Foundry project and model deployment, or create
-new ones. The following commands run from this initialized project directory.
+new ones. Run the following commands from this initialized project directory.
 
-### Create private report Storage
+### Set up private report Storage
 
-Configure the external Storage values before provisioning so that every
-`azure.yaml` environment reference is defined.
-
-Use a dedicated account/resource group. Replace the placeholders and choose the
-intended subscription explicitly. The identity creating the resources needs
-Contributor; the identity granting roles needs RBAC administration rights.
+Use an existing private account/container, or create dedicated resources with
+these Bash commands. Select the Storage subscription explicitly; it can differ
+from the Foundry subscription in the same tenant. The resource creator needs
+Contributor; the role assignments in the next step need an RBAC administrator.
 
 ```bash
-export SUBSCRIPTION_ID="<subscription-id>"
+export SUBSCRIPTION_ID="<storage-subscription-id>"
 export LOCATION="<azure-region>"
 export REPORT_RESOURCE_GROUP="<dedicated-report-resource-group>"
 export REPORT_STORAGE_ACCOUNT="<globally-unique-storage-account>"
 export REPORT_STORAGE_CONTAINER="reports"
-export DEVELOPER_OBJECT_ID="$(az ad signed-in-user show --query id -o tsv)"
 
 az group create --subscription "$SUBSCRIPTION_ID" --name "$REPORT_RESOURCE_GROUP" --location "$LOCATION"
 az storage account create --subscription "$SUBSCRIPTION_ID" --resource-group "$REPORT_RESOURCE_GROUP" --name "$REPORT_STORAGE_ACCOUNT" --location "$LOCATION" --sku Standard_LRS --kind StorageV2 --https-only true --min-tls-version TLS1_2 --allow-blob-public-access false --allow-shared-key-access false
 az storage container-rm create --subscription "$SUBSCRIPTION_ID" --resource-group "$REPORT_RESOURCE_GROUP" --storage-account "$REPORT_STORAGE_ACCOUNT" --name "$REPORT_STORAGE_CONTAINER" --public-access off
-export REPORT_STORAGE_ACCOUNT_URL="$(az storage account show --subscription "$SUBSCRIPTION_ID" --resource-group "$REPORT_RESOURCE_GROUP" --name "$REPORT_STORAGE_ACCOUNT" --query primaryEndpoints.blob -o tsv)"
-export REPORT_STORAGE_ID="$(az storage account show --subscription "$SUBSCRIPTION_ID" --resource-group "$REPORT_RESOURCE_GROUP" --name "$REPORT_STORAGE_ACCOUNT" --query id -o tsv)"
-az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$DEVELOPER_OBJECT_ID" --assignee-principal-type User --role "Storage Blob Data Contributor" --scope "$REPORT_STORAGE_ID"
-
 azd env set AZURE_STORAGE_ACCOUNT_NAME "$REPORT_STORAGE_ACCOUNT"
 azd env set AZURE_STORAGE_CONTAINER_NAME "$REPORT_STORAGE_CONTAINER"
-azd env set AZURE_STORAGE_SUBSCRIPTION_ID "$SUBSCRIPTION_ID"
 ```
 
-For automation, substitute the actual developer service-principal object ID and
-`ServicePrincipal` type. With an existing account, reuse its URL, container, and
-resource ID instead of running the create commands, and set
-`AZURE_STORAGE_SUBSCRIPTION_ID` to that account's subscription. Storage lookup and
-role operations use this value, not the Azure CLI's currently selected subscription.
-Retirement cleanup uses the subscription in the recorded Storage account scope.
-Allow time for RBAC propagation.
+With existing resources, skip creation and set the two azd values to their names.
+Keep the Storage subscription and resource-group values for the role commands.
+For direct local execution, `.env.example` uses the full account URL and container.
 
-### Provision Azure resources (if needed)
+### Grant the local developer report access
+
+An RBAC administrator runs the following for the identity actually used by
+`DefaultAzureCredential`. These commands assume an interactive user; for CI or
+another service principal, supply its object ID and use `ServicePrincipal`.
+
+```bash
+PRINCIPAL_ID=$(az ad signed-in-user show --query id -o tsv)
+PRINCIPAL_TYPE="User"
+REPORT_STORAGE_ID=$(az storage account show --subscription "$SUBSCRIPTION_ID" --resource-group "$REPORT_RESOURCE_GROUP" --name "$REPORT_STORAGE_ACCOUNT" --query id -o tsv)
+REPORT_CONTAINER_SCOPE="$REPORT_STORAGE_ID/blobServices/default/containers/$REPORT_STORAGE_CONTAINER"
+az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$PRINCIPAL_ID" --assignee-principal-type "$PRINCIPAL_TYPE" --role "Storage Blob Data Contributor" --scope "$REPORT_CONTAINER_SCOPE"
+az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$PRINCIPAL_ID" --assignee-principal-type "$PRINCIPAL_TYPE" --role "Storage Blob Delegator" --scope "$REPORT_STORAGE_ID"
+```
+
+PowerShell, using the same Storage values:
+
+```powershell
+$SUBSCRIPTION_ID = "<storage-subscription-id>"
+$REPORT_RESOURCE_GROUP = "<report-resource-group>"
+$REPORT_STORAGE_ACCOUNT = "<storage-account>"
+$REPORT_STORAGE_CONTAINER = "reports"
+azd env set AZURE_STORAGE_ACCOUNT_NAME $REPORT_STORAGE_ACCOUNT
+azd env set AZURE_STORAGE_CONTAINER_NAME $REPORT_STORAGE_CONTAINER
+$PRINCIPAL_ID = az ad signed-in-user show --query id -o tsv
+$PRINCIPAL_TYPE = "User"
+$REPORT_STORAGE_ID = az storage account show --subscription $SUBSCRIPTION_ID --resource-group $REPORT_RESOURCE_GROUP --name $REPORT_STORAGE_ACCOUNT --query id -o tsv
+$REPORT_CONTAINER_SCOPE = "$REPORT_STORAGE_ID/blobServices/default/containers/$REPORT_STORAGE_CONTAINER"
+az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $PRINCIPAL_ID --assignee-principal-type $PRINCIPAL_TYPE --role "Storage Blob Data Contributor" --scope $REPORT_CONTAINER_SCOPE
+az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $PRINCIPAL_ID --assignee-principal-type $PRINCIPAL_TYPE --role "Storage Blob Delegator" --scope $REPORT_STORAGE_ID
+```
+
+If the administrator uses a different login, substitute the developer's object ID
+rather than assigning access to the administrator. Wait for RBAC propagation.
+
+### Provision and deploy the remote dependencies
 
 ```bash
 azd provision
-```
-
-The manifest declares the project, model, and connection-free web-search Toolbox.
-For an existing project, ensure the project and developer permissions listed above
-are in place before provisioning. No external search API key is required.
-
-### Deploy the remote dependencies before local execution
-
-```bash
 azd deploy --all
 ```
 
-This deploys the Toolbox before the agent. The postdeploy hook grants the agent
-container data access and account delegation rights, recording only assignments
-it creates in `.azure/report-storage-role-assignments.json`. Missing configuration
-or role-assignment permission fails deployment rather than silently skipping
-authorization. An RBAC administrator can run
-`python hooks/configure-report-storage.py` in the initialized project to repair
-the grants, then retry deployment.
-
-`azd provision` does not deploy Toolbox services, and `azd ai agent run` does not
-create remote tools. Complete this step before either local running or Toolkit F5.
+Skip provisioning when the project/model already exist. Deploying all services
+creates the cloud Toolbox before the agent; local execution also needs that
+Toolbox. Neither `azd provision` nor `azd ai agent run` deploys remote tools.
+Blob roles remain an explicit setup step, not a deployment hook.
 
 ### Run the agent locally
 
@@ -192,7 +178,7 @@ create remote tools. Complete this step before either local running or Toolkit F
 azd ai agent run --no-client
 ```
 
-The host listens on `http://localhost:8088`. Local execution still uses the cloud
+The host listens on `http://localhost:8088`. Local execution still calls the cloud
 model, Toolbox, and Blob account; it is not an offline mode.
 
 ### Invoke the local agent
@@ -200,13 +186,10 @@ model, Toolbox, and Blob account; it is not an offline mode.
 In another terminal, from the initialized project directory:
 
 ```bash
-azd ai agent invoke --local "Research how LangGraph checkpoints support multi-turn agents. Cite primary sources and save report-v1.md."
+azd ai agent invoke --local "Research LangGraph checkpoints. Cite primary sources, save report-v1.md, and give me a download link."
 ```
 
-For the complete four-turn research/read/revise/download demo, run the checked-in
-client with the same project and Storage environment. It loads the runtime's
-`.env`; copy `.env.example` there and fill it in when those values are not already
-exported:
+For the complete four-turn research/read/revise/download demo:
 
 ```bash
 cd src/langgraph-deep-agents
@@ -215,51 +198,59 @@ cp .env.example .env
 uv run --frozen python client.py
 ```
 
-### Deploy to Foundry
+Before running the client, fill in `.env` with the project endpoint, model,
+Toolbox, and report account/container when those values are not already exported.
+
+### Deploy to Foundry and grant the agent report access
+
+After edits, run `azd deploy --all` again. The default is direct code deployment;
+Docker is not required. The existing Dockerfile supports optional container deployment.
+Retrieve the **deployed instance identity**, then have the Storage RBAC administrator
+apply the same two roles used above to this principal:
 
 ```bash
-azd deploy --all
+PRINCIPAL_ID=$(azd ai agent show langgraph-deep-agents -o json | python -c 'import json,sys; print(json.load(sys.stdin)["instance_identity"]["principal_id"])')
+PRINCIPAL_TYPE="ServicePrincipal"
+az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$PRINCIPAL_ID" --assignee-principal-type "$PRINCIPAL_TYPE" --role "Storage Blob Data Contributor" --scope "$REPORT_CONTAINER_SCOPE"
+az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$PRINCIPAL_ID" --assignee-principal-type "$PRINCIPAL_TYPE" --role "Storage Blob Delegator" --scope "$REPORT_STORAGE_ID"
 ```
 
-After edits, deploy all services again so the Toolbox and agent configuration stay
-aligned. The hook resolves the actual deployed agent, including CI-renamed service
-keys, and reuses existing/inherited grants. It never grants access to the project
-identity in place of the agent instance or falls back to Storage account keys.
+```powershell
+$PRINCIPAL_ID = (azd ai agent show langgraph-deep-agents -o json | ConvertFrom-Json).instance_identity.principal_id
+$PRINCIPAL_TYPE = "ServicePrincipal"
+az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $PRINCIPAL_ID --assignee-principal-type $PRINCIPAL_TYPE --role "Storage Blob Data Contributor" --scope $REPORT_CONTAINER_SCOPE
+az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $PRINCIPAL_ID --assignee-principal-type $PRINCIPAL_TYPE --role "Storage Blob Delegator" --scope $REPORT_STORAGE_ID
+```
 
-See [Deploy a hosted agent](https://learn.microsoft.com/azure/foundry/agents/how-to/deploy-hosted-agent)
-for the complete deployment workflow. The default is direct code deployment;
-Docker is not required. The existing Dockerfile is an optional container path.
+Do not substitute the project identity or blueprint. Developer access does not
+transfer to the hosted agent, and `azd deploy` does not configure these grants.
+Recheck the principal after redeployment and allow time for role propagation.
 
 ### Invoke the deployed agent
 
-From the initialized project directory:
-
 ```bash
-azd ai agent invoke "Research recent advances in small language models and save report-v1.md."
+azd ai agent invoke "Research LangGraph checkpoints, save report-v1.md, and give me a download link."
 ```
 
-For the complete demo, export `FOUNDRY_PROJECT_ENDPOINT` from
-`azd env get-value FOUNDRY_PROJECT_ENDPOINT`, keep the report account/container
-values available, and run from `src/langgraph-deep-agents`:
+For the complete demo, set `FOUNDRY_PROJECT_ENDPOINT` in the runtime's `.env` to the
+value from `azd env get-value FOUNDRY_PROJECT_ENDPOINT`, keep the report settings,
+and run from `src/langgraph-deep-agents`:
 
 ```bash
 uv run --frozen python client.py --agent-name langgraph-deep-agents
 ```
 
-The client binds continuations to the latest response ID and deployed session ID,
-verifies the downloaded bytes against each publication digest, and stops only the
-returned test sessions on exit. On a handled publication error it exits without
-claiming a download; the saved report remains available for a later turn.
+The client chains the latest response ID and deployed session ID, verifies both
+download digests, and stops its returned test sessions. A publication failure
+produces no invented download link; the saved report remains editable.
 
 ## Option 2: VS Code (Foundry Toolkit)
 
 ### Prerequisites
 
-Install the [Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)
-and sign in to Azure. Use a project with a deployed model, the `web_search`
-Toolbox, and the private Storage resources and identity grants listed in
-Prerequisites. Complete Option 1 through `azd deploy --all` first if remote
-dependencies have not already been deployed and authorized.
+Install [Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)
+and sign in to Azure. Complete the remote model, Toolbox, private Storage, and
+identity setup above before F5; Toolkit does not grant external Blob permissions.
 
 ### Set up the Python environment
 
@@ -271,129 +262,79 @@ uv sync --frozen
 cp .env.example .env
 ```
 
-Fill in `.env`, including the project endpoint, model deployment, Toolbox name,
-report account URL, and container. Select `src/langgraph-deep-agents/.venv` as the
-Python interpreter. Do not commit `.env` or generated Toolkit configuration.
+Fill in `.env` and select `src/langgraph-deep-agents/.venv` as the Python interpreter.
+Toolkit generates `.vscode/launch.json` and `.vscode/tasks.json`; do not commit them.
 
 ### Run and debug the agent
 
-Press **F5** using the Toolkit-generated launch/tasks configuration; Agent
-Inspector opens automatically. Alternatively, from the runtime directory:
-
-```bash
-uv run --frozen python main.py
-```
-
-Open Agent Inspector and connect to `http://localhost:8088`. Use the same research
-prompt as Option 1. Run `uv run --frozen python client.py` in another terminal for
-the complete named-report demo.
+Press **F5**; Agent Inspector opens automatically. Alternatively, run
+`uv run --frozen python main.py`, then use **Foundry Toolkit: Open Agent Inspector**
+to connect to `http://localhost:8088`. Use the same research prompt or run the demo
+client in another terminal. No UI acceptance is implied by the offline tests.
 
 ### Deploy to Foundry
 
-Use **Deploy Hosted Agent** in Foundry Toolkit for agent-only changes. When the
-Toolbox, hooks or Storage settings change, run `azd deploy --all` from the
-initialized project so those dependencies and instance grants are updated too.
-Test in Agent Inspector or run the deployed demo client.
+Use **Deploy Hosted Agent** for agent-only changes. When the Toolbox or Storage
+configuration changes, run `azd deploy --all` from the initialized project and
+recheck the deployed principal's Blob grants before invoking it.
 
 ## Reports, downloads, and privacy
 
-The client creates `/report-v1.md`, reads it back, revises a copy at
-`/report-v2.md`, and downloads both snapshots to `~/Downloads/deep-research`
-(override with `--output-dir`). `publish_report` accepts a simple filename without
-a leading slash: 1-64 ASCII letters, digits, hyphens, or underscores before `.md`,
-starting with a letter or digit. Paths and other extensions are rejected.
+Reports are virtual conversation files, not session filesystem attachments.
+Checkpoints enable continuation of saved state, not arbitrary in-flight crash
+recovery or permanent archival. Planning/search limits in prompts are guidance,
+not hard execution limits.
 
-Each publication creates `<random-prefix>/<report_name>` with a matching attachment
-filename and `overwrite=False`. Editing the working file does not change an earlier
-download. A SAS is an HTTPS bearer secret, read-only for that one Blob, valid for
-one hour. Expiry **does not delete** the Blob; delete snapshots or configure a
-retention policy separately. No account keys or public container are used.
-
-Both telemetry content-capture flags default to `false` before host construction.
-Opting in may export prompts, search queries, report text, tool results, and SAS
-URLs. Keep response histories, client output, and acceptance transcripts private.
-Search queries still leave the application, and checkpoints still retain content.
-Research budgets are prompt guidance, not enforced runtime limits. This sample
-shows checkpointed conversation state, not arbitrary in-flight crash recovery.
-
-## Adapt the SDK example
-
-- Change the research workflow or subagent responsibilities in
-  [`research_agent/prompts.py`](src/langgraph-deep-agents/research_agent/prompts.py)
-  and [`agent.py`](src/langgraph-deep-agents/agent.py), without changing the host.
-- Add SDK Toolbox integrations through
-  [`research_agent/tools.py`](src/langgraph-deep-agents/research_agent/tools.py),
-  keeping the exposed tools explicit rather than loading unrelated Toolbox tools.
-- Add state-aware LangChain tools alongside
-  [`report_export.py`](src/langgraph-deep-agents/report_export.py). Keep saved
-  framework state separate from exported artifacts and do not accept arbitrary
-  model-selected Storage destinations.
-- For human approval or durable background execution, follow the separate
-  [HITL](../07-human-in-the-loop/) and [Resilient Responses](../09-resilient/)
-  SDK integration examples. This research scenario does not implement those
-  additional execution policies.
+Each publication creates a separate private Blob. Anyone holding its SAS URL can
+read that one snapshot until expiry; there is no anonymous container access or
+account-key fallback. Expiry **does not delete the Blob**. Keep transcripts, client
+output, and SAS-bearing evidence private. Storage network restrictions still apply.
 
 ## Validation and cleanup
 
 From `src/langgraph-deep-agents`:
 
 ```bash
-uv sync --frozen
 uv run --frozen python -m unittest discover -s tests -v
 ```
 
-The offline tests use the published SDK, native graph, and stock Responses host;
-only external model/Storage/project boundaries are simulated. They cover JSON/SSE
-handled publication failures, report selection and preservation, download digest
-checks, continuation/session handling, and resource cleanup. They do **not** prove
-live Azure permissions, real search, cloud persistence, or a successful Blob export.
+Offline tests use the published SDK, native graph, and stock Responses host,
+simulating external model, Storage, and project boundaries. They cover named
+publication, report preservation, download digests, JSON/SSE failure handling,
+continuation/session binding, and resource lifetimes; they do not prove live Azure access.
 
-The repository's [cloud behavior contract](../../../../../../.azure-pipelines/hosted-agent-tests/python/langgraph/responses/11-deep-agents/test-spec.yml)
-checks delegated research, named revision, and publishing the original again. Its
-sample-owned verifier downloads all three publications over HTTPS, verifies their
-digests/attachment names, compares the original bytes before and after revision,
-and re-downloads the original snapshot to establish immutability. Publication
-errors cannot pass just because a response completed or mentioned a filename.
-It deletes only observed report exports. The CI identity needs Blob deletion access
-to the configured test container; no account keys are used. Stable CI agent names
-reuse the same identity across runs to stay within the role-assignment limit.
-Their two scoped Storage grants persist and are reused, not revoked when one job
-finishes, because other runs or agent versions can still need them. Schema
-validation alone does not execute this workflow.
-For manual cloud acceptance, run the complete client, inspect
-both reports and citations, verify that v1 remains unchanged, and repeat via the
-Responses streaming API. Keep any SAS-bearing evidence private.
+The [cloud test contract](../../../../../../.azure-pipelines/hosted-agent-tests/python/langgraph/responses/11-deep-agents/test-spec.yml)
+uses the existing runner for delegated research, named revision, and publication
+URLs. It does **not** download files or compare their contents. CI requires its
+actual deployed agent identity to have the two Blob roles before invocation;
+missing access fails the publication assertions rather than silently skipping them.
 
-Stop test compute with `azd ai agent sessions list` and
-`azd ai agent sessions stop <session-id>` when not using the demo client's cleanup.
-Delete only your test exports. When retiring an agent that uses an existing
-Storage account, first confirm that no other run or agent version still needs its
-identity. Then run `python hooks/configure-report-storage.py --cleanup` from the
-deployment workspace to remove only its recorded grants; pre-existing grants
-are retained. Do not run role cleanup at the end of an ordinary CI job.
-`azd down` removes azd-managed resources, **not**
-the separately created report account; remove the dedicated report resource group
-only after confirming it contains no resources you need to keep.
+For end-to-end acceptance, run `client.py` against the deployed agent, inspect
+both downloaded reports and their citations, and confirm the original stays
+unchanged. Retain the output as private evidence; a green schema check or offline
+suite is not cloud acceptance.
+
+The demo client stops its deployed test sessions. For other invocations, use
+`azd ai agent sessions list` and `azd ai agent sessions stop <session-id>` as needed.
+Delete only your report exports and local downloads after testing. Reuse shared
+CI identity grants; revoke them only when retiring the identity and no other run
+or version needs them. `azd down` does not delete the separately created report
+account; remove dedicated resources only after confirming they are no longer needed.
 
 ## Troubleshooting
 
-| Symptom | Check |
+| Symptom | Action |
 | --- | --- |
-| Missing report Storage configuration | Set `AZURE_STORAGE_ACCOUNT_NAME` and `AZURE_STORAGE_CONTAINER_NAME` in azd/CI; use `REPORT_STORAGE_*` in the standalone runtime `.env`. |
-| Postdeploy role hook fails | Check the reported Azure error code, `AZURE_STORAGE_SUBSCRIPTION_ID`, the private container, and the deployer's role-assignment permission. An RBAC administrator can run the hook; do not ignore its failure. |
-| Toolbox does not expose `web_search` | Confirm the Toolbox name, project, provisioned tool, and project/developer roles. |
-| Publication returns a handled error / no download | Check the private container, network access, and the correct local or agent instance Blob grant. Do not fall back to account keys. |
-| Download digest mismatch | Do not accept the file; republish the selected saved filename and retry. |
-| A follow-up starts new research | Continue from the latest `response.id` and the same hosted `agent_session_id`; use `client.py` as the reference. |
+| Missing report Storage settings | Set the two `AZURE_STORAGE_*` azd values, or `REPORT_STORAGE_*` in the runtime's `.env`. |
+| Toolbox not found | Run `azd deploy --all`; local execution still uses the cloud Toolbox. |
+| Blob authorization failure | Check the actual caller's container data role, account delegation role, selected Storage subscription, and RBAC propagation. |
+| Research succeeds but there is no download | The report stays editable; correct Blob access/network settings and request publication again. |
+| Continuation loses the report | Use the latest response ID and, when hosted, the same deployed session; a new conversation starts empty. |
 
 ## Next steps
 
-- [Human-in-the-Loop](../07-human-in-the-loop/) for SDK mapping of LangGraph approval interrupts.
-- [Files](../06-files/) for hosted session filesystem handling.
-- [Observability](../08-observability/) for other tracing/exporter configurations.
-- [Resilient Responses](../09-resilient/) for explicit durable background execution.
-
-## Source examples
-
-- [Merged LangChain Azure example (#1207)](https://github.com/langchain-ai/langchain-azure/pull/1207), used at commit `c480d810ca96e77860db64ba3403c3bf13d5dfcf`.
-- [Official Deep Research example](https://github.com/langchain-ai/deepagents/tree/b6504f6654ee6f25e1cd923087291de9e51572cc/examples/deep_research), the original framework workflow.
+- Customize the research prompt or subagent in `research_agent/prompts.py` and `agent.py`.
+- See [Human-in-the-loop](../07-human-in-the-loop/) and [Observability](../08-observability/).
+- Read the [official Deep Research example](https://github.com/langchain-ai/deepagents/tree/b6504f6654ee6f25e1cd923087291de9e51572cc/examples/deep_research)
+  for the upstream research workflow and the [SDK sample](https://github.com/langchain-ai/langchain-azure/pull/1207)
+  for the selected Foundry adaptation.
