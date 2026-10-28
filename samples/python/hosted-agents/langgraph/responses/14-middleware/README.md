@@ -119,6 +119,7 @@ reusing a name in a shared project creates another version of that existing agen
 
 ```bash
 azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/langgraph/responses/14-middleware/azure.yaml --agent-name my-middleware-agent
+azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME gpt-5.4-mini
 azd provision
 ```
 
@@ -126,6 +127,10 @@ Select the new-project path in the prompts. Provisioning creates the manifest's
 declared resources and model deployment, so review region, model version, SKU,
 and capacity before confirming. `AZURE_AI_MODEL_DEPLOYMENT_NAME` must be the
 resulting **deployment name**, not just the model family.
+The command above selects the manifest's default deployment; replace it if you
+choose a different deployment. Set it explicitly: the tested extension beta.15
+provisioned the model from the unified manifest without populating this azd
+environment value automatically.
 
 **Reuse an existing project/model deployment:**
 
@@ -212,15 +217,16 @@ Select the source directory's `.venv` interpreter in VS Code.
 ### Run and debug
 
 Cloning this repository does **not** create a debug workspace. Before using F5,
-use the Toolkit's [Copilot configuration tools](https://code.visualstudio.com/docs/intelligentapps/copilot-tools#generate-and-test-agent-code)
-in the sample root and request configuration for the **existing** project:
+create the local files in [Deterministic F5 setup](#deterministic-f5-setup-windows),
+or use the Toolkit's [Copilot configuration tools](https://code.visualstudio.com/docs/intelligentapps/copilot-tools#generate-and-test-agent-code)
+in the sample root to configure the **existing** project:
 
 This configuration-generation route requires **GitHub Copilot Chat access in
 VS Code**, enabled Foundry Toolkit tools, and the sample folder opened as the
 workspace; see the [Copilot tools prerequisites](https://code.visualstudio.com/docs/intelligentapps/copilot-tools#prerequisites).
-Without that access, use the manual run below or `azd`; running this sample does
-not itself require Copilot. Neither route counts as completed UI acceptance
-until F5/Inspector has actually been exercised and recorded.
+Without that access, use the deterministic F5 configuration, manual run, or
+`azd`; running and debugging this sample do not require Copilot. Configuration
+generation alone is not evidence that F5 or Inspector works.
 
 ```text
 Configure this existing LangChain hosted agent for local debugging with
@@ -235,7 +241,88 @@ entry point before running **Debug Local Agent HTTP Server** with **F5**.
 `debugpy` is locked in the dev group, not installed into the production image.
 Keep generated `.vscode` files local; do not commit them.
 
-Or run manually from `src/langgraph-middleware`:
+#### Deterministic F5 setup (Windows)
+
+This alternative does not use Copilot or provision resources. Open the sample
+root in VS Code, complete the source `.env` and frozen dev-dependency setup
+above, and create these two **local, uncommitted** files. Close any existing
+sample host first so ports 5679 and 8088 are available.
+
+`.vscode/launch.json`:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Local Agent HTTP Server",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": { "host": "127.0.0.1", "port": 5679 },
+      "justMyCode": true,
+      "preLaunchTask": "Start Middleware Debug Server"
+    }
+  ]
+}
+```
+
+`.vscode/tasks.json`:
+
+```json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Middleware Debug Server",
+      "type": "process",
+      "command": "${workspaceFolder}/src/langgraph-middleware/.venv/Scripts/python.exe",
+      "args": [
+        "-m", "debugpy", "--listen", "127.0.0.1:5679",
+        "--wait-for-client", "--log-to-stderr",
+        "${workspaceFolder}/src/langgraph-middleware/main.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/src/langgraph-middleware",
+        "env": {
+          "PORT": "8088",
+          "AGENTSERVER_STATE_ROOT": "${workspaceFolder}/.ui-acceptance-state",
+          "PYTHONNOUSERSITE": "1"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "middleware-debug",
+        "pattern": { "regexp": "^(THIS_PATTERN_NEVER_MATCHES)$", "message": 1 },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": "wait_for_client\\(\\)"
+        }
+      },
+      "presentation": { "reveal": "never", "panel": "dedicated" }
+    }
+  ]
+}
+```
+
+On macOS/Linux, change the task's Python executable to
+`${workspaceFolder}/src/langgraph-middleware/.venv/bin/python`; the Windows
+configuration above is the one covered by desktop acceptance. The task runs
+from the source directory, where `main.py` loads `.env`, and preserves a
+sample-owned state root across restarts. It does not depend on VS Code's global
+Python interpreter selection.
+
+Select **Debug Local Agent HTTP Server** and press **F5**. Set a breakpoint on
+the message-count check in `agent.py`, open Inspector as described below, and
+send a greeting to hit it. Inspect the state, step, and continue the request.
+With this attach configuration, **Shift+F5 disconnects the debugger but leaves
+the background server task running**. Use **Terminal > Terminate Task > Start
+Middleware Debug Server** to stop that task before starting another host or
+cleaning its state.
+
+#### Run without a debugger
+
+From `src/langgraph-middleware`:
 
 ```bash
 uv run --frozen main.py
@@ -289,10 +376,13 @@ uv run --frozen client.py --agent-name my-middleware-agent --stream --decision r
 | --- | --- | --- | --- | --- |
 | `client.py` | Verified | All three verified | JSON and SSE verified | Real-SDK regressions; live-model acceptance is recorded per head in the PR. |
 | `azd ai agent invoke` | Verified | Use `client.py` for structured decisions | Not separately accepted | azd 1.37.1 / extension beta.15 wrapped `--input-file` as text, not structured resume fields. |
-| Local Agent Inspector | Not visually verified | Not visually verified | Not visually verified | Manual Toolkit acceptance remains required; this is not a claim of unsupported behavior. |
+| Local Agent Inspector | Verified | Native Approve/Deny verified; edit uses `client.py` | SSE verified | Desktop acceptance with Toolkit 1.6.17 includes F5 breakpoint/step/continue and exported response events. Expanded approval controls in this version did not expose Edit. |
 | Foundry portal Playground | Not visually verified | Not visually verified | Not visually verified | Deployment/invocation success does not prove this UI's review behavior. |
 
-For manual Toolkit acceptance, record the exact Git head, Toolkit/Python/debugpy
+Head-specific acceptance results are recorded in the PR; the verified Windows
+run used Python 3.13.15 and debugpy 1.8.21. Copilot auto-generation and portal
+deployment/playground UI are separate paths and are not claimed verified by
+that run. For subsequent Toolkit acceptance, record the exact Git head, Toolkit/Python/debugpy
 versions, and generated launch command. In a clean workspace, follow the setup
 above, press F5, check Inspector reports **Connected**, hit a breakpoint, and
 confirm an email prompt pauses before any `send_email` execution. Run all three
@@ -347,6 +437,12 @@ Registering the contract does not itself constitute a successful cloud run.
   directory's `.env`, or initialize the project with `azd` first.
 - **Model not found:** set `AZURE_AI_MODEL_DEPLOYMENT_NAME` to your actual
   deployment name, not merely a model family name.
+- **Package-download TLS failure:** verify access to `files.pythonhosted.org`,
+  not just the PyPI index. `uv` does not read `pip.ini`, and frozen installs use
+  artifact URLs recorded in `uv.lock`; changing only an index setting may not
+  redirect those downloads. Use your organization's approved package/network
+  configuration, preserving locked versions and artifact hashes. Do not disable
+  TLS verification or change the shared lockfile to embed a private proxy URL.
 - **Review not returned:** ask explicitly to send an email with recipient,
   subject, and body. Greetings do not trigger human review.
 - **Conversation limit reached:** begin a new conversation. The limit counts
