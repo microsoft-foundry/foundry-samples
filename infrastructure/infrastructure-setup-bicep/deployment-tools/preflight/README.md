@@ -2,6 +2,12 @@
 
 `preflight-check.ps1` validates your Azure environment **before** running `az deployment group create`. It catches common misconfigurations that would otherwise surface as cryptic ARM errors mid-deploy — saving you from failed deployments, wasted time, and difficult-to-diagnose issues.
 
+For Microsoft Foundry managed-compute deployments, use the separate
+[managed-compute quota and capacity preflight](./managed-compute/README.md).
+It provides equivalent Python 3.9+ and PowerShell 7 commands that check
+managed-compute accelerator quota and current platform capacity before create or
+scale operations.
+
 ## Why Run Preflight Checks?
 
 ARM template deployments can fail 10–20 minutes in with opaque error messages. By that point resources may be partially created, leaving your environment in an inconsistent state that requires manual cleanup. This script validates everything upfront so you can fix issues before they become problems.
