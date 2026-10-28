@@ -3,27 +3,7 @@
 See the shared [Python startup configuration](../README.md#python-startup-configuration)
 for deployment environments and dependency compatibility.
 
-This directory demonstrates the LangChain Azure SDK together with
-[LangChain](https://github.com/langchain-ai/langchain),
-[LangGraph](https://github.com/langchain-ai/langgraph), and
-[Deep Agents](https://github.com/langchain-ai/deepagents), alongside Foundry
-configuration, deployment, and integration. Each sample explains both its SDK
-integration points and the platform dependencies needed to run the scenario.
-
-## Sample scope
-
-- [langchain-azure](https://github.com/langchain-ai/langchain-azure/tree/main/samples)
-  focuses on SDK usage, including hosting, state, human-in-the-loop, resilience,
-  and extension points. Include platform dependencies where needed.
-- [foundry-samples](https://github.com/microsoft-foundry/foundry-samples) also
-  includes important examples demonstrating the LangChain Azure SDK together with
-  LangChain, LangGraph, and Deep Agents, alongside platform configuration,
-  deployment, and integration. Reuse or adapt selected SDK examples where useful.
-
-The collections complement each other; SDK behavior and platform setup are not
-mutually exclusive sample categories. The [Deep Agents research sample](responses/11-deep-agents/)
-combines model and Toolbox integration, checkpointed framework state, a custom
-report-publication tool, and an end-to-end Foundry deployment.
+This directory contains samples that demonstrate how to use [LangGraph](https://langchain-ai.github.io/langgraph/) together with [`langchain_azure_ai.agents.hosting`](https://github.com/langchain-ai/langchain-azure/tree/main/libs/azure-ai/langchain_azure_ai/agents/hosting) to host agents on Foundry with different capabilities and configurations. Each sample includes a README with sample queries and any sample-specific notes.
 
 Use the configuration-driven `langchain_azure_ai.agents.hosting.run` entrypoint by default. Use a protocol-specific host class only when the agent must customize request translation, unsupported protocol options, readiness behavior, or the lifetime of async resources. The [Responses Custom Host](responses/12-custom-host/) and [Invocations Custom Host](invocations/04-custom-host/) samples demonstrate the request-translation case.
 
@@ -42,7 +22,7 @@ Use the configuration-driven `langchain_azure_ai.agents.hosting.run` entrypoint 
 | 8   | [Observability](responses/08-observability/)                          | A LangGraph agent with GenAI OpenTelemetry tracing enabled via `enable_auto_tracing()`, emitting spans, metrics, and logs to Application Insights.                                       |
 | 9   | [Resilient](responses/09-resilient/)                                 | Resilient background Responses with durable checkpoints, recovery, cancellation, steering, and human approval.                                                                        |
 | 10  | [Run](responses/10-run/)                                              | A minimal configuration-driven LangGraph agent hosted over the Responses protocol with the `langchain_azure_ai.agents.hosting.run` entrypoint.                                         |
-| 11  | [Deep Agents](responses/11-deep-agents/)                              | Delegated web research with planning, checkpointed named report revisions, and private Azure Blob downloads. Uses the host class for resource lifetimes.                              |
+| 11  | [Deep Agents](responses/11-deep-agents/)                              | A deep research agent with Toolbox tools, a Foundry-backed checkpointer, and downloadable reports in Azure Blob Storage. Uses the host class for async resource lifecycle management.                                               |
 | 12  | [Custom Host](responses/12-custom-host/)                              | Extends a multi-turn chat agent with a locale header and custom location messages using `ResponsesHostServer`.                                                                         |
 | 13  | [Custom Stores](responses/13-custom-store/)                          | Demonstrates implementing custom response and conversation-chain stores and wiring LangGraph checkpoints and long-term memory for Foundry-hosted or on-premises agents.              |
 

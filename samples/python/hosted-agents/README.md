@@ -166,13 +166,7 @@ Full control over the HTTP request/response cycle. You define the payload schema
 
 ## LangGraph samples
 
-Use the LangChain Azure SDK with LangChain, [LangGraph](https://github.com/langchain-ai/langgraph),
-and Deep Agents, including model and tool integration, state, hosting, and
-extension points. These samples also provide the platform configuration and
-deployment needed to run those scenarios on Foundry. The
-[`langchain_azure_ai.agents.hosting`](https://github.com/langchain-ai/langchain-azure/tree/main/libs/azure-ai/langchain_azure_ai/agents/hosting)
-integration exposes native framework graphs through Foundry's hosted agent
-protocols, including sessions, streaming, and tool-call translation.
+Bring your existing [LangGraph](https://langchain-ai.github.io/langgraph/) graphs to Foundry. These samples use [`langchain_azure_ai.agents.hosting`](https://github.com/langchain-ai/langchain-azure/tree/main/libs/azure-ai/langchain_azure_ai/agents/hosting) (`ResponsesHostServer` / `InvocationsHostServer`) to expose LangGraph agents (`create_agent`) and custom `StateGraph`s over the hosted agent protocols, with native Foundry session, streaming, and tool wiring.
 
 See [`langgraph/README.md`](langgraph/) for the full list and the local-run guide.
 
@@ -186,7 +180,6 @@ See [`langgraph/README.md`](langgraph/) for the full list and the local-run guid
 | **[Files](langgraph/responses/06-files/)**                              | LangGraph agent with local filesystem tools and a Foundry-Toolbox `code_interpreter` for session-uploaded files.                       |
 | **[Human-in-the-Loop](langgraph/responses/07-human-in-the-loop/)**      | `StateGraph` that drafts a proposal and pauses for approval via `langgraph.types.interrupt`, serialized as `mcp_approval_request` + `function_call`. |
 | **[Observability](langgraph/responses/08-observability/)**              | GenAI OpenTelemetry tracing enabled with `enable_auto_tracing()` — spans, metrics, and logs flow to Application Insights.              |
-| **[Deep Agents](langgraph/responses/11-deep-agents/)**                  | Delegated web research, checkpointed named report revisions, and private Blob downloads with Deep Agents.                            |
 
 ### Invocations protocol
 

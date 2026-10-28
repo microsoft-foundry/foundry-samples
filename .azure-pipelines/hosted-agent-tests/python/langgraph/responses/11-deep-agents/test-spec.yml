@@ -5,9 +5,9 @@ sample:
   experiences: [azd, vscode]
 
 tests:
-  - name: research-and-revise-named-reports
+  - name: delegated-web-research
     turns:
-      - input: Research how LangGraph checkpoints support multi-turn agents using delegated research. Include the heading '# LangGraph Checkpoints' and the exact primary-source URL https://docs.langchain.com/oss/python/langgraph/overview. Save the cited report as report-v1.md and give me a download link.
+      - input: Research how LangGraph checkpoints support multi-turn agents using delegated research. Include the exact primary-source URL https://docs.langchain.com/oss/python/langgraph/overview. Save the cited report to /final_report.md and give me its download link.
         assertions:
           - source: assistant_text
             type: contains
@@ -16,28 +16,16 @@ tests:
             type: regex
             value: '"name"\s*:\s*"task"'
           - source: raw
-            type: contains
-            value: /report-v1.md
-          - source: raw
-            type: regex
-            value: '"name"\s*:\s*"write_file"'
-          - source: raw
             type: regex
             value: '"name"\s*:\s*"publish_report"'
           - source: assistant_text
             type: regex
-            value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/report-v1\.md\?[^\s]*sig='
-      - input: Read the saved report-v1.md, then revise a copy named report-v2.md to add a section headed 'Recovery Limitations'. Preserve the original report, findings, and source URLs; do not repeat the research. Give me a download link for report-v2.md.
+            value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/final_report\.md\?[^\s]*sig='
+      - input: Add a section headed 'Recovery Limitations' to the saved /final_report.md while preserving its findings and citations. Do not repeat the research. Give me a new download link for the updated report.
         assertions:
           - source: assistant_text
             type: contains
             value: Recovery Limitations
-          - source: assistant_text
-            type: contains
-            value: https://docs.langchain.com/oss/python/langgraph/overview
-          - source: raw
-            type: contains
-            value: /report-v2.md
           - source: raw
             type: regex
             value: '"name"\s*:\s*"edit_file"'
@@ -46,21 +34,4 @@ tests:
             value: '"name"\s*:\s*"publish_report"'
           - source: assistant_text
             type: regex
-            value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/report-v2\.md\?[^\s]*sig='
-      - input: Read the complete original report-v1.md again, without editing it or researching again, and give me a fresh download link for that original named version.
-        assertions:
-          - source: assistant_text
-            type: contains
-            value: '# LangGraph Checkpoints'
-          - source: assistant_text
-            type: contains
-            value: https://docs.langchain.com/oss/python/langgraph/overview
-          - source: raw
-            type: regex
-            value: '"name"\s*:\s*"read_file"'
-          - source: raw
-            type: regex
-            value: '"name"\s*:\s*"publish_report"'
-          - source: assistant_text
-            type: regex
-            value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/report-v1\.md\?[^\s]*sig='
+            value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/final_report\.md\?[^\s]*sig='

@@ -46,7 +46,7 @@ services:
     kind: hosted
     name: langgraph-deep-agents
     displayName: LangGraph Deep Agents (Responses)
-    description: 'Deep Research with planning, delegated Foundry web search, saved report revisions, and private Blob downloads over the Responses protocol.'
+    description: 'A Deep Agents web research assistant hosted on Foundry over the Responses protocol, with planning, Foundry web search, state-backed files, subagent delegation, and private Blob report downloads.'
     protocols:
       - protocol: responses
         version: 2.0.0

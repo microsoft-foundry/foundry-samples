@@ -1,22 +1,20 @@
 [project]
 name = "langgraph-deep-agents"
 version = "0.1.0"
-description = "Deep Research with named report revisions and Blob downloads on Foundry."
+description = "A Microsoft Foundry hosted agent built with LangGraph."
 requires-python = ">=3.13"
 dependencies = [
     "agent-dev-cli>=0.0.1b260427",
-    "langchain-azure-ai[hosting,opentelemetry]==1.2.12",
-    "azure-ai-projects>=2.3.0,<3.0",
-    "azure-storage-blob==12.31.0",
+    "langchain-azure-ai[hosting]>=1.2.9",
+    "azure-ai-projects",
     "azure-identity",
+    "azure-storage-blob==12.30.0",
     "openai<3",
     "httpx<1",
-    "deepagents==0.7.28",
-    "langchain==1.4.6",
-    "langgraph==1.2.16",
-    "langchain-openai==1.7.2",
-    "langchain-mcp-adapters==0.3.2",
+    "deepagents>=0.7.0b2",
+    "langchain-openai",
+    "langchain-mcp-adapters",
     "mcp>=1.24,<2",
-    "python-dotenv==1.2.4",
+    "python-dotenv",
     "debugpy",
 ]
