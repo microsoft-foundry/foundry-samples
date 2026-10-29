@@ -71,7 +71,7 @@ try {
     throw 'Local Azure SQL access failed. Set DEPLOYER_IP_ADDRESS in the azd environment or add your client IP in Azure SQL networking, then rerun azd up.'
   }
 
-  $productCount = sqlcmd -S $sqlServerFqdn -d $sqlDatabaseName -G -h -1 -W -Q 'SET NOCOUNT ON; SELECT COUNT(*) FROM SalesLT.Product;'
+  $productCount = sqlcmd -S $sqlServerFqdn -d $sqlDatabaseName -G -b -h -1 -W -Q 'SET NOCOUNT ON; SELECT COUNT(*) FROM SalesLT.Product;'
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to verify AdventureWorksLT sample data.'
   }
