@@ -7,7 +7,7 @@ sample:
 tests:
   - name: delegated-web-research
     turns:
-      - input: Research how LangGraph checkpoints support multi-turn agents using delegated research. Include the exact primary-source URL https://docs.langchain.com/oss/python/langgraph/overview. Save the cited report to /final_report.md and give me its download link.
+      - input: Research how LangGraph checkpoints support multi-turn agents using delegated research. Include the exact primary-source URL https://docs.langchain.com/oss/python/langgraph/overview in both the saved report and your final reply. Save the cited report to /final_report.md and give me its download link.
         assertions:
           - source: assistant_text
             type: contains
@@ -21,7 +21,7 @@ tests:
           - source: assistant_text
             type: regex
             value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/final_report\.md\?[^\s]*sig='
-      - input: Add a section headed 'Recovery Limitations' to the saved /final_report.md while preserving its findings and citations. Do not repeat the research. Give me a new download link for the updated report.
+      - input: Add a section headed 'Recovery Limitations' to the saved /final_report.md while preserving its findings and citations. Do not repeat the research. In your final reply, mention 'Recovery Limitations' and give me a new download link for the updated report.
         assertions:
           - source: assistant_text
             type: contains
