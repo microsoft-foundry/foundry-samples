@@ -138,8 +138,6 @@ public sealed class ToolboxClient
                             .ToDictionary(
                                 property => property.Name,
                                 property => property.Value.Clone());
-                        values["note"] = JsonSerializer.SerializeToElement(
-                            "Live-view URL omitted from model-visible tool output.");
                         sanitized.Add(JsonSerializer.Serialize(values));
                     }
                     else
@@ -161,7 +159,7 @@ public sealed class ToolboxClient
             IReadOnlyList<string> liveViewUrls = liveViewUrl is null ? [] : [liveViewUrl];
             var publicOutput = string.Join("\n",
                 (sanitized.Count > 0 ? sanitized : [output]).Select(text =>
-                    Redaction.PublicToolOutput(name, text, isError, liveViewUrls)));
+                    Redaction.PublicToolOutput(name, text, liveViewUrls)));
             return new ToolboxCallResult(
                 output,
                 browserSessionId,
