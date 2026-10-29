@@ -32,7 +32,14 @@ class HelperTests(unittest.TestCase):
         document["services"]["toolbox"] = {
             "host": "azure.ai.toolbox", "uses": ["project"], "tools": [{"type": "web_search"}],
         }
-        self.assertEqual(helpers.validate_manifest(document, "agent"), "project")
+        for harness_type in ("github_copilot_preview", "microsoft_copilot_preview"):
+            document["services"]["agent"]["harness"] = {"type": harness_type}
+            self.assertEqual(helpers.validate_manifest(document, "agent"), "project")
+        for bad_harness in ("", {"type": ""}, {"type": "bad name"}, {"type": "ok", "extra": True}):
+            document["services"]["agent"]["harness"] = bad_harness
+            with self.assertRaisesRegex(helpers.LifecycleError, "managed harness.type must be a nonempty identifier"):
+                helpers.validate_manifest(document, "agent")
+        document["services"]["agent"]["harness"] = {"type": "microsoft_copilot_preview"}
         document["services"]["toolbox"]["tools"] = [{"type": "mcp"}]
         with self.assertRaisesRegex(helpers.LifecycleError, "only web_search"):
             helpers.validate_manifest(document, "agent")

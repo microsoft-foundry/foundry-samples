@@ -371,7 +371,6 @@ async def _run_agent_loop(input_items: list[dict], used_sessions: set[str]):
 
         for call in tool_calls:
             yield "function_call", call
-            failed = True
             session_text = None
             live_view_urls = [
                 state.live_view_url for state in _active_sessions.values()
@@ -379,7 +378,6 @@ async def _run_agent_loop(input_items: list[dict], used_sessions: set[str]):
             ]
             try:
                 result = await _handle_tool_call(call, used_sessions)
-                failed = result.is_error
                 if result.live_view_url:
                     live_view_urls.append(result.live_view_url)
                     session_text = (
@@ -413,7 +411,7 @@ async def _run_agent_loop(input_items: list[dict], used_sessions: set[str]):
             yield "function_call_output", {
                 "call_id": call.call_id,
                 "output": public_tool_output(
-                    call.name, public_output, failed, live_view_urls,
+                    call.name, public_output, live_view_urls,
                 ),
             }
             if session_text:
@@ -453,6 +451,7 @@ async def handler(
         for event in stream.output_item_message("No input provided."):
             yield event
     else:
+        stream.response["tools"] = deepcopy(await _get_tools())
         try:
             history = await context.get_history()
         except Exception as exc:
@@ -470,7 +469,7 @@ async def handler(
                 for event in stream.output_item_function_call(
                     name=value.name,
                     call_id=value.call_id,
-                    arguments=value.arguments if value.name == "load_skill" else "{}",
+                    arguments=value.arguments,
                 ):
                     yield event
             elif kind == "function_call_output":

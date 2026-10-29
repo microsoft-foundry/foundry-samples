@@ -69,6 +69,10 @@ stages:
 
               if [ -n "${{ parameters.samplePath }}" ]; then
                 sample_path="${{ parameters.samplePath }}"
+                if ! sample_path="$(realpath -e --relative-to=. -- "$sample_path")"; then
+                  echo "##vso[task.logissue type=error]samplePath must resolve to an existing directory under $(BICEP_ROOT)."
+                  exit 1
+                fi
                 if [[ "$sample_path" != "$(BICEP_ROOT)"/* ]] || [ ! -d "$sample_path" ]; then
                   echo "##vso[task.logissue type=error]samplePath must be an existing directory under $(BICEP_ROOT)."
                   exit 1
@@ -207,6 +211,10 @@ stages:
 
                 if [ -n "${{ parameters.samplePath }}" ]; then
                   sample_path="${{ parameters.samplePath }}"
+                  if ! sample_path="$(realpath -e --relative-to=. -- "$sample_path")"; then
+                    echo "##vso[task.logissue type=error]samplePath must resolve to an existing directory under $(BICEP_ROOT)."
+                    exit 1
+                  fi
                   if [[ "$sample_path" != "$(BICEP_ROOT)"/* ]] || [ ! -d "$sample_path" ]; then
                     echo "##vso[task.logissue type=error]samplePath must be an existing directory under $(BICEP_ROOT)."
                     exit 1
@@ -519,6 +527,19 @@ stages:
                 }
 
                 for deployment_file in "${deployment_files[@]}"; do
+                  # Temporarily exclude these samples from live deployment while owners address CI readiness.
+                  case "$(dirname "$deployment_file")" in
+                    "$(BICEP_ROOT)/00-basic" | \
+                    "$(BICEP_ROOT)/31-customer-managed-keys-standard-agent" | \
+                    "$(BICEP_ROOT)/40-basic-agent-setup" | \
+                    "$(BICEP_ROOT)/41-standard-agent-setup" | \
+                    "$(BICEP_ROOT)/42-basic-agent-setup-with-customization" | \
+                    "$(BICEP_ROOT)/43-standard-agent-setup-with-customization")
+                      echo "##vso[task.logissue type=warning]Skipping live deployment of $deployment_file: temporarily excluded pending owner verification of CI readiness. Static validation remains required; live deployment is NOT validated. See .azure-pipelines/README.md."
+                      continue
+                      ;;
+                  esac
+
                   echo "Deploying $deployment_file in $primary_location"
                   if deploy_with_location "$deployment_file" "$primary_location" "primary"; then
                     continue

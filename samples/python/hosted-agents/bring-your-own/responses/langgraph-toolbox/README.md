@@ -411,6 +411,8 @@ protocols:
   - protocol: responses
     version: 2.0.0
 environment_variables:
+  - name: PYTHONNOUSERSITE
+    value: "1"
   - name: AZURE_OPENAI_ENDPOINT
     value: ${AZURE_OPENAI_ENDPOINT}     # Single-brace syntax
   - name: AZURE_AI_MODEL_DEPLOYMENT_NAME

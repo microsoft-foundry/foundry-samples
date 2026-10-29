@@ -30,6 +30,7 @@ services:
       - protocol: invocations_ws
         version: 2.0.0
     env:
+      PYTHONNOUSERSITE: "1"
       AZURE_SPEECH_API_KEY: ${AZURE_SPEECH_API_KEY}
       AZURE_SPEECH_REGION: ${AZURE_SPEECH_REGION}
       AZURE_FOUNDRY_API_KEY: ${AZURE_FOUNDRY_API_KEY}

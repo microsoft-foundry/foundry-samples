@@ -13,14 +13,19 @@ This sample hosts a Python Agent Framework agent over the Responses protocol and
 
 No browser tool schema is hardcoded in this sample, and no local browser CLI or CDP attachment is required.
 
+The MCP client prefers `content` over `structuredContent` so text snapshots are not replaced by metadata-only structured results. Structured-only results still work as a fallback. Session creation results omit the live-view URL without adding a replacement note; the application continues to display exact live-view links in chat.
+
 ## Key files
 
 | Path | Purpose |
 | --- | --- |
 | `src/bat-python-maf/main.py` | Starts the Responses host. |
 | `src/bat-python-maf/utils/agent_factory.py` | Builds the agent and response middleware. |
+| `src/bat-python-maf/utils/tool_catalog.py` | Publishes actual runtime tool schemas in Responses metadata. |
 | `src/bat-python-maf/utils/tools.py` | Connects the Toolbox MCP server and handles exact live-view URLs. |
 | `src/bat-python-maf/prompts/base.md` | Browser lifecycle and automation behavior. |
+| `src/bat-python-maf/pyproject.toml` | Python project metadata and direct dependencies. |
+| `src/bat-python-maf/uv.lock` | Locked Python dependencies for reproducible builds. |
 | `hooks/setup-toolbox.*` | Publishes the GA browser automation toolbox. |
 | `infra-modules/playwright-connection.bicep` | Creates the GA MCP project connection. |
 
@@ -28,7 +33,7 @@ No browser tool schema is hardcoded in this sample, and no local browser CLI or 
 
 - Azure CLI and Azure Developer CLI
 - An Azure AI Foundry project with a deployed chat model
-- Python 3.11 or later for local development
+- **Python 3.11 or later** and [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment for local development
 - Docker for local container builds
 
 The deployment hooks create the Playwright workspace when one is not supplied and assign the required roles after deployment.
@@ -48,8 +53,8 @@ The hosted runtime supplies the Foundry endpoint. For local runs, authenticate w
 
 ```bash
 cd src/bat-python-maf
-pip install -r requirements.txt
-python main.py
+uv sync --frozen
+uv run --no-sync python main.py
 ```
 
 Invoke the local Responses endpoint:

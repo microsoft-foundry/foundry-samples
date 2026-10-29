@@ -133,6 +133,7 @@ def deploy_agent_version(policy_name: str) -> str | None:
             "container_protocol_versions": [{"protocol": "responses", "version": "2.0.0"}],
             "cpu": "1", "memory": "2Gi",
             "environment_variables": {
+                "PYTHONNOUSERSITE": "1",
                 "AZURE_AI_MODEL_DEPLOYMENT_NAME": MODEL_DEPLOYMENT,
                 # Propagate the TLS-verification knob to the deployed agent so
                 # Full-inspection scenarios can exercise a TLS-intercepting proxy.
