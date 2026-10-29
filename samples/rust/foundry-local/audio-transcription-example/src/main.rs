@@ -8,8 +8,7 @@ use std::io::{self, Write};
 use std::path::Path;
 
 use foundry_local_sdk::{
-    AudioSession, FoundryLocalConfig, FoundryLocalManager, Item, Request, SpeechSegmentKind,
-    TextKind,
+    AudioSession, FoundryLocalConfig, FoundryLocalManager, Item, Request, TextKind,
 };
 use tokio_stream::StreamExt;
 use url::Url;
@@ -97,9 +96,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stream = session.process_streaming_request(Request::from_items(vec![audio]));
     while let Some(item) = stream.next().await {
         match item? {
-            Item::SpeechSegment(segment) if segment.kind == SpeechSegmentKind::Final => {
-                print!("{}", segment.text)
-            }
+            Item::SpeechSegment(segment) => print!("{}", segment.text),
             Item::Text {
                 text,
                 kind: TextKind::Default,

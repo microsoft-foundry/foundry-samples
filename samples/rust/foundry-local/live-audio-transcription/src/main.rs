@@ -13,8 +13,7 @@ use std::sync::Arc;
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use foundry_local_sdk::{
-    AudioSession, FoundryLocalConfig, FoundryLocalManager, Item, ItemQueue, Request,
-    SpeechSegmentKind, TextKind,
+    AudioSession, FoundryLocalConfig, FoundryLocalManager, Item, ItemQueue, Request, TextKind,
 };
 use tokio_stream::StreamExt;
 
@@ -75,8 +74,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let read_task = tokio::spawn(async move {
         while let Some(item) = stream.next().await {
             match item {
-                Ok(Item::SpeechSegment(segment)) if segment.kind == SpeechSegmentKind::Final => {
-                    println!("\n  [FINAL] {}", segment.text);
+                Ok(Item::SpeechSegment(segment)) => {
+                    print!("{}", segment.text);
+                    io::stdout().flush().ok();
                 }
                 Ok(Item::Text {
                     text,
