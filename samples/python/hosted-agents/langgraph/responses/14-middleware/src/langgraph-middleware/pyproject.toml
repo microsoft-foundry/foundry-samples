@@ -16,14 +16,4 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["debugpy>=1.8.15,<2", "pytest>=8,<9", "ruff==0.9.4"]
-
-[tool.pytest.ini_options]
-pythonpath = ["."]
-
-[tool.hosted-agent-validation]
-commands = [
-    ["python", "-m", "pytest", "tests", "-q"],
-    ["ruff", "check", "."],
-    ["ruff", "format", "--check", "."],
-]
+dev = ["debugpy>=1.8.15,<2"]

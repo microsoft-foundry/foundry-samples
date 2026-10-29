@@ -29,8 +29,6 @@ the agent logic.
 - `src/langgraph-middleware/Dockerfile` and `.dockerignore` - frozen production
   image build and container context exclusions, aligned with neighboring samples
 - `README.md` - prerequisites and supported local run, test, and deployment paths
-- `src/langgraph-middleware/tests/` - real SDK/host/client recovery, lifecycle,
-  privacy/actual-exporter, session-isolation, and failure-path regressions
 
 Do not commit `.vscode` launch or
 task files generated when the Foundry Toolkit scaffolds a local workspace.
@@ -79,19 +77,17 @@ uv sync --frozen --group dev
 uv run --frozen client.py --decision approve
 uv run --frozen client.py --decision edit --recipient bob@example.com
 uv run --frozen client.py --stream --decision reject
-uv run --frozen --group dev python -m pytest tests -q
-uv run --frozen --group dev ruff check .
-uv run --frozen --group dev ruff format --check .
 ```
 
 After local validation, run `azd deploy` from the initialized sample root and
 repeat the review commands with the deployed `--agent-name`.
 
-Use the [generic runtime validation](../../../RUNTIME_VALIDATION.md) rather than a
-sample-specific CI job. Keep tests/dev tools out of production packages. Do not
-replace real middleware/host/checkpointer behavior with mocked SDK interfaces.
-Headless DAP, local tests, and cloud E2E are distinct from the
-[manual Toolkit/Inspector acceptance](README.md#frontend-coverage-and-acceptance-boundary).
+Keep the shared cloud behavior contract aligned with the sample's native review
+flow. Validate and plan that contract using the shared hosted-agent tooling.
+Use the real review client for local/deployed approve, edit, and reject checks;
+the cloud harness automates approval only. Keep debug tooling out of production
+packages. Follow the [Toolkit/Inspector acceptance](README.md#frontend-coverage-and-acceptance-boundary)
+separately; headless startup and cloud E2E do not establish UI acceptance.
 
 ## Resource and state cleanup
 

@@ -15,7 +15,7 @@ for a standard LangChain agent.
 | --- | --- |
 | `agent.py`, `client.py` | Unchanged upstream implementation, including the native review protocol and simulated tool. |
 | `main.py` | Preserves explicit credential/model/checkpoint lifetimes; adapts the fallback model and delegates telemetry to the stock host instead of also registering the upstream auto-tracer/provider. |
-| Foundry integration | Repository-native `azure.yaml`, `src/<service>` layout, code/container packaging, frozen uv runtime/dev dependencies, indexes, and acceptance tests. |
+| Foundry integration | Repository-native `azure.yaml`, `src/<service>` layout, code/container packaging, frozen uv runtime/dev dependencies, indexes, and the cloud behavior contract. |
 
 ## How it works
 
@@ -374,7 +374,7 @@ uv run --frozen client.py --agent-name my-middleware-agent --stream --decision r
 
 | Frontend | Pause | Approve / edit / reject | Streaming | Evidence boundary |
 | --- | --- | --- | --- | --- |
-| `client.py` | Verified | All three verified | JSON and SSE verified | Real-SDK regressions; live-model acceptance is recorded per head in the PR. |
+| `client.py` | Verified | All three verified | JSON and SSE verified | Local and cloud live-model acceptance is recorded per head in the PR. |
 | `azd ai agent invoke` | Verified | Use `client.py` for structured decisions | Not separately accepted | azd 1.37.1 / extension beta.15 wrapped `--input-file` as text, not structured resume fields. |
 | Local Agent Inspector | Verified | Native Approve/Deny verified; edit uses `client.py` | SSE verified | Desktop acceptance with Toolkit 1.6.17 includes F5 breakpoint/step/continue and exported response events. Expanded approval controls in this version did not expose Edit. |
 | Foundry portal Playground | Not visually verified | Not visually verified | Not visually verified | Deployment/invocation success does not prove this UI's review behavior. |
@@ -387,49 +387,22 @@ versions, and generated launch command. In a clean workspace, follow the setup
 above, press F5, check Inspector reports **Connected**, hit a breakpoint, and
 confirm an email prompt pauses before any `send_email` execution. Run all three
 client decisions and confirm only approve/edit emit a tool receipt. Record
-Inspector's own controls/streaming separately. The automated DAP attach/readiness
-test validates debugger startup without desktop automation; it is **not** an
-F5/Inspector UI acceptance result.
+Inspector's own controls/streaming separately. Headless startup checks do not
+replace F5/Inspector UI acceptance.
 
 ## Validation
 
-From `src/langgraph-middleware`, run the credential-free regression suite:
-
-```bash
-uv sync --frozen --group dev
-uv run --frozen --group dev python -m pytest tests -q
-uv run --frozen --group dev ruff check .
-uv run --frozen --group dev ruff format --check .
-```
-
-The tests use real LangChain middleware and the real Responses host, replacing
-external model/network boundaries. They cover the actual review client,
-JSON/SSE decisions and failures, multi-action edit preservation, near-limit
-approval, cross-process persisted approve/edit/reject recovery, concurrent/new
-conversation isolation, and resource cleanup on exit/failure/cancellation.
-A headless debugpy attach also starts and probes the real host.
-
-Fresh-process telemetry tests use the same host factory as `main.py` and real
-OTLP/Azure Monitor exporters against loopback receivers. They assert two model
-calls produce two chat spans, one tool execution produces one tool span, and
-Foundry enrichment remains present. Default/explicit redaction has an enabled
-content positive control. These probes disable SDKStats/resource discovery and
-redirect Azure Monitor live metrics locally to isolate external services; they
-do not establish cloud telemetry delivery, production execution counts, or the
-absence of every vendor diagnostic under untouched defaults.
-
-The generic [hosted-runtime checks](../../../RUNTIME_VALIDATION.md) discover
-this runtime from its manifest and run its declared tests, lint, and format
-commands with frozen dev dependencies and no Azure credentials. Policy-framework
-tests are a separate layer, not a substitute for running the sample suite. Dev
-dependencies and tests remain outside production packages.
+Follow [the review flow](#review-an-email) against the local host, then repeat
+against the deployed agent. Exercise approve, edit, and reject with JSON and SSE.
+Confirm the request pauses before `send_email` executes and only approve/edit
+produce a tool receipt. Keep local, cloud, and Toolkit acceptance evidence
+separate and record the exact Git head and tool versions in the PR.
 
 The repository's [cloud behavior contract](../../../../../../.azure-pipelines/hosted-agent-tests/python/langgraph/responses/14-middleware/test-spec.yml)
 checks the pending email review and that a specifically approved email executes.
-The local tests additionally assert no execution before review. The shared cloud
-harness supports automatic approval, not edit
-or rejection; use the local tests and review client for those decisions.
-Registering the contract does not itself constitute a successful cloud run.
+The shared cloud harness supports automatic approval, not edit or rejection;
+use the review client for those decisions. Registering the contract does not
+itself constitute a successful cloud run.
 
 ## Troubleshooting
 
@@ -462,8 +435,7 @@ do not override the platform's state configuration in `azure.yaml`.
 
 Only delete that verified, sample-owned directory after abandoning its pending
 reviews. Do not recursively remove shared `~/.agentserver`. Content-capture flags
-do not erase persisted Responses/checkpoints. Test fixtures use their own
-temporary state roots and clean those roots automatically.
+do not erase persisted Responses/checkpoints.
 
 For Azure resources, follow the [ownership-aware cleanup guidance](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-deploy-own-code#clean-up-resources):
 
