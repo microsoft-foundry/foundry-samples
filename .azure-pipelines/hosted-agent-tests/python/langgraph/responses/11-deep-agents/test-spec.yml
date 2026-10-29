@@ -21,7 +21,7 @@ tests:
           - source: assistant_text
             type: regex
             value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/report-v1\.md\?[^\s]*sig='
-      - input: Read the saved /report-v1.md and use write_file to copy its unchanged content to /report-v2.md. Then use edit_file to add a section headed 'Recovery Limitations' only to /report-v2.md while preserving its findings and citations. Do not repeat the research or modify /report-v1.md. Call publish_report with report_name='report-v2.md'. In your final reply, mention 'Recovery Limitations' and give me the download link returned by that tool, not a link constructed from the earlier URL.
+      - input: Read the saved /report-v1.md and wait for its contents. In a separate tool round, use write_file with that full unchanged report text as content to create /report-v2.md; do not create an empty file. After the copy succeeds, use edit_file to add a section headed 'Recovery Limitations' only to /report-v2.md while preserving its findings and citations. Do not repeat the research or modify /report-v1.md. Call publish_report with report_name='report-v2.md'. In your final reply, mention 'Recovery Limitations' and give me the download link returned by that tool, not a link constructed from the earlier URL.
         assertions:
           - source: assistant_text
             type: contains
