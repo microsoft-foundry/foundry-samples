@@ -84,8 +84,13 @@ public static class EchoValidation
         return task.GetProperty("id").GetString() ?? throw new InvalidDataException("Task ID is missing.");
     }
 
-    public static StreamSummary ValidateStream(IReadOnlyList<ReceivedEvent> events, string expected)
+    public static StreamSummary ValidateStream(IReadOnlyList<ReceivedEvent> events, string expected, double minimumChunkGapMs = 250)
     {
+        if (!double.IsFinite(minimumChunkGapMs) || minimumChunkGapMs <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(minimumChunkGapMs));
+        }
+
         var taskIds = new HashSet<string>();
         var artifactIds = new HashSet<string>();
         var chunks = new List<string>();
@@ -139,7 +144,7 @@ public static class EchoValidation
             throw new InvalidDataException("Expected one completed Task, one artifact, 2-16 chunks, and exact Echo output.");
         }
 
-        if (arrivals[^1] - arrivals[0] < (chunks.Count - 1) * 250)
+        if (arrivals[^1] - arrivals[0] < (chunks.Count - 1) * minimumChunkGapMs)
         {
             throw new InvalidDataException("Possible buffering: artifact updates arrived too close together.");
         }

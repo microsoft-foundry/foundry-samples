@@ -71,6 +71,23 @@ public class EchoTests
         Assert.Throws<InvalidDataException>(() => EchoValidation.ValidateStream(events, "Echo: first\nsecond"));
     }
 
+    [TestCase(149, false)]
+    [TestCase(150, true)]
+    [TestCase(250, true)]
+    public void ClientMeasuresConfiguredArrivalThreshold(double gap, bool accepted)
+    {
+        var events = Events();
+        events[1] = events[1] with { ReceivedMs = gap };
+        if (accepted)
+        {
+            Assert.DoesNotThrow(() => EchoValidation.ValidateStream(events, "Echo: first\nsecond", minimumChunkGapMs: 150));
+        }
+        else
+        {
+            Assert.Throws<InvalidDataException>(() => EchoValidation.ValidateStream(events, "Echo: first\nsecond", minimumChunkGapMs: 150));
+        }
+    }
+
     [Test]
     public void ClientRejectsWrongAppendFlag()
     {
@@ -78,6 +95,13 @@ public class EchoTests
         events[1] = Artifact("second", append: false, last: true, milliseconds: 500);
         Assert.Throws<InvalidDataException>(() => EchoValidation.ValidateStream(events, "Echo: first\nsecond"));
     }
+
+    [TestCase(0)]
+    [TestCase(-1)]
+    [TestCase(double.NaN)]
+    [TestCase(double.PositiveInfinity)]
+    public void ClientRejectsInvalidArrivalThreshold(double gap) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => EchoValidation.ValidateStream(Events(), "Echo: first\nsecond", gap));
 
     [Test]
     public void ClientRejectsMissingCompletion()

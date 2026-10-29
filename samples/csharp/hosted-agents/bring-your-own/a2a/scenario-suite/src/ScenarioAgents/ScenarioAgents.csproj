@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AgentServerSdkRoot Condition="'$(AgentServerSdkRoot)' == ''">$(AGENTSERVER_DOTNET_SDK_ROOT)</AgentServerSdkRoot>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(AgentServerSdkRoot)' != ''">
+    <ProjectReference Include="$(AgentServerSdkRoot)\sdk\agentserver\Azure.AI.AgentServer.A2A\src\Azure.AI.AgentServer.A2A.csproj" />
+    <ProjectReference Include="$(AgentServerSdkRoot)\sdk\agentserver\Azure.AI.AgentServer.Invocations\src\Azure.AI.AgentServer.Invocations.csproj" />
+  </ItemGroup>
+  <Target Name="GenerateSampleCode" BeforeTargets="CoreCompile">
+    <Error Condition="!Exists('$(AgentServerSdkRoot)\sdk\agentserver\Azure.AI.AgentServer.A2A\tests\Snippets\ReadMeSnippets.cs')"
+           Text="Set AGENTSERVER_DOTNET_SDK_ROOT to the SDK checkout containing the eleven A2A samples and transport test helper." />
+    <Exec Command="pwsh -NoProfile -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\Generate-SampleCode.ps1&quot; -SdkRoot &quot;$(AgentServerSdkRoot)&quot; -Output &quot;$(MSBuildProjectDirectory)\$(IntermediateOutputPath)SampleCode.g.cs&quot;" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)SampleCode.g.cs" />
+    </ItemGroup>
+  </Target>
+</Project>
