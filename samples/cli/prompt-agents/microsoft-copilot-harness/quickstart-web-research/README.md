@@ -17,9 +17,10 @@ The sample leaves the harness-native tools enabled, matching the quickstart. The
 
 ## Prerequisites
 
-- Azure Developer CLI (`azd`) 1.36.0 or later.
-- The Microsoft Foundry `azd` extension pack. The sample pins `azure.ai.agents` 1.0.0-beta.21
-  and `azure.ai.projects` 1.0.0-beta.14.
+- Azure Developer CLI (`azd`) 1.37.0 or later.
+- The Microsoft Foundry `azd` extension pack. The manifest requires `azure.ai.agents`
+  1.0.0-beta.22 or later, `azure.ai.projects` 1.0.0-beta.15 or later, and `azure.ai.skills`
+  1.0.0-beta.9 or later; these are minimum versions, not exact pins.
 - Python 3.10 or later for the automated smoke test.
 - An Azure subscription with Copilot harness access and Global Standard quota for
   `gpt-5.4-mini` in the selected Foundry region. The sample requests 100 capacity units
@@ -34,15 +35,23 @@ data-handling requirements before using it with sensitive prompts.
 
 ## Deploy
 
-From this folder:
+From this folder, install or update the extensions and enable the harness preview in your
+current Bash shell:
 
 ```bash
+azd extension install microsoft.foundry
+azd extension update microsoft.foundry
+export AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS=true
 azd auth login
 azd env new quickstart-web-research-dev \
   --subscription <subscription-id> \
   --location canadacentral
 azd up --no-prompt
 ```
+
+For PowerShell, replace the `export` line with
+`$env:AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS = "true"`.
+Set this variable again in each new shell or CI job; `azd env set` doesn't enable the preview.
 
 Canada Central is the sample default. Replace `canadacentral` when your subscription's harness
 entitlement, model quota, or data-location requirements use another supported region.
