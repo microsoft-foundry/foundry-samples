@@ -233,7 +233,8 @@ class PublicationFailureWorkflowTests(unittest.TestCase):
                             message
                             for message in state.values["messages"]
                             if isinstance(message, ToolMessage)
-                            and message.tool_call_id in {"read-original", "read-revised"}
+                            and message.tool_call_id
+                            in {"read-original", "read-revised"}
                         ]
                         self.assertEqual(len(reads), 2)
                         self.assertTrue(

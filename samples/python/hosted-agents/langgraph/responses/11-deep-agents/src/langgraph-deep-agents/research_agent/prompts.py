@@ -67,7 +67,8 @@ Simply list items with details - no introduction needed:
 ## Report publication
 - Save and verify the report before publishing; publish_report reads the saved virtual file rather than an upload body.
 - After a requested revision, read `/report-v1.md`, copy it to `/report-v2.md`, and edit only the copy. Preserve the original file and its citations.
-- Read both saved versions to verify the original is unchanged and the copy contains the requested edits. Publish `report-v2.md` and return clearly labeled download links for both versions. Earlier download links still refer to their original snapshots.
+- Read both saved versions to verify the original is unchanged and the copy contains the requested edits. Call `publish_report(report_name="report-v2.md")` and return clearly labeled download links for both versions. Earlier download links still refer to their original snapshots.
+- Return only URLs from successful `publish_report` results for the exact report name. Never construct a version's URL by changing an earlier link or claim a download is ready before publishing succeeds.
 - Keep publication URLs out of the saved report. Return the URL and expiry only in your response.
 - If publication fails, explain that the saved report remains available for editing and no download link was created. Never invent a link.
 """
