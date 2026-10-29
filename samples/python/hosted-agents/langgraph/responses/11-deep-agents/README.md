@@ -14,7 +14,7 @@ This sample adapts LangChain's official [Build a deep research agent](https://do
 
 ## How it works
 
-The coordinator saves the request to `/research_request.md`, plans the work, and delegates research instead of searching directly. Research subagents use the tutorial's bounded search loop: two or three searches for simple questions and at most five for complex questions. The coordinator consolidates their citations, writes `/final_report.md`, and verifies that the report covers the original request.
+The coordinator saves the request to `/research_request.md`, plans the work, and delegates research instead of searching directly. Research subagents use the tutorial's bounded search loop: two or three searches for simple questions and at most five for complex questions. The coordinator consolidates their citations, writes `/report-v1.md`, and verifies that the report covers the original request.
 
 The agent uses a model deployed in the Foundry project. Its coordinator and research subagent share all tools loaded from the `deep-agents-tools` Toolbox. The Toolbox is declared as an `azure.ai.toolbox` service in `azure.yaml`, and the hosted agent lists it under `uses`, so `azd` deploys the Toolbox before the agent.
 
@@ -194,10 +194,13 @@ curl --fail --location "<download_url>" --output "/path/outside/repository/repor
 ```
 
 Compare the downloaded file's SHA256 with the value returned by `publish_report`.
-In the same conversation, request an edit to `/final_report.md` and a new download
-link. When calling the Responses API directly, carry the latest response ID and
-the hosted session ID. Each publication creates a new Blob, so the earlier URL
-still downloads its original snapshot rather than the edited report.
+In the same conversation, ask the agent to read `/report-v1.md`, copy it to
+`/report-v2.md`, and make the requested edits only to that copy. Ask it to read
+both saved files and return clearly labeled download links for both versions.
+Download both, compare each SHA256, and confirm the original file and its earlier
+download remain unchanged. When calling the Responses API directly, carry the
+latest response ID and the hosted session ID. Each publication creates a new
+Blob; neither revising the copy nor publishing it overwrites the original.
 
 Publication failures return no link and leave the saved report editable. Anyone
 holding a valid SAS URL can read its snapshot until expiry. Expiry does **not**
@@ -218,12 +221,15 @@ uv run --frozen python -m unittest discover -s tests -v
 ```
 
 The tests cover the added tool, credential lifetime, unchanged researcher tools,
-report preservation, and native JSON/SSE publication success/failure. External
-model, Storage, and project boundaries are simulated; no dependency upgrades or
-changes to the original model helper and research tools are required.
+report preservation, and native JSON/SSE publication success/failure. They use
+the real `FoundryCheckpointSaver` with its local filesystem State Store backend,
+including checkpoints created in the same second. SDK 1.2.12 or later is required
+for checkpoint-ID ordering; `uv.lock` includes this fix. External model and Blob
+boundaries are simulated; the original model helper and research tools are unchanged.
 
-The cloud contract checks research, publication, and republishing an edited report
-using the existing test-spec schema. It does not download the files. For full
+The cloud contract checks research, publication, revision of a separate saved copy,
+and reading both versions using the existing test-spec schema. It does not download
+the files. For full
 acceptance, run against the deployed agent, download the original and revised
 snapshots, compare their returned digests and contents, and re-download the old
 URL to confirm it is unchanged. Schema/offline success is not cloud acceptance.

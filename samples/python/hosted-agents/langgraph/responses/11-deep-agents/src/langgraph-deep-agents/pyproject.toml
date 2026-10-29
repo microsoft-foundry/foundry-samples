@@ -5,7 +5,7 @@ description = "A Microsoft Foundry hosted agent built with LangGraph."
 requires-python = ">=3.13"
 dependencies = [
     "agent-dev-cli>=0.0.1b260427",
-    "langchain-azure-ai[hosting]>=1.2.9",
+    "langchain-azure-ai[hosting]>=1.2.12",
     "azure-ai-projects",
     "azure-identity",
     "azure-storage-blob==12.30.0",

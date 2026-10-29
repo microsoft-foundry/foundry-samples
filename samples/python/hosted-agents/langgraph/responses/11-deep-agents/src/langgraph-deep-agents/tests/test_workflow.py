@@ -6,18 +6,21 @@ import json
 import os
 import sys
 import unittest
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 from azure.core.exceptions import HttpResponseError, ServiceRequestError
-from langchain_azure_ai.agents.hosting import ResponsesHostServer
+from langchain_azure_ai.agents.hosting import (
+    FoundryCheckpointSaver,
+    ResponsesHostServer,
+)
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.checkpoint.memory import InMemorySaver
 from starlette.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -32,6 +35,12 @@ def setUpModule() -> None:
     )
     unittest.enterModuleContext(
         patch.dict(os.environ, {"AGENTSERVER_STATE_ROOT": state_root})
+    )
+    unittest.enterModuleContext(
+        patch(
+            "azure.ai.agentserver.core.storage._local_state._now",
+            return_value=1793259000,
+        )
     )
 
 
@@ -82,6 +91,14 @@ def response(client: TestClient, stream: bool, **request: Any) -> dict[str, Any]
         for event in events
         if event.get("type") == "response.completed"
     )
+
+
+@contextmanager
+def hosted_client(graph: Any) -> Iterator[TestClient]:
+    with TestClient(ResponsesHostServer(graph).app) as client:
+        assert client.portal is not None
+        with client.portal.wrap_async_context_manager(graph.checkpointer):
+            yield client
 
 
 class PublicationFailureWorkflowTests(unittest.TestCase):
@@ -157,6 +174,16 @@ class PublicationFailureWorkflowTests(unittest.TestCase):
                                 ),
                                 AIMessage(content=REVISION),
                                 call(
+                                    "read_file",
+                                    {"file_path": "/report-v1.md"},
+                                    "read-original",
+                                ),
+                                call(
+                                    "read_file",
+                                    {"file_path": "/report-v2.md"},
+                                    "read-revised",
+                                ),
+                                call(
                                     "publish_report",
                                     {"report_name": "report-v1.md"},
                                     "republish-original",
@@ -167,11 +194,11 @@ class PublicationFailureWorkflowTests(unittest.TestCase):
                     )
                     graph = build_agent(
                         model,
-                        InMemorySaver(),
+                        FoundryCheckpointSaver(MagicMock()),
                         [],
                         create_report_export_tool(MagicMock()),
                     )
-                    with TestClient(ResponsesHostServer(graph).app) as client:
+                    with hosted_client(graph) as client:
                         first = response(client, stream, input="Save and publish v1")
                         second = response(
                             client,
@@ -183,7 +210,7 @@ class PublicationFailureWorkflowTests(unittest.TestCase):
                             client,
                             stream,
                             previous_response_id=second["id"],
-                            input="Publish original v1 again",
+                            input="Read both saved versions and publish original v1 again",
                         )
                         self.assertTrue(
                             all(
@@ -191,6 +218,29 @@ class PublicationFailureWorkflowTests(unittest.TestCase):
                                 for result in (first, second, third)
                             )
                         )
+                        assert client.portal is not None
+                        state = client.portal.call(
+                            graph.aget_state,
+                            {"configurable": {"thread_id": first["id"]}},
+                        )
+                        self.assertEqual(
+                            state.values["files"]["/report-v1.md"]["content"], REPORT
+                        )
+                        self.assertEqual(
+                            state.values["files"]["/report-v2.md"]["content"], REVISION
+                        )
+                        reads = [
+                            message
+                            for message in state.values["messages"]
+                            if isinstance(message, ToolMessage)
+                            and message.tool_call_id in {"read-original", "read-revised"}
+                        ]
+                        self.assertEqual(len(reads), 2)
+                        self.assertTrue(
+                            all(message.status == "success" for message in reads)
+                        )
+                        self.assertIn("Recovery limitations", reads[1].content)
+                        self.assertNotIn("Recovery limitations", reads[0].content)
                 self.assertEqual(
                     [blob.upload_blob.call_args.args[0] for blob in blobs],
                     [REPORT.encode(), REVISION.encode(), REPORT.encode()],
@@ -278,11 +328,11 @@ class PublicationFailureWorkflowTests(unittest.TestCase):
                         )
                         graph = build_agent(
                             model,
-                            InMemorySaver(),
+                            FoundryCheckpointSaver(MagicMock()),
                             [],
                             create_report_export_tool(MagicMock()),
                         )
-                        with TestClient(ResponsesHostServer(graph).app) as client:
+                        with hosted_client(graph) as client:
                             first = response(
                                 client, stream, input="Save and publish report-v1.md"
                             )

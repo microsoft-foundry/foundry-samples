@@ -254,15 +254,16 @@ wheels = [
 
 [[package]]
 name = "azure-ai-contentsafety"
-version = "1.0.0"
+version = "1.1.0b1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "azure-core" },
     { name = "isodate" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/08/e9/c069efade0e4976d96208306f1cf0803838cdb0b60e00a2a96bd20806bff/azure-ai-contentsafety-1.0.0.tar.gz", hash = "sha256:052731bd1419a720fa00910f46bf3428c4e5bd05280da7393d0c8106d46cc6d7", size = 63806, upload-time = "2023-12-12T08:36:25Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/03/26/04a05b3f0c0ade53abfd91e454ff535f120d17dc08dc89a3fa0d353efb38/azure_ai_contentsafety-1.1.0b1.tar.gz", hash = "sha256:9937f35f8c2ff23015a6ba80b8166c5ee36a26fff83b349be168a19fc2e4a3fb", size = 97754, upload-time = "2026-09-21T20:23:48.585Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/36/39/cbb3ff28ad09434a1be7803b2846077bc3b23a8232beb489962fc818fe21/azure_ai_contentsafety-1.0.0-py3-none-any.whl", hash = "sha256:e1c5574a541f9290fdd071d23535e14b1f463af231a6f0ac0f917e125f0463cf", size = 61328, upload-time = "2026-07-27T12:34:44Z" },
+    { url = "https://files.pythonhosted.org/packages/8d/8d/9011b4aadc11ce38d553e4de4bba0b32a3ec1260e1d442561fc84df76d5b/azure_ai_contentsafety-1.1.0b1-py3-none-any.whl", hash = "sha256:8a3369afe92b659d711e388b5166d2a2f3fe8c01459ef4861f1e407550052de0", size = 86889, upload-time = "2026-09-21T20:23:49.949Z" },
 ]
 
 [[package]]
@@ -1082,10 +1083,11 @@ wheels = [
 
 [[package]]
 name = "langchain-azure-ai"
-version = "1.2.9"
+version = "1.2.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
+    { name = "anthropic" },
     { name = "azure-ai-contentsafety" },
     { name = "azure-ai-contentunderstanding" },
     { name = "azure-ai-projects" },
@@ -1093,14 +1095,15 @@ dependencies = [
     { name = "azure-identity" },
     { name = "azure-search-documents" },
     { name = "langchain" },
+    { name = "langchain-anthropic" },
     { name = "langchain-openai" },
     { name = "langgraph" },
     { name = "numpy" },
     { name = "six" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4f/a3/4cd41633fdb3aaa7d5ee595dbe27ba89e2aaeca6f16510bbbf1be279b7fd/langchain_azure_ai-1.2.9.tar.gz", hash = "sha256:d27f457dcdcf4bed1b587d9be77a7663790e47b32b38049f22d01a6a44b9d683", size = 258178, upload-time = "2026-08-24T02:59:55Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/75/ec/7f6c70d12c491fb2138a12c701b0eec218fbd9018db9b77419a080b6faec/langchain_azure_ai-1.2.12.tar.gz", hash = "sha256:bb7b033c60467afbf29b5421c4d3caf6eac06d78befd3cb21963cb1f17a639f4", size = 277356, upload-time = "2026-10-22T02:24:30.969Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/14/faf909564624e97c011cbf372dd3a3c217699ce887980164c3307bd0990f/langchain_azure_ai-1.2.9-py3-none-any.whl", hash = "sha256:638fa47cbd04cff019132f557c17d04a6db9a35b4323dd8beda76fa640329ac6", size = 315593, upload-time = "2026-08-31T22:58:38Z" },
+    { url = "https://files.pythonhosted.org/packages/6f/93/bce4f09f9ce853976f1256865d393704c3a35d3776b9f940d5d8f8a8fc32/langchain_azure_ai-1.2.12-py3-none-any.whl", hash = "sha256:66193e5883e092fb6acd844074eecea35b8bd2d68c3abd33650ebe3f9231b319", size = 334056, upload-time = "2026-10-22T02:24:29.209Z" },
 ]
 
 [package.optional-dependencies]
@@ -1109,6 +1112,7 @@ hosting = [
     { name = "azure-ai-agentserver-invocations" },
     { name = "azure-ai-agentserver-responses" },
     { name = "starlette" },
+    { name = "wrapt" },
 ]
 
 [[package]]
@@ -1247,7 +1251,7 @@ requires-dist = [
     { name = "debugpy" },
     { name = "deepagents", specifier = ">=0.7.0b2" },
     { name = "httpx", specifier = "<1" },
-    { name = "langchain-azure-ai", extras = ["hosting"], specifier = ">=1.2.9" },
+    { name = "langchain-azure-ai", extras = ["hosting"], specifier = ">=1.2.12" },
     { name = "langchain-mcp-adapters" },
     { name = "langchain-openai" },
     { name = "mcp", specifier = ">=1.24,<2" },

@@ -7,7 +7,7 @@ sample:
 tests:
   - name: delegated-web-research
     turns:
-      - input: Research how LangGraph checkpoints support multi-turn agents using delegated research. Include the exact primary-source URL https://docs.langchain.com/oss/python/langgraph/overview in both the saved report and your final reply. Save the cited report to /final_report.md and give me its download link.
+      - input: Research how LangGraph checkpoints support multi-turn agents using delegated research. Include the exact primary-source URL https://docs.langchain.com/oss/python/langgraph/overview in both the saved report and your final reply. Save the cited report to /report-v1.md and give me its download link.
         assertions:
           - source: assistant_text
             type: contains
@@ -20,8 +20,8 @@ tests:
             value: '"name"\s*:\s*"publish_report"'
           - source: assistant_text
             type: regex
-            value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/final_report\.md\?[^\s]*sig='
-      - input: Add a section headed 'Recovery Limitations' to the saved /final_report.md while preserving its findings and citations. Do not repeat the research. In your final reply, mention 'Recovery Limitations' and give me a new download link for the updated report.
+            value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/report-v1\.md\?[^\s]*sig='
+      - input: Read the saved /report-v1.md and copy it to /report-v2.md. Add a section headed 'Recovery Limitations' only to /report-v2.md while preserving its findings and citations. Do not repeat the research or modify /report-v1.md. In your final reply, mention 'Recovery Limitations' and give me the download link for report-v2.md.
         assertions:
           - source: assistant_text
             type: contains
@@ -34,4 +34,21 @@ tests:
             value: '"name"\s*:\s*"publish_report"'
           - source: assistant_text
             type: regex
-            value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/final_report\.md\?[^\s]*sig='
+            value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/report-v2\.md\?[^\s]*sig='
+      - input: Read both /report-v1.md and /report-v2.md using read_file, and confirm that only report-v2.md includes the added 'Recovery Limitations' section. Return the two existing download links labeled report-v1.md and report-v2.md. Do not edit the files or publish them again.
+        assertions:
+          - source: raw
+            type: regex
+            value: '"name"\s*:\s*"read_file"'
+          - source: assistant_text
+            type: contains
+            value: report-v1.md
+          - source: assistant_text
+            type: contains
+            value: report-v2.md
+          - source: assistant_text
+            type: regex
+            value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/report-v1\.md\?[^\s]*sig='
+          - source: assistant_text
+            type: regex
+            value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/report-v2\.md\?[^\s]*sig='
