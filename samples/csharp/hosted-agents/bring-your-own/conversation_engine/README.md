@@ -119,6 +119,28 @@ compatible SDK/runtime and declare the dedicated protocol only after that servic
 then verify readiness, spoken output, and interruption through the Voice wrapper. Local protocol
 tests do not establish target-environment rollout or audio-path readiness.
 
+## Validation status
+
+As of October 29, 2026, both .NET samples restore the published
+[Invocations `1.0.0-beta.8`](https://www.nuget.org/packages/Azure.AI.AgentServer.Invocations/1.0.0-beta.8)
+and Core `1.0.0-beta.30` packages from nuget.org. Fresh-cache restore, build,
+publish and formatting passed without source-built SDK packages or private feeds.
+
+| Sample | Local tests | Deployed WAV audio turns |
+| --- | --- | --- |
+| Basic .NET | 73 passed | 2/2 passed |
+| Adapter Mode .NET | 95 passed | 2/2 passed |
+
+The deployed smoke used the supported code-ZIP SDK route (`dotnet_10` / `bundled`)
+in one CE-enabled `eastus2euap` project. Each turn required completed status,
+nonempty STT and audio, and the expected story or Echo reply. Hosted session
+readback verified the exact deployed version; test sessions were cleaned up.
+These are separate cloud checks, not results from the shared HTTP-only CI runner.
+
+This minimal two-turn smoke does not validate cloud interruption, reconnect,
+failure injection, load, azd/Toolkit onboarding, or service rollout in other
+environments. Repeat deployment-specific checks in your target environment.
+
 ## Run a sample
 
 Choose a sample from the table above and follow its README for prerequisites, local setup,

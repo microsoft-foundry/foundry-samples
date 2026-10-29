@@ -122,6 +122,30 @@ compatible SDK/runtime and declare the dedicated protocol only after that servic
 then verify readiness, spoken output, and interruption through the Voice wrapper. Local protocol
 tests do not establish target-environment rollout or audio-path readiness.
 
+## Validation status
+
+On October 29, 2026, all four Python samples passed build readiness using their
+committed `pyproject.toml`, `uv.lock` and `uv.toml`, with public Invocations
+`1.3.0b1` and Core `2.3.0b2` packages.
+
+| Sample | Local tests | Deployed WAV audio turns |
+| --- | --- | --- |
+| Basic Python | 63 passed | 2/2 passed |
+| LangChain Python | 63 passed | 2/2 passed |
+| LangGraph Python | 63 passed | 2/2 passed |
+| Adapter Mode Python | 83 passed | 2/2 passed |
+
+The deployed smoke used the supported code-ZIP SDK route (`python_3_13` /
+`remote_build`) in one CE-enabled `eastus2euap` project, without injected
+requirements files or local SDK wheels. Each turn required completed status,
+nonempty STT and audio, and the expected story or Echo reply. Hosted session
+readback verified the exact deployed version; test sessions were cleaned up.
+These are separate cloud checks, not results from the shared HTTP-only CI runner.
+
+This minimal two-turn smoke does not validate cloud interruption, reconnect,
+failure injection, load, azd/Toolkit onboarding, or service rollout in other
+environments. Repeat deployment-specific checks in your target environment.
+
 ## Run a sample
 
 Choose a sample from the table above and follow its README for prerequisites, local setup,

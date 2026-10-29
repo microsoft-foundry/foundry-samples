@@ -107,8 +107,8 @@ azd ai agent run
 
 Neither `azd ai agent invoke` nor Agent Inspector generates CE messages.
 Use the smoke client locally; after deployment, connect to the Voice wrapper and
-verify real audio, interruption and cleanup. This sample's new deployment has not
-been live-validated merely because local tests pass.
+verify real audio, interruption and cleanup in your target environment. A local
+test pass is not deployed validation; see the recorded [validation status](../README.md#validation-status).
 
 ## Option 2: Run the Hosted Agent locally
 
@@ -178,8 +178,8 @@ a stateful replacement must restore the state it needs or explicitly reject it.
 - Bridge message version is `1.0`; the independently versioned Hosted declaration
   is `voice_conversation_engine:1.0.0`.
 - Start the server before the smoke client and match `--uri` to `PORT`.
-- Keep public-package restore and actual target-environment audio validation
-  separate from local fixture or source-built SDK checks.
+- Keep deployed audio validation separate from local fixture and unit-test checks;
+  the dated smoke results do not establish readiness in every target environment.
 
 ## References
 

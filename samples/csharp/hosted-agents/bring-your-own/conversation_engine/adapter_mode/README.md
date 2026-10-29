@@ -71,11 +71,10 @@ A single output item is completed after handler finalization.
 
 ## Prerequisites
 
-1. The .NET 10 SDK. The sample requires Invocations `1.0.0-beta.8` with public
-   Core `1.0.0-beta.30`. At initial validation beta.8 was not yet on nuget.org;
-   normal restore/deployment is blocked until publication. Local source-built SDK
-   validation is not a successful public-package restore. Do not change feeds or
-   commit local packages to work around that release dependency.
+1. The .NET 10 SDK. The sample uses the published
+   [Invocations `1.0.0-beta.8`](https://www.nuget.org/packages/Azure.AI.AgentServer.Invocations/1.0.0-beta.8)
+   package with public Core `1.0.0-beta.30`. Both restore from nuget.org without
+   source-built SDK packages, private feeds or package credentials.
 2. For deployment: azd 1.32.0+ with `azure.ai.agents` 1.0.0-beta.13+,
    a Foundry project and permissions to deploy Hosted and Voice agents.
 3. The target environment must support dedicated Vienna/APIM CE routing and
@@ -111,8 +110,8 @@ azd ai agent run
 
 Neither `azd ai agent invoke` nor Agent Inspector generates CE messages.
 Use the smoke client locally; after deployment, connect to the Voice wrapper and
-verify real audio, interruption and cleanup. This sample's new deployment has not
-been live-validated merely because local tests pass.
+verify real audio, interruption and cleanup in your target environment. A local
+test pass is not deployed validation; see the recorded [validation status](../README.md#validation-status).
 
 ## Option 2: Run the Hosted Agent locally
 
@@ -181,8 +180,8 @@ a stateful replacement must restore the state it needs or explicitly reject it.
 - Bridge message version is `1.0`; the independently versioned Hosted declaration
   is `voice_conversation_engine:1.0.0`.
 - Start the server before the smoke client and match `--uri` to `PORT`.
-- Keep public-package restore and actual target-environment audio validation
-  separate from local fixture or source-built SDK checks.
+- Keep deployed audio validation separate from local fixture and unit-test checks;
+  the dated smoke results do not establish readiness in every target environment.
 
 ## References
 

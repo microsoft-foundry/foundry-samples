@@ -82,12 +82,12 @@ are omitted. Existing metadata-selected `invocations_ws` agents remain a Voice L
 path; the SDK also retains that local route, but this sample does not declare it.
 The Voice Agent's `conversation_engine` reference (`conversationEngine` in `azure.yaml`) is unchanged.
 
-The runtime pins `Azure.AI.AgentServer.Invocations` `1.0.0-beta.8` with public Core
-`1.0.0-beta.30`. The Invocations release PR is merged, but beta.8 was not yet available on
-nuget.org when this migration was validated; standard nuget.org restore and deployment remain
-blocked until that package is published. Do not substitute beta.7 or change the sample's feeds.
-The validation-only cloud smoke used a bundled build from the merged SDK release source;
-it does not establish a successful public-package restore.
+The runtime pins the published
+[`Azure.AI.AgentServer.Invocations` `1.0.0-beta.8`](https://www.nuget.org/packages/Azure.AI.AgentServer.Invocations/1.0.0-beta.8)
+with public Core `1.0.0-beta.30`. Both packages are available from nuget.org.
+Clean restore, build, publish and a deployed audio smoke passed using these official packages;
+no source-built SDK package or private feed is needed. Do not substitute beta.7, which lacks
+the dedicated CE API. See the [validation status](../README.md#validation-status) for scope.
 
 Before deploying the new declaration, verify the target Vienna/APIM and Voice Live rollout.
 After deployment, verify readiness, spoken output, and `user.barge_in` interruption through the
@@ -143,8 +143,8 @@ dotnet build src/voice-live-bridge-basic-dotnet/VoiceLiveBridgeBasic.csproj --no
 
 The runtime's `NuGet.config` clears inherited sources and uses only nuget.org for every package.
 `Azure.AI.AgentServer.Invocations` is pinned to `1.0.0-beta.8`; its minimum Core dependency is the
-published `Azure.AI.AgentServer.Core` `1.0.0-beta.30`. Once Invocations beta.8 is published,
-no Azure Artifacts feed, package credentials, or local package cache is required.
+published `Azure.AI.AgentServer.Core` `1.0.0-beta.30`. Both packages restore from nuget.org;
+no Azure Artifacts feed, package credentials, or pre-populated local package cache is required.
 
 Start the echo server directly, without loading model settings:
 
@@ -249,8 +249,9 @@ path. After deploying, verify readiness and a spoken echo through the declared V
 - Barge-in and cancellation synchronize caller-heard text and stop pending output.
 - Playback state is bounded to 64 known responses and cleared on session termination.
 - Custom spans contain identifiers, durations, and status, but no prompt or response content.
-- The sample has not been validated against a deployed cloud voice agent as part of these
-  instructions; perform deployment-specific validation in your own environment.
+- A deployed two-turn audio smoke passed with public SDK packages; see the
+  [validation status](../README.md#validation-status). Perform deployment-specific validation
+  in your own environment, including cloud interruption and reconnect scenarios.
 
 ## Troubleshooting
 

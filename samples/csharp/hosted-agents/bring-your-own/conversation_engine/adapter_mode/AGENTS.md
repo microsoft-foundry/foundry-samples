@@ -15,7 +15,8 @@ protocol. Bridge message version remains `1.0`. Do not modify sibling samples.
 - Keep Echo stateless/model-free and preserve whitespace/Unicode exactly.
 - No sibling-path imports, local packages, private feeds or generated VS Code files.
 - Use structured logging without prompts, responses or credentials.
-- Keep explicit package pins and nuget.org-only sources; publication is a deployment prerequisite.
+- Keep explicit package pins and nuget.org-only sources. Invocations beta.8 and Core beta.30
+  are published; use normal restore, not source-built SDK packages or private feeds.
 - The shared cloud runner lacks CE support. Retain its central deployment skiplist
   entry, public owner/behavior spec, local schema/plan validation and dedicated socket tests;
   never describe these as cloud E2E.
