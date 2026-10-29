@@ -37,13 +37,13 @@ services:
     name: prompt-agent-with-toolbox
     description: A prompt agent that uses a curated Foundry Toolbox.
     harness:
-      type: github_copilot_preview
+      type: microsoft_copilot_preview
     model: gpt-5.4-mini
     instructions: >-
       You are a helpful assistant with access to a curated Foundry Toolbox. Use the toolbox search
       tool to find the right tool for the user's request, then call it.
     tools:
-      - type: github_copilot_toolset_preview
+      - type: microsoft_copilot_toolset_preview
         defaultConfig:
           enabled: false
       - type: mcp

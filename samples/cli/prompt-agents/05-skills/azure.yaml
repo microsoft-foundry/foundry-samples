@@ -35,7 +35,7 @@ services:
     name: prompt-agent-skills
     description: A prompt agent backed by a file-based skill.
     harness:
-      type: github_copilot_preview
+      type: microsoft_copilot_preview
     model: gpt-5.4-mini
     instructions: >-
       You are a helpful travel assistant. Use the travel-guide skill whenever the user asks for a

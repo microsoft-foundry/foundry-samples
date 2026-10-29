@@ -1,6 +1,6 @@
 # Browser Automation Blog Research
 
-A GitHub Copilot harness Prompt Agent that uses a Foundry Browser Automation Toolbox to inspect the
+A Microsoft Copilot harness Prompt Agent that uses a Foundry Browser Automation Toolbox to inspect the
 rendered Microsoft Foundry developer blog. The sample intentionally uses azd instead of relying on
 the Portal tool picker.
 
@@ -14,7 +14,7 @@ One `azd up` creates:
 - a secretless `PlaywrightWorkspace` project connection to the workspace's remote MCP endpoint;
 - a Toolbox containing the GA `browser_automation` tool;
 - a same-project RemoteTool connection to the Toolbox MCP endpoint; and
-- a Prompt Agent using `harness.type: github_copilot_preview` with every harness-native built-in
+- a Prompt Agent using `harness.type: microsoft_copilot_preview` with every harness-native built-in
   disabled.
 
 The agent must create a managed browser session, inspect the rendered page, and close the session.
@@ -78,7 +78,7 @@ The Copilot harness Prompt Agent connects to this Foundry Toolbox endpoint throu
 
 ```mermaid
 flowchart LR
-  U[User request] --> A[GitHub Copilot harness Prompt Agent]
+  U[User request] --> A[Microsoft Copilot harness Prompt Agent]
     A -->|MCP + Foundry connection| T[Foundry Toolbox MCP endpoint]
     T -->|browser_automation + Playwright connection| P[Playwright workspace MCP endpoint]
     P --> B[Ephemeral remote browser session]
@@ -148,7 +148,7 @@ The Toolbox namespaces the inner BAT operations as `browser___<operation>`. The 
 - The Microsoft Foundry azd extension pack. The sample pins `azure.ai.agents` 1.0.0-beta.21
   and `azure.ai.projects` 1.0.0-beta.14.
 - Azure CLI authenticated to the target tenant
-- A subscription enabled for the `github_copilot_preview` Prompt Agent harness
+- A subscription enabled for the `microsoft_copilot_preview` Prompt Agent harness
 - Permission to create Foundry and Playwright workspace resources and
   `Microsoft.Authorization/roleAssignments/write`
 - At least 1,000 GPT-5.4 Global Standard capacity units in the selected Foundry region. The sample
@@ -183,7 +183,7 @@ replace `canadacentral` in `azd env new`.
 The deployment uses project managed identity. It does not generate, persist, or prompt for a
 Playwright access token.
 
-If Agent creation returns HTTP 403 saying `github_copilot_preview` isn't enabled, select a Foundry
+If Agent creation returns HTTP 403 saying `microsoft_copilot_preview` isn't enabled, select a Foundry
 region where the harness is enabled for that subscription; changing only the Playwright region does
 not grant harness entitlement. If deployment reports
 `Microsoft.Authorization/roleAssignments/write`, use a subscription where you can assign

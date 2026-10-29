@@ -1,6 +1,6 @@
-# GitHub Copilot harness samples for Microsoft Foundry
+# Microsoft Copilot harness samples for Microsoft Foundry
 
-Runnable examples of Prompt Agents that use the GitHub Copilot harness in Microsoft Foundry. Each
+Runnable examples of Prompt Agents that use the Microsoft Copilot harness in Microsoft Foundry. Each
 sample is an independent Azure Developer CLI (`azd`) project with its own infrastructure,
 instructions, client or test flow, and cleanup guidance.
 

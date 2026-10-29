@@ -43,7 +43,7 @@ services:
     description: Analyze an uploaded CSV in a multi-turn conversation and generate downloadable charts.
     model: gpt-5.4-mini
     harness:
-      type: github_copilot_preview
+      type: microsoft_copilot_preview
     instructions: |
       You are a careful data analyst. Use the attached CSV that the harness stages in your workspace.
       Inspect the data with shell and Python before drawing conclusions, explain assumptions, and
@@ -58,7 +58,7 @@ services:
       Do not modify the source CSV. Never invent columns or values. If the data is insufficient or
       malformed, explain the issue and suggest the smallest correction.
     tools:
-      - type: github_copilot_toolset_preview
+      - type: microsoft_copilot_toolset_preview
         defaultConfig:
           enabled: false
         configs:

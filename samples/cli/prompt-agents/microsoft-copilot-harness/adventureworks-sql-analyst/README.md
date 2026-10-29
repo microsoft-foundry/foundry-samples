@@ -1,6 +1,6 @@
 # AdventureWorks SQL Analyst
 
-A GitHub Copilot harness Prompt Agent that explores the AdventureWorksLT sample database through a
+A Microsoft Copilot harness Prompt Agent that explores the AdventureWorksLT sample database through a
 read-only Azure SQL managed connector exposed as a Connector Namespace MCP server.
 
 One `azd up` creates:

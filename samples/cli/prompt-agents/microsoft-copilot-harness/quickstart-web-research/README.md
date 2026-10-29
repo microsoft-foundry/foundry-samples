@@ -1,7 +1,7 @@
 # Quickstart: Web Research
 
 A complete, runnable version of the Microsoft Foundry quickstart for creating a Prompt Agent that
-uses the GitHub Copilot harness, declared Web Search, and a reusable Skill. Use this sample to inspect
+uses the Microsoft Copilot harness, declared Web Search, and a reusable Skill. Use this sample to inspect
 the finished project, follow the scenario without assembling files by hand, or run the same workflow
 as an automated smoke test.
 
@@ -9,7 +9,7 @@ One `azd up` creates:
 
 - a Microsoft Foundry account, project, and `gpt-5.4-mini` model deployment;
 - the immutable `official-source-research` Skill; and
-- the `web-research-agent` Prompt Agent with `harness.type: github_copilot_preview`, declared Web
+- the `web-research-agent` Prompt Agent with `harness.type: microsoft_copilot_preview`, declared Web
   Search, and the Skill attached.
 
 The sample leaves the harness-native tools enabled, matching the quickstart. The declared
@@ -77,7 +77,7 @@ The dependency-free test runner verifies both configuration and behavior:
 python3 scripts/smoke-test.py
 ```
 
-It checks that the deployed Agent is active and persists the GitHub Copilot harness, immutable Skill
+It checks that the deployed Agent is active and persists the Microsoft Copilot harness, immutable Skill
 version, and declared Web Search tool. It then starts a fresh conversation and requires a successful
 current-information answer with labeled version/date/change fields, a Python version, and citations
 to official release and What's New pages. It independently reads Python.org's current release list,

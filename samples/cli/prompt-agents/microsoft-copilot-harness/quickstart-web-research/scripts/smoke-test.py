@@ -90,8 +90,8 @@ def assert_deployed_definition(payload: dict[str, Any]) -> None:
 
     if definition.get("kind") != "prompt":
         raise AssertionError("Deployed Agent kind is not prompt")
-    if definition.get("harness", {}).get("type") != "github_copilot_preview":
-        raise AssertionError("GitHub Copilot harness is not persisted")
+    if definition.get("harness", {}).get("type") != "microsoft_copilot_preview":
+        raise AssertionError("Microsoft Copilot harness is not persisted")
 
     tools = definition.get("tools", [])
     if not any(tool.get("type") == "web_search" for tool in tools):

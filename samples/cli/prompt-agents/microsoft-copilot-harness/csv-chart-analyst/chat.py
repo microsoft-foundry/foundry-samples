@@ -57,7 +57,7 @@ class FoundryClient:
 
     @property
     def feature_headers(self) -> dict[str, str]:
-        return {"Foundry-Features": "GitHubCopilot=V1Preview"}
+        return {"Foundry-Features": "MicrosoftCopilot=V1Preview"}
 
     def request(self, method: str, url: str, **kwargs: Any) -> requests.Response:
         token = self.credential.get_token("https://ai.azure.com/.default").token
@@ -259,7 +259,7 @@ def run_prompt(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Attach a CSV to the GitHub Copilot harness analyst and download generated Foundry Files."
+            "Attach a CSV to the Microsoft Copilot harness analyst and download generated Foundry Files."
         )
     )
     parser.add_argument("csv", type=Path, help="CSV file to analyze")

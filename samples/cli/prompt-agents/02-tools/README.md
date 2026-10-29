@@ -16,13 +16,13 @@ emits a `function_call` item without a text answer; the CLI does not fetch live 
 currency conversion, or submit `function_call_output`. Pass `--new-conversation` when running
 consecutive CLI invocations, or implement the function-result round trip in your client.
 
-## GitHub Copilot harness
+## Microsoft Copilot harness
 
-To use non-strict function tools with the GitHub Copilot harness, add this block to a separately named agent service in [`azure.yaml`](./azure.yaml):
+To use non-strict function tools with the Microsoft Copilot harness, add this block to a separately named agent service in [`azure.yaml`](./azure.yaml):
 
 ```yaml
 harness:
-  type: github_copilot_preview
+  type: microsoft_copilot_preview
 ```
 
 Also set `strict: false` on each function tool (`strict: true` is not supported by the Copilot harness)

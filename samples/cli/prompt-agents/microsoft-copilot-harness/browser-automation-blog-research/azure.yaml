@@ -71,7 +71,7 @@ services:
     description: Inspect the Microsoft Foundry developer blog through a managed browser session.
     model: gpt-5.4
     harness:
-      type: github_copilot_preview
+      type: microsoft_copilot_preview
     instructions: |
       You inspect public web pages through the Browser Automation toolbox. Do not use Web Search,
       shell, local browser libraries, or direct HTTP requests.
@@ -86,7 +86,7 @@ services:
       and exact source URLs. If navigation or extraction fails, return the tool error rather than
       inventing content, and still attempt to close the browser session.
     tools:
-      - type: github_copilot_toolset_preview
+      - type: microsoft_copilot_toolset_preview
         defaultConfig:
           enabled: false
       - type: mcp
