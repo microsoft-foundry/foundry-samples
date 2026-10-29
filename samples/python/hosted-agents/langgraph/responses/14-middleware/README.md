@@ -390,6 +390,25 @@ client decisions and confirm only approve/edit emit a tool receipt. Record
 Inspector's own controls/streaming separately. Headless startup checks do not
 replace F5/Inspector UI acceptance.
 
+## Trigger the custom hook
+
+With the local host running, start Python from `src/langgraph-middleware` using
+`uv run --frozen python` and send 50 messages:
+
+```python
+from openai import OpenAI
+
+with OpenAI(base_url="http://127.0.0.1:8088/", api_key="local") as client:
+    response = client.responses.create(
+        input=[{"role": "user", "content": "Check the message limit."}] * 50,
+    )
+    print(response.model_dump_json(indent=2))
+```
+
+Expect `Conversation limit reached.` without a model or tool call. This starts
+a new request with 50 input messages; it does not send an email or require a
+review decision.
+
 ## Validation
 
 Follow [the review flow](#review-an-email) against the local host, then repeat
