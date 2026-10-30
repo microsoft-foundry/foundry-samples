@@ -18,8 +18,10 @@ instructions, client or test flow, and cleanup guidance.
 
 Common requirements:
 
-- Azure Developer CLI (`azd`) 1.36.0 or later and Azure CLI.
-- The Microsoft Foundry `azd` extension pack.
+- Azure Developer CLI (`azd`) 1.37.0 or later and Azure CLI.
+- The Microsoft Foundry `azd` extension pack, including `azure.ai.agents` 1.0.0-beta.22
+  or later and `azure.ai.projects` 1.0.0-beta.15 or later. Each sample declares any
+  additional extension minimums in its `azure.yaml`; these are minimum versions, not exact pins.
 - An Azure subscription with access to the Copilot harness and quota for the sample's model.
 - Permission to create the resources and role assignments listed by the selected sample.
 
@@ -28,13 +30,21 @@ additional command-line tools, or service availability in a specific region.
 
 ## Run a sample
 
-From the selected sample folder:
+From the selected sample folder, install or update the extensions and enable the harness preview
+in your current Bash shell:
 
 ```bash
+azd extension install microsoft.foundry
+azd extension update microsoft.foundry
+export AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS=true
 azd auth login
 azd env new <environment-name> --location canadacentral
 azd up
 ```
+
+For PowerShell, replace the `export` line with
+`$env:AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS = "true"`.
+Set this variable again in each new shell or CI job; `azd env set` doesn't enable the preview.
 
 The samples default to Canada Central for Microsoft Foundry. Replace `canadacentral` when your
 subscription's harness entitlement, model quota, or data-location requirements use another supported
