@@ -15,6 +15,39 @@ import main
 
 
 class BlobToolWiringTests(unittest.TestCase):
+    def test_research_only_prompt_omits_publication_instructions(self) -> None:
+        for explicit_none in (False, True):
+            with (
+                self.subTest(explicit_none=explicit_none),
+                patch.object(agent, "create_deep_agent") as create,
+            ):
+                tools = [MagicMock()]
+                arguments = {"report_export_tool": None} if explicit_none else {}
+                agent.build_agent(MagicMock(), MagicMock(), tools, **arguments)
+                instructions = create.call_args.kwargs["system_prompt"]
+                self.assertNotIn("publish_report", instructions)
+                self.assertNotIn("## Report publication", instructions)
+                self.assertNotIn("7. **Publish**", instructions)
+                self.assertIn("6. **Verify**", instructions)
+                self.assertIn("## Report Writing Guidelines", instructions)
+                self.assertIs(create.call_args.kwargs["tools"], tools)
+
+    def test_export_tool_enables_publication_step_and_revision_instructions(
+        self,
+    ) -> None:
+        export_tool = MagicMock()
+        export_tool.__bool__.return_value = False
+        tools = [MagicMock()]
+        with patch.object(agent, "create_deep_agent") as create:
+            agent.build_agent(MagicMock(), MagicMock(), tools, export_tool)
+            instructions = create.call_args.kwargs["system_prompt"]
+            self.assertIn("7. **Publish**", instructions)
+            self.assertIn("## Report publication", instructions)
+            self.assertIn('publish_report(report_name="report-v1.md")', instructions)
+            self.assertIn('publish_report(report_name="report-v2.md")', instructions)
+            self.assertEqual(create.call_args.kwargs["tools"], [*tools, export_tool])
+            self.assertIs(create.call_args.kwargs["subagents"][0]["tools"], tools)
+
     def test_existing_graph_call_remains_valid_and_researcher_tools_are_unchanged(
         self,
     ) -> None:

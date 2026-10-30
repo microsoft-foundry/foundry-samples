@@ -10,7 +10,7 @@ Follow this workflow for all research requests:
 4. **Synthesize**: Review all sub-agent findings and consolidate citations (each unique URL gets one number across all findings)
 5. **Write Report**: Write a comprehensive final report to `/report-v1.md` (see Report Writing Guidelines below)
 6. **Verify**: Read `/research_request.md` and confirm you've addressed all aspects with proper citations and structure
-7. **Publish**: Call `publish_report(report_name="report-v1.md")` and give the user the download link and its expiry.
+{report_publication_step}
 
 ## Research Planning Guidelines
 - Batch similar research tasks into a single TODO to minimize overhead
@@ -64,15 +64,19 @@ Simply list items with details - no introduction needed:
  [1] AI Research Paper: https://example.com/paper
  [2] Industry Analysis: https://example.com/analysis
 
-## Report publication
+{report_publication_instructions}
+"""
+
+REPORT_PUBLICATION_STEP = """7. **Publish**: Call `publish_report(report_name="report-v1.md")` and give the user the download link and its expiry."""
+
+REPORT_PUBLICATION_INSTRUCTIONS = """## Report publication
 - Save and verify the report before publishing; publish_report reads the saved virtual file rather than an upload body.
 - After a requested revision, read `/report-v1.md`, copy it to `/report-v2.md`, and edit only the copy. Preserve the original file and its citations.
 - Run these dependent operations in separate tool rounds: wait for `read_file` to return, pass its complete report text as `write_file`'s `content`, wait for the copy to be saved, then call `edit_file`. Never create an empty copy or run the read, copy, and edit in parallel.
 - Read both saved versions to verify the original is unchanged and the copy contains the requested edits. Call `publish_report(report_name="report-v2.md")` and return clearly labeled download links for both versions. Earlier download links still refer to their original snapshots.
 - Return only URLs from successful `publish_report` results for the exact report name. Never construct a version's URL by changing an earlier link or claim a download is ready before publishing succeeds.
 - Keep publication URLs out of the saved report. Return the URL and expiry only in your response.
-- If publication fails, explain that the saved report remains available for editing and no download link was created. Never invent a link.
-"""
+- If publication fails, explain that the saved report remains available for editing and no download link was created. Never invent a link."""
 
 RESEARCHER_INSTRUCTIONS = """You are a research assistant conducting research on the user's input topic. For context, today's date is {date}.
 

@@ -8,8 +8,9 @@ from langchain.agents.middleware import TodoListMiddleware
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.base import BaseCheckpointSaver
-
 from research_agent.prompts import (
+    REPORT_PUBLICATION_INSTRUCTIONS,
+    REPORT_PUBLICATION_STEP,
     RESEARCH_WORKFLOW_INSTRUCTIONS,
     RESEARCHER_INSTRUCTIONS,
     SUBAGENT_DELEGATION_INSTRUCTIONS,
@@ -28,7 +29,16 @@ def build_agent(
     """Build the coordinator and its focused research subagent."""
     current_date = datetime.now().strftime("%Y-%m-%d")  # noqa: DTZ005
     instructions = (
-        RESEARCH_WORKFLOW_INSTRUCTIONS
+        RESEARCH_WORKFLOW_INSTRUCTIONS.format(
+            report_publication_step=(
+                REPORT_PUBLICATION_STEP if report_export_tool is not None else ""
+            ),
+            report_publication_instructions=(
+                REPORT_PUBLICATION_INSTRUCTIONS
+                if report_export_tool is not None
+                else ""
+            ),
+        )
         + "\n\n"
         + "=" * 80
         + "\n\n"
