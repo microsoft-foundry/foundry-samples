@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.32.0'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.13'
+name: voice-live-bridge-langgraph-python
+services:
+  ai-project:
+    host: azure.ai.project
+  voice-live-bridge-langgraph-python:
+    host: azure.ai.agent
+    metadata:
+      tags:
+        - AI Agent Hosting
+        - Voice Live Bridge
+        - WebSocket Protocol
+        - voice_conversation_engine
+        - Bring Your Own
+        - Python
+    project: src/voice-live-bridge-langgraph-python
+    language: python
+    env:
+      PYTHONNOUSERSITE: "1"
+    codeConfiguration:
+      runtime: python_3_13
+      entryPoint: main.py
+    uses:
+      - ai-project
+    kind: hosted
+    name: voice-live-bridge-langgraph-python
+    displayName: Voice Live Bridge — LangGraph Python
+    description: A model-free hosted text agent that streams a thirty-word story over Voice Live Bridge Protocol 1.0.
+    protocols:
+      - protocol: voice_conversation_engine
+        version: 1.0.0
+    container:
+      resources:
+        cpu: '1'
+        memory: 2Gi
+  voice-live-bridge-langgraph-python-voice:
+    host: azure.ai.agent
+    kind: voice
+    name: voice-live-bridge-langgraph-python-voice
+    uses:
+      - ai-project
+      - voice-live-bridge-langgraph-python
+    conversationEngine:
+      type: hosted_agent
+      name: voice-live-bridge-langgraph-python
+    store: false
+    audio:
+      input:
+        format:
+          type: audio/pcm
+          rate: 24000
+        turnDetection:
+          type: server_vad
+          threshold: 0.5
+          prefixPaddingMs: 300
+          silenceDurationMs: 500
+        transcription:
+          model: azure-speech
+      output:
+        format:
+          type: audio/pcm
+          rate: 24000
+        voice:
+          type: azure-standard
+          name: en-US-AvaNeural
+    outputModalities:
+      - audio
+    greeting:
+      type: template
+      text: Hello! How can I help you today?
+infra:
+  provider: microsoft.foundry

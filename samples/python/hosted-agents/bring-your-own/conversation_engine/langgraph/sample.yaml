@@ -1,0 +1,14 @@
+name: Voice Live Bridge LangGraph Python
+description: An explicit StateGraph hosted text agent implementing Voice Live Bridge Protocol 1.0.
+
+build: >-
+  cd src/voice-live-bridge-langgraph-python &&
+  uv sync --frozen --python 3.13
+validate: >-
+  cd src/voice-live-bridge-langgraph-python &&
+  uv run --frozen python -m compileall -q . &&
+  uv run --frozen python -c "import azure.ai.agentserver.invocations.voice" &&
+  uv run --frozen python -m ruff check .
+test: >-
+  cd src/voice-live-bridge-langgraph-python &&
+  uv run --frozen python -m pytest -q
