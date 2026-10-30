@@ -9,3 +9,5 @@ samples/python/hosted-agents/bring-your-own/responses/browser-automation
 
 # Existing code-mode exclusion.
 samples/python/hosted-agents/agent-framework/responses/09-declarative-customer-support
+
+#
