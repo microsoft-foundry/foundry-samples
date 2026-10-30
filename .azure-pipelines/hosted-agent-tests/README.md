@@ -114,12 +114,22 @@ also checks the published fixtures, including orphan detection. See the
 
 ## Supported protocols
 
-The runner supports `responses` and `invocations`. Other protocols require dedicated
-harnesses:
+The runner supports `responses`, `invocations`, and native `a2a`. A2A uses its
+own Card-discovery and JSON-RPC helper, not the Responses or Invocations client.
+Its turn input is a mapping with `message` and exact `expected_text` strings.
+Optional booleans are `return_immediately`, `cancel`, and `list_tasks`.
+Cancellation requires `return_immediately: true`. The helper checks Task
+identity, terminal state, exact artifact text and, when requested, listing.
+Polling is bounded; protocol errors fail without resubmitting the business work.
+Raw evidence contains the verified scenario result, while per-attempt A2A
+evidence records the actual JSON-RPC exchanges without authorization headers.
+
+The local native-sample suite additionally reconstructs real processes to test
+persistence. The cloud scenario does not forcibly restart a hosted container.
+Other protocols require dedicated harnesses:
 
 - `invocations_ws` uses sample-defined, full-duplex WebSocket frames.
 - `activity` requires Bot/Teams setup and sends replies asynchronously.
-- A2A requires agent-card discovery and JSON-RPC/task handling.
 - Voice Live uses a separate real-time audio service.
 
 They remain unsupported until CI has transport-specific clients and evidence
@@ -138,7 +148,7 @@ python3 .github/scripts/hosted_agent_test_spec.py validate \
 
 python3 .github/scripts/hosted_agent_test_spec.py plan \
   --spec .azure-pipelines/hosted-agent-tests/<language>/<complete-sample-path>/test-spec.yml \
-  --protocol <responses|invocations> \
+  --protocol <responses|invocations|a2a> \
   --output /tmp/hosted-agent-test-plan.json
 ```
 

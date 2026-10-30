@@ -1,0 +1,17 @@
+version: 1
+sample:
+  owner: hkunkanoor
+  experiences: [azd]
+tests:
+  - name: echo-and-retrieve
+    turns:
+      - input:
+          message: hello
+          expected_text: 'Echo: hello'
+        assertions:
+          - source: raw
+            type: contains
+            value: 'Echo: hello'
+          - source: raw
+            type: contains
+            value: TASK_STATE_COMPLETED

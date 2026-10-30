@@ -43,7 +43,10 @@ class PublishedFixtureTests(unittest.TestCase):
                     if service.get("host") == "azure.ai.agent"
                     for entry in service.get("protocols", [])
                 }
-                protocol = "invocations" if "invocations" in protocols else "responses"
+                protocol = (
+                    "invocations" if "invocations" in protocols
+                    else "a2a" if "a2a" in protocols else "responses"
+                )
                 profile = "managed" if any(
                     service.get("host") == "azure.ai.agent" and service.get("harness")
                     for service in document["services"].values()

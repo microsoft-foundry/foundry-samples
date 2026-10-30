@@ -1,0 +1,26 @@
+version: 1
+sample:
+  owner: hkunkanoor
+  experiences: [azd]
+tests:
+  - name: prepare-report
+    turns:
+      - input:
+          message: quarterly results
+          expected_text: 'Report: quarterly results'
+          return_immediately: true
+        assertions:
+          - source: raw
+            type: contains
+            value: 'Report: quarterly results'
+  - name: cancel-report
+    turns:
+      - input:
+          message: canceled report
+          expected_text: ''
+          return_immediately: true
+          cancel: true
+        assertions:
+          - source: raw
+            type: contains
+            value: TASK_STATE_CANCELED

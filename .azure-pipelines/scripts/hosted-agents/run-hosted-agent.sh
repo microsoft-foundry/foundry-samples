@@ -1296,6 +1296,7 @@ fi
 echo "Invoking deployed agent version: $DEPLOYED_AGENT_VERSION"
 
 AGENT_RESPONSES_URL=""
+AGENT_A2A_URL=""
 AAD_TOKEN=""
 if [ "$PROTOCOL" = "responses" ]; then
   AGENT_RESPONSES_URL=$(jq -r '.agent_endpoints.responses // empty' <<< "$AGENT_JSON")
@@ -1305,6 +1306,14 @@ if [ "$PROTOCOL" = "responses" ]; then
   fi
   AAD_TOKEN=$(az account get-access-token --resource https://ai.azure.com --query accessToken -o tsv)
   echo "Agent responses endpoint: $AGENT_RESPONSES_URL"
+elif [ "$PROTOCOL" = "a2a" ]; then
+  AGENT_A2A_URL=$(jq -r '.agent_endpoints.a2a // empty' <<< "$AGENT_JSON")
+  if [ -z "$AGENT_A2A_URL" ]; then
+    echo "##vso[task.logissue type=error]Could not resolve agent A2A endpoint from 'azd ai agent show'"
+    exit 1
+  fi
+  AAD_TOKEN=$(az account get-access-token --resource https://ai.azure.com --query accessToken -o tsv)
+  echo "Agent A2A endpoint: $AGENT_A2A_URL"
 fi
 
 # Invoke each resolved turn in order. The final retry attempt is
@@ -1378,6 +1387,25 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
         approval_events=$(jq -c '.approval_events' "$result_file")
         approval_pending_count=$(jq -r '.approval_pending_count' "$result_file")
         approval_auto=$(jq -r '.approval_auto' "$result_file")
+      fi
+    elif [ "$PROTOCOL" = "a2a" ]; then
+      result_file="/tmp/invoke-result-${turn}.json"
+      rm -f "$result_file"
+      AGENT_A2A_URL="$AGENT_A2A_URL" \
+      AAD_TOKEN="$AAD_TOKEN" \
+      DEPLOYED_AGENT_VERSION="$DEPLOYED_AGENT_VERSION" \
+      CI_AGENT_SESSION_ID="$CI_AGENT_SESSION_ID" \
+        python3 "$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/invoke_hosted_agent_a2a.py" \
+          "$turn" "$TURN_FILE" "$TURN_RECORD_FILE" "$EVIDENCE_DIR" "$request_attempt"
+      turn_exit=1
+      if [ -s "$result_file" ] && jq -e 'type == "object"' "$result_file" >/dev/null; then
+        turn_exit=$(jq -r '.turn_exit' "$result_file")
+        http_code=$(jq -r '.http_code' "$result_file")
+      fi
+      if [ "$turn_exit" -ne 0 ]; then
+        approval_terminal_error=true
+        approval_error="Native A2A scenario failed; inspect the captured JSON-RPC evidence"
+        echo "##vso[task.logissue type=error]$approval_error"
       fi
     else
       # The explicit create step already bound this session to

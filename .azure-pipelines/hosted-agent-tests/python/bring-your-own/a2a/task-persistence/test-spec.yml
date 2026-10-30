@@ -1,0 +1,18 @@
+version: 1
+sample:
+  owner: hkunkanoor
+  experiences: [azd]
+tests:
+  - name: persist-retrieve-and-list
+    turns:
+      - input:
+          message: remember this result
+          expected_text: 'Persisted: remember this result'
+          list_tasks: true
+        assertions:
+          - source: raw
+            type: contains
+            value: 'Persisted: remember this result'
+          - source: raw
+            type: contains
+            value: TASK_STATE_COMPLETED
