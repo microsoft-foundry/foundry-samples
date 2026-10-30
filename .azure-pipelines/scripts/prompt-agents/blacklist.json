@@ -1,5 +1,11 @@
 {
   "samples/cli/prompt-agents/02-tools": "The azd text-only E2E runner cannot assert emitted function-call names and arguments.",
+  "samples/cli/prompt-agents/04-foundry-toolbox": "Requires azure.ai.agents plural toolboxes connection support (Azure/azure-dev#10631).",
   "samples/cli/prompt-agents/05-skills": "The E2E runner does not manage skill resource ownership and cleanup.",
-  "samples/cli/prompt-agents/06-azure-search-rag": "Requires a seeded CI Search index, runtime RBAC, and connection lifecycle support."
+  "samples/cli/prompt-agents/06-azure-search-rag": "Requires a seeded CI Search index, runtime RBAC, and connection lifecycle support.",
+  "samples/cli/prompt-agents/microsoft-copilot-harness/adventureworks-sql-analyst": "Requires Azure SQL Server, connector namespace infrastructure, skills, and postprovision hooks.",
+  "samples/cli/prompt-agents/microsoft-copilot-harness/browser-automation-blog-research": "Requires Playwright workspace Bicep infrastructure and project connections.",
+  "samples/cli/prompt-agents/microsoft-copilot-harness/csv-chart-analyst": "Requires postdeploy RBAC hooks and the custom file-upload Python client.",
+  "samples/cli/prompt-agents/microsoft-copilot-harness/quickstart-web-research": "Requires skill resource lifecycle management and custom smoke-test orchestration.",
+  "samples/cli/prompt-agents/microsoft-copilot-harness/web-research-email-digest": "Requires Work IQ M365 connections, user consent, and routine lifecycle support."
 }

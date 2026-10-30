@@ -1,6 +1,8 @@
 # Prompt Agent with Skills
 
-A prompt agent backed by a reusable, file-based **skill**. [`azure.yaml`](./azure.yaml) declares the `azure.ai.skill` sibling and the agent dependency; the bundle lives under [`skills/`](./skills/).
+A Microsoft Copilot harness prompt agent backed by a reusable, file-based **skill**. [`azure.yaml`](./azure.yaml) declares the `azure.ai.skill` sibling and the agent dependency; the bundle lives under [`skills/`](./skills/).
+
+Requires azd 1.36.0 or later. The manifest pins Agents beta.21, Projects beta.14, and Skills beta.8.
 
 ## Deploy
 

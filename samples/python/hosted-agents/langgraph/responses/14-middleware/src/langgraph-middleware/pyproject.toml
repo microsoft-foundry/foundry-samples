@@ -1,0 +1,19 @@
+[project]
+name = "langgraph-middleware"
+version = "0.1.0"
+description = "Native LangChain middleware hosted on Microsoft Foundry."
+requires-python = ">=3.13"
+dependencies = [
+    "langchain-azure-ai[hosting,opentelemetry]==1.2.12",
+    "langchain==1.4.6",
+    "langgraph==1.2.16",
+    "langchain-openai==1.7.2",
+    "azure-ai-projects>=2.3.0,<3.0",
+    "azure-identity>=1.25.1,<2",
+    "openai>=2,<3",
+    "python-dotenv==1.2.3",
+    "opentelemetry-exporter-otlp-proto-http>=1.37,<2",
+]
+
+[dependency-groups]
+dev = ["debugpy>=1.8.15,<2"]

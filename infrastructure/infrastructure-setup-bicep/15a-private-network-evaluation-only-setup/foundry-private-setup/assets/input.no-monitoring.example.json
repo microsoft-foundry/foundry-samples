@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0",
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "location": "koreacentral",
+  "workload": { "intent": "non-trace", "routeGoal": "configuration-only", "projectHost": "not-requested" },
+  "resourceGroup": { "mode": "create", "name": "rg-evaluation-example" },
+  "foundryAccount": { "mode": "create", "name": "evaluation-example", "publicNetworkAccess": "Disabled" },
+  "foundryProject": { "mode": "create", "name": "qualification" },
+  "storageAccount": { "mode": "create", "name": "evaluationexample", "publicNetworkAccess": "Disabled" },
+  "network": {
+    "mode": "create",
+    "vnetName": "vnet-evaluation",
+    "addressPrefix": "10.241.0.0/16",
+    "agentSubnetName": "agent",
+    "agentSubnetPrefix": "10.241.0.0/24",
+    "privateEndpointSubnetName": "pe",
+    "privateEndpointSubnetPrefix": "10.241.1.0/24"
+  },
+  "applicationInsights": { "mode": "none" }
+}

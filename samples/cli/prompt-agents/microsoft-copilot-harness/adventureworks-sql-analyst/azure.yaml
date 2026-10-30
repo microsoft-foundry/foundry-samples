@@ -1,0 +1,114 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.36.0'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.21'
+    azure.ai.projects: '>=1.0.0-beta.14'
+    azure.ai.connections: '>=1.0.0-beta.8'
+
+name: adventureworks-sql-analyst
+
+hooks:
+  postprovision:
+    posix:
+      shell: sh
+      run: ./scripts/post-provision.sh
+      interactive: true
+      continueOnError: false
+    windows:
+      shell: pwsh
+      run: ./scripts/post-provision.ps1
+      interactive: true
+      continueOnError: false
+
+services:
+  ai-project:
+    host: azure.ai.project
+    deployments:
+      - name: gpt-5.4-mini
+        model:
+          format: OpenAI
+          name: gpt-5.4-mini
+          version: '2026-03-17'
+        sku:
+          name: GlobalStandard
+          capacity: 50
+
+  sql-mcp-connection:
+    host: azure.ai.connection
+    name: AdventureWorksSqlMcp
+    category: RemoteTool
+    target: ${SQL_MCP_SERVER_URL}
+    authType: ProjectManagedIdentity
+    audience: https://apihub.azure.com
+    env:
+      SQL_MCP_SERVER_URL: ${SQL_MCP_SERVER_URL}
+    uses:
+      - ai-project
+
+  adventureworks-analysis:
+    host: azure.ai.skill
+    archive: ./skills/adventureworks-analysis
+    uses:
+      - ai-project
+
+  adventureworks-sql-analyst:
+    host: azure.ai.agent
+    project: .
+    kind: prompt
+    name: adventureworks-sql-analyst
+    displayName: AdventureWorks SQL Analyst
+    description: Explore and analyze the AdventureWorksLT sample database through read-only Azure SQL connector tools.
+    model: gpt-5.4-mini
+    harness:
+      type: microsoft_copilot_preview
+    skills:
+      - adventureworks-analysis
+    instructions: |
+      You are a careful data analyst for the AdventureWorksLT Azure SQL sample database.
+
+      Use the Azure SQL MCP tools for every database question. Start by listing tables when you do
+      not know the schema. Prefer structured row-reading tools for simple lookups and use the native
+      query tool only for joins, aggregates, or questions that need SQL. Generate only bounded,
+      read-only SELECT statements. Never attempt INSERT, UPDATE, DELETE, MERGE, DDL, stored procedure
+      execution, or permission changes.
+
+      Qualify tables with their schema exactly as returned by the tools. Limit detailed result sets
+      to 25 rows unless the user explicitly asks for more. For totals or trends, aggregate in SQL
+      instead of retrieving every row. State which tables you used and distinguish database facts
+      from your interpretation. If a tool fails, report the tool error rather than inventing data.
+    tools:
+      - type: microsoft_copilot_toolset_preview
+        defaultConfig:
+          enabled: false
+        configs:
+          - name: filesystem_read
+            enabled: true
+      - type: mcp
+        server_label: AdventureWorksSql
+        server_url: ${SQL_MCP_SERVER_URL}
+        project_connection_id: AdventureWorksSqlMcp
+        allowed_tools:
+          - sql_GetTables_V2
+          - sql_GetItems_V2
+          - sql_GetItem_V2
+          - sql_ExecutePassThroughNativeQuery_V2
+        require_approval: never
+    env:
+      SQL_MCP_SERVER_URL: ${SQL_MCP_SERVER_URL}
+    uses:
+      - ai-project
+      - sql-mcp-connection
+      - adventureworks-analysis
+
+infra:
+  layers:
+    - provider: microsoft.foundry
+      path: infra/foundry
+      name: foundry
+    - provider: bicep
+      path: infra/sql-connector
+      name: sql-connector
+      dependsOn:
+        - foundry

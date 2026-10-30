@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.36.0'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.21'
+    azure.ai.projects: '>=1.0.0-beta.14'
+
+name: quickstart-web-research
+
+services:
+  ai-project:
+    host: azure.ai.project
+    deployments:
+      - name: gpt-5.4-mini
+        model:
+          format: OpenAI
+          name: gpt-5.4-mini
+          version: '2026-03-17'
+        sku:
+          name: GlobalStandard
+          capacity: 100
+
+  official-source-research:
+    host: azure.ai.skill
+    archive: ./skills/official-source-research
+    uses:
+      - ai-project
+
+  web-research-agent:
+    host: azure.ai.agent
+    project: .
+    kind: prompt
+    name: web-research-agent
+    displayName: Web Research Agent
+    description: Research current public information using authoritative sources.
+    model: gpt-5.4-mini
+    harness:
+      type: microsoft_copilot_preview
+    skills:
+      - official-source-research
+    instructions: >-
+      Use the attached official-source research skill for current-information requests.
+      Use web search and cite the sources you consulted.
+    tools:
+      - type: web_search
+    uses:
+      - ai-project
+      - official-source-research
+
+infra:
+  provider: microsoft.foundry
+  path: infra
