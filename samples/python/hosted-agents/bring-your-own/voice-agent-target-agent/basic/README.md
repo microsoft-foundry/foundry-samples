@@ -14,7 +14,7 @@ Microsoft has no responsibility to you or others with respect to any of these sa
 
 This sample gives a hosted text agent a managed voice experience without adding audio code to the
 agent. It implements Voice Live Bridge Protocol `1.0` with typed callbacks from
-`azure-ai-agentserver-invocations==1.1.0` and streams text from a Microsoft Foundry model through
+`azure-ai-agentserver-invocations==1.3.0b1` and streams text from a Microsoft Foundry model through
 the Responses API.
 
 Voice Live owns audio input, speech recognition, turn detection, synthesis, playback interruption,
