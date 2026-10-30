@@ -188,6 +188,53 @@ def test_streams_exact_echo() -> None:
         assert second[0]["response_id"] != first[0]["response_id"]
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("👋" * 8_000, id="emoji-at-input-limit"),
+        pytest.param("👋" * 3_000 + " " + "👋" * 3_000, id="emoji-completion-frame"),
+        pytest.param("界" * 8_000, id="cjk-at-input-limit"),
+    ],
+)
+def test_unicode_within_input_limit_streams_exact_echo(text: str) -> None:
+    app = create_app(configure_observability=None)
+    with TestClient(app) as client, client.websocket_connect("/voice_conversation_engine") as ws:
+        assert start(ws)["type"] == "session.ready"
+        send_user(ws, "in_unicode", text)
+        expected = [
+            "response.created",
+            *(["response.output_text.delta"] * len(re.findall(r"\s*\S+|\s+$", text))),
+            "response.output_text.done",
+            "response.done",
+        ]
+        received = []
+        for kind in expected:
+            message = ws.receive_json()
+            assert message["type"] == kind
+            received.append(message)
+        assert_echo_response(received, text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("👋" * 8_001, id="emoji-over-input-limit"),
+        pytest.param("界" * 8_001, id="cjk-over-input-limit"),
+    ],
+)
+def test_oversized_unicode_is_declined_without_closing_the_connection(text: str) -> None:
+    app = create_app(configure_observability=None)
+    with TestClient(app) as client, client.websocket_connect("/voice_conversation_engine") as ws:
+        assert start(ws)["type"] == "session.ready"
+        send_user(ws, "in_oversized", text)
+        declined = ws.receive_json()
+        assert declined["type"] == "response.none"
+        assert declined["reason"] == "input_too_large"
+        assert declined["in_reply_to"] == ["in_oversized"]
+        send_user(ws, "in_after_decline", "still connected")
+        assert_echo_response(receive_until(ws, "response.done"), "still connected")
+
+
 def test_entry_point_runs_echo_without_model_configuration(monkeypatch: Any) -> None:
     monkeypatch.delenv("FOUNDRY_PROJECT_ENDPOINT", raising=False)
     app = create_entry_app(configure_observability=None)

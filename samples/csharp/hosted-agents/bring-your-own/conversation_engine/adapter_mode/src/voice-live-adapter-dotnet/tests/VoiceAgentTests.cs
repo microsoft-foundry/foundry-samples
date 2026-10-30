@@ -522,6 +522,34 @@ public class VoiceAgentTests
         });
     }
 
+    [TestCase("界", 8_000)]
+    [TestCase("👋", 4_000)]
+    public async Task UserMessage_StreamsUnicodeAtUtf16Budget(string symbol, int count)
+    {
+        var text = string.Concat(Enumerable.Repeat(symbol, count));
+        Assert.That(text.Length, Is.EqualTo(8_000));
+        await UserMessage_StreamsExactEcho(text);
+    }
+
+    [TestCase(4_001)]
+    [TestCase(6_000)]
+    public async Task UserMessage_DeclinesUnicodeBeyondUtf16Budget(int emojiCount)
+    {
+        var agent = CreateAgent();
+        var session = new CapturingVoiceSession();
+        var text = string.Concat(Enumerable.Repeat("👋", emojiCount));
+        Assert.That(text.Length, Is.GreaterThan(8_000));
+
+        await agent.UserMessageAsync(session, UserMessage(text));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(session.Messages.OfType<VoiceResponseNoneMessage>().Single().Reason,
+                Is.EqualTo("input_too_large"));
+            Assert.That(session.Messages.OfType<VoiceResponseCreatedMessage>(), Is.Empty);
+        });
+    }
+
     [Test]
     public async Task MultipartInput_EchoesAllParts()
     {

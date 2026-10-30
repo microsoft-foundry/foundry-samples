@@ -24,6 +24,24 @@ public class InvocationAdapterTests
         Assert.That(await Collect(adapter, text).WaitAsync(Timeout), Is.EqualTo(text));
     }
 
+    [TestCase("cjk")]
+    [TestCase("emoji")]
+    [TestCase("split-emoji")]
+    public async Task UnicodeAtUtf16Budget_EchoesThroughBoundedSse(string scenario)
+    {
+        // .NET's 8,000-character budget counts UTF-16 code units, not Unicode scalars.
+        var text = scenario switch
+        {
+            "cjk" => new string('界', 8_000),
+            "emoji" => string.Concat(Enumerable.Repeat("👋", 4_000)),
+            _ => string.Concat(Enumerable.Repeat("👋", 1_999)) + " " +
+                string.Concat(Enumerable.Repeat("👋", 2_000)) + " ",
+        };
+        Assert.That(text.Length, Is.EqualTo(8_000));
+        var adapter = new InvocationAdapter(new EchoHttpAgent());
+        Assert.That(await Collect(adapter, text).WaitAsync(Timeout), Is.EqualTo(text));
+    }
+
     [Test]
     public async Task FirstChunk_IsAvailableBeforeTheHandlerFinishes()
     {

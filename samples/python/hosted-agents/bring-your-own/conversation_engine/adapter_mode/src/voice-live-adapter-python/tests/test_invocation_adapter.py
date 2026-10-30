@@ -23,7 +23,19 @@ def event(kind: str, **fields: Any) -> str:
     return "data: " + json.dumps({"type": kind, **fields}, ensure_ascii=False) + "\n\n"
 
 
-@pytest.mark.parametrize("text", ["Hello world", "  你好 👋\n", "/end", " \t "])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Hello world",
+        "  你好 👋\n",
+        "/end",
+        " \t ",
+        pytest.param("👋" * 6_000, id="emoji-reported-reproduction"),
+        pytest.param("👋" * 8_000, id="emoji-at-input-limit"),
+        pytest.param("👋" * 3_000 + " " + "👋" * 3_000, id="emoji-completion-frame"),
+        pytest.param("界" * 8_000, id="cjk-at-input-limit"),
+    ],
+)
 async def test_plain_http_handler_and_adapter_echo_without_a_server(text: str) -> None:
     response = await handle_invocation(invocation_request(text, "in_echo"))
     assert response.media_type == "text/event-stream"
@@ -31,6 +43,9 @@ async def test_plain_http_handler_and_adapter_echo_without_a_server(text: str) -
     raw = "".join([chunk async for chunk in response.body_iterator])
     assert '"type": "token"' in raw
     assert '"type": "done"' in raw
+    assert all(
+        len(frame) <= invocation.MAX_FRAME_CHARACTERS for frame in raw.split("\n\n") if frame
+    )
     assert (
         "".join(
             [chunk async for chunk in InvocationAdapter(handle_invocation).stream(text, "in_echo")]
