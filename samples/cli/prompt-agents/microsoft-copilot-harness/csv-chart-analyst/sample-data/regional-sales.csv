@@ -1,0 +1,25 @@
+month,region,product,revenue,cost,units
+2026-01,North,Trail Helmet,18400,10120,230
+2026-01,South,Trail Helmet,15200,8360,190
+2026-01,East,Commuter Bike,46800,32760,36
+2026-01,West,Commuter Bike,53300,37310,41
+2026-02,North,Trail Helmet,20160,11088,252
+2026-02,South,Trail Helmet,16960,9328,212
+2026-02,East,Commuter Bike,49400,34580,38
+2026-02,West,Commuter Bike,57200,40040,44
+2026-03,North,Trail Helmet,21600,11880,270
+2026-03,South,Trail Helmet,18000,9900,225
+2026-03,East,Commuter Bike,52000,36400,40
+2026-03,West,Commuter Bike,61100,42770,47
+2026-04,North,Trail Helmet,23200,12760,290
+2026-04,South,Trail Helmet,19200,10560,240
+2026-04,East,Commuter Bike,55900,39130,43
+2026-04,West,Commuter Bike,65000,45500,50
+2026-05,North,Trail Helmet,24800,13640,310
+2026-05,South,Trail Helmet,20800,11440,260
+2026-05,East,Commuter Bike,59800,41860,46
+2026-05,West,Commuter Bike,68900,48230,53
+2026-06,North,Trail Helmet,26400,14520,330
+2026-06,South,Trail Helmet,22400,12320,280
+2026-06,East,Commuter Bike,63700,44590,49
+2026-06,West,Commuter Bike,72800,50960,56

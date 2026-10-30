@@ -15,6 +15,12 @@ param modelCapacity int = 30
 param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
 var uniqueSuffix = substring(uniqueString('${resourceGroup().id}-${deploymentTimestamp}'), 0, 4)
 var account_name = toLower('${ai_services}${uniqueSuffix}')
+
+@sys.description('Deploy a Log Analytics workspace + Application Insights, connect them to the Foundry account, and grant the project managed identity read access so agent traces can be viewed and evaluated. Adds resources/cost. Default true.')
+param deployApplicationInsights bool = true
+
+var appInsightsName = toLower('${uniqueSuffix}appinsights')
+var logAnalyticsName = toLower('${uniqueSuffix}loganalytics')
 /*
   Step 1: Create a Cognitive Services Account and deployment an agent compatible model
   
@@ -62,6 +68,31 @@ module bingConnection 'modules/add-bing-search-tool.bicep' = {
     // dependent resources
     account_name: aiAccount.outputs.account_name
   }
+}
+
+// Application Insights + Foundry connection (agent tracing), gated by deployApplicationInsights
+module applicationInsights 'modules/application-insights.bicep' = if (deployApplicationInsights) {
+  name: 'app-insights-${uniqueSuffix}-deployment'
+  params: {
+    location: location
+    aiAccountName: aiAccount.outputs.account_name
+    logAnalyticsName: logAnalyticsName
+    appInsightsName: appInsightsName
+  }
+  dependsOn: [
+    aiProject
+  ]
+}
+
+module applicationInsightsRoleAssignment 'modules/application-insights-role-assignment.bicep' = if (deployApplicationInsights) {
+  name: 'app-insights-ra-${uniqueSuffix}-deployment'
+  params: {
+    appInsightsName: appInsightsName
+    projectPrincipalId: aiProject.outputs.projectPrincipalId
+  }
+  dependsOn: [
+    applicationInsights
+  ]
 }
 
 output ENDPOINT string = aiAccount.outputs.aiServicesTarget
