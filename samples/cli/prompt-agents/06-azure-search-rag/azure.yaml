@@ -1,5 +1,12 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 
+requiredVersions:
+  azd: '>=1.36.0'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.21'
+    azure.ai.projects: '>=1.0.0-beta.14'
+    azure.ai.connections: '>=1.0.0-beta.10'
+
 name: prompt-agent-azure-ai-search
 services:
   ai-project:
@@ -12,7 +19,7 @@ services:
           version: '2026-03-17'
         sku:
           name: GlobalStandard
-          capacity: 10
+          capacity: 30
   aisearch-conn:
     host: azure.ai.connection
     uses:
@@ -43,5 +50,6 @@ services:
           indexes:
             - index_name: ${AZURE_SEARCH_INDEX_NAME}
               project_connection_id: aisearch-conn
+              query_type: simple
 infra:
   provider: microsoft.foundry

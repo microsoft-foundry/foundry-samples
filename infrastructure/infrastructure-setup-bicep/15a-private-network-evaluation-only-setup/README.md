@@ -16,6 +16,9 @@ languages:
 > **NEW**
 > For support on deploying the right network isolation template, check out the [GitHub Copilot for Azure skill for private networking](https://github.com/microsoft/GitHub-Copilot-for-Azure/blob/main/plugin/skills/microsoft-foundry/resource/private-network/private-network.md) set-up!
 
+> **TIP**
+> To create this environment or bring your own account/project, network, storage, DNS or monitoring resources with a plan-and-approve setup, use the [Foundry private setup skill](foundry-private-setup/README.md).
+
 > **IMPORTANT**
 > 
 > This template is a simplified version of the [standard agent setup](../15-private-network-standard-agent-setup/) designed for **evaluation and data-generation scenarios**. It does **not** deploy Cosmos DB or AI Search. It deploys workspace-based Application Insights (with private ingestion) for evaluation/agent tracing and an optional project capability host (Agents kind, no BYO connections) for data-generation. If you need full agent capabilities (thread storage in Cosmos DB, vector search in AI Search, stateful agents), use the standard agent setup instead.
@@ -372,6 +375,8 @@ modules-network-secured/
 2. Check DNS resolution
 3. Validate role assignments
 4. Review network security groups
+
+To check all of these in one pass, run the read-only [Foundry private network diagnostic](foundry-private-diagnostic/README.md). It checks the project's network setup end to end, tells you what's wrong and who can fix it, and saves an evidence file you can send to support.
 
 ## References
 
