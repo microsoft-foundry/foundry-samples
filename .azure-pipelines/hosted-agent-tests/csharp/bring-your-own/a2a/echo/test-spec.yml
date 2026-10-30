@@ -1,0 +1,14 @@
+version: 1
+sample:
+  owner: hkunkanoor
+  experiences: [azd]
+# The shared runner cannot plan A2A yet. The sample's .NET client is the
+# executable A2A/SSE contract; do not plan this as Responses or Invocations.
+tests:
+  - name: deterministic-echo
+    turns:
+      - input: hello
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: "Echo: hello"

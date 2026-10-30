@@ -174,6 +174,12 @@ Already built an agent with your own .NET code? The protocol SDKs (`Azure.AI.Age
 | **[Notetaking Agent](bring-your-own/invocations/notetaking-agent/)** | Note-taking agent with the Invocations protocol. |
 | **[Human-in-the-Loop](bring-your-own/invocations/human-in-the-loop/)** | Long-running agent that pauses for human approval before continuing. |
 
+### Native A2A protocol
+
+| Sample | What it shows |
+|--------|--------------|
+| **[Echo and explicit streaming](bring-your-own/a2a/echo/)** | Deterministic native A2A Tasks/artifacts and measured incremental SSE. Development sample built directly against the unpublished .NET Agent Server A2A source; no SDK package publication or LLM is required. |
+
 **Which approach?** Use the protocol SDKs (`Azure.AI.AgentServer.Responses` / `Azure.AI.AgentServer.Invocations`) — they work with any framework and keep you aligned with the platform contract. The **Core adapter** (`Azure.AI.AgentServer.Core`) is available when you need lower-level control without protocol abstractions. The Custom HTTP sample exists as a reference for what the contract looks like under the hood with no SDK at all.
 
 **What's different from Agent Framework samples:** BYO samples handle their own session state and tool wiring. The protocol SDKs give you the HTTP plumbing, but the tradeoff vs. full Agent Framework is that you manage orchestration, tools, and memory in your own code. The Dockerfile, azure.yaml, and `azd up` deployment are the same.

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AgentServerSdkRoot Condition="'$(AgentServerSdkRoot)' == ''">$(AGENTSERVER_DOTNET_SDK_ROOT)</AgentServerSdkRoot>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(AgentServerSdkRoot)' != ''">
+    <ProjectReference Include="$(AgentServerSdkRoot)\sdk\agentserver\Azure.AI.AgentServer.A2A\src\Azure.AI.AgentServer.A2A.csproj" />
+  </ItemGroup>
+  <Target Name="ValidateAgentServerSource" BeforeTargets="CollectPackageReferences;PrepareForBuild">
+    <Error Condition="!Exists('$(AgentServerSdkRoot)\sdk\agentserver\Azure.AI.AgentServer.A2A\src\Azure.AI.AgentServer.A2A.csproj')"
+           Text="This development sample uses the unpublished SDK source. Set AGENTSERVER_DOTNET_SDK_ROOT or -p:AgentServerSdkRoot to the azure-sdk-for-net checkout containing Azure.AI.AgentServer.A2A." />
+  </Target>
+</Project>
