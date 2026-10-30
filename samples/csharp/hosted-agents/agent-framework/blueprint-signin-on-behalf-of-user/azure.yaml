@@ -1,0 +1,33 @@
+name: hosted-blueprint-signin-on-behalf-of-user
+infra:
+  provider: bicep
+  path: infra
+services:
+  ai-project:
+    host: azure.ai.project
+  mcp:
+    project: mcp-server
+    language: dotnet
+    host: function
+  hosted-greeting:
+    host: azure.ai.agent
+    kind: hosted
+    name: hosted-blueprint-greeting
+    project: src
+    language: csharp
+    uses:
+      - ai-project
+    codeConfiguration:
+      runtime: dotnet_10
+      entryPoint: HostedGreetingAgent.dll
+      dependencyResolution: remote_build
+    protocols:
+      - protocol: responses
+        version: 2.0.0
+    env:
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+      TOOLBOX_NAME: ${TOOLBOX_NAME}
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1Gi

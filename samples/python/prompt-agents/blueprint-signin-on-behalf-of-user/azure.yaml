@@ -1,0 +1,19 @@
+name: python-blueprint-signin-on-behalf-of-user
+infra:
+  provider: bicep
+  path: infra
+services:
+  mcp:
+    project: mcp-server
+    language: python
+    host: function
+hooks:
+  postprovision:
+    windows:
+      shell: pwsh
+      run: ./scripts/Deploy-Agent.ps1
+      continueOnError: false
+    posix:
+      shell: pwsh
+      run: ./scripts/Deploy-Agent.ps1
+      continueOnError: false
