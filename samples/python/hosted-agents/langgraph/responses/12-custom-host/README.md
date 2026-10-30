@@ -1,3 +1,7 @@
+---
+ai-usage: ai-assisted
+---
+
 # What this sample demonstrates
 
 A location-aware LangGraph chat agent hosted over the **Responses protocol**. It demonstrates when and how to use custom ResponsesHostServer implementations for custom input and graph states.
@@ -148,3 +152,35 @@ curl -X POST http://127.0.0.1:8088/responses \
 
 Pass the returned response ID as `previous_response_id` on later requests to
 continue the conversation without sending the location again.
+
+## Run a minimal Responses host
+
+`src/langgraph-custom-host-responses/minimal-responses.py` shows the adapter without
+the location extension or custom tools. It reuses this sample's committed
+`pyproject.toml` and `uv.lock`; no additional SDK installation or upgrade is needed.
+The existing `main.py` remains the default deployment entry point.
+
+From `src/langgraph-custom-host-responses`, set your existing project endpoint and
+model deployment, then run the minimal host:
+
+```bash
+export FOUNDRY_PROJECT_ENDPOINT="https://<resource>.services.ai.azure.com/api/projects/<project>"
+export FOUNDRY_MODEL_NAME="<model-deployment-name>"
+az login
+uv sync --frozen
+uv run --frozen python minimal-responses.py
+```
+
+The host listens on `127.0.0.1:8088` by default. Stop any other host using that port
+before starting it. Set `PORT` to use another port.
+
+Send a standard Responses request from another terminal:
+
+```bash
+curl -X POST http://127.0.0.1:8088/responses \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Reply with LANGCHAIN_HOST_READY."}'
+```
+
+Model requests use your signed-in identity and can incur charges. Stop the local
+host with **Ctrl+C**. Running this entry point doesn't create a deployed agent.

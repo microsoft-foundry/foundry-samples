@@ -1,0 +1,4 @@
+name: AIProjectClient getting started agents (classic-preview)
+description: Isolated classic-preview SDK examples for getting started agents.
+build: "python -m pip install -r requirements.txt"
+validate: "python -m unittest discover -p 'test_*.py'"

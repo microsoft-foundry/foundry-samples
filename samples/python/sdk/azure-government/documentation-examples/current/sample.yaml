@@ -1,0 +1,4 @@
+name: AIProjectClient azure government (current)
+description: Isolated current SDK examples for azure government.
+build: "python -m pip install -r requirements.txt"
+validate: "python -m unittest discover -p 'test_*.py'"
