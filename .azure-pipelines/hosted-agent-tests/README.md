@@ -114,12 +114,33 @@ also checks the published fixtures, including orphan detection. See the
 
 ## Supported protocols
 
-The runner supports `responses` and `invocations`. Other protocols require dedicated
-harnesses:
+The runner supports `responses`, `invocations`, and native `a2a`. A2A uses its
+own Card-discovery and JSON-RPC helper, not the Responses or Invocations client.
+its turn input is a mapping with a `message` and a required output expectation.
+For model-backed output, use `expected_pattern` instead of `expected_text`;
+exactly one is required. Patterns must match the complete artifact text, not
+just a substring. Prefer deterministic structural/delegation evidence over
+matching arbitrary model wording.
+An optional `timeout_seconds` greater than 0 and at most 600 sets the per-request
+timeout and polling budget for slower model-backed scenarios; existing scenarios
+retain their default.
+Optional booleans are `return_immediately`, `cancel`, and `list_tasks`.
+Cancellation requires `return_immediately: true`. The helper checks Task
+identity, terminal state, exact artifact text and, when requested, listing.
+Polling is bounded; protocol errors fail without resubmitting the business work.
+Raw evidence contains the verified scenario result, while per-attempt A2A
+evidence records the actual JSON-RPC exchanges without authorization headers.
+
+The Toolbox Travel Planner tests run real local native A2A workers and validate
+discovery, model tool choice and failure contracts with fixture model/MCP responses.
+Live model/Toolbox/identity checks remain separate. The travel cloud fixture
+requires a configured versioned Toolbox with deployed Flight/Hotel connections;
+it is not a standalone automated three-agent/Toolbox provisioner.
+The cloud scenario does not forcibly restart a hosted container.
+Other protocols require dedicated harnesses:
 
 - `invocations_ws` uses sample-defined, full-duplex WebSocket frames.
 - `activity` requires Bot/Teams setup and sends replies asynchronously.
-- A2A requires agent-card discovery and JSON-RPC/task handling.
 - Voice Live uses a separate real-time audio service.
 
 They remain unsupported until CI has transport-specific clients and evidence
@@ -138,7 +159,7 @@ python3 .github/scripts/hosted_agent_test_spec.py validate \
 
 python3 .github/scripts/hosted_agent_test_spec.py plan \
   --spec .azure-pipelines/hosted-agent-tests/<language>/<complete-sample-path>/test-spec.yml \
-  --protocol <responses|invocations> \
+  --protocol <responses|invocations|a2a> \
   --output /tmp/hosted-agent-test-plan.json
 ```
 

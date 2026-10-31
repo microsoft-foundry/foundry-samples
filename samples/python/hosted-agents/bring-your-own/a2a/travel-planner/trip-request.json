@@ -1,0 +1,19 @@
+{
+  "jsonrpc": "2.0",
+  "id": "travel-trip-1",
+  "method": "SendMessage",
+  "params": {
+    "message": {
+      "messageId": "travel-message-1",
+      "role": "ROLE_USER",
+      "parts": [
+        {
+          "text": "Plan a synthetic business trip for 1 traveler from SFO to SEA. Depart 2027-01-10 and return 2027-01-13. Arrive before 2027-01-11T09:00:00-08:00. Both flight and hotel must be refundable. Hotel must be within 3000 meters of the office. Total flight and hotel budget is USD 1200. Do not book anything."
+        }
+      ]
+    },
+    "configuration": {
+      "returnImmediately": false
+    }
+  }
+}

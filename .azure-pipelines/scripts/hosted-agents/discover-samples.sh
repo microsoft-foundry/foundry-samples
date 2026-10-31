@@ -318,6 +318,8 @@ if [ "$DISCOVERY_MODE" = "changed" ]; then
     fi
     if [ "$(yq '[.services[] | select(.host == "azure.ai.agent") | .protocols[]?.protocol] | any_c(. == "invocations")' "$yaml_file")" = "true" ]; then
       protocol="invocations"
+    elif [ "$(yq '[.services[] | select(.host == "azure.ai.agent") | .protocols[]?.protocol] | any_c(. == "a2a")' "$yaml_file")" = "true" ]; then
+      protocol="a2a"
     else
       protocol="responses"
     fi
@@ -343,6 +345,8 @@ else
     sample_id=$(echo "$sample_dir" | sed 's|samples/||' | tr '/' '-')
     if [ "$(yq '[.services[] | select(.host == "azure.ai.agent") | .protocols[]?.protocol] | any_c(. == "invocations")' "$yaml_file")" = "true" ]; then
       protocol="invocations"
+    elif [ "$(yq '[.services[] | select(.host == "azure.ai.agent") | .protocols[]?.protocol] | any_c(. == "a2a")' "$yaml_file")" = "true" ]; then
+      protocol="a2a"
     else
       protocol="responses"
     fi

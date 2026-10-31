@@ -1,0 +1,38 @@
+version: 1
+sample:
+  owner: hkunkanoor
+  experiences: [azd]
+tests:
+  - name: toolbox-travel-golden
+    turns:
+      - input:
+          message: Plan a synthetic business trip for 1 traveler from SFO to SEA. Depart 2027-01-10 and return 2027-01-13. Arrive before 2027-01-11T09:00:00-08:00. Both flight and hotel must be refundable. Hotel must be within 3000 meters of the office. Total flight and hotel budget is USD 1200. Do not book anything.
+          expected_pattern: '(?s)(?=.*"status": "proposed")(?=.*"total_cents": 116500)(?=.*"total_usd": "1165\.00")(?=.*"toolbox_verified": true)(?=.*"role": "flights")(?=.*"role": "hotels")\{.+\}'
+          timeout_seconds: 240
+        assertions:
+          - source: raw
+            type: contains
+            value: '"toolbox_verified": true'
+          - source: raw
+            type: contains
+            value: TASK_STATE_COMPLETED
+  - name: toolbox-travel-no-match
+    turns:
+      - input:
+          message: Plan a synthetic business trip for 1 traveler from SFO to SEA. Depart 2027-01-10 and return 2027-01-13. Arrive before 2027-01-11T09:00:00-08:00. Both flight and hotel must be refundable. Hotel must be within 3000 meters of the office. Total flight and hotel budget is USD 900. Do not book anything.
+          expected_pattern: '(?s)(?=.*"status": "no_match")(?=.*"budget_cents": 90000)(?=.*"toolbox_verified": true)(?=.*"role": "flights")(?=.*"role": "hotels")\{.+\}'
+          timeout_seconds: 240
+        assertions:
+          - source: raw
+            type: contains
+            value: TASK_STATE_COMPLETED
+  - name: toolbox-travel-clarification
+    turns:
+      - input:
+          message: Plan a synthetic business trip from SFO to SEA. Both flight and hotel must be refundable.
+          expected_pattern: '(?s)(?=.*"status": "needs_clarification")(?=.*"question": "[^"]+")(?=.*"toolbox_verified": false)(?=.*"booking_created": false)\{.+\}'
+          timeout_seconds: 240
+        assertions:
+          - source: raw
+            type: contains
+            value: TASK_STATE_COMPLETED

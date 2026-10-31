@@ -399,6 +399,49 @@ def serialize_input(value: Any) -> str:
         raise SpecError(f"turn input is not JSON-compatible: {exc}") from exc
 
 
+def validate_a2a_input(value: Any) -> None:
+    value = _require_mapping(value, "A2A turn input")
+    _require_keys(
+        value,
+        {
+            "message",
+            "expected_text",
+            "expected_pattern",
+            "return_immediately",
+            "cancel",
+            "list_tasks",
+            "timeout_seconds",
+        },
+        "A2A turn input",
+        {"message"},
+    )
+    _require_string(value["message"], "A2A turn input.message")
+    if ("expected_text" in value) == ("expected_pattern" in value):
+        raise SpecError(
+            "A2A turn input requires exactly one of expected_text or expected_pattern"
+        )
+    if "expected_text" in value:
+        _require_string(
+            value["expected_text"], "A2A turn input.expected_text", nonempty=False
+        )
+    else:
+        _compile_regex(value["expected_pattern"], "A2A turn input.expected_pattern")
+    if "timeout_seconds" in value:
+        timeout = value["timeout_seconds"]
+        if (
+            isinstance(timeout, bool)
+            or not isinstance(timeout, (int, float))
+            or not math.isfinite(timeout)
+            or not 0 < timeout <= 600
+        ):
+            raise SpecError("A2A turn input.timeout_seconds must be greater than 0 and at most 600")
+    for key in ("return_immediately", "cancel", "list_tasks"):
+        if key in value and not isinstance(value[key], bool):
+            raise SpecError(f"A2A turn input.{key} must be a boolean")
+    if value.get("cancel") and not value.get("return_immediately"):
+        raise SpecError("A2A cancellation requires return_immediately: true")
+
+
 def build_plan(
     document: dict[str, Any],
     toolbox_label: str = "",
@@ -406,12 +449,16 @@ def build_plan(
     protocol: str = "responses",
     profile: str = "hosted",
 ) -> dict[str, Any]:
+    if protocol not in {"responses", "invocations", "a2a"}:
+        raise SpecError(f"unsupported protocol: {protocol}")
     if profile not in PROFILE_SOURCES:
         raise SpecError(f"unsupported execution profile: {profile}")
     if profile != "hosted" and protocol != "responses":
         raise SpecError(f"the {profile} execution profile supports only the Responses protocol")
     for test_index, test in enumerate(document["tests"], start=1):
         for turn_index, turn in enumerate(test["turns"], start=1):
+            if protocol == "a2a":
+                validate_a2a_input(turn["input"])
             if profile != "hosted" and "approvals" in turn:
                 raise SpecError(
                     f"document.tests[{test_index}].turns[{turn_index}].approvals "
@@ -1060,7 +1107,7 @@ def _build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--toolbox-label", default="")
     plan.add_argument("--toolbox-query", default="")
     plan.add_argument(
-        "--protocol", choices=("responses", "invocations"), default="responses"
+        "--protocol", choices=("responses", "invocations", "a2a"), default="responses"
     )
     plan.add_argument("--profile", choices=tuple(PROFILE_SOURCES), default="hosted")
     plan.add_argument("--output", type=Path, required=True)

@@ -1,0 +1,23 @@
+[project]
+name = "foundry-a2a-toolbox-travel"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "azure-ai-agentserver-a2a==1.0.0a20261029006",
+    "azure-ai-agentserver-core==2.3.1a20261029006",
+    "a2a-sdk==1.2.3",
+    "azure-identity==1.25.1",
+    "httpx2==2.12.0",
+]
+
+[tool.uv]
+package = false
+
+[[tool.uv.index]]
+name = "azure-sdk-dev"
+url = "https://pkgs.dev.azure.com/azure-sdk/public/_packaging/azure-sdk-for-python/pypi/simple/"
+explicit = true
+
+[tool.uv.sources]
+azure-ai-agentserver-a2a = { index = "azure-sdk-dev" }
+azure-ai-agentserver-core = { index = "azure-sdk-dev" }
