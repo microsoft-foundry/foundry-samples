@@ -102,6 +102,8 @@ if ! jq -e -s --arg id "$project_id" --arg endpoint "$project_endpoint" --slurpf
     ($c.project_endpoint | rtrimstr("/")) == $endpoint and
     ($o.deployment_attempted | type) == "boolean" and
     ($o.toolbox_deployment_attempted | type) == "boolean" and
+    (($o.skill_deployment_attempted // false) | type) == "boolean" and
+    (($o.connection_deployment_attempted // false) | type) == "boolean" and
     ($o.working_directory | type) == "string" and
     ($o.working_directory | test("^(?:/[^/]|[A-Za-z]:[/\\\\])")) and
     ($o.working_directory | test("[\\x00-\\x1f\\x7f]") | not) and
@@ -111,14 +113,29 @@ if ! jq -e -s --arg id "$project_id" --arg endpoint "$project_endpoint" --slurpf
     $c.service_env_key == ($c.agent_service | gsub("[- ]"; "_") | ascii_upcase) and
     ($c.service_env_key | test("^[A-Z0-9_]+$")) and
     $o.toolbox_name == $c.toolbox_name and
-    (if $c.execution_profile == "managed" then
-       $c.toolbox_name == ("ci-e2e-tb-" + ($c.agent_name | ltrimstr("ci-prompt-")))
-     else $c.execution_profile == "prompt" and $c.toolbox_name == "" and
-       $o.toolbox_deployment_attempted == false end) and
+    ($o.skill_name // "") == ($c.skill_name // "") and
+    ($o.connection_name // "") == ($c.connection_name // "") and
+    (($c.agent_name | ltrimstr("ci-prompt-")) as $nonce |
+      if $c.execution_profile == "managed" then
+        (
+          ($c.toolbox_name == ("ci-e2e-tb-" + $nonce) and ($c.skill_name // "") == "" and ($o.skill_deployment_attempted // false) == false and
+            (if ($o.connection_deployment_attempted // false) then
+              (($c.connection_name // "") | type) == "string" and
+              (($c.connection_name // "") | test("^ci-e2e-tb-" + ($nonce[:10]) + "-[0-9a-f]{8}-mcp$"))
+            else (($c.connection_name // "") == "" or (($c.connection_name // "") | test("^ci-e2e-tb-" + ($nonce[:10]) + "-[0-9a-f]{8}-mcp$"))) end))
+          or
+          (($c.skill_name // "") == ("ci-e2e-sk-" + $nonce) and $c.toolbox_name == "" and $o.toolbox_deployment_attempted == false and
+            ($c.connection_name // "") == "" and ($o.connection_deployment_attempted // false) == false)
+        )
+      else $c.execution_profile == "prompt" and $c.toolbox_name == "" and $o.toolbox_deployment_attempted == false and
+        ($c.skill_name // "") == "" and ($o.skill_deployment_attempted // false) == false and
+        ($c.connection_name // "") == "" and ($o.connection_deployment_attempted // false) == false end) and
     ($o.cleanup | type) == "object" and
     ($o.cleanup | to_entries | all(
       ((.key == $o.agent_name and $o.deployment_attempted) or
-       (.key == $o.toolbox_name and $o.toolbox_deployment_attempted)) and
+       (.key == $o.toolbox_name and $o.toolbox_deployment_attempted) or
+       (.key == ($o.skill_name // "") and ($o.skill_deployment_attempted // false)) or
+       (.key == ($o.connection_name // "") and ($o.connection_deployment_attempted // false))) and
       (.value | type) == "string" and (.value | length) > 0)))
 ' "$ownership" > "$recovery/validation-stdout.txt" 2> "$recovery/validation-stderr.txt"; then
   fail "Invalid ownership/context or trusted project mismatch; refusing recovery commands."
@@ -128,9 +145,13 @@ name=$(jq -r .agent_name "$context")
 service=$(jq -r .agent_service "$context")
 env_key=$(jq -r .service_env_key "$context")
 toolbox=$(jq -r .toolbox_name "$context")
+skill=$(jq -r '.skill_name // ""' "$context")
+connection=$(jq -r '.connection_name // ""' "$context")
 agent_pending=$(jq -r '.deployment_attempted and .cleanup[.agent_name] != "absent"' "$ownership")
 toolbox_pending=$(jq -r '.toolbox_deployment_attempted and .cleanup[.toolbox_name] != "absent"' "$ownership")
-if [ "$agent_pending" = false ] && [ "$toolbox_pending" = false ]; then exit 0; fi
+skill_pending=$(jq -r '(.skill_deployment_attempted // false) and .cleanup[.skill_name] != "absent"' "$ownership")
+connection_pending=$(jq -r '(.connection_deployment_attempted // false) and (.connection_name // "") != "" and .cleanup[.connection_name] != "absent"' "$ownership")
+if [ "$agent_pending" = false ] && [ "$toolbox_pending" = false ] && [ "$skill_pending" = false ] && [ "$connection_pending" = false ]; then exit 0; fi
 
 work=$(jq -r .working_directory "$ownership")
 case "${OSTYPE:-}" in msys*|cygwin*) work=$(cygpath -u "$work") ;; esac
@@ -177,8 +198,19 @@ toolbox_absent() {
     --metadata "$(native_path "$last_stdout")" --context "$context" \
     >> "$recovery/validation-stdout.txt" 2>> "$recovery/validation-stderr.txt"
 }
+skill_absent() {
+  timeout --kill-after=10s 60s "$python" "$helper" skill-absent \
+    --metadata "$(native_path "$last_stdout")" --context "$context" \
+    >> "$recovery/validation-stdout.txt" 2>> "$recovery/validation-stderr.txt"
+}
+connection_absent() {
+  timeout --kill-after=10s 60s "$python" "$helper" connection-absent \
+    --metadata "$(native_path "$last_stdout")" --context "$context" \
+    >> "$recovery/validation-stdout.txt" 2>> "$recovery/validation-stderr.txt"
+}
 
 # Pin both process variables and the retained azd environment; do not trust defaults.
+export AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS=true
 export FOUNDRY_PROJECT_ENDPOINT="$project_endpoint" AZURE_AI_PROJECT_ENDPOINT="$project_endpoint"
 export AZURE_AI_PROJECT_ID="$project_id" AZURE_ENV_NAME="$name" "AGENT_${env_key}_NAME=$name"
 azd_project=(azd -C "$(native_path "$project")")
@@ -225,7 +257,47 @@ cleanup_toolbox() {
   done
   return 1
 }
+cleanup_skill() {
+  local attempt
+  save_status "$skill" unverified || return 1
+  run_command "${azd_project[@]}" ai skill list --project-endpoint "$project_endpoint" --output json --no-prompt || return 1
+  if skill_absent; then save_status "$skill" absent; return $?; fi
+  jq -e -s --arg name "$skill" '
+    length == 1 and (.[0] | type) == "array" and
+    (.[0] | all(type == "object" and (.name | type) == "string" and (.name | test("\\S")))) and
+    (.[0] | any((.name | ascii_downcase) == $name))
+  ' "$(native_path "$last_stdout")" >> "$recovery/validation-stdout.txt" 2>> "$recovery/validation-stderr.txt" || return 1
+  run_command "${azd_project[@]}" ai skill delete "$skill" --project-endpoint "$project_endpoint" \
+    --force --no-prompt --output json || cleanup_failed=true
+  for attempt in 1 2 3; do
+    run_command "${azd_project[@]}" ai skill list --project-endpoint "$project_endpoint" --output json --no-prompt || return 1
+    if skill_absent; then save_status "$skill" absent; return $?; fi
+    [ "$attempt" -eq 3 ] || sleep 5
+  done
+  return 1
+}
+cleanup_connection() {
+  local attempt
+  save_status "$connection" unverified || return 1
+  run_command "${azd_project[@]}" ai connection list --project-endpoint "$project_endpoint" --output json --no-prompt || return 1
+  if connection_absent; then save_status "$connection" absent; return $?; fi
+  jq -e -s --arg name "$connection" '
+    length == 1 and (.[0] | type) == "array" and
+    (.[0] | all(type == "object" and (.name | type) == "string" and (.name | test("\\S")))) and
+    (.[0] | any((.name | ascii_downcase) == $name))
+  ' "$(native_path "$last_stdout")" >> "$recovery/validation-stdout.txt" 2>> "$recovery/validation-stderr.txt" || return 1
+  run_command "${azd_project[@]}" ai connection delete "$connection" --project-endpoint "$project_endpoint" \
+    --force --no-prompt || cleanup_failed=true
+  for attempt in 1 2 3; do
+    run_command "${azd_project[@]}" ai connection list --project-endpoint "$project_endpoint" --output json --no-prompt || return 1
+    if connection_absent; then save_status "$connection" absent; return $?; fi
+    [ "$attempt" -eq 3 ] || sleep 5
+  done
+  return 1
+}
 if [ "$agent_pending" = true ]; then cleanup_agent || cleanup_failed=true; fi
-# Agent errors must not strand an independently owned toolbox.
+# Agent errors must not strand independently owned resources.
+if [ "$connection_pending" = true ]; then cleanup_connection || cleanup_failed=true; fi
 if [ "$toolbox_pending" = true ]; then cleanup_toolbox || cleanup_failed=true; fi
+if [ "$skill_pending" = true ]; then cleanup_skill || cleanup_failed=true; fi
 if [ "$cleanup_failed" = true ]; then exit 1; fi

@@ -1,0 +1,36 @@
+version: 1
+sample:
+  owner: zhihuan
+  experiences: [azd]
+tests:
+  - name: official-source-python-release-research
+    turns:
+      - input: >-
+          What is the latest stable Python release? Use official Python sources.
+          Return these labeled fields: VERSION, RELEASE_DATE, CHANGE_1, CHANGE_2,
+          RELEASE_URL, and WHATS_NEW_URL. Cite the official Python release page
+          and What's New page.
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: '(?im)^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:`|\*\*)?VERSION(?:`|\*\*)?[ \t]*:[ \t]*.*?\b\d+\.\d+\.\d+\b'
+          - source: assistant_text
+            type: regex
+            value: '(?im)^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:`|\*\*)?RELEASE_DATE(?:`|\*\*)?[ \t]*:[ \t]*\S+'
+          - source: assistant_text
+            type: regex
+            value: '(?im)^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:`|\*\*)?CHANGE_1(?:`|\*\*)?[ \t]*:[ \t]*\S+'
+          - source: assistant_text
+            type: regex
+            value: '(?im)^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:`|\*\*)?CHANGE_2(?:`|\*\*)?[ \t]*:[ \t]*\S+'
+          - source: assistant_text
+            type: regex
+            value: '(?im)^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:`|\*\*)?RELEASE_URL(?:`|\*\*)?[ \t]*:[ \t]*.*?https?://(?:www\.)?python\.org/downloads/release/python-\d+'
+          - source: assistant_text
+            type: regex
+            value: '(?im)^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:`|\*\*)?WHATS_NEW_URL(?:`|\*\*)?[ \t]*:[ \t]*.*?https?://docs\.python\.org/[^\s)>\]]*?/whatsnew/\d+\.\d+\.html'
+          - source: assistant_text
+            type: regex
+            value: '(?i)traceback|unhandled exception'
+            min_matches: 0
+            max_matches: 0
