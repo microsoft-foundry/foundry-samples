@@ -131,21 +131,38 @@ async def test_invalid_or_incomplete_sse_is_not_success(body: str) -> None:
 @pytest.mark.parametrize(
     ("status", "media_type"), [(500, "text/event-stream"), (200, "application/json")]
 )
-async def test_failed_http_response_runs_background_cleanup(status: int, media_type: str) -> None:
-    cleaned = False
+@pytest.mark.parametrize("fail_close", [False, True])
+async def test_failed_http_response_closes_body_before_background_cleanup(
+    status: int, media_type: str, fail_close: bool
+) -> None:
+    cleanup_events = []
+
+    class TrackedBody:
+        def __aiter__(self) -> AsyncIterator[str]:
+            return self
+
+        async def __anext__(self) -> str:
+            pytest.fail("Rejected response bodies must not be read")
+
+        async def aclose(self) -> None:
+            cleanup_events.append("body")
+            if fail_close:
+                raise RuntimeError("Controlled body close failure")
 
     async def cleanup() -> None:
-        nonlocal cleaned
-        cleaned = True
+        cleanup_events.append("background")
 
     async def handler(_request: Any) -> StreamingResponse:
         return StreamingResponse(
-            iter([]), status_code=status, media_type=media_type, background=BackgroundTask(cleanup)
+            TrackedBody(),
+            status_code=status,
+            media_type=media_type,
+            background=BackgroundTask(cleanup),
         )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError if fail_close else ValueError):
         _ = [chunk async for chunk in InvocationAdapter(handler).stream("input", "in_error")]
-    assert cleaned
+    assert cleanup_events == ["body", "background"]
 
 
 async def test_completion_waits_for_handler_finalization_and_background_work() -> None:

@@ -123,6 +123,37 @@ public class InvocationAdapterTests
             await Collect(new InvocationAdapter(handler)).WaitAsync(Timeout));
     }
 
+    [TestCase(500, "text/event-stream")]
+    [TestCase(200, "application/json")]
+    public void RejectedHttpResponse_CancelsAndDrainsTheOriginalHandler(int status, string contentType)
+    {
+        var finalized = false;
+        var cancelled = false;
+        var handler = new CallbackHandler(async (_, response, _, token) =>
+        {
+            try
+            {
+                response.StatusCode = status;
+                response.ContentType = contentType;
+                await response.WriteAsync("data: {}\n\n", token);
+                await response.Body.FlushAsync(token);
+                await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, token);
+            }
+            finally
+            {
+                cancelled = token.IsCancellationRequested;
+                finalized = true;
+            }
+        });
+        Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await Collect(new InvocationAdapter(handler)).WaitAsync(Timeout));
+        Assert.Multiple(() =>
+        {
+            Assert.That(cancelled, Is.True);
+            Assert.That(finalized, Is.True);
+        });
+    }
+
     [Test]
     public async Task Completion_WaitsForTheHandlersFinalization()
     {

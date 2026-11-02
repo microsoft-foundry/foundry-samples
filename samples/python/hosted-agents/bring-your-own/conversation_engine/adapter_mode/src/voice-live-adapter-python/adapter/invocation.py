@@ -81,11 +81,12 @@ class InvocationAdapter:
         response = await self._handler(invocation_request(text, input_id))
         iterator = None
         try:
+            # Rejected responses must also close their streaming body.
+            iterator = aiter(response.body_iterator)
             if not 200 <= response.status_code < 300:
                 raise ValueError("Invocation failed")
             if not response.headers.get("content-type", "").startswith("text/event-stream"):
                 raise ValueError("Expected an SSE response")
-            iterator = aiter(response.body_iterator)
             completed = False
             output = ""
             async for event in sse_events(iterator):
