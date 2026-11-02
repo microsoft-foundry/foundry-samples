@@ -15,6 +15,7 @@ internal sealed class ResponseOperation : IDisposable
     private readonly long? _userMessageReceivedTimestamp;
     private ResponseOutcome? _outcome;
     private bool _telemetryCompleted;
+    private bool _cancellationRequested;
 
     internal ResponseOperation(
         string responseId,
@@ -72,6 +73,20 @@ internal sealed class ResponseOperation : IDisposable
         lock (_sync)
         {
             _outcome ??= outcome;
+        }
+    }
+
+    internal bool TryRequestCancellation(ResponseOutcome outcome)
+    {
+        lock (_sync)
+        {
+            _outcome ??= outcome;
+            if (_disposed != 0 || _cancellationRequested)
+            {
+                return false;
+            }
+            _cancellationRequested = true;
+            return true;
         }
     }
 

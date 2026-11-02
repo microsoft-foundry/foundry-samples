@@ -79,12 +79,48 @@ internal sealed class VoiceResponseCoordinator
         VoiceSession session,
         VoiceConnectionState state,
         string inputItemId,
-        string reason) =>
-        TrySendAsync(
-            state,
-            () => state.EnqueueInputResolution(() => session.SendAsync(
-                new VoiceResponseNoneMessage(new[] { inputItemId }, reason),
-                state.Lifetime.Token)));
+        string reason)
+    {
+        if (!state.IsActive)
+        {
+            return Task.CompletedTask;
+        }
+        var operation = new ResponseOperation(VoiceIds.CreateResponseId(), inputItemId);
+        if (!state.TryReserveOperation(operation, declineOnly: true))
+        {
+            operation.Dispose();
+            if (!state.IsActive)
+            {
+                return Task.CompletedTask;
+            }
+            throw new InvalidOperationException("Connection terminal-send capacity exceeded.");
+        }
+        operation.TryStart(() => RunAsCurrentOperationAsync(operation, async () =>
+        {
+            using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(
+                operation.Cancellation.Token, state.Lifetime.Token);
+            try
+            {
+                var send = state.EnqueueInputResolution(() => session.SendAsync(
+                    new VoiceResponseNoneMessage(new[] { inputItemId }, reason), cancellation.Token));
+                await Task.Yield();
+                await send;
+                operation.SelectOutcome(ResponseOutcome.None);
+            }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested || !state.IsActive)
+            {
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning("Voice decline failed; error_type={ErrorType}", exception.GetType().FullName);
+            }
+            finally
+            {
+                RemoveOperation(state, operation.ResponseId);
+            }
+        }));
+        return operation.Work ?? Task.CompletedTask;
+    }
 
     internal async Task SendErrorAsync(
         VoiceSession session,
@@ -128,9 +164,8 @@ internal sealed class VoiceResponseCoordinator
         {
             state.RemoveProactive(responseId);
             _logger.LogWarning(
-                exception,
-                "Could not request proactive response {ResponseId}",
-                responseId);
+                "Could not request proactive response {ResponseId}; error_type={ErrorType}",
+                responseId, exception.GetType().FullName);
         }
     }
 
@@ -159,11 +194,16 @@ internal sealed class VoiceResponseCoordinator
         string responseId,
         ResponseOutcome outcome)
     {
-        if (state.TryRemoveOperation(responseId, out var operation))
+        if (state.TryGetOperation(responseId, out var operation) && operation.TryRequestCancellation(outcome))
         {
-            operation.SelectOutcome(outcome);
-            Observe(CancelAndDisposeAsync(operation));
+            Observe(CancelTrackedOperationAsync(state, operation));
         }
+    }
+
+    private async Task CancelTrackedOperationAsync(VoiceConnectionState state, ResponseOperation operation)
+    {
+        await CancelAndDisposeAsync(operation);
+        RemoveOperation(state, operation.ResponseId);
     }
 
     internal async Task TerminateAndEndCallAsync(
@@ -247,7 +287,8 @@ internal sealed class VoiceResponseCoordinator
         catch (Exception exception)
         {
             operation.RecordFailure(exception);
-            _logger.LogError(exception, "Voice response {ResponseId} failed", operation.ResponseId);
+            _logger.LogError("Voice response {ResponseId} failed; error_type={ErrorType}",
+                operation.ResponseId, exception.GetType().FullName);
             await TrySendErrorAsync(session, state, operation.ResponseId);
         }
         finally
@@ -335,7 +376,7 @@ internal sealed class VoiceResponseCoordinator
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Self-cancelling response failed");
+            _logger.LogError("Self-cancelling response failed; error_type={ErrorType}", exception.GetType().FullName);
             RemoveOperation(state, operation.ResponseId);
         }
     }
@@ -360,7 +401,7 @@ internal sealed class VoiceResponseCoordinator
         }
         catch (Exception exception)
         {
-            _logger.LogDebug(exception, "Could not report response failure");
+            _logger.LogDebug("Could not report response failure; error_type={ErrorType}", exception.GetType().FullName);
         }
     }
 
@@ -420,7 +461,7 @@ internal sealed class VoiceResponseCoordinator
         }
         catch (Exception exception)
         {
-            _logger.LogDebug(exception, "Response cancellation failed");
+            _logger.LogDebug("Response cancellation failed; error_type={ErrorType}", exception.GetType().FullName);
         }
         finally
         {
@@ -444,7 +485,7 @@ internal sealed class VoiceResponseCoordinator
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "Voice protocol message could not be sent");
+            _logger.LogWarning("Voice protocol message could not be sent; error_type={ErrorType}", exception.GetType().FullName);
         }
     }
 
@@ -456,7 +497,7 @@ internal sealed class VoiceResponseCoordinator
         }
         catch (Exception exception)
         {
-            _logger.LogDebug(exception, "Voice response cleanup failed");
+            _logger.LogDebug("Voice response cleanup failed; error_type={ErrorType}", exception.GetType().FullName);
         }
     }
 }

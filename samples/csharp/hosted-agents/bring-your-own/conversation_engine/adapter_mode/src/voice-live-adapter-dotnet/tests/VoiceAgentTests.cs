@@ -397,7 +397,9 @@ public class VoiceAgentTests
         {
             await agent.UserMessageAsync(
                 session,
-                UserMessage("echo", $"in_limit_{index}"));
+                UserMessage("", $"in_limit_{index}"));
+            // Model the SDK dispatch yield, rather than overflowing the bounded send queue.
+            await Task.Yield();
         }
 
         var end = session.Messages.OfType<VoiceEndCallMessage>().Single();

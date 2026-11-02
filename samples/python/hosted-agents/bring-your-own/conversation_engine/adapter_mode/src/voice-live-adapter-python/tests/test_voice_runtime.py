@@ -458,7 +458,7 @@ def test_response_and_proactive_capacity_are_bounded() -> None:
     state = active_state()
     coordinator = ResponseCoordinator()
     for index in range(MAX_ACTIVE_RESPONSES):
-        state.responses[str(index)] = SimpleNamespace(capacity_released=False)
+        state.responses[str(index)] = SimpleNamespace(capacity_released=False, decline_only=False)
     assert not state.can_start_response()
     state.responses["0"].capacity_released = True
     assert state.can_start_response()
