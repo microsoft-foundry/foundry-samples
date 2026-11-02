@@ -19,6 +19,7 @@ MAX_TRACKED_PLAYBACK_RESPONSES = 64
 MAX_MESSAGE_CHARACTERS = 8_000
 MAX_ACTIVE_RESPONSES = 8
 MAX_TERMINAL_SENDS = 8
+MAX_PENDING_DECLINES = 8
 MAX_PENDING_PROACTIVE = 8
 MAX_SEEN_INPUTS = 4096
 
@@ -90,8 +91,21 @@ class ResponseOperation:
     terminal_event: asyncio.Event | None = None
     output_item_count: int = 0
     capacity_released: bool = False
+    decline_only: bool = False
     outcome: OperationOutcome | None = None
     telemetry: ResponseTelemetry | None = None
+    cancellation_requested: bool = False
+    previous_resolution: asyncio.Future[None] | None = None
+    resolution_complete: asyncio.Future[None] | None = None
+
+    def request_cancellation(self, outcome: OperationOutcome) -> None:
+        """Cancel once; later control events must not interrupt async cleanup."""
+        self.select_outcome(outcome)
+        if self.cancellation_requested:
+            return
+        self.cancellation_requested = True
+        if self.task is not None and not self.task.done():
+            self.task.cancel()
 
     def select_outcome(self, outcome: OperationOutcome) -> None:
         """Keep the first application-known terminal outcome."""
@@ -118,6 +132,7 @@ class SessionState:
     proactive_requests: dict[str, ProactiveRequest] = field(default_factory=dict)
     seen_inputs: set[bytes] = field(default_factory=set)
     phase: SessionPhase = SessionPhase.AWAITING_START
+    input_resolution_tail: asyncio.Future[None] | None = None
 
     def track_response(self, response_id: str) -> None:
         """Retain bounded playback state after response.done for late interruption events."""
@@ -148,12 +163,23 @@ class SessionState:
     @property
     def active_response_count(self) -> int:
         """Count operations that still occupy one response-capacity slot."""
-        return sum(not operation.capacity_released for operation in self.responses.values())
+        return sum(
+            not operation.capacity_released and not operation.decline_only
+            for operation in self.responses.values()
+        )
 
     @property
     def terminal_send_count(self) -> int:
         """Count released operations whose terminal send has not finalized."""
-        return sum(operation.capacity_released for operation in self.responses.values())
+        return sum(
+            operation.capacity_released and not operation.decline_only
+            for operation in self.responses.values()
+        )
+
+    @property
+    def pending_decline_count(self) -> int:
+        """Count queued declines independently of response capacity."""
+        return sum(operation.decline_only for operation in self.responses.values())
 
     def can_start_response(self) -> bool:
         """Return whether this active connection can reserve another response slot."""

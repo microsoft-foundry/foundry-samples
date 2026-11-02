@@ -241,9 +241,9 @@ async def run_worker(task: Task, input_items: list[dict], responses_client, mode
                     result_text = await loop.run_in_executor(
                         None, _execute_tool, tc.name, arguments
                     )
-                    logger.info("Tool '%s' returned %d chars", tc.name, len(result_text))
+                    logger.info("Worker tool completed; result_characters=%d", len(result_text))
                 except Exception as e:
-                    logger.error("Tool '%s' failed: %s", tc.name, e)
+                    logger.error("Worker tool failed; error_type=%s", type(e).__name__)
                     result_text = f"Error: {e}"
 
                 input_items.append({
@@ -276,6 +276,6 @@ async def run_worker(task: Task, input_items: list[dict], responses_client, mode
         task.result = "(Reached maximum tool call rounds)"
 
     except Exception as e:
-        logger.exception("Worker failed for task %s", task.task_id)
+        logger.error("Worker failed for task %s; error_type=%s", task.task_id, type(e).__name__)
         task.status = TaskStatus.FAILED
         task.result = f"(Worker error: {e})"

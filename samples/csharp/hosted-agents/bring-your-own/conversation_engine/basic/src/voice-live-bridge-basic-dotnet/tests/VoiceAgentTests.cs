@@ -5,6 +5,7 @@ using Azure.AI.AgentServer.Invocations.Voice;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
 
@@ -400,7 +401,9 @@ public class VoiceAgentTests
         {
             await agent.UserMessageAsync(
                 session,
-                UserMessage("echo", $"in_limit_{index}"));
+                UserMessage("", $"in_limit_{index}"));
+            // Exercise the input ledger without flooding the independently bounded send queue.
+            await Task.Yield();
         }
 
         var end = session.Messages.OfType<VoiceEndCallMessage>().Single();
@@ -1263,10 +1266,358 @@ public class VoiceAgentTests
         }
     }
 
+    [TestCase("cancelled")]
+    [TestCase("timeout")]
+    public async Task RepeatedCancellationThenSessionEnd_WaitsForAsyncSourceCleanup(string firstEvent)
+    {
+        var coordinator = new VoiceResponseCoordinator(NullLogger<VoiceAgent>.Instance);
+        var state = new VoiceConnectionState();
+        state.TryBeginStart();
+        state.Activate();
+        var session = new CapturingVoiceSession();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cleanupEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseCleanup = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cleanupFinished = false;
+        Task? termination = null;
+
+        async IAsyncEnumerable<string> Source([EnumeratorCancellation] CancellationToken token = default)
+        {
+            try
+            {
+                yield return "first";
+                started.TrySetResult();
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            }
+            finally
+            {
+                cleanupEntered.TrySetResult();
+                await releaseCleanup.Task;
+                cleanupFinished = true;
+            }
+        }
+
+        coordinator.SendEcho(session, state, "in_cleanup", Source(), Stopwatch.GetTimestamp());
+        try
+        {
+            await started.Task.WaitAsync(TestTimeout);
+            Assert.That(state.TryGetResponseForInput("in_cleanup", out var responseId), Is.True);
+            coordinator.CancelOperation(state, responseId,
+                firstEvent == "timeout" ? ResponseOutcome.Timeout : ResponseOutcome.Cancelled);
+            await cleanupEntered.Task.WaitAsync(TestTimeout);
+            coordinator.CancelOperation(state, responseId, ResponseOutcome.Timeout);
+            Assert.That(state.TryGetResponseForInput("in_cleanup", out _), Is.True,
+                "Input correlation must remain until source cleanup finishes.");
+            termination = coordinator.TerminateSessionAsync(state, ResponseOutcome.EndCall);
+            Assert.That(termination.IsCompleted, Is.False,
+                "Session end must join previously cancelled work, not abandon its cleanup.");
+            Assert.That(cleanupFinished, Is.False);
+        }
+        finally
+        {
+            releaseCleanup.TrySetResult();
+            if (termination is not null)
+            {
+                await termination.WaitAsync(TestTimeout);
+            }
+            await coordinator.TerminateSessionAsync(state, ResponseOutcome.EndCall).WaitAsync(TestTimeout);
+        }
+        Assert.That(cleanupFinished, Is.True);
+        Assert.That(state.TryGetResponseForInput("in_cleanup", out _), Is.False);
+        Assert.That(session.Messages.OfType<VoiceResponseDoneMessage>(), Is.Empty);
+    }
+
+    [Test]
+    public async Task CancelledSources_RetainCapacityUntilAsyncCleanupFinishes()
+    {
+        var coordinator = new VoiceResponseCoordinator(NullLogger<VoiceAgent>.Instance);
+        var state = new VoiceConnectionState();
+        state.TryBeginStart();
+        state.Activate();
+        var releaseCleanup = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cleanupCount = 0;
+        using var ninth = new ResponseOperation("r_ninth", "in_ninth");
+
+        async IAsyncEnumerable<string> Source(
+            TaskCompletionSource started,
+            TaskCompletionSource cleanupEntered,
+            [EnumeratorCancellation] CancellationToken token = default)
+        {
+            try
+            {
+                yield return "first";
+                started.TrySetResult();
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            }
+            finally
+            {
+                cleanupEntered.TrySetResult();
+                await releaseCleanup.Task;
+                Interlocked.Increment(ref cleanupCount);
+            }
+        }
+
+        try
+        {
+            for (var index = 0; index < VoiceConnectionState.MaximumActiveResponses; index++)
+            {
+                var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var inputId = $"in_cleanup_{index}";
+                coordinator.SendEcho(new CapturingVoiceSession(), state, inputId,
+                    Source(started, entered), Stopwatch.GetTimestamp());
+                await started.Task.WaitAsync(TestTimeout);
+                Assert.That(state.TryGetResponseForInput(inputId, out var responseId), Is.True);
+                coordinator.CancelOperation(state, responseId, ResponseOutcome.Cancelled);
+                await entered.Task.WaitAsync(TestTimeout);
+            }
+            Assert.That(state.TryReserveOperation(ninth), Is.False,
+                "Eight cleanup tasks must continue to consume response capacity.");
+            releaseCleanup.TrySetResult();
+            await WaitUntilAsync(() => Volatile.Read(ref cleanupCount) == VoiceConnectionState.MaximumActiveResponses &&
+                Enumerable.Range(0, VoiceConnectionState.MaximumActiveResponses).All(index =>
+                    !state.TryGetResponseForInput($"in_cleanup_{index}", out _)));
+            Assert.That(cleanupCount, Is.EqualTo(VoiceConnectionState.MaximumActiveResponses));
+            Assert.That(state.TryReserveOperation(ninth), Is.True);
+        }
+        finally
+        {
+            releaseCleanup.TrySetResult();
+            await coordinator.TerminateSessionAsync(state, ResponseOutcome.EndCall).WaitAsync(TestTimeout);
+        }
+    }
+
     private static async IAsyncEnumerable<string> TestChunks(string text)
     {
         await Task.Yield();
         yield return text;
+    }
+
+    [Test]
+    public async Task DeclineCallback_DoesNotBlockTimeoutOrSessionEnd()
+    {
+        var agent = CreateAgent();
+        var session = new BlockingDeclineVoiceSession();
+        try
+        {
+            await agent.UserMessageAsync(session, UserMessage("", "in_decline")).WaitAsync(TestTimeout);
+            await session.Started.Task.WaitAsync(TestTimeout);
+            await agent.ResponseTimeoutAsync(session,
+                new VoiceResponseTimeoutEvent("m_timeout", DateTimeOffset.UtcNow, "first_output",
+                    null, new[] { "in_decline" })).WaitAsync(TestTimeout);
+            await session.Cancelled.Task.WaitAsync(TestTimeout);
+            Assert.That(session.Messages.OfType<VoiceResponseNoneMessage>(), Is.Empty);
+        }
+        finally
+        {
+            await agent.SessionEndAsync(session,
+                new VoiceSessionEndEvent("m_end", DateTimeOffset.UtcNow, "test_complete")).WaitAsync(TestTimeout);
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task PendingDeclines_AreBoundedUntilOrderedCleanupFinishes(bool cancelQueued)
+    {
+        var coordinator = new VoiceResponseCoordinator(NullLogger<VoiceAgent>.Instance);
+        var state = new VoiceConnectionState();
+        state.TryBeginStart();
+        state.Activate();
+        var session = new BlockingDeclineVoiceSession();
+        var work = new List<Task>();
+        try
+        {
+            for (var index = 0; index < VoiceConnectionState.MaximumPendingDeclines; index++)
+            {
+                work.Add(coordinator.SendNoneAsync(session, state, $"in_decline_{index}", "empty_input"));
+            }
+            await session.Started.Task.WaitAsync(TestTimeout);
+            if (cancelQueued)
+            {
+                for (var index = 1; index < VoiceConnectionState.MaximumPendingDeclines; index++)
+                {
+                    Assert.That(state.TryGetResponseForInput($"in_decline_{index}", out var responseId), Is.True);
+                    coordinator.CancelOperation(state, responseId, ResponseOutcome.Timeout);
+                }
+                await Task.Yield();
+            }
+            Assert.Throws<InvalidOperationException>(() =>
+                coordinator.SendNoneAsync(session, state, "in_overflow", "empty_input"));
+        }
+        finally
+        {
+            await coordinator.TerminateSessionAsync(state, ResponseOutcome.EndCall).WaitAsync(TestTimeout);
+            await Task.WhenAll(work).WaitAsync(TestTimeout);
+        }
+        Assert.That(session.Messages, Is.Empty);
+    }
+
+    [Test]
+    public async Task CancelledDecline_CannotReleaseLaterInputBeforeItsPredecessor()
+    {
+        var agent = CreateAgent();
+        var session = new BlockingDeclineVoiceSession();
+        try
+        {
+            await agent.UserMessageAsync(session, UserMessage("", "in_first"));
+            await session.Started.Task.WaitAsync(TestTimeout);
+            await agent.UserMessageAsync(session, UserMessage("", "in_cancel"));
+            await agent.UserMessageAsync(session, UserMessage("last", "in_last"));
+            await agent.ResponseTimeoutAsync(session,
+                new VoiceResponseTimeoutEvent("m_timeout", DateTimeOffset.UtcNow, "first_output",
+                    null, new[] { "in_cancel" }));
+            Assert.That(ResolutionInputs(session), Is.Empty);
+            session.Release.TrySetResult();
+            await WaitUntilAsync(() => session.Messages.OfType<VoiceResponseDoneMessage>().Any());
+            Assert.That(ResolutionInputs(session), Is.EqualTo(new[] { "in_first", "in_last" }));
+        }
+        finally
+        {
+            session.Release.TrySetResult();
+            await agent.SessionEndAsync(session,
+                new VoiceSessionEndEvent("m_end", DateTimeOffset.UtcNow, "test_complete")).WaitAsync(TestTimeout);
+        }
+    }
+
+    private sealed class BlockingDeclineVoiceSession : CapturingVoiceSession
+    {
+        internal TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal TaskCompletionSource Cancelled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async Task SendAsync(VoiceOutboundMessage message, CancellationToken cancellationToken = default)
+        {
+            if (message is VoiceResponseNoneMessage)
+            {
+                Started.TrySetResult();
+                try
+                {
+                    await Release.Task.WaitAsync(cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    Cancelled.TrySetResult();
+                    throw;
+                }
+            }
+            await base.SendAsync(message, cancellationToken);
+        }
+    }
+
+    [TestCase("source")]
+    [TestCase("self_cancel")]
+    [TestCase("proactive")]
+    [TestCase("decline")]
+    [TestCase("error_report")]
+    [TestCase("protocol")]
+    [TestCase("cancellation")]
+    [TestCase("observation")]
+    public async Task UpstreamExceptionContent_IsAbsentFromLogsAndResponseTelemetry(string failurePoint)
+    {
+        const string marker = "SYNTHETIC_CUSTOMER_PROMPT_AND_CREDENTIAL_DO_NOT_LOG";
+        var logger = new PrivacyCaptureLogger();
+        using var capture = new ResponseActivityCapture();
+        var coordinator = new VoiceResponseCoordinator(logger);
+        var state = new VoiceConnectionState();
+        state.TryBeginStart();
+        state.Activate();
+        var session = new PrivacyFailingVoiceSession(failurePoint, marker);
+
+        async IAsyncEnumerable<string> FailingSource()
+        {
+            await Task.Yield();
+            yield return "first";
+            throw new InvalidOperationException(marker, new ArgumentException("nested_" + marker));
+        }
+
+        try
+        {
+            switch (failurePoint)
+            {
+                case "self_cancel":
+                    coordinator.StartSelfCancellingResponse(session, state, "in_private", "text", Stopwatch.GetTimestamp());
+                    break;
+                case "proactive":
+                    await coordinator.SendProactiveRequestAsync(session, state, "r_proactive");
+                    break;
+                case "decline":
+                    await coordinator.SendNoneAsync(session, state, "in_private", "empty_input");
+                    break;
+                case "protocol":
+                    await coordinator.SendErrorAsync(session, state, "in_private");
+                    break;
+                case "cancellation":
+                    var operation = new ResponseOperation("r_cancel", "in_private");
+                    Assert.That(state.TryReserveOperation(operation), Is.True);
+                    operation.Work = Task.FromException(new InvalidOperationException(marker));
+                    coordinator.CancelOperation(state, operation.ResponseId, ResponseOutcome.Cancelled);
+                    await WaitUntilAsync(() => !state.TryGetResponseForInput("in_private", out _));
+                    break;
+                case "observation":
+                    coordinator.Observe(Task.FromException(new InvalidOperationException(marker)));
+                    break;
+                default:
+                    coordinator.SendEcho(session, state, "in_private", FailingSource(), Stopwatch.GetTimestamp());
+                    await WaitUntilAsync(() => !state.TryGetResponseForInput("in_private", out _));
+                    break;
+            }
+            await WaitUntilAsync(() => !logger.Entries.IsEmpty);
+        }
+        finally
+        {
+            await coordinator.TerminateSessionAsync(state, ResponseOutcome.EndCall).WaitAsync(TestTimeout);
+        }
+
+        foreach (var entry in logger.Entries)
+        {
+            Assert.That(entry.Message, Does.Not.Contain(marker));
+            Assert.That(entry.Exception, Is.Null, "Do not pass upstream exception objects to logging providers.");
+            Assert.That(entry.Values.OfType<Exception>(), Is.Empty);
+            Assert.That(string.Join(" ", entry.Values), Does.Not.Contain(marker));
+        }
+        Assert.That(logger.Entries.Any(entry => entry.Message.Contains(nameof(InvalidOperationException))), Is.True);
+        foreach (var activity in capture.Activities)
+        {
+            Assert.That(string.Join(" ", activity.TagObjects), Does.Not.Contain(marker));
+            Assert.That(activity.StatusDescription, Is.Null.Or.Empty);
+            Assert.That(activity.Events, Is.Empty);
+            if (failurePoint is "source" or "error_report")
+            {
+                Assert.That(activity.GetTagItem("error.type"), Is.EqualTo(typeof(InvalidOperationException).FullName));
+            }
+        }
+    }
+
+    private sealed class PrivacyCaptureLogger : ILogger<VoiceAgent>
+    {
+        internal ConcurrentQueue<(string Message, Exception? Exception, object?[] Values)> Entries { get; } = new();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state,
+            Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            var values = state is IEnumerable<KeyValuePair<string, object?>> fields
+                ? fields.Select(field => field.Value).ToArray() : new object?[] { state };
+            Entries.Enqueue((formatter(state, exception), exception, values));
+        }
+    }
+
+    private sealed class PrivacyFailingVoiceSession(string failurePoint, string marker) : CapturingVoiceSession
+    {
+        public override Task SendAsync(VoiceOutboundMessage message, CancellationToken cancellationToken = default)
+        {
+            var fail = failurePoint switch
+            {
+                "self_cancel" => message is VoiceResponseCancelMessage,
+                "proactive" or "protocol" => message is VoiceResponseCreatedMessage,
+                "decline" => message is VoiceResponseNoneMessage,
+                "error_report" => message is VoiceErrorMessage,
+                _ => false,
+            };
+            return fail
+                ? Task.FromException(new InvalidOperationException(marker, new ArgumentException("nested_" + marker)))
+                : base.SendAsync(message, cancellationToken);
+        }
     }
 
     private static TestableVoiceAgent CreateAgent() =>

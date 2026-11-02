@@ -148,16 +148,17 @@ class VoiceRuntime:
 
         text = "".join(part.text for part in event.content if isinstance(part, InputTextPart))
         if not text or len(text) > MAX_MESSAGE_CHARACTERS:
-            await self._coordinator.send_none(
+            self._coordinator.schedule_none(
                 session,
+                state,
                 event.item_id,
                 InputOrigin.USER,
                 reason="empty_input" if not text else "input_too_large"
             )
             return
         if not state.can_start_response():
-            await self._coordinator.send_none(
-                session, event.item_id, InputOrigin.USER, reason="capacity_exceeded"
+            self._coordinator.schedule_none(
+                session, state, event.item_id, InputOrigin.USER, reason="capacity_exceeded"
             )
             return
 
@@ -188,8 +189,9 @@ class VoiceRuntime:
             )
             return
         if not state.can_start_response():
-            await self._coordinator.send_none(
+            self._coordinator.schedule_none(
                 session,
+                state,
                 event.item_id,
                 InputOrigin.NO_INPUT,
                 reason="capacity_exceeded",

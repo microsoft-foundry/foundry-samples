@@ -28,6 +28,7 @@ from azure.ai.agentserver.invocations.voice import (
 
 from response_telemetry import ResponseTelemetry
 from state import (
+    MAX_PENDING_DECLINES,
     MAX_PENDING_PROACTIVE,
     ApplicationTurn,
     InputOrigin,
@@ -195,8 +196,8 @@ class ResponseCoordinator:
         operation.select_outcome(OperationOutcome.CANCELLED)
         if operation.terminal_event is not None:
             operation.terminal_event.set()
-        elif operation.task is not None:
-            operation.task.cancel()
+        else:
+            operation.request_cancellation(OperationOutcome.CANCELLED)
 
     def response_timeout(
         self,
@@ -219,9 +220,50 @@ class ResponseCoordinator:
         operation = state.responses.get(response_id)
         if operation is None:
             return
-        operation.select_outcome(outcome)
-        if operation.task is not None:
-            operation.task.cancel()
+        operation.request_cancellation(outcome)
+
+    def schedule_none(
+        self,
+        session: Session,
+        state: SessionState,
+        input_item_id: str,
+        origin: InputOrigin,
+        *,
+        reason: str,
+    ) -> None:
+        """Schedule a bounded decline without blocking the receive callback."""
+        del origin
+        if not state.active:
+            return
+        if state.pending_decline_count >= MAX_PENDING_DECLINES:
+            raise RuntimeError("Connection terminal-send capacity exceeded")
+        operation = ResponseOperation(
+            session=session,
+            state=state,
+            response_id=new_response_id(),
+            input_ids=(input_item_id,),
+            turn=ApplicationTurn(),
+            response_started=False,
+            capacity_released=True,
+            decline_only=True,
+        )
+        state.responses[operation.response_id] = operation
+        state.input_responses[input_item_id] = operation.response_id
+        self._start_task(state, operation, self._run_none(operation, reason))
+
+    async def _run_none(self, operation: ResponseOperation, reason: str) -> None:
+        try:
+            with operation.turn.activate():
+                await self._send_resolution(
+                    operation, ResponseNone(in_reply_to=operation.input_ids, reason=reason)
+                )
+            operation.select_outcome(OperationOutcome.NONE)
+        except asyncio.CancelledError:
+            operation.select_outcome(OperationOutcome.CANCELLED)
+            raise
+        except Exception as exception:
+            operation.select_outcome(OperationOutcome.ERROR)
+            logger.warning("Voice decline failed; error_type=%s", type(exception).__name__)
 
     async def send_none(
         self,
@@ -328,6 +370,8 @@ class ResponseCoordinator:
         tasks = self._mark_terminating(state, outcome)
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+        if state.input_resolution_tail is not None:
+            await asyncio.shield(state.input_resolution_tail)
         for operation in tuple(state.responses.values()):
             self._finalize(state, operation, outcome)
         self._clear_state(state)
@@ -353,6 +397,10 @@ class ResponseCoordinator:
         operation: ResponseOperation,
         coroutine: Coroutine[Any, Any, None],
     ) -> None:
+        if operation.input_ids:
+            operation.previous_resolution = state.input_resolution_tail
+            operation.resolution_complete = asyncio.get_running_loop().create_future()
+            state.input_resolution_tail = operation.resolution_complete
         try:
             activation = operation.telemetry.activate() if operation.telemetry else nullcontext()
             with activation:
@@ -362,6 +410,7 @@ class ResponseCoordinator:
                 )
         except BaseException:
             coroutine.close()
+            self._release_resolution(operation)
             self._finalize(state, operation, OperationOutcome.ABANDONED)
             raise
         operation.task = task
@@ -369,6 +418,25 @@ class ResponseCoordinator:
             lambda done: self._task_done(state, operation, done),
             context=contextvars.Context(),
         )
+
+    @staticmethod
+    def _release_resolution(operation: ResponseOperation) -> None:
+        completion = operation.resolution_complete
+        if completion is None or completion.done():
+            return
+        previous = operation.previous_resolution
+        if previous is not None and not previous.done():
+            previous.add_done_callback(lambda _: ResponseCoordinator._release_resolution(operation))
+        else:
+            completion.set_result(None)
+
+    async def _send_resolution(self, operation: ResponseOperation, message: Any) -> None:
+        try:
+            if operation.previous_resolution is not None:
+                await asyncio.shield(operation.previous_resolution)
+            await operation.session.send(message)
+        finally:
+            self._release_resolution(operation)
 
     async def _run_response(
         self,
@@ -379,11 +447,12 @@ class ResponseCoordinator:
     ) -> None:
         try:
             if not operation.response_started:
-                await operation.session.send(
+                await self._send_resolution(
+                    operation,
                     ResponseCreated(
                         response_id=operation.response_id,
                         in_reply_to=operation.input_ids,
-                    )
+                    ),
                 )
                 operation.response_started = True
             with operation.turn.activate():
@@ -396,7 +465,7 @@ class ResponseCoordinator:
             operation.select_outcome(OperationOutcome.ERROR)
             if operation.telemetry is not None:
                 operation.telemetry.record_failure(exception)
-            logger.exception("Voice response failed")
+            logger.error("Voice response failed; error_type=%s", type(exception).__name__)
             await self._report_failure(operation)
 
     async def _send_output(
@@ -450,11 +519,12 @@ class ResponseCoordinator:
         try:
             item_id = new_item_id()
             with operation.turn.activate():
-                await operation.session.send(
+                await self._send_resolution(
+                    operation,
                     ResponseCreated(
                         response_id=operation.response_id,
                         in_reply_to=operation.input_ids,
-                    )
+                    ),
                 )
                 operation.response_started = True
                 await operation.session.send(
@@ -475,9 +545,9 @@ class ResponseCoordinator:
         except asyncio.CancelledError:
             operation.select_outcome(OperationOutcome.CANCELLED)
             raise
-        except Exception:
+        except Exception as exception:
             operation.select_outcome(OperationOutcome.ERROR)
-            logger.exception("Self-cancelling response failed")
+            logger.error("Self-cancelling response failed; error_type=%s", type(exception).__name__)
             await self._report_failure(operation)
 
     def _task_done(
@@ -488,7 +558,14 @@ class ResponseCoordinator:
     ) -> None:
         if not task.cancelled():
             task.exception()
-        self._finalize(state, operation, OperationOutcome.ABANDONED)
+        self._release_resolution(operation)
+        completion = operation.resolution_complete
+        if completion is not None and not completion.done():
+            completion.add_done_callback(
+                lambda _: self._finalize(state, operation, OperationOutcome.ABANDONED)
+            )
+        else:
+            self._finalize(state, operation, OperationOutcome.ABANDONED)
 
     @staticmethod
     def _finalize(
@@ -510,9 +587,8 @@ class ResponseCoordinator:
         state.proactive_requests.clear()
         tasks: list[asyncio.Task[None]] = []
         for operation in tuple(state.responses.values()):
-            operation.select_outcome(outcome)
+            operation.request_cancellation(outcome)
             if operation.task is not None and not operation.task.done():
-                operation.task.cancel()
                 tasks.append(operation.task)
         return tasks
 

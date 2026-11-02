@@ -91,8 +91,8 @@ class VoiceRuntime(ProtocolRuntime):
             else None
         )
         if reason:
-            await self._coordinator.send_none(
-                session, event.item_id, InputOrigin.USER, reason=reason
+            self._coordinator.schedule_none(
+                session, state, event.item_id, InputOrigin.USER, reason=reason
             )
             return
         conversation = self._conversations[session]

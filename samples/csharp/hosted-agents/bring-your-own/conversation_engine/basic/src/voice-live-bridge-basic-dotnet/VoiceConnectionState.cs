@@ -37,6 +37,7 @@ internal sealed class VoiceConnectionState
     internal const int MaximumActiveResponses = 8;
     internal const int MaximumPendingProactiveResponses = 8;
     internal const int MaximumTerminalSends = 8;
+    internal const int MaximumPendingDeclines = 8;
     internal const int MaximumTrackedInputItems = 4096;
     internal const int MaximumTrackedPlaybackResponses = 64;
 
@@ -47,6 +48,7 @@ internal sealed class VoiceConnectionState
     private readonly Dictionary<string, ResponsePlan> _proactiveRequests = new(StringComparer.Ordinal);
     private readonly HashSet<string> _activeResponseIds = new(StringComparer.Ordinal);
     private readonly HashSet<string> _terminalResponseIds = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _declineResponseIds = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _heardTextByResponse = new(StringComparer.Ordinal);
     private ConnectionPhase _phase;
     private TaskCompletionSource? _terminationCompletion;
@@ -165,21 +167,29 @@ internal sealed class VoiceConnectionState
         }
     }
 
-    internal bool TryReserveOperation(ResponseOperation operation)
+    internal bool TryReserveOperation(ResponseOperation operation, bool declineOnly = false)
     {
         lock (_sync)
         {
             if (_phase != ConnectionPhase.Active ||
-                _activeResponseIds.Count >= MaximumActiveResponses ||
-                _terminalResponseIds.Count >= MaximumTerminalSends ||
+                (!declineOnly && (_activeResponseIds.Count >= MaximumActiveResponses ||
+                    _terminalResponseIds.Count >= MaximumTerminalSends)) ||
+                (declineOnly && _declineResponseIds.Count >= MaximumPendingDeclines) ||
                 _operations.ContainsKey(operation.ResponseId))
             {
                 return false;
             }
 
             _operations.Add(operation.ResponseId, operation);
-            TrackResponse(operation.ResponseId);
-            _activeResponseIds.Add(operation.ResponseId);
+            if (declineOnly)
+            {
+                _declineResponseIds.Add(operation.ResponseId);
+            }
+            else
+            {
+                TrackResponse(operation.ResponseId);
+                _activeResponseIds.Add(operation.ResponseId);
+            }
             if (operation.InputItemId is not null)
             {
                 _inputResponses[operation.InputItemId] = operation.ResponseId;
@@ -310,11 +320,20 @@ internal sealed class VoiceConnectionState
 
             _activeResponseIds.Remove(responseId);
             _terminalResponseIds.Remove(responseId);
+            _declineResponseIds.Remove(responseId);
             if (operation.InputItemId is not null)
             {
                 _inputResponses.Remove(operation.InputItemId);
             }
             return true;
+        }
+    }
+
+    internal bool TryGetOperation(string responseId, out ResponseOperation operation)
+    {
+        lock (_sync)
+        {
+            return _operations.TryGetValue(responseId, out operation!);
         }
     }
 
@@ -338,6 +357,7 @@ internal sealed class VoiceConnectionState
             _operations.Clear();
             _activeResponseIds.Clear();
             _terminalResponseIds.Clear();
+            _declineResponseIds.Clear();
             _inputResponses.Clear();
             _proactiveRequests.Clear();
             _heardTextByResponse.Clear();

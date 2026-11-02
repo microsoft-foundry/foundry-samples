@@ -222,7 +222,6 @@ async def handler(
     _active_cancel_signals[context.response_id] = _cancellation_signal
 
     logger.info("Processing request %s", context.response_id)
-    logger.info("User input: %s", user_input)
 
     stream = TextEventStream(
         response_id=context.response_id,
@@ -279,7 +278,7 @@ async def handler(
         tc = tool_calls[0]
         arguments = json.loads(tc.arguments) if isinstance(tc.arguments, str) else tc.arguments
         tool_name = tc.name
-        logger.info("Router chose: %s(%s)", tool_name, json.dumps(arguments, ensure_ascii=False)[:200])
+        logger.info("Router tool selected")
 
         new_task = None
 
@@ -395,7 +394,7 @@ async def handler(
                             for evt in _emit_text_item(stream, status_text.strip()):
                                 yield evt
                     except Exception as e:
-                        logger.warning("Status update LLM call failed: %s", e)
+                        logger.warning("Status update LLM call failed; error_type=%s", type(e).__name__)
 
             # Deliver results for tasks that finished while we were waiting
             if not _cancellation_signal.is_set():
@@ -414,7 +413,7 @@ async def handler(
         logger.info("Finished processing request %s", context.response_id)
 
     except Exception as exc:
-        logger.exception("Handler failed")
+        logger.error("Handler failed; error_type=%s", type(exc).__name__)
         for evt in _emit_text_item(stream, f"Sorry, something went wrong: {exc}"):
             yield evt
         yield stream.emit_completed()
