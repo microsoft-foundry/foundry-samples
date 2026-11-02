@@ -1,8 +1,9 @@
 # A2A Copilot travel sample
 
 Keep three independent agent packages under one azure.yaml.
-Use Copilot SDK ProviderConfig and its native MCP tool loop, following the
-Copilot Activity sample. No direct model HTTP calls or custom orchestration loop.
+Use Copilot SDK ProviderConfig and its custom-tool loop, following the
+Copilot Activity sample. Toolbox tools use the standard MCP client.
+No direct model HTTP calls or custom orchestration loop.
 Flight/Hotel catalogs are raw dummy data only. The LLMs own filtering, prices,
 rooms, eligibility and budget decisions. Do not add Python arithmetic checks,
 model correction retries, forced eligible IDs or code-selected itineraries.
