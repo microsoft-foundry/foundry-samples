@@ -5,7 +5,7 @@ import json
 import re
 from typing import Any
 
-from catalogs import (
+from contracts import (
     TRIP_FIELDS,
     choose_itinerary,
     eligible_pairs,

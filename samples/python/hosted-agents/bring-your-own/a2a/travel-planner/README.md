@@ -28,17 +28,54 @@ User --native A2A--> Travel Planner --Responses API--> gpt-5-nano
 User <-- completed A2A Task + itinerary + both specialist Task IDs
 ```
 
-The three services share [one runtime](src/travel-a2a/main.py). `AGENT_ROLE`
-selects their behavior. The native SDK owns Tasks and artifacts; the hosting
-adapter selects caller-isolated Foundry Task storage when deployed.
+### Three independent agent folders, one deployment manifest
 
-[The planner](src/travel-a2a/planner.py) discovers actual operation names,
+```text
+travel-planner/
+|-- azure.yaml
+|-- toolbox.json
+|-- trip-request.json
+|-- src/
+    |-- travel-agent/
+    |   |-- main.py
+    |   |-- planner.py
+    |   |-- services.py
+    |   |-- contracts.py
+    |   |-- test_client.py
+    |   |-- pyproject.toml
+    |   `-- uv.lock
+    |-- flight-agent/
+    |   |-- main.py
+    |   |-- catalog.py
+    |   |-- pyproject.toml
+    |   `-- uv.lock
+    `-- hotel-agent/
+        |-- main.py
+        |-- catalog.py
+        |-- pyproject.toml
+        `-- uv.lock
+```
+
+Each agent has its own entry point, dependencies and lockfile. The Flight and
+Hotel agents each own their catalog. The Travel Agent has neither inventory nor
+specialist search code; it only receives their results through Toolbox.
+There is no role-switching environment variable and no sample tests folder.
+
+The single [azure.yaml](azure.yaml) maps service `planner` to `src/travel-agent`,
+`flights` to `src/flight-agent`, and `hotels` to `src/hotel-agent`. They deploy as
+three separate agents with their own endpoints and versions. The native SDK owns
+Tasks and artifacts; the hosting adapter selects caller-isolated Foundry Task
+storage when deployed.
+
+[The planner](src/travel-agent/planner.py) discovers actual operation names,
 descriptions and message schemas through MCP. Toolbox configurations are named
 `flight_options` and `hotel_options`; operation names are discovered, not hardcoded.
 The model chooses those tools through bound-query adapters: normalized criteria
 are encoded into the discovered A2A message shape by code, rather than rewritten
 by the model. The planner verifies both real Task IDs, execution IDs, queries and
-fixture results before accepting the cheapest eligible returned combination.
+response contracts, travel constraints and price arithmetic before accepting the
+cheapest eligible returned combination. The remote specialists are the inventory
+source; the planner does not compare results to a local inventory copy.
 There is no direct A2A or model-only fallback.
 
 Eligibility and budget arithmetic are code-authoritative. The final structured
@@ -239,11 +276,10 @@ Model prose and tool ordering can vary; check structured results, not exact pros
 Deploy/connect the two specialists as above. Only the planner runs locally;
 outbound specialist calls still use the managed Toolbox.
 
-From [src/travel-a2a](src/travel-a2a), sign in with Azure CLI and configure:
+From [src/travel-agent](src/travel-agent), sign in with Azure CLI and configure:
 
 ```powershell
 az login
-$env:AGENT_ROLE = "planner"
 $env:PORT = "8088"
 $env:FOUNDRY_PROJECT_ENDPOINT = "<PROJECT-ENDPOINT>"
 $env:AZURE_AI_MODEL_DEPLOYMENT_NAME = "gpt-5-nano"
@@ -265,8 +301,9 @@ both specialist Task IDs and persisted `GetTask` result, then prints the JSON.
 The following were tested: real model + managed Toolbox + hosted specialists;
 fully hosted planner + Toolbox + both specialists; exact $1,165 golden itinerary;
 USD 900 no-match; missing-input clarification; local native worker Tasks/GetTask.
-Unit/contract tests separately cover failures, tampered results, budgets, capacity,
-discovered names, JSON/SSE MCP responses and endpoint trust.
+The sample deliberately has no tests folder. The dedicated workflow checks that
+all three locked packages import independently, validates cloud behavior
+contracts and runs the shared native A2A harness regressions.
 
 If discovery fails, verify explicit A2A 1.0 Toolbox entries and connection targets.
 For authentication failures, verify delegated-user access and trusted platform

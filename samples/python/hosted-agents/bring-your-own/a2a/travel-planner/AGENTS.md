@@ -1,13 +1,16 @@
 # Coding Agent Instructions - Native A2A Toolbox Travel
 
 Follow the Python hosted-agent README and dependency templates.
-Three native A2A services share one runtime: flights, hotels and planner.
+One azure.yaml defines three independent native A2A packages:
+src/travel-agent, src/flight-agent and src/hotel-agent. Each has its own
+main.py, pyproject.toml and uv.lock; do not reintroduce an AGENT_ROLE switch.
 Only the planner uses an LLM. All remote specialist discovery and invocation
 must use the managed Foundry Toolbox MCP endpoint, never direct A2A HTTP.
 
 Keep the Flight and Hotel catalogs synthetic and independent. Require both
 remote completed Tasks even for a no-match answer. Verify the requested query,
-catalog data and remote Task/execution IDs before accepting a model selection.
+response contracts, constraints, prices and remote Task/execution IDs before accepting a model selection.
+The planner must not contain or import either specialist's inventory/search code.
 Calculate money in integer USD cents. Never create bookings or payments.
 Missing inputs need clarification; tool failures must not become model-only success.
 
@@ -19,4 +22,5 @@ the model selects bound-query tools without rewriting normalized constraints.
 
 Keep the committed project and lock; the two alpha sources remain subject to
 repository policy. Do not commit credentials, environments or deployment state.
-Fixture tests are not real model/Azure evidence; report cloud results separately.
+Do not add a sample tests folder. Keep the shared harness and cloud behavior
+contracts wired to the independent packages. Report live verification separately.

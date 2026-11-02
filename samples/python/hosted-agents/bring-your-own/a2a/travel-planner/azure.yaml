@@ -9,7 +9,7 @@ services:
     host: azure.ai.project
   flights:
     host: azure.ai.agent
-    project: src/travel-a2a
+    project: src/flight-agent
     language: python
     kind: hosted
     name: travel-flights
@@ -30,14 +30,13 @@ services:
           tags: [synthetic-travel, flights]
     env:
       PYTHONNOUSERSITE: '1'
-      AGENT_ROLE: flights
       OTEL_INSTRUMENTATION_A2A_SDK_ENABLED: 'false'
       OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false'
     container:
       resources: {cpu: '0.5', memory: 1Gi}
   hotels:
     host: azure.ai.agent
-    project: src/travel-a2a
+    project: src/hotel-agent
     language: python
     kind: hosted
     name: travel-hotels
@@ -58,14 +57,13 @@ services:
           tags: [synthetic-travel, hotels]
     env:
       PYTHONNOUSERSITE: '1'
-      AGENT_ROLE: hotels
       OTEL_INSTRUMENTATION_A2A_SDK_ENABLED: 'false'
       OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false'
     container:
       resources: {cpu: '0.5', memory: 1Gi}
   planner:
     host: azure.ai.agent
-    project: src/travel-a2a
+    project: src/travel-agent
     language: python
     kind: hosted
     name: travel-planner
@@ -86,7 +84,6 @@ services:
           tags: [synthetic-travel, toolbox]
     env:
       PYTHONNOUSERSITE: '1'
-      AGENT_ROLE: planner
       TOOLBOX_ENDPOINT: ${TOOLBOX_ENDPOINT}
       AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
       OTEL_INSTRUMENTATION_A2A_SDK_ENABLED: 'false'

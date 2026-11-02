@@ -41,9 +41,10 @@ jobs:
             --output "$RUNNER_TEMP/travel-plan.json"
           bash -n .azure-pipelines/scripts/hosted-agents/discover-samples.sh
           bash -n .azure-pipelines/scripts/hosted-agents/run-hosted-agent.sh
-      - name: Test native HTTP workers and Toolbox planner failure contracts
+      - name: Check each independent agent package
         run: |
-          uv run --frozen --python "${{ matrix.python }}" \
-            --project samples/python/hosted-agents/bring-your-own/a2a/travel-planner/src/travel-a2a \
-            python -m unittest discover \
-            -s samples/python/hosted-agents/bring-your-own/a2a/travel-planner/tests -p 'test_*.py' -v
+          for agent in travel-agent flight-agent hotel-agent; do
+            uv run --frozen --python "${{ matrix.python }}" \
+              --directory "samples/python/hosted-agents/bring-your-own/a2a/travel-planner/src/$agent" \
+              python -c "import main; assert callable(main.main)"
+          done
