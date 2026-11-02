@@ -21,7 +21,7 @@ services:
     agentEndpoint:
       protocols: [a2a, responses]
     agentCard:
-      description: Flight Agent queries a synthetic round-trip inventory. Input is a JSON query encoded as text.
+      description: LLM Flight Agent assesses raw synthetic inventory and calculates eligible round-trip prices.
       version: 1.0.0
       skills:
         - id: flights
@@ -30,6 +30,7 @@ services:
           tags: [synthetic-travel, flights]
     env:
       PYTHONNOUSERSITE: '1'
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
       OTEL_INSTRUMENTATION_A2A_SDK_ENABLED: 'false'
       OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false'
     container:
@@ -48,7 +49,7 @@ services:
     agentEndpoint:
       protocols: [a2a, responses]
     agentCard:
-      description: Hotel Agent queries a synthetic stay inventory. Input is a JSON query encoded as text.
+      description: LLM Hotel Agent assesses raw synthetic inventory and calculates nights, rooms, taxes and stay fees.
       version: 1.0.0
       skills:
         - id: hotels
@@ -57,6 +58,7 @@ services:
           tags: [synthetic-travel, hotels]
     env:
       PYTHONNOUSERSITE: '1'
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
       OTEL_INSTRUMENTATION_A2A_SDK_ENABLED: 'false'
       OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false'
     container:

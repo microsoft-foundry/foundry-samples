@@ -60,7 +60,7 @@ EXAMPLE = {
 }
 
 
-def search_hotels(query: dict) -> dict:
+def validate_query(query: dict) -> None:
     if not isinstance(query, dict) or set(query) != set(EXAMPLE):
         raise ValueError(
             "Hotel query must contain exactly: " + ", ".join(sorted(EXAMPLE))
@@ -90,6 +90,14 @@ def search_hotels(query: dict) -> dict:
         or query["max_office_distance_meters"] < 0
     ):
         raise ValueError("max_office_distance_meters must be a nonnegative integer")
+
+
+def search_hotels(query: dict) -> dict:
+    """Reference calculation used only to verify the model's answer."""
+    validate_query(query)
+    first, last = date.fromisoformat(query["check_in"]), date.fromisoformat(
+        query["check_out"]
+    )
     rooms_needed = (query["travelers"] + 1) // 2
     nights = (last - first).days
     options = []
@@ -119,4 +127,54 @@ def search_hotels(query: dict) -> dict:
         "query": query,
         "status": "options_found" if options else "no_options",
         "options": options,
+    }
+
+
+def verify_calculations(query: dict, answer: dict) -> dict:
+    expected = search_hotels(query)
+    options = answer.get("options")
+    if not isinstance(options, list) or answer.get("status") != expected["status"]:
+        raise ValueError("Hotel model returned an invalid options status")
+    computed = {}
+    for option in options:
+        if not isinstance(option, dict) or set(option) != {
+            "id",
+            "nights",
+            "rooms_needed",
+            "total_cents",
+        }:
+            raise ValueError(
+                "Hotel model must return ID, nights, rooms_needed and total_cents"
+            )
+        if not isinstance(option["id"], str) or option["id"] in computed:
+            raise ValueError("Hotel model returned an invalid or duplicate ID")
+        if any(
+            type(option[key]) is not int
+            for key in ("nights", "rooms_needed", "total_cents")
+        ):
+            raise ValueError("Hotel model calculations must be integers")
+        computed[option["id"]] = (
+            option["nights"],
+            option["rooms_needed"],
+            option["total_cents"],
+        )
+    if computed != {
+        item["id"]: (item["nights"], item["rooms_needed"], item["total_cents"])
+        for item in expected["options"]
+    }:
+        raise ValueError(
+            "Hotel model filtering, room count or price calculation is incorrect"
+        )
+    assessment = answer.get("assessment")
+    if not isinstance(assessment, str) or not assessment.strip():
+        raise ValueError("Hotel model did not explain its assessment")
+    inventory = {item["id"]: item for item in HOTELS}
+    return {
+        "kind": "hotels",
+        "catalog_version": CATALOG_VERSION,
+        "query": query,
+        "status": answer["status"],
+        "options": [{**inventory[item["id"]], **item} for item in options],
+        "assessment": assessment,
+        "calculations_verified": True,
     }

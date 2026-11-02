@@ -61,7 +61,12 @@ async def run(endpoint: str, message: str) -> None:
                     or len(delegations) != 2
                     or len({item.get("task_id") for item in delegations}) != 2
                     or any(
-                        not item.get("task_id") or not item.get("execution_id")
+                        not item.get("task_id")
+                        or not item.get("execution_id")
+                        or item.get("model_backed") is not True
+                        or item.get("calculations_verified") is not True
+                        or not item.get("model_response_id")
+                        or not item.get("assessment")
                         for item in delegations
                     )
                 ):

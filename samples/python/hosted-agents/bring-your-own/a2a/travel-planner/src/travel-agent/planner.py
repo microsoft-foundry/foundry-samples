@@ -210,6 +210,17 @@ def specialist_result(
         raise RuntimeError(
             "Specialist Task/execution evidence is missing or mismatched"
         )
+    if (
+        payload.get("model_backed") is not True
+        or payload.get("calculations_verified") is not True
+        or type(payload.get("model_attempts")) is not int
+        or payload["model_attempts"] not in (1, 2)
+        or any(
+            not isinstance(payload.get(key), str) or not payload[key].strip()
+            for key in ("assessment", "model_response_id", "model_deployment")
+        )
+    ):
+        raise RuntimeError("Specialist did not return a verified LLM assessment")
     verify_options(payload, trip)
     return payload
 
@@ -301,6 +312,8 @@ class TravelPlanner:
                 if (
                     len({value["task_id"] for value in results.values()}) != 2
                     or len({value["execution_id"] for value in results.values()}) != 2
+                    or len({value["model_response_id"] for value in results.values()})
+                    != 2
                 ):
                     raise RuntimeError(
                         "Specialists returned duplicate Task/execution evidence"
@@ -386,6 +399,10 @@ class TravelPlanner:
                     **itinerary,
                     "requirements": trip,
                     "explanation": selection["explanation"],
+                    "planner_model": {
+                        "deployment": self.services.model,
+                        "response_id": response["id"],
+                    },
                     "toolbox_verified": True,
                     "delegations": evidence,
                 }
@@ -424,6 +441,12 @@ class TravelPlanner:
                         "task_id": payload["task_id"],
                         "execution_id": payload["execution_id"],
                         "catalog_version": payload["catalog_version"],
+                        "model_backed": True,
+                        "calculations_verified": True,
+                        "model_deployment": payload["model_deployment"],
+                        "model_response_id": payload["model_response_id"],
+                        "model_attempts": payload["model_attempts"],
+                        "assessment": payload["assessment"],
                     }
                 )
                 history.append(

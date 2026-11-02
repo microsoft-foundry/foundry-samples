@@ -4,80 +4,26 @@
 import json
 import re
 from typing import Any
-from urllib.parse import urlsplit
 from uuid import uuid4
 
-import httpx2 as httpx
-from azure.ai.agentserver.core import get_request_context
-from azure.identity.aio import DefaultAzureCredential
-from opentelemetry import propagate, trace
+from model import ModelClient
+from opentelemetry import trace
 
 TRACER = trace.get_tracer("a2a.travel")
 
 
-class FoundryServices:
+class FoundryServices(ModelClient):
     def __init__(self, project: str, model: str, toolbox: str) -> None:
-        self.project = project.rstrip("/")
-        parsed = urlsplit(self.project)
-        if (
-            parsed.scheme != "https"
-            or not parsed.hostname
-            or parsed.username
-            or parsed.password
-            or parsed.query
-            or parsed.fragment
-            or not re.fullmatch(r"/api/projects/[A-Za-z0-9_-]+", parsed.path)
-        ):
-            raise ValueError(
-                "Use an HTTPS Foundry project endpoint without credentials or query"
-            )
         if not re.fullmatch(
-            re.escape(self.project)
+            re.escape(project.rstrip("/"))
             + r"/toolboxes/[A-Za-z0-9_-]+/(?:versions/[A-Za-z0-9_-]+/)?mcp\?api-version=v1",
             toolbox,
         ):
             raise ValueError(
                 "TOOLBOX_ENDPOINT must be an MCP endpoint in the same project"
             )
-        if not model:
-            raise ValueError("Specify an existing model deployment")
-        self.model = model
+        super().__init__(project, model)
         self.toolbox = toolbox
-        self.credential = DefaultAzureCredential()
-        self.http = httpx.AsyncClient(timeout=httpx.Timeout(180, connect=15))
-
-    async def close(self) -> None:
-        await self.http.aclose()
-        await self.credential.close()
-
-    async def headers(self) -> dict[str, str]:
-        token = await self.credential.get_token("https://ai.azure.com/.default")
-        headers = {"Authorization": "Bearer " + token.token}
-        propagate.inject(headers)
-        # Preserve trusted platform delegation context, never the incoming Authorization.
-        headers.update(get_request_context().platform_headers())
-        return headers
-
-    async def model_response(self, request: dict[str, Any]) -> dict[str, Any]:
-        with TRACER.start_as_current_span("travel.model"):
-            response = await self.http.post(
-                self.project + "/openai/v1/responses",
-                headers=await self.headers(),
-                json={
-                    "model": self.model,
-                    "reasoning": {"effort": "minimal"},
-                    "max_output_tokens": 2400,
-                    "store": False,
-                    **request,
-                },
-            )
-            response.raise_for_status()
-            result = response.json()
-            if not isinstance(result, dict) or result.get("status") != "completed":
-                raise RuntimeError("Model response did not complete")
-            if not isinstance(result.get("output"), list):
-                raise TypeError("Model response is missing output")
-            return result
 
     async def rpc(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
         request_id = uuid4().hex

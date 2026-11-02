@@ -6,12 +6,15 @@ trip that fits a budget. Three separate native A2A agents collaborate:
 | Agent | Responsibility |
 |---|---|
 | **Travel Planner** | Uses `gpt-5-nano` to interpret the request, discover and select Toolbox tools, and explain the itinerary. |
-| **Flight Agent** | Searches a synthetic round-trip inventory, including arrival time, taxes, baggage, refundability and seats. |
-| **Hotel Agent** | Searches a synthetic hotel inventory, including distance, refundability, rooms, nights, taxes and stay fees. |
+| **Flight Agent** | Uses its own LLM call to filter raw dummy flights, calculate fares + taxes + baggage for the traveler count, and explain its assessment. |
+| **Hotel Agent** | Uses its own LLM call to filter raw dummy hotels, calculate nights, rooms, taxes and stay fees, and explain its assessment. |
 
 The planner uses **managed Foundry Toolbox A2A 1.0 tools only** for remote
 discovery and calls. It does not fetch specialist Cards or call their URLs itself.
 No real flights, live prices, reservations or payments are involved.
+These are **three LLM-backed agents**, all using the existing `gpt-5-nano`
+deployment. Three agents does not mean exactly three API calls: the planner has
+multiple orchestration calls and specialists can make one correction attempt.
 
 ## How it works
 
@@ -20,8 +23,8 @@ User --native A2A--> Travel Planner --Responses API--> gpt-5-nano
                          |
                          +-- Toolbox MCP tools/list --> discovered Flight/Hotel tools
                          |
-                         +-- LLM tool choice --> Toolbox tools/call --A2A--> Flight Agent
-                         +-- LLM tool choice --> Toolbox tools/call --A2A--> Hotel Agent
+                         +-- LLM tool choice --> Toolbox tools/call --A2A--> Flight Agent --> its LLM
+                         +-- LLM tool choice --> Toolbox tools/call --A2A--> Hotel Agent --> its LLM
                          |
                          +-- verify both completed Tasks and catalog results
                          +-- LLM selection + explanation; code computes exact cost
@@ -40,17 +43,22 @@ travel-planner/
     |   |-- main.py
     |   |-- planner.py
     |   |-- services.py
+    |   |-- model.py
     |   |-- contracts.py
     |   |-- test_client.py
     |   |-- pyproject.toml
     |   `-- uv.lock
     |-- flight-agent/
     |   |-- main.py
+    |   |-- agent.py
+    |   |-- model.py
     |   |-- catalog.py
     |   |-- pyproject.toml
     |   `-- uv.lock
     `-- hotel-agent/
         |-- main.py
+        |-- agent.py
+        |-- model.py
         |-- catalog.py
         |-- pyproject.toml
         `-- uv.lock
@@ -77,6 +85,42 @@ response contracts, travel constraints and price arithmetic before accepting the
 cheapest eligible returned combination. The remote specialists are the inventory
 source; the planner does not compare results to a local inventory copy.
 There is no direct A2A or model-only fallback.
+
+### What the specialist LLMs calculate
+
+Each specialist receives its validated query plus its **raw inventory**, not
+precomputed search results or totals. The flight model returns matching IDs and
+calculated `total_cents`. The hotel model returns matching IDs, `nights`,
+`rooms_needed` and `total_cents`. Their assessments explain the calculations.
+
+The supplied dummy data includes:
+
+| Flight | Fare | Tax | Baggage | Refundable | Arrival |
+|---|---:|---:|---:|---|---|
+| FLIGHT-101 | $250 | $45 | $30 | No | Jan 10, 20:00 Pacific |
+| FLIGHT-102 | $390 | $50 | $0 | Yes | Jan 10, 18:00 Pacific |
+| FLIGHT-103 | $180 | $40 | $35 | Yes | Jan 11, 10:30 Pacific |
+
+| Hotel | Nightly room | Nightly tax | Per-room stay fee | Refundable | Office distance |
+|---|---:|---:|---:|---|---:|
+| HOTEL-201 | $145 | $15 | $15 | No | 900 m |
+| HOTEL-202 | $210 | $25 | $20 | Yes | 1,200 m |
+| HOTEL-203 | $150 | $15 | $15 | Yes | 14,000 m |
+| HOTEL-204 | $300 | $30 | $30 | Yes | 500 m |
+
+The model must perform the filtering and calculations. Only afterward, each
+specialist checks its model output against its own fixture. Incorrect prices,
+missing/extra eligible IDs, invented options and wrong room counts are rejected.
+One logged correction attempt asks the model to recalculate without giving it
+code-computed answers. A second invalid answer fails the A2A request; code never
+silently substitutes a deterministic result.
+
+Each returned specialist artifact includes `assessment`, `model_response_id`,
+`model_deployment`, `model_attempts`, `model_backed: true` and
+`calculations_verified: true`. The planner requires this evidence, includes it in
+`delegations`, and includes its final model response ID in `planner_model`.
+The small model transport module is packaged in each agent so all three remain
+independently deployable.
 
 Eligibility and budget arithmetic are code-authoritative. The final structured
 model schema permits only valid cheapest returned IDs, or `no_match` with null
@@ -105,6 +149,9 @@ Follow the shared [Python startup configuration](../../../README.md#python-start
 2. A Foundry project enabled for native A2A, managed Task storage and A2A 1.0 tools.
    For a first-time setup, create a project before running the commands below.
 3. An existing **`gpt-5-nano`** model deployment and permission to use it.
+   The planner uses minimal reasoning; specialists use high reasoning for
+   filtering and arithmetic. Other models must support these settings and
+   structured output.
 4. Permission to deploy/invoke agents and create project connections/Toolboxes.
    Ask the project owner to handle any required access; do not alter shared roles.
 
@@ -249,7 +296,7 @@ Expected completed Task artifact:
 | Hotel total | 72,500 cents = **$725**, including 3 nights, taxes and stay fee |
 | Combined total | `total_cents: 116500`, `total_usd: "1165.00"` |
 | Remaining budget | 3,500 cents = **$35** |
-| Delegation | `toolbox_verified: true`, Flight and Hotel entries with distinct remote Task IDs |
+| Delegation | `toolbox_verified: true`, distinct remote Task/model response IDs, verified LLM calculations and specialist assessments |
 | Safety | `synthetic: true`, `booking_created: false` |
 
 ### More bug-bash scenarios

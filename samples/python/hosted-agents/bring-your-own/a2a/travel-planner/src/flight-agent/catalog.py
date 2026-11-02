@@ -56,7 +56,7 @@ EXAMPLE = {
 }
 
 
-def search_flights(query: dict) -> dict:
+def validate_query(query: dict) -> None:
     if not isinstance(query, dict) or set(query) != set(EXAMPLE):
         raise ValueError(
             "Flight query must contain exactly: " + ", ".join(sorted(EXAMPLE))
@@ -87,6 +87,12 @@ def search_flights(query: dict) -> dict:
         raise ValueError(
             "arrive_by must have a timezone and fall within the trip dates"
         )
+
+
+def search_flights(query: dict) -> dict:
+    """Reference calculation used only to verify the model's answer."""
+    validate_query(query)
+    deadline = datetime.fromisoformat(query["arrive_by"])
     options = []
     for item in FLIGHTS:
         if (
@@ -111,4 +117,40 @@ def search_flights(query: dict) -> dict:
         "query": query,
         "status": "options_found" if options else "no_options",
         "options": options,
+    }
+
+
+def verify_calculations(query: dict, answer: dict) -> dict:
+    expected = search_flights(query)
+    options = answer.get("options")
+    if not isinstance(options, list) or answer.get("status") != expected["status"]:
+        raise ValueError("Flight model returned an invalid options status")
+    computed = {}
+    for option in options:
+        if not isinstance(option, dict) or set(option) != {"id", "total_cents"}:
+            raise ValueError(
+                "Flight model must return an ID and total_cents for each option"
+            )
+        if not isinstance(option["id"], str) or option["id"] in computed:
+            raise ValueError("Flight model returned an invalid or duplicate ID")
+        if type(option["total_cents"]) is not int:
+            raise ValueError("Flight model totals must be integer cents")
+        computed[option["id"]] = option["total_cents"]
+    if computed != {item["id"]: item["total_cents"] for item in expected["options"]}:
+        raise ValueError("Flight model filtering or price calculation is incorrect")
+    assessment = answer.get("assessment")
+    if not isinstance(assessment, str) or not assessment.strip():
+        raise ValueError("Flight model did not explain its assessment")
+    inventory = {item["id"]: item for item in FLIGHTS}
+    return {
+        "kind": "flights",
+        "catalog_version": CATALOG_VERSION,
+        "query": query,
+        "status": answer["status"],
+        "options": [
+            {**inventory[item["id"]], "total_cents": item["total_cents"]}
+            for item in options
+        ],
+        "assessment": assessment,
+        "calculations_verified": True,
     }

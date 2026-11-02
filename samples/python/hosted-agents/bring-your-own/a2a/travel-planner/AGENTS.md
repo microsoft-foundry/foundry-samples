@@ -4,12 +4,17 @@ Follow the Python hosted-agent README and dependency templates.
 One azure.yaml defines three independent native A2A packages:
 src/travel-agent, src/flight-agent and src/hotel-agent. Each has its own
 main.py, pyproject.toml and uv.lock; do not reintroduce an AGENT_ROLE switch.
-Only the planner uses an LLM. All remote specialist discovery and invocation
+All three agents use an LLM. Specialists receive raw dummy inventory and must
+calculate eligible prices, nights and rooms themselves. Code verifies their
+answer only afterward; never replace a failed calculation with a deterministic
+success. Permit at most one logged model correction, without computed answers.
+All remote specialist discovery and invocation
 must use the managed Foundry Toolbox MCP endpoint, never direct A2A HTTP.
 
 Keep the Flight and Hotel catalogs synthetic and independent. Require both
 remote completed Tasks even for a no-match answer. Verify the requested query,
 response contracts, constraints, prices and remote Task/execution IDs before accepting a model selection.
+Require specialist assessments, actual model response IDs and verified calculation evidence.
 The planner must not contain or import either specialist's inventory/search code.
 Calculate money in integer USD cents. Never create bookings or payments.
 Missing inputs need clarification; tool failures must not become model-only success.
