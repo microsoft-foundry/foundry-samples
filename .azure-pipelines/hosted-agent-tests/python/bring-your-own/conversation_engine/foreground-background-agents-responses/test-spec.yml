@@ -1,0 +1,23 @@
+# CE needs a dedicated WebSocket/audio client. The shared HTTP runner cannot
+# invoke this sample; invocations planning validates these raw assertions only.
+version: 1
+sample:
+  owner: wujin
+  experiences: [azd]
+tests:
+  - name: background-worker-result-and-foreground-reply
+    turns:
+      - input: Search site specs for Quincy North. Include the fiber types and the cross-connect rack location in your answer.
+        assertions:
+          - source: raw
+            type: contains
+            value: OS2
+          - source: raw
+            type: regex
+            value: '(?i)rack\s+7'
+      - input: Say exactly foreground ready.
+        assertions:
+          - source: raw
+            type: contains
+            value: foreground ready
+            case_sensitive: false

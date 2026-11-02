@@ -21,7 +21,9 @@ owns the audio pipeline: speech recognition, turn detection, synthesis, playback
 Python and .NET provide two integration styles: an in-process adapter around a simple streaming
 HTTP-shaped Echo handler, and native CE samples that define a fixed thirty-word children's story
 directly in their user-message handlers. Both styles schedule cancellable output so interruption,
-cancellation, timeout, and session callbacks remain responsive. Neither requires a model call.
+cancellation, timeout, and session callbacks remain responsive. These existing story/Echo styles
+require no model call. The foreground/background migration additionally demonstrates the original
+model-backed Router and Worker behind a single CE entry point.
 
 ## Samples
 
@@ -31,6 +33,7 @@ cancellation, timeout, and session callbacks remain responsive. Neither requires
 | Python | [Voice Live Bridge — Basic Python](basic/) | A framework-free Python hosted agent using `azure-ai-agentserver-invocations`. |
 | Python | [Voice Live Bridge — LangChain Python](langchain/) | Model-free async story stream; legacy directory/Agent names retained. |
 | Python | [Voice Live Bridge — LangGraph Python](langgraph/) | Model-free async story stream; legacy directory/Agent names retained. |
+| Python | [Foreground + Background Agents](foreground-background-agents-responses/) | CE transport migration of the existing Responses sample; preserves its model-backed Router, Worker and tools in one process. |
 | C# | [Voice Live — Adapter Mode](../../../../csharp/hosted-agents/bring-your-own/conversation_engine/adapter_mode/) | The equivalent in-process adapter and streaming Echo handler for .NET. |
 | C# | [Voice Live Bridge — Basic .NET](../../../../csharp/hosted-agents/bring-your-own/conversation_engine/basic/) | The equivalent framework-free hosted agent using the AgentServer Invocations SDK for .NET. |
 
@@ -145,6 +148,14 @@ These are separate cloud checks, not results from the shared HTTP-only CI runner
 This minimal two-turn smoke does not validate cloud interruption, reconnect,
 failure injection, load, azd/Toolkit onboarding, or service rollout in other
 environments. Repeat deployment-specific checks in your target environment.
+
+On November 2, 2026, the additional Python foreground/background migration passed
+18 local tests and two deployed business turns in `westus2`: a text-input
+background model/tool task with spoken results, followed by WAV/STT input and a
+foreground model reply with audio. Its original mock tools and model access code
+were unchanged. This model-backed variant needs the Hosted identity's scoped
+model-inference permission, unlike the model-free story/Echo samples above.
+See its [validation details](foreground-background-agents-responses/#validation).
 
 ## Run a sample
 
