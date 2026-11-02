@@ -8,23 +8,7 @@ name: agent-framework-agent-basic-responses-byoaks
 services:
   ai-project:
     host: azure.ai.project
-    agentHosting:
-      hostingType: ManagedCluster
-      name: primary
-      clusterResourceId: ${AKS_RESOURCE_ID}
-      agentSubnetResourceId: ${AGENT_SUBNET_RESOURCE_ID}
-      hostingManagementIdentityResourceId: ${HOSTING_IDENTITY_RESOURCE_ID}
-      storageAccountResourceId: ${STORAGE_ACCOUNT_RESOURCE_ID}
-      workloadIdentityResourceId: ${WORKLOAD_IDENTITY_RESOURCE_ID}
-    deployments:
-      - name: gpt-5.4-mini
-        model:
-          format: OpenAI
-          name: gpt-5.4-mini
-          version: '2026-03-17'
-        sku:
-          name: GlobalStandard
-          capacity: 10
+    endpoint: ${FOUNDRY_PROJECT_ENDPOINT}
   application-insights:
     host: azure.ai.connection
     uses:

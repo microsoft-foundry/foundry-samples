@@ -9,8 +9,17 @@ cd foundry-samples/samples/python/hosted-agents/agent-framework/responses/03-byo
 
 This sample runs a basic Microsoft Agent Framework agent on a
 customer-managed Azure Kubernetes Service (AKS) cluster through Microsoft
-Foundry hosted agents. It uses the Responses protocol and an existing
-Application Insights connection.
+Foundry hosted agents. It uses the Responses protocol, an existing Foundry
+project and model deployment, and an existing Application Insights resource.
+
+> [!IMPORTANT]
+> This is a brownfield sample. The existing project's parent Foundry account
+> must already have a successful customer-managed AKS `ManagedCluster` entry in
+> `properties.agentHostingConfigurations`. The included provisioning scripts
+> only create or reuse an AKS cluster and its `sandbox` KataVmIsolation node
+> pool. They do **not** complete Foundry BYO-AKS onboarding, create identities,
+> storage, a subnet, or Application Insights, or register the cluster as a
+> Foundry hosting configuration.
 
 ## How it works
 
@@ -18,12 +27,11 @@ The agent uses `FoundryChatClient` with `DefaultAzureCredential` and is served
 by `ResponsesHostServer`. Foundry manages response history, so the Agent
 Framework agent sets `store` to `false`.
 
-The `azure.yaml` manifest configures the Foundry project's `primary`
-`ManagedCluster` hosting instance with an existing AKS cluster, delegated agent
-subnet, hosting and workload identities, storage account, and Application
-Insights resource. It also creates and configures the Foundry project and a
-`gpt-5.4-mini` model deployment, then deploys the container through a remote
-build with 0.5 CPU and 1 GiB memory.
+The `azure.yaml` manifest targets an existing Foundry project endpoint,
+configures its Application Insights connection, and deploys the container
+through a remote build with 0.5 CPU and 1 GiB memory. The parent Foundry
+account's existing hosting configuration determines that the hosted agent runs
+on customer-managed AKS.
 
 ## Prerequisites
 
@@ -41,58 +49,142 @@ Install:
 
 Authenticate with `azd auth login` and `az login`.
 
-The following seven resource values must already exist:
+The following deployment values must already exist:
 
 | Value | Existing resource or setting |
 | --- | --- |
-| `AKS_RESOURCE_ID` | Resource ID of the AKS cluster used for managed-cluster agent hosting |
-| `AGENT_SUBNET_RESOURCE_ID` | Resource ID of the subnet delegated for hosted-agent workloads |
-| `HOSTING_IDENTITY_RESOURCE_ID` | Resource ID of the user-assigned managed identity used to manage hosting |
-| `WORKLOAD_IDENTITY_RESOURCE_ID` | Resource ID of the user-assigned managed identity used by hosted workloads |
-| `STORAGE_ACCOUNT_RESOURCE_ID` | Resource ID of the storage account used by hosted-agent sessions |
+| `FOUNDRY_PROJECT_ENDPOINT` | Endpoint of the existing Foundry project |
+| `AZURE_AI_MODEL_DEPLOYMENT_NAME` | Name of a compatible model deployment that already exists in the project |
 | `APPLICATIONINSIGHTS_RESOURCE_ID` | Resource ID of the existing Application Insights resource connected to the Foundry project |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | Connection string for that Application Insights resource |
+| `FOUNDRY_ACCOUNT_RESOURCE_ID` | Resource ID of the parent Foundry account; used only for preflight verification and documentation |
 
-An existing Foundry project or model deployment is not required.
+The parent account's `properties.agentHostingConfigurations[]` must contain an
+entry with:
 
-The AKS cluster, subnet, identities, storage account, Application Insights
-resource, networking, workload identity federation, and RBAC assignments must
-be prepared before using this sample. In particular, the cluster and subnet
-must permit Foundry's hosted-agent traffic, the managed identities must have
-the required federated credentials, and each identity must have the required
-roles on the resources it accesses. This sample does not create or repair
-those resources.
+- `name`
+- `hostingType` set to `ManagedCluster`
+- `hostingManagementIdentityResourceId`
+- `workloadIdentityResourceId`
+- `clusterResourceId`
+- `storageAccountResourceId`
+
+The hosting management identity must also appear in the account's
+`identity.userAssignedIdentities`. The AKS cluster, subnet, identities, storage
+account, Application Insights resource, networking, workload identity
+federation, and RBAC assignments must otherwise be prepared before using this
+sample.
+
+## Optional: Create the AKS cluster and sandbox pool
+
+The AKS provisioning scripts create a sandbox node pool with
+`--workload-runtime KataVmIsolation`; this currently requires the Azure CLI
+`aks-preview` extension. Use the scripts at the sample root to create a test
+AKS cluster and sandbox node pool. Use Bash on macOS/Linux, and use PowerShell
+on Windows.
+
+Bash:
+
+```bash
+export AZURE_SUBSCRIPTION_ID="<subscription id>"
+export AZURE_LOCATION="<supported private preview Azure region>"
+export RESOURCE_GROUP="<new resource group name>"
+export AKS_NAME="<new AKS cluster name>"
+
+az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+az group create --name "$RESOURCE_GROUP" --location "$AZURE_LOCATION" --output none
+
+bash ./provision_aks.sh
+bash ./provision_aks.sh --apply
+```
+
+PowerShell:
+
+```powershell
+$env:AZURE_SUBSCRIPTION_ID = "<subscription id>"
+$env:AZURE_LOCATION = "<supported private preview Azure region>"
+$env:RESOURCE_GROUP = "<new resource group name>"
+$env:AKS_NAME = "<new AKS cluster name>"
+
+az account set --subscription $env:AZURE_SUBSCRIPTION_ID
+az group create --name $env:RESOURCE_GROUP --location $env:AZURE_LOCATION --output none
+
+.\provision_aks.ps1
+.\provision_aks.ps1 -Apply
+```
+
+Preview first, and then rerun with `--apply` or `-Apply`.
+
+During apply, the scripts query VM SKUs available to the subscription in
+`AZURE_LOCATION`. They select the closest qualifying general-purpose VM sizes
+for the system pool (at least 4 vCPUs and 16 GiB memory) and sandbox pool (at
+least 8 vCPUs and 32 GiB memory), preferring the previously tested
+`Standard_D4ds_v5` and `Standard_D8as_v5` when available. To require specific
+sizes, set `SYSTEM_NODE_VM_SIZE` and `SANDBOX_NODE_VM_SIZE`; the scripts
+validate explicit sizes against the regional SKU list before provisioning.
+
+If sandbox node-pool creation fails with
+`unrecognized arguments: --workload-runtime KataVmIsolation --ssh-access disabled`,
+install or update `aks-preview`, and then rerun the script.
+
+> [!WARNING]
+> These scripts only create or reuse AKS and the `sandbox` KataVmIsolation node
+> pool. They don't create identities, storage, a subnet, Application Insights,
+> or Foundry registration. They also don't attach a separately managed subnet,
+> create ACR resources, enable Azure Policy, or configure an ACR image-admission
+> policy. Existing clusters and pools are reused without being updated or fully
+> validated.
 
 ## Configure and provision
 
-Create an `azd` environment and set the existing resource values:
+Create an `azd` environment and set the existing project, model, monitoring,
+and account values:
 
 ```bash
 azd env new
-azd env set AKS_RESOURCE_ID "<aks-resource-id>"
-azd env set AGENT_SUBNET_RESOURCE_ID "<agent-subnet-resource-id>"
-azd env set HOSTING_IDENTITY_RESOURCE_ID "<hosting-identity-resource-id>"
-azd env set WORKLOAD_IDENTITY_RESOURCE_ID "<workload-identity-resource-id>"
-azd env set STORAGE_ACCOUNT_RESOURCE_ID "<storage-account-resource-id>"
+azd env set FOUNDRY_PROJECT_ENDPOINT "<foundry-project-endpoint>"
+azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME "<existing-model-deployment-name>"
 azd env set APPLICATIONINSIGHTS_RESOURCE_ID "<application-insights-resource-id>"
 azd env set APPLICATIONINSIGHTS_CONNECTION_STRING "<application-insights-connection-string>"
+azd env set FOUNDRY_ACCOUNT_RESOURCE_ID "<foundry-account-resource-id>"
 ```
 
-Provision the Foundry configuration described by the manifest:
+Before provisioning, verify the parent account's hosting registration.
+
+Bash:
+
+```bash
+FOUNDRY_ACCOUNT_RESOURCE_ID="$(azd env get-value FOUNDRY_ACCOUNT_RESOURCE_ID)"
+az resource show \
+  --ids "$FOUNDRY_ACCOUNT_RESOURCE_ID" \
+  --api-version 2026-09-15-preview \
+  --query "properties.agentHostingConfigurations"
+```
+
+PowerShell:
+
+```powershell
+$foundryAccountResourceId = azd env get-value FOUNDRY_ACCOUNT_RESOURCE_ID
+az resource show `
+  --ids $foundryAccountResourceId `
+  --api-version 2026-09-15-preview `
+  --query "properties.agentHostingConfigurations"
+```
+
+The command must return a `ManagedCluster` entry with the required fields
+listed above. Don't continue if the result is `null` or empty.
+
+Target the existing project and provision or configure only the supported
+sample-owned services declared by the manifest, including the Application
+Insights connection:
 
 ```bash
 azd provision
 ```
 
-Provisioning creates and configures the Foundry project and the declared
-`gpt-5.4-mini` deployment while registering the existing BYO-AKS, identity,
-storage, and monitoring resources. It does not create those existing
-resources. `azd` derives the agent service's
-`AZURE_AI_MODEL_DEPLOYMENT_NAME` value from the deployment declared in
-`azure.yaml`.
-
-To use another compatible model, update the deployment name and model details
-under `services.ai-project.deployments` in `azure.yaml` before provisioning.
+`azd provision` does not create the project or model deployment and does not
+register AKS. The model named by `AZURE_AI_MODEL_DEPLOYMENT_NAME` must already
+exist in the target project.
 
 ## Run and invoke locally
 
@@ -120,11 +212,14 @@ The agent listens on `http://localhost:8088`.
 
 ## Deploy and invoke
 
-Deploy the container to the configured managed-cluster hosting environment:
+Deploy the agent to the existing project:
 
 ```bash
 azd deploy
 ```
+
+The Foundry account's existing hosting configuration determines that the agent
+runs on customer-managed AKS. `azd deploy` does not register the cluster.
 
 Invoke the deployed agent:
 
@@ -152,14 +247,15 @@ Insights resource to inspect logs, traces, and request telemetry.
 
 ## Troubleshooting
 
-- **Deployment cannot configure managed-cluster hosting:** verify all seven
-  existing-resource values are complete resource IDs (except the Application
-  Insights connection string) and refer to resources in the intended tenant and
-  subscription.
+- **Preflight returns `null` or an empty array:** complete Foundry BYO-AKS
+  onboarding on the parent account before using this sample.
+- **Deployment doesn't use the expected cluster:** verify the parent account's
+  `ManagedCluster` hosting entry and its identity, cluster, and storage resource
+  IDs. The manifest and provisioning scripts don't register hosting.
 - **The hosted agent cannot start or receive requests:** verify AKS and subnet
   networking, workload identity federation, and RBAC assignments.
 - **Authentication fails locally:** run `az login` and confirm your identity has
-  access to the provisioned Foundry project and model deployment.
+  access to the existing Foundry project and model deployment.
 - **No telemetry appears:** verify the Application Insights resource ID and
   connection string refer to the same existing resource.
 

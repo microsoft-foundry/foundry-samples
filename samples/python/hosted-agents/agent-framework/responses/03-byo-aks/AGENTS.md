@@ -11,9 +11,12 @@ customer-managed AKS cluster.
 
 ## Key files
 
-- `azure.yaml` - `azd` manifest that provisions the Foundry project and model
-  deployment while registering existing AKS, identity, storage, and
-  Application Insights resources
+- `azure.yaml` - `azd` manifest that targets an existing Foundry project,
+  configures the Application Insights connection, and deploys the hosted agent
+- `provision_aks.sh` and `provision_aks.ps1` - optional, preview-first AKS-only
+  bootstrap scripts that create or reuse the cluster and `sandbox`
+  KataVmIsolation node pool; their successful execution is never evidence that
+  Foundry hosting registration exists
 - `src/agent-framework-agent-basic-responses-byoaks/main.py` - agent
   implementation and Responses server entry point
 - `src/agent-framework-agent-basic-responses-byoaks/pyproject.toml` and
@@ -33,13 +36,20 @@ Follow `samples/python/hosted-agents/DEPENDENCY_POLICY.md`. Keep
 
 ## Development workflow
 
-The BYO AKS, subnet, identities, storage account, and Application Insights
-resources referenced by this sample must already exist. The manifest provisions
-the Foundry project and model deployment. From the sample directory:
+The Foundry project, model deployment, Application Insights resource, and the
+parent account's complete `ManagedCluster` hosting configuration must already
+exist. The hosting management identity must be assigned in the account's
+`identity.userAssignedIdentities`. From the sample directory:
 
 ```bash
 azd env new
-azd env set AKS_RESOURCE_ID "<resource-id>"
+azd env set FOUNDRY_PROJECT_ENDPOINT "<project-endpoint>"
+azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME "<existing-model-deployment-name>"
+azd env set APPLICATIONINSIGHTS_RESOURCE_ID "<resource-id>"
+azd env set APPLICATIONINSIGHTS_CONNECTION_STRING "<connection-string>"
+azd env set FOUNDRY_ACCOUNT_RESOURCE_ID "<account-resource-id>"
+FOUNDRY_ACCOUNT_RESOURCE_ID="$(azd env get-value FOUNDRY_ACCOUNT_RESOURCE_ID)"
+az resource show --ids "$FOUNDRY_ACCOUNT_RESOURCE_ID" --api-version 2026-09-15-preview --query "properties.agentHostingConfigurations"
 azd provision
 azd ai agent run
 azd ai agent invoke --local "your message"
@@ -47,8 +57,11 @@ azd deploy
 azd ai agent invoke "your message"
 ```
 
-Do not add provisioning scripts that create the AKS cluster, subnet, managed
-identities, storage account, or Application Insights resource.
+The preflight must return a nonempty `ManagedCluster` entry with its hosting
+management identity, workload identity, cluster, and storage resource IDs.
+`azd provision` and `azd deploy` don't register AKS. The optional provisioning
+scripts don't create the subnet, identities, storage account, or Application
+Insights resource and don't complete Foundry BYO-AKS onboarding.
 
 ## Runtime logging
 
