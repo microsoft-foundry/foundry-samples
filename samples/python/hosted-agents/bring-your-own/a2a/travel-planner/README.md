@@ -90,12 +90,17 @@ $env:AZD_ALPHA_ENABLE_AGENTS_A2A = "true"
 
 ### Initialize the agent project
 
-From a fresh directory, adopt the local manifest from your checkout:
+From a fresh directory, initialize directly from the sample's GitHub template:
 
 ```powershell
-azd ai agent init --src . -t "C:\path\to\travel-planner\azure.yaml" `
+azd ai agent init --src . `
+    -t "https://github.com/Hameedkunkanoor/foundry-samples/blob/feature/a2a-llm-release-planner/samples/python/hosted-agents/bring-your-own/a2a/travel-planner/azure.yaml" `
     --project-id "<PROJECT-ARM-ID>"
 ```
+
+The URL points to the sample's source branch while it is under review.
+No local clone is needed; azd adopts the manifest and downloads its referenced
+source files into your deployment folder.
 
 Open the adopted `azure.yaml` and change these three **`name` fields** to unique
 names. Keep service keys, role values and source paths unchanged.
@@ -123,6 +128,20 @@ Use each specialist's native A2A base URL, **not its Card or Responses URL**.
 The examples below omit the endpoint's `?api-version=v1` query.
 Replace endpoint/project placeholders and choose unique connection names.
 
+These commands register the **already deployed** agents as project connections.
+They do not deploy agents or invoke them. Each connection tells Foundry Toolbox
+where an A2A agent lives and how to authenticate when contacting it:
+
+| Argument | Meaning |
+|---|---|
+| Connection name | Your project's unique name for this remote agent connection. |
+| `--kind remote-a2a` | The target is a remote A2A agent. |
+| `--target` | The deployed specialist's native A2A base URL. |
+| `--auth-type user-entra-token` | Use delegated-user authentication for calls to the specialist. |
+| `--audience https://ai.azure.com` | The target service's Entra token audience; this is not the agent URL. |
+| `--project-endpoint` | The project where the connection is created. |
+| `--output json` | Print creation details as JSON. |
+
 ```powershell
 azd ai connection create travel-flights-conn-youralias-01 --kind remote-a2a `
     --target "<FLIGHT-A2A-BASE-URL>" --auth-type user-entra-token `
@@ -133,7 +152,7 @@ azd ai connection create travel-hotels-conn-youralias-01 --kind remote-a2a `
     --audience "https://ai.azure.com" --project-endpoint "<PROJECT-ENDPOINT>" --output json
 ```
 
-Copy [toolbox.json](toolbox.json) into your adopted project. Set its Toolbox
+Save [toolbox.json](toolbox.json) from the sample into your adopted project. Set its Toolbox
 `name` to a unique name and replace the two connection IDs. A connection ID is:
 
 ```text
@@ -145,10 +164,10 @@ Keep configuration names `flight_options` and `hotel_options`.
 connection-to-tool mapping creates legacy `a2a_preview` entries, which failed
 Card discovery for these native 1.0 agents during testing. Use the explicit tools.
 
-On a shared project, skip automatic role grants; arrange access with its owner:
+Create the Toolbox using the CLI's normal permission setup. If required access
+cannot be configured, ask the project owner to resolve it before proceeding:
 
 ```powershell
-$env:AZD_AGENT_SKIP_ROLE_ASSIGNMENTS = "true"
 azd ai toolbox create travel-tools-youralias-01 --from-file toolbox.json `
     --project-endpoint "<PROJECT-ENDPOINT>" --output json
 ```
