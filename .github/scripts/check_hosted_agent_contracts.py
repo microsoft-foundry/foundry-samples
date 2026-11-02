@@ -104,11 +104,11 @@ def _selected_protocol(manifest_path: Path) -> str:
             if not isinstance(entry, dict):
                 raise ValueError("each azure.ai.agent protocol must be a mapping")
             protocol = entry.get("protocol")
-            if protocol in {"responses", "invocations", "a2a"}:
+            if protocol in {"responses", "invocations"}:
                 protocols.add(protocol)
     if len(protocols) != 1:
         raise ValueError(
-            "expected exactly one supported protocol: responses, invocations or a2a"
+            "expected exactly one supported protocol: responses or invocations"
         )
     return protocols.pop()
 

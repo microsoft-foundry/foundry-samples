@@ -1,199 +1,111 @@
 # What this sample demonstrates
 
-A business traveler needs a refundable flight, a hotel near the office and a
-trip that fits a budget. Three separate native A2A agents collaborate:
+Three **Copilot SDK** agents collaborate over native **A2A 1.0**, using
+**Foundry Toolbox** to connect the Travel Planner to Flight and Hotel agents.
 
 | Agent | Responsibility |
 |---|---|
-| **Travel Planner** | Uses `gpt-5-nano` to interpret the request, discover and select Toolbox tools, and explain the itinerary. |
-| **Flight Agent** | Uses its own LLM call to filter raw dummy flights, calculate fares + taxes + baggage for the traveler count, and explain its assessment. |
-| **Hotel Agent** | Uses its own LLM call to filter raw dummy hotels, calculate nights, rooms, taxes and stay fees, and explain its assessment. |
+| Travel Planner | Uses the Copilot SDK to discover Toolbox tools, ask both specialists, compare their answers and calculate the combined trip budget. |
+| Flight Agent | Uses the Copilot SDK to reason over raw dummy flights and calculate fares, taxes and baggage. |
+| Hotel Agent | Uses the Copilot SDK to reason over raw dummy hotels and calculate nights, rooms, taxes and stay fees. |
 
-The planner uses **managed Foundry Toolbox A2A 1.0 tools only** for remote
-discovery and calls. It does not fetch specialist Cards or call their URLs itself.
-No real flights, live prices, reservations or payments are involved.
-These are **three LLM-backed agents**, all using the existing `gpt-5-nano`
-deployment. Three agents does not mean exactly three API calls: the planner has
-multiple orchestration calls and specialists can make one correction attempt.
+**The LLMs make all travel decisions and calculations. Python does not
+recalculate prices, verify eligibility or correct model answers.** Python only
+hosts A2A Tasks and calls the SDK. Model output can contain mistakes.
+All prices are synthetic; no bookings, reservations or payments are created.
 
 ## How it works
 
 ```text
-User --native A2A--> Travel Planner --Responses API--> gpt-5-nano
-                         |
-                         +-- Toolbox MCP tools/list --> discovered Flight/Hotel tools
-                         |
-                         +-- LLM tool choice --> Toolbox tools/call --A2A--> Flight Agent --> its LLM
-                         +-- LLM tool choice --> Toolbox tools/call --A2A--> Hotel Agent --> its LLM
-                         |
-                         +-- verify both completed Tasks and catalog results
-                         +-- LLM selection + explanation; code computes exact cost
-User <-- completed A2A Task + itinerary + both specialist Task IDs
+User --A2A--> Travel Planner (Copilot SDK)
+                  |
+                  +-- SDK-managed Toolbox MCP discovery and tool calls
+                           |-- A2A --> Flight Agent (Copilot SDK + dummy flights)
+                           `-- A2A --> Hotel Agent  (Copilot SDK + dummy hotels)
+                  |
+User <-- A2A Task artifact containing a readable travel recommendation
 ```
 
-### Three independent agent folders, one deployment manifest
+The Copilot SDK owns the model/tool loop. There is no custom model HTTP client,
+manual MCP parser, structured-price validator or Python itinerary algorithm.
+The SDK uses a Foundry BYOK `ProviderConfig` and custom tools, matching the Copilot Activity
+sample's authentication pattern. Trusted platform context accompanies model
+and Toolbox requests. No GitHub token is required for this Foundry model path.
+
+The small planner [tools.py](src/travel-agent/tools.py) adapter uses the standard
+MCP client to discover A2A operations and forwards the SDK's text messages to them.
+It does not implement a reasoning loop or direct agent HTTP calls.
+The planner discovers agents exposed by the configured Toolbox, not arbitrary
+agents globally. Only Toolbox-backed custom tools are enabled for the planner; built-in
+shell, file and calculator tools are not enabled. Specialists have no tools.
+Each request gets an isolated SDK session which is disconnected afterward.
+The SDK runtime process is stopped after the request.
+
+## Files
 
 ```text
 travel-planner/
 |-- azure.yaml
 |-- toolbox.json
 |-- trip-request.json
-|-- src/
+`-- src/
     |-- travel-agent/
-    |   |-- main.py
-    |   |-- planner.py
-    |   |-- services.py
-    |   |-- model.py
-    |   |-- contracts.py
-    |   |-- test_client.py
+    |   |-- main.py          # A2A executor and planner instructions
+    |   |-- client.py        # Copilot SDK session and Toolbox MCP configuration
+    |   |-- tools.py         # Thin standard-MCP adapters for discovered A2A tools
     |   |-- pyproject.toml
     |   `-- uv.lock
     |-- flight-agent/
-    |   |-- main.py
-    |   |-- agent.py
-    |   |-- model.py
-    |   |-- catalog.py
+    |   |-- main.py          # A2A executor and flight instructions
+    |   |-- client.py        # Independently packaged SDK client
+    |   |-- catalog.py       # Raw dummy flights only
     |   |-- pyproject.toml
     |   `-- uv.lock
     `-- hotel-agent/
-        |-- main.py
-        |-- agent.py
-        |-- model.py
-        |-- catalog.py
+        |-- main.py          # A2A executor and hotel instructions
+        |-- client.py        # Independently packaged SDK client
+        |-- catalog.py       # Raw dummy hotels only
         |-- pyproject.toml
         `-- uv.lock
 ```
 
-Each agent has its own entry point, dependencies and lockfile. The Flight and
-Hotel agents each own their catalog. The Travel Agent has neither inventory nor
-specialist search code; it only receives their results through Toolbox.
-There is no role-switching environment variable and no sample tests folder.
-
-The single [azure.yaml](azure.yaml) maps service `planner` to `src/travel-agent`,
-`flights` to `src/flight-agent`, and `hotels` to `src/hotel-agent`. They deploy as
-three separate agents with their own endpoints and versions. The native SDK owns
-Tasks and artifacts; the hosting adapter selects caller-isolated Foundry Task
-storage when deployed.
-
-[The planner](src/travel-agent/planner.py) discovers actual operation names,
-descriptions and message schemas through MCP. Toolbox configurations are named
-`flight_options` and `hotel_options`; operation names are discovered, not hardcoded.
-The model chooses those tools through bound-query adapters: normalized criteria
-are encoded into the discovered A2A message shape by code, rather than rewritten
-by the model. The planner verifies both real Task IDs, execution IDs, queries and
-response contracts, travel constraints and price arithmetic before accepting the
-cheapest eligible returned combination. The remote specialists are the inventory
-source; the planner does not compare results to a local inventory copy.
-There is no direct A2A or model-only fallback.
-
-### What the specialist LLMs calculate
-
-Each specialist receives its validated query plus its **raw inventory**, not
-precomputed search results or totals. The flight model returns matching IDs and
-calculated `total_cents`. The hotel model returns matching IDs, `nights`,
-`rooms_needed` and `total_cents`. Their assessments explain the calculations.
-
-The supplied dummy data includes:
-
-| Flight | Fare | Tax | Baggage | Refundable | Arrival |
-|---|---:|---:|---:|---|---|
-| FLIGHT-101 | $250 | $45 | $30 | No | Jan 10, 20:00 Pacific |
-| FLIGHT-102 | $390 | $50 | $0 | Yes | Jan 10, 18:00 Pacific |
-| FLIGHT-103 | $180 | $40 | $35 | Yes | Jan 11, 10:30 Pacific |
-
-| Hotel | Nightly room | Nightly tax | Per-room stay fee | Refundable | Office distance |
-|---|---:|---:|---:|---|---:|
-| HOTEL-201 | $145 | $15 | $15 | No | 900 m |
-| HOTEL-202 | $210 | $25 | $20 | Yes | 1,200 m |
-| HOTEL-203 | $150 | $15 | $15 | Yes | 14,000 m |
-| HOTEL-204 | $300 | $30 | $30 | Yes | 500 m |
-
-The model must perform the filtering and calculations. Only afterward, each
-specialist checks its model output against its own fixture. Incorrect prices,
-missing/extra eligible IDs, invented options and wrong room counts are rejected.
-One logged correction attempt asks the model to recalculate without giving it
-code-computed answers. A second invalid answer fails the A2A request; code never
-silently substitutes a deterministic result.
-
-Each returned specialist artifact includes `assessment`, `model_response_id`,
-`model_deployment`, `model_attempts`, `model_backed: true` and
-`calculations_verified: true`. The planner requires this evidence, includes it in
-`delegations`, and includes its final model response ID in `planner_model`.
-The small model transport module is packaged in each agent so all three remain
-independently deployable.
-
-Eligibility and budget arithmetic are code-authoritative. The final structured
-model schema permits only valid cheapest returned IDs, or `no_match` with null
-IDs when no eligible pair exists.
-See the [Foundry A2A tool](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/agent-to-agent?pivots=python)
-and [Toolbox](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/toolbox) documentation.
-
-**Discovery means the tools in your configured Toolbox**, not a global search
-for arbitrary agents. Foundry discovers the connected agents' Cards.
-The planner only sends model/MCP requests inside the configured HTTPS project.
-Authentication uses fresh managed credentials and trusted platform call context.
-The tested connections use `UserEntraToken` for delegated user access; incoming
-Authorization is never copied. App-only/other authentication modes require their
-own access setup and are not covered by this walkthrough.
-
-Each request is self-contained. If required details are missing, the planner asks
-for clarification without calling specialists. Send the complete updated request;
-this sample does not merge conversation history or perform bookings.
-
-Follow the shared [Python startup configuration](../../../README.md#python-startup-configuration).
+One manifest deploys three separate agents with their own endpoints and versions.
+There is no role switch, sample tests folder, test client or dedicated test workflow.
 
 ## Prerequisites
 
-1. Python **3.13**, uv **0.11.7 or later**, azd **1.37.2** and agent extension
-   **1.0.0-beta.23** are the tested toolchain.
-2. A Foundry project enabled for native A2A, managed Task storage and A2A 1.0 tools.
-   For a first-time setup, create a project before running the commands below.
-3. An existing **`gpt-5-nano`** model deployment and permission to use it.
-   The planner uses minimal reasoning; specialists use high reasoning for
-   filtering and arithmetic. Other models must support these settings and
-   structured output.
-4. Permission to deploy/invoke agents and create project connections/Toolboxes.
-   Ask the project owner to handle any required access; do not alter shared roles.
+- Python **3.13** for the configured hosted runtime; packages require **3.11+**
+  because of the Copilot SDK.
+- azd **1.37.2** and agent extension **1.0.0-beta.23**.
+- A Foundry project enabled for native A2A, hosted Task storage and Toolbox A2A 1.0.
+  Create a project first if you do not already have one.
+- An existing **`gpt-5-nano`** model deployment and permission to use it.
+- Permission to deploy agents and create connections/Toolboxes.
+- The Copilot SDK's supported runtime must be available. The pinned SDK includes
+  its CLI runtime; dependencies and deployment must support executing it.
 
-Three agents, sessions and model calls incur charges. Use synthetic data and do
-not load test. Keep the committed project/lock: AgentServer A2A
-`1.0.0a20261029006`, Core `2.3.1a20261029006`, native A2A `1.2.3`.
-The existing repository alpha-feed policy gate still applies; no bypass is added.
+All three agents use the same model deployment independently. This is not
+exactly three API calls: the planner's SDK can make multiple tool-loop calls.
+Keep the committed dependency locks. Existing AgentServer alpha-source policy
+requirements still apply; do not bypass repository checks.
 
-## Option 1: Azure Developer CLI (`azd`)
+## Deploy and run
 
-### Install and sign in
-
-Update the extension, or replace `update` with `install`:
+### 1. Sign in and initialize
 
 ```powershell
 azd extension update azure.ai.agents --version 1.0.0-beta.23 --source azd
 azd auth login
 $env:AZD_ALPHA_ENABLE_AGENTS_A2A = "true"
-```
 
-### Initialize the agent project
-
-From a fresh directory, initialize directly from the sample's GitHub template:
-
-```powershell
 azd ai agent init --src . `
     -t "https://github.com/Hameedkunkanoor/foundry-samples/blob/feature/a2a-llm-release-planner/samples/python/hosted-agents/bring-your-own/a2a/travel-planner/azure.yaml" `
     --project-id "<PROJECT-ARM-ID>"
 ```
 
-The URL points to the sample's source branch while it is under review.
-No local clone is needed; azd adopts the manifest and downloads its referenced
-source files into your deployment folder.
-
-Open the adopted `azure.yaml` and change these three **`name` fields** to unique
-names. Keep service keys, role values and source paths unchanged.
-
-| Service key | Example unique `name` |
-|---|---|
-| `flights` | `travel-flights-youralias-01` |
-| `hotels` | `travel-hotels-youralias-01` |
-| `planner` | `travel-planner-youralias-01` |
+Run initialization in an empty folder. In the adopted [azure.yaml](azure.yaml),
+change service-level agent `name` values to unique names. Keep the service keys
+`flights`, `hotels` and `planner` unchanged.
 
 ```powershell
 azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME gpt-5-nano
@@ -203,28 +115,13 @@ azd ai agent show flights --output json
 azd ai agent show hotels --output json
 ```
 
-Confirm both specialists are active. This uses existing infrastructure; do not
-run `azd up` or `azd provision` against a shared project.
+Both specialists must be active. Copy their A2A base URLs, omitting the
+`?api-version=v1` query. Do not use a Card or Responses URL.
 
-### Connect the specialists to a Toolbox
+### 2. Register specialist connections
 
-Use each specialist's native A2A base URL, **not its Card or Responses URL**.
-The examples below omit the endpoint's `?api-version=v1` query.
-Replace endpoint/project placeholders and choose unique connection names.
-
-These commands register the **already deployed** agents as project connections.
-They do not deploy agents or invoke them. Each connection tells Foundry Toolbox
-where an A2A agent lives and how to authenticate when contacting it:
-
-| Argument | Meaning |
-|---|---|
-| Connection name | Your project's unique name for this remote agent connection. |
-| `--kind remote-a2a` | The target is a remote A2A agent. |
-| `--target` | The deployed specialist's native A2A base URL. |
-| `--auth-type user-entra-token` | Use delegated-user authentication for calls to the specialist. |
-| `--audience https://ai.azure.com` | The target service's Entra token audience; this is not the agent URL. |
-| `--project-endpoint` | The project where the connection is created. |
-| `--output json` | Print creation details as JSON. |
+These register already-deployed agent URLs and authentication settings.
+They do not create new agents or invoke them.
 
 ```powershell
 azd ai connection create travel-flights-conn-youralias-01 --kind remote-a2a `
@@ -236,129 +133,69 @@ azd ai connection create travel-hotels-conn-youralias-01 --kind remote-a2a `
     --audience "https://ai.azure.com" --project-endpoint "<PROJECT-ENDPOINT>" --output json
 ```
 
-Save [toolbox.json](toolbox.json) from the sample into your adopted project. Set its Toolbox
-`name` to a unique name and replace the two connection IDs. A connection ID is:
+### 3. Create Toolbox and deploy planner
 
-```text
-<PROJECT-ARM-ID>/connections/<CONNECTION-NAME>
-```
-
-Keep configuration names `flight_options` and `hotel_options`.
-**Keep `type: "a2a"` and `a2a_version: "1.0"`**. Beta.23's automatic
-connection-to-tool mapping creates legacy `a2a_preview` entries, which failed
-Card discovery for these native 1.0 agents during testing. Use the explicit tools.
-
-Create the Toolbox using the CLI's normal permission setup. If required access
-cannot be configured, ask the project owner to resolve it before proceeding:
+Edit [toolbox.json](toolbox.json): choose a unique Toolbox name and replace
+connection IDs with `<PROJECT-ARM-ID>/connections/<CONNECTION-NAME>`.
+Keep explicit `type: "a2a"` and `a2a_version: "1.0"`.
 
 ```powershell
 azd ai toolbox create travel-tools-youralias-01 --from-file toolbox.json `
     --project-endpoint "<PROJECT-ENDPOINT>" --output json
-```
 
-Copy the returned **versioned MCP endpoint** into the planner configuration:
-
-```powershell
-azd env set TOOLBOX_ENDPOINT "<TOOLBOX-MCP-ENDPOINT>"
+azd env set TOOLBOX_ENDPOINT "<RETURNED-VERSIONED-MCP-ENDPOINT>"
 azd deploy planner
 azd ai agent show planner --output json
 ```
 
-Toolbox endpoints look like
-`<PROJECT-ENDPOINT>/toolboxes/<NAME>/versions/1/mcp?api-version=v1`.
-There are no Flight/Hotel URLs in planner environment settings.
+Resolve missing permissions with the project owner. Do not provision over a shared
+project or inject tokens into source files.
 
-### Try a complete trip
+### 4. Invoke
 
-Replace the name/version with your deployed planner:
-
-```powershell
-azd ai agent invoke travel-planner-youralias-01 -p a2a --a2a-version 1.0 `
-    --version 1 --new-session --output raw `
-    "Plan a synthetic business trip for 1 traveler from SFO to SEA. Depart 2027-01-10 and return 2027-01-13. Arrive before 2027-01-11T09:00:00-08:00. Both flight and hotel must be refundable. Hotel must be within 3000 meters of the office. Total flight and hotel budget is USD 1200. Do not book anything."
-```
-
-For file input, copy [trip-request.json](trip-request.json) into your project:
+Use the planner's actual name and deployed version:
 
 ```powershell
-azd ai agent invoke travel-planner-youralias-01 -p a2a --a2a-version 1.0 `
+azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 `
     --version 1 --new-session --input-file trip-request.json --output raw
 ```
 
-Expected completed Task artifact:
+Or send a request directly:
 
-| Check | Expected |
-|---|---|
-| Status | `proposed` |
-| Flight | `FLIGHT-102`, refundable, arrives before the deadline |
-| Hotel | `HOTEL-202` / Office Flex, refundable, 1,200 meters from office |
-| Flight total | 44,000 cents = **$440** |
-| Hotel total | 72,500 cents = **$725**, including 3 nights, taxes and stay fee |
-| Combined total | `total_cents: 116500`, `total_usd: "1165.00"` |
-| Remaining budget | 3,500 cents = **$35** |
-| Delegation | `toolbox_verified: true`, distinct remote Task/model response IDs, verified LLM calculations and specialist assessments |
-| Safety | `synthetic: true`, `booking_created: false` |
+```powershell
+azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 `
+    --version 1 --new-session --output raw `
+    "Plan a synthetic trip for 1 traveler SFO to SEA, departing 2027-01-10 and returning 2027-01-13. Arrive before 2027-01-11T09:00:00-08:00. Both flight and hotel must be refundable. Hotel within 3000 meters of the office. Total budget USD 1200. Do not book."
+```
 
-### More bug-bash scenarios
+The completed Task artifact is **readable Markdown**, not a JSON itinerary.
+For the supplied dummy data the expected recommendation is FLIGHT-102 ($440)
+and HOTEL-202 ($725), total $1,165, remaining $35. These are expected values for
+manual inspection, not values enforced or recalculated by Python.
 
-Repeat the full request with one change at a time:
+Try a $900 budget, three travelers/$3,000, an earlier arrival deadline or missing
+dates. The LLMs should explain no-match, calculate multiple rooms or ask for
+clarification as appropriate. Inspect the Task state and artifact; HTTP 200 alone
+is not proof of success.
 
-| Change | Expected behavior |
-|---|---|
-| Budget **USD 900** | `no_match`; both specialists still ran; no invented cheaper option. |
-| Budget **USD 1165** / **USD 1164.99** | Exact boundary: proposed / no-match. |
-| Hotel within **500 meters**, budget USD 1200 | Only Premium Center meets distance/refundability; combined cost exceeds budget, so no-match. |
-| Arrive before **2027-01-10T17:00:00-08:00** | No eligible flight; no-match after both tools. |
-| **3 travelers**, budget USD 3000 | 2 hotel rooms, flight $1320 + hotel $1450 = **$2770**. |
-| Remove dates or budget | `needs_clarification`, a question, no successful-delegation claim. |
-| Ask to book/pay | Still a synthetic proposal only; no booking/payment created. |
-| Configure a Toolbox missing either specialist | Explicit failure, not a model-only itinerary. |
+## Local run
 
-Inspect the JSON-RPC body even for HTTP 200. `error`, failed Tasks, MCP
-`isError`, incomplete model output or missing evidence are failures, not success.
-Model prose and tool ordering can vary; check structured results, not exact prose.
-
-## Option 2: Local planner with the managed Toolbox
-
-Deploy/connect the two specialists as above. Only the planner runs locally;
-outbound specialist calls still use the managed Toolbox.
-
-From [src/travel-agent](src/travel-agent), sign in with Azure CLI and configure:
+Run each agent from its own source folder with its own `PORT`, project endpoint
+and model deployment. The planner additionally needs `TOOLBOX_ENDPOINT`.
 
 ```powershell
 az login
-$env:PORT = "8088"
 $env:FOUNDRY_PROJECT_ENDPOINT = "<PROJECT-ENDPOINT>"
 $env:AZURE_AI_MODEL_DEPLOYMENT_NAME = "gpt-5-nano"
 $env:TOOLBOX_ENDPOINT = "<TOOLBOX-MCP-ENDPOINT>"
+$env:PORT = "8088"
 uv run --frozen --python 3.13 python main.py
 ```
 
-In a second terminal, from the same runtime folder:
+Local planner calls still use the managed Toolbox and hosted specialist targets.
+Stop the server with Ctrl+C afterward.
 
-```powershell
-uv run --frozen --python 3.13 python test_client.py
-```
+## Cleanup
 
-The native client discovers the local planner, verifies its completed Task,
-both specialist Task IDs and persisted `GetTask` result, then prints the JSON.
-
-## Validation and troubleshooting
-
-The following were tested: real model + managed Toolbox + hosted specialists;
-fully hosted planner + Toolbox + both specialists; exact $1,165 golden itinerary;
-USD 900 no-match; missing-input clarification; local native worker Tasks/GetTask.
-The sample deliberately has no tests folder. The dedicated workflow checks that
-all three locked packages import independently, validates cloud behavior
-contracts and runs the shared native A2A harness regressions.
-
-If discovery fails, verify explicit A2A 1.0 Toolbox entries and connection targets.
-For authentication failures, verify delegated-user access and trusted platform
-context; do not inject a static user token or add a direct-call fallback.
-Use complete fixed-date requests: this catalog is not a live travel search.
-
-## Clean up
-
-Delete only your uniquely named planner, specialists, Toolbox and connections
-using your project's normal cleanup process. Do not delete a shared project,
-model deployment or another participant's resources.
+Delete only your agents, Toolbox and connections through the normal project
+cleanup process. Do not run `azd down` on a shared project or delete a shared model.

@@ -21,12 +21,12 @@ services:
     agentEndpoint:
       protocols: [a2a, responses]
     agentCard:
-      description: LLM Flight Agent assesses raw synthetic inventory and calculates eligible round-trip prices.
+      description: Copilot SDK Flight Agent reasons over dummy flights and calculates trip prices.
       version: 1.0.0
       skills:
         - id: flights
           name: Flight Agent
-          description: 'JSON fields: origin, destination, departure_date, return_date, arrive_by (timezone ISO timestamp), travelers (integer), refundable (boolean).'
+          description: Send a complete flight request with route, dates, arrival deadline, traveler count and refundability.
           tags: [synthetic-travel, flights]
     env:
       PYTHONNOUSERSITE: '1'
@@ -49,12 +49,12 @@ services:
     agentEndpoint:
       protocols: [a2a, responses]
     agentCard:
-      description: LLM Hotel Agent assesses raw synthetic inventory and calculates nights, rooms, taxes and stay fees.
+      description: Copilot SDK Hotel Agent reasons over dummy hotels and calculates nights, rooms and fees.
       version: 1.0.0
       skills:
         - id: hotels
           name: Hotel Agent
-          description: 'JSON fields: destination, check_in, check_out, travelers (integer), refundable (boolean), max_office_distance_meters (integer).'
+          description: Send a complete hotel request with destination, stay dates, traveler count, office distance and refundability.
           tags: [synthetic-travel, hotels]
     env:
       PYTHONNOUSERSITE: '1'
@@ -77,12 +77,12 @@ services:
     agentEndpoint:
       protocols: [a2a, responses]
     agentCard:
-      description: Travel Planner discovers Flight and Hotel A2A tools through a managed Foundry Toolbox.
+      description: Copilot SDK Travel Planner uses managed Toolbox A2A tools to collaborate with Flight and Hotel agents.
       version: 1.0.0
       skills:
         - id: planner
           name: Travel Planner
-          description: Build an eligible synthetic itinerary using managed Toolbox flight and hotel results.
+          description: Ask both specialists through Toolbox and reason about the itinerary and budget.
           tags: [synthetic-travel, toolbox]
     env:
       PYTHONNOUSERSITE: '1'

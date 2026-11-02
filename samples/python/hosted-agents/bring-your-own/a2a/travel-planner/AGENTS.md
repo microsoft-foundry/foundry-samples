@@ -1,31 +1,13 @@
-# Coding Agent Instructions - Native A2A Toolbox Travel
+# A2A Copilot travel sample
 
-Follow the Python hosted-agent README and dependency templates.
-One azure.yaml defines three independent native A2A packages:
-src/travel-agent, src/flight-agent and src/hotel-agent. Each has its own
-main.py, pyproject.toml and uv.lock; do not reintroduce an AGENT_ROLE switch.
-All three agents use an LLM. Specialists receive raw dummy inventory and must
-calculate eligible prices, nights and rooms themselves. Code verifies their
-answer only afterward; never replace a failed calculation with a deterministic
-success. Permit at most one logged model correction, without computed answers.
-All remote specialist discovery and invocation
-must use the managed Foundry Toolbox MCP endpoint, never direct A2A HTTP.
-
-Keep the Flight and Hotel catalogs synthetic and independent. Require both
-remote completed Tasks even for a no-match answer. Verify the requested query,
-response contracts, constraints, prices and remote Task/execution IDs before accepting a model selection.
-Require specialist assessments, actual model response IDs and verified calculation evidence.
-The planner must not contain or import either specialist's inventory/search code.
-Calculate money in integer USD cents. Never create bookings or payments.
-Missing inputs need clarification; tool failures must not become model-only success.
-
-Preserve trusted platform headers for delegated UserEntraToken connections.
-Never copy incoming Authorization, persist tokens or weaken shared RBAC.
-Use explicit Toolbox type `a2a` with `a2a_version: "1.0"`, not `a2a_preview`.
-Runtime discovers the operation names and validates the advertised message schema;
-the model selects bound-query tools without rewriting normalized constraints.
-
-Keep the committed project and lock; the two alpha sources remain subject to
-repository policy. Do not commit credentials, environments or deployment state.
-Do not add a sample tests folder. Keep the shared harness and cloud behavior
-contracts wired to the independent packages. Report live verification separately.
+Keep three independent agent packages under one azure.yaml.
+Use Copilot SDK ProviderConfig and its native MCP tool loop, following the
+Copilot Activity sample. No direct model HTTP calls or custom orchestration loop.
+Flight/Hotel catalogs are raw dummy data only. The LLMs own filtering, prices,
+rooms, eligibility and budget decisions. Do not add Python arithmetic checks,
+model correction retries, forced eligible IDs or code-selected itineraries.
+Keep transport errors explicit and A2A Task failure reporting intact.
+Only managed Toolbox MCP tools are enabled for the planner; no built-in coding
+tools. Specialists have no tools. Preserve trusted platform headers.
+Do not add tests, test clients or dedicated test workflows to this sample.
+Keep independent dependency locks; do not bypass package-source policy.
