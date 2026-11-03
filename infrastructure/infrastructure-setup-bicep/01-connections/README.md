@@ -15,10 +15,11 @@ variants in [`../golden-path`](../golden-path/README.md):
 | 2. No separate gateway — model in another Foundry / Azure OpenAI account | [`model-gateway`](./model-gateway/) (`samples/parameters-foundryazureai.json`, `parameters-foundryopenai.json`, or `parameters-foundryanthropic.json`) — a **ModelGateway** connection pointed at the other account's inference endpoint |
 | 3. Third-party model provider | [`model-gateway`](./model-gateway/) (`samples/parameters-openai.json`) |
 | 4. BYOM + BYOG (your own 3P gateway) | [`model-gateway`](./model-gateway/) (custom `targetUrl`) |
+| Direct Foundry models with project managed identity | [`foundry-model-connection`](./foundry-model-connection/) (`ApiManagement` category, no separate gateway; optional target-account RBAC) |
 
 > [!IMPORTANT]
 > BYOM `<connection>/<model>` resolution works **only** for *gateway-category* connections —
-> `ApiManagement` (variant 1) or `ModelGateway` (variants 2–4). A plain
+> `ApiManagement` (variant 1 or the direct Foundry PMI sample) or `ModelGateway` (variants 2–4). A plain
 > [`connection-azure-openai.bicep`](./connection-azure-openai.bicep) (`AzureOpenAI`) or
 > [`connection-foundry.bicep`](./connection-foundry.bicep) (`CognitiveService`) connection is
 > **not** resolvable by a prompt agent as `<connection>/<model>` — it fails with
