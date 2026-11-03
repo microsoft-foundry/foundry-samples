@@ -1,0 +1,4 @@
+name: Foundry Local C++ tutorial voice to text
+description: Transcribe user-supplied audio and summarize the transcript.
+build: cmake -S . -B build
+validate: cmake --build build --config Release --target tutorial-voice-to-text

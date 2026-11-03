@@ -1,6 +1,6 @@
 # Tutorial: Document Summarizer (Python)
 
-Summarize documents with AI (tutorial).
+Summarize a text file or directory with the SDK v2 native `ChatSession` API.
 
 > Part of the [Foundry Local samples for Python](../).
 

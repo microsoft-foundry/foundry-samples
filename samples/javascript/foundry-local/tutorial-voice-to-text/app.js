@@ -1,6 +1,12 @@
 // <complete_code>
 // <imports>
-import { FoundryLocalManager } from 'foundry-local-sdk';
+import {
+    AudioSession,
+    ChatSession,
+    FoundryLocalManager,
+    Item,
+    Request
+} from 'foundry-local-sdk';
 import { fileURLToPath } from 'url';
 import path from 'path';
 // </imports>
@@ -40,13 +46,21 @@ await speechModel.load();
 console.log('Speech model loaded.');
 
 // Transcribe the audio file
-const audioClient = speechModel.createAudioClient();
-const transcription = await audioClient.transcribe(
-    path.join(__dirname, 'meeting-notes.wav')
+const audioSession = new AudioSession(speechModel);
+const audioFile = path.join(__dirname, 'meeting-notes.wav');
+const transcriptionResponse = await audioSession.processRequest(
+    new Request().addItem(Item.audioFromUri(audioFile))
 );
+const transcription = transcriptionResponse.output.find(
+    (item) => item.type === 'speechResult'
+);
+if (!transcription) {
+    throw new Error('The speech model returned no transcription.');
+}
 console.log(`\nTranscription:\n${transcription.text}`);
 
 // Unload the speech model to free memory
+audioSession.dispose();
 await speechModel.unload();
 // </transcription>
 
@@ -64,25 +78,25 @@ await chatModel.load();
 console.log('Chat model loaded.');
 
 // Summarize the transcription into organized notes
-const chatClient = chatModel.createChatClient();
-const messages = [
-    {
-        role: 'system',
-        content: 'You are a note-taking assistant. Summarize ' +
-                 'the following transcription into organized, ' +
-                 'concise notes with bullet points.'
-    },
-    {
-        role: 'user',
-        content: transcription.text
-    }
-];
+const chatSession = new ChatSession(chatModel);
+const request = new Request()
+    .addItem(Item.systemMessage(
+        'You are a note-taking assistant. Summarize ' +
+        'the following transcription into organized, ' +
+        'concise notes with bullet points.'
+    ))
+    .addItem(Item.userMessage(transcription.text));
 
-const response = await chatClient.completeChat(messages);
-const summary = response.choices[0]?.message?.content;
+const response = await chatSession.processRequest(request);
+const summary = response.output
+    .map((item) => item.type === 'message'
+        ? item.content ?? item.parts?.map((part) => part.text ?? '').join('') ?? ''
+        : item.type === 'text' ? item.text : '')
+    .join('');
 console.log(`\nSummary:\n${summary}`);
 
 // Clean up
+chatSession.dispose();
 await chatModel.unload();
 console.log('\nDone. Models unloaded.');
 // </summarization>

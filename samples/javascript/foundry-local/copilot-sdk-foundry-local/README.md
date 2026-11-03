@@ -7,7 +7,7 @@ GitHub Copilot SDK integration with Foundry Local for agentic AI workflows.
 ## Prerequisites
 
 - [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
-- Node.js 18+
+- Node.js 20+
 
 ## Run
 

@@ -2,65 +2,58 @@
 // <imports>
 using System.Text.Json;
 using Microsoft.AI.Foundry.Local;
-using Betalgo.Ranul.OpenAI.ObjectModels.RequestModels;
-using Betalgo.Ranul.OpenAI.ObjectModels.ResponseModels;
-using Betalgo.Ranul.OpenAI.ObjectModels.SharedModels;
 using Microsoft.Extensions.Logging;
 // </imports>
 
 CancellationToken ct = CancellationToken.None;
 
 // <tool_definitions>
-// --- Tool definitions ---
-List<ToolDefinition> tools =
-[
-    new ToolDefinition
+// --- Tool definitions and implementations ---
+var toolDefinitions = new[]
+{
+    new
     {
-        Type = "function",
-        Function = new FunctionDefinition()
-        {
-            Name = "get_weather",
-            Description = "Get the current weather for a location",
-            Parameters = new PropertyDefinition()
+        Name = "get_weather",
+        Description = "Get the current weather for a location",
+        Schema =
+            """
             {
-                Type = "object",
-                Properties = new Dictionary<string, PropertyDefinition>()
-                {
-                    { "location", new PropertyDefinition() { Type = "string", Description = "The city or location" } },
-                    { "unit", new PropertyDefinition() { Type = "string", Description = "Temperature unit (celsius or fahrenheit)" } }
-                },
-                Required = ["location"]
+              "type": "object",
+              "properties": {
+                "location": { "type": "string", "description": "The city or location" },
+                "unit": {
+                  "type": "string",
+                  "description": "Temperature unit",
+                  "enum": ["celsius", "fahrenheit"]
+                }
+              },
+              "required": ["location"]
             }
-        }
+            """
     },
-    new ToolDefinition
+    new
     {
-        Type = "function",
-        Function = new FunctionDefinition()
-        {
-            Name = "calculate",
-            Description = "Perform a math calculation",
-            Parameters = new PropertyDefinition()
+        Name = "calculate",
+        Description = "Perform a math calculation",
+        Schema =
+            """
             {
-                Type = "object",
-                Properties = new Dictionary<string, PropertyDefinition>()
-                {
-                    { "expression", new PropertyDefinition() { Type = "string", Description = "The math expression to evaluate" } }
-                },
-                Required = ["expression"]
+              "type": "object",
+              "properties": {
+                "expression": { "type": "string", "description": "The math expression to evaluate" }
+              },
+              "required": ["expression"]
             }
-        }
+            """
     }
-];
+};
 
-// --- Tool implementations ---
 string ExecuteTool(string functionName, JsonElement arguments)
 {
     switch (functionName)
     {
         case "get_weather":
-            var location = arguments.GetProperty("location")
-                .GetString() ?? "unknown";
+            var location = arguments.GetProperty("location").GetString() ?? "unknown";
             var unit = arguments.TryGetProperty("unit", out var u)
                 ? u.GetString() ?? "celsius"
                 : "celsius";
@@ -74,31 +67,19 @@ string ExecuteTool(string functionName, JsonElement arguments)
             });
 
         case "calculate":
-            var expression = arguments.GetProperty("expression")
-                .GetString() ?? "";
+            var expression = arguments.GetProperty("expression").GetString() ?? "";
             try
             {
-                var result = new System.Data.DataTable()
-                    .Compute(expression, null);
-                return JsonSerializer.Serialize(new
-                {
-                    expression,
-                    result = result?.ToString()
-                });
+                var result = new System.Data.DataTable().Compute(expression, null);
+                return JsonSerializer.Serialize(new { expression, result = result?.ToString() });
             }
             catch (Exception ex)
             {
-                return JsonSerializer.Serialize(new
-                {
-                    error = ex.Message
-                });
+                return JsonSerializer.Serialize(new { error = ex.Message });
             }
 
         default:
-            return JsonSerializer.Serialize(new
-            {
-                error = $"Unknown function: {functionName}"
-            });
+            return JsonSerializer.Serialize(new { error = $"Unknown function: {functionName}" });
     }
 }
 // </tool_definitions>
@@ -113,16 +94,13 @@ var config = new Configuration
 
 using var loggerFactory = LoggerFactory.Create(builder =>
 {
-    builder.SetMinimumLevel(
-        Microsoft.Extensions.Logging.LogLevel.Information
-    );
+    builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
 });
 var logger = loggerFactory.CreateLogger<Program>();
 
 await FoundryLocalManager.CreateAsync(config, logger);
 var mgr = FoundryLocalManager.Instance;
 
-// Download and register all execution providers.
 var currentEp = "";
 await mgr.DownloadAndRegisterEpsAsync((epName, percent) =>
 {
@@ -148,18 +126,12 @@ await model.DownloadAsync(progress =>
 await model.LoadAsync();
 Console.WriteLine("Model loaded and ready.");
 
-var chatClient = await model.GetChatClientAsync();
-chatClient.Settings.ToolChoice = ToolChoice.Auto;
-
-var messages = new List<ChatMessage>
+using var chatSession = new ChatSession(model);
+chatSession.SetOptions(new RequestOptions { ToolChoice = ToolChoice.Auto });
+foreach (var tool in toolDefinitions)
 {
-    new ChatMessage
-    {
-        Role = "system",
-        Content = "You are a helpful assistant with access to tools. " +
-                  "Use them when needed to answer questions accurately."
-    }
-};
+    chatSession.AddToolDefinition(tool.Name, tool.Description, tool.Schema);
+}
 // </init>
 
 // <tool_loop>
@@ -176,66 +148,51 @@ while (true)
         break;
     }
 
-    messages.Add(new ChatMessage
+    using var request = new Request();
+    if (chatSession.TurnCount == 0)
     {
-        Role = "user",
-        Content = userInput
-    });
+        request.AddItem(MessageItem.System(
+            "You are a helpful assistant with access to tools. Use them when needed."));
+    }
+    request.AddItem(MessageItem.User(userInput));
 
-    var response = await chatClient.CompleteChatAsync(
-        messages, tools, ct
-    );
+    using var response = await chatSession.ProcessRequestAsync(request, ct);
+    var toolCalls = response.OfType<ToolCallItem>()
+        .Select(call => (call.CallId, call.Name, call.Arguments))
+        .ToList();
 
-    var choice = response.Choices[0].Message;
-
-    if (choice.ToolCalls is { Count: > 0 })
+    if (toolCalls.Count > 0)
     {
-        messages.Add(choice);
-
-        foreach (var toolCall in choice.ToolCalls)
+        using var toolRequest = new Request();
+        foreach (var toolCall in toolCalls)
         {
-            var toolArgs = JsonDocument.Parse(
-                toolCall.FunctionCall.Arguments
-            ).RootElement;
-            Console.WriteLine(
-                $"  Tool call: {toolCall.FunctionCall.Name}({toolArgs})"
-            );
-
-            var result = ExecuteTool(
-                toolCall.FunctionCall.Name, toolArgs
-            );
-            messages.Add(new ChatMessage
-            {
-                Role = "tool",
-                ToolCallId = toolCall.Id,
-                Content = result
-            });
+            using var argumentsDocument = JsonDocument.Parse(toolCall.Arguments);
+            var arguments = argumentsDocument.RootElement;
+            Console.WriteLine($"  Tool call: {toolCall.Name}({arguments})");
+            var result = ExecuteTool(toolCall.Name, arguments);
+            toolRequest.AddItem(new ToolResultItem(toolCall.CallId, result));
         }
 
-        var finalResponse = await chatClient.CompleteChatAsync(
-            messages, tools, ct
-        );
-        var answer = finalResponse.Choices[0].Message.Content ?? "";
-        messages.Add(new ChatMessage
-        {
-            Role = "assistant",
-            Content = answer
-        });
+        using var finalResponse = await chatSession.ProcessRequestAsync(toolRequest, ct);
+        var answer = GetResponseText(finalResponse);
         Console.WriteLine($"Assistant: {answer}\n");
     }
     else
     {
-        var answer = choice.Content ?? "";
-        messages.Add(new ChatMessage
-        {
-            Role = "assistant",
-            Content = answer
-        });
-        Console.WriteLine($"Assistant: {answer}\n");
+        Console.WriteLine($"Assistant: {GetResponseText(response)}\n");
     }
 }
 
+chatSession.Dispose();
 await model.UnloadAsync();
 Console.WriteLine("Model unloaded. Goodbye!");
 // </tool_loop>
 // </complete_code>
+
+static string GetResponseText(Response response) =>
+    string.Concat(
+        response.OfType<MessageItem>()
+            .SelectMany(message => message.Parts)
+            .OfType<TextItem>()
+            .Where(text => text.Type == TextItemType.Default)
+            .Select(text => text.Text));

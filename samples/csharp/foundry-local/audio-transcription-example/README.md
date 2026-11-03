@@ -1,13 +1,14 @@
 # Audio Transcription (C#)
 
-Transcribe audio files using the Foundry Local C# SDK.
+Transcribe audio files with the native v2 `AudioSession`, `Request`, and speech item APIs.
 
 > Part of the [Foundry Local samples for C#](../).
 
 ## Prerequisites
 
-- [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
 - .NET 9 SDK
+
+The unified `Microsoft.AI.Foundry.Local` package includes the local runtime.
 
 ## Run
 

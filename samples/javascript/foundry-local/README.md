@@ -10,11 +10,11 @@ description: Foundry Local JavaScript samples — chat, embeddings, audio, Elect
 
 # 🚀 Foundry Local JavaScript Samples
 
-These samples demonstrate how to use the [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) JavaScript SDK (`foundry-local-sdk`) with Node.js.
+These samples demonstrate the Foundry Local JavaScript SDK v2 (`foundry-local-sdk` 2.2.1) with Node.js. Native inference samples use modality-specific `ChatSession`, `AudioSession`, and `EmbeddingsSession` APIs; integration samples use the SDK's embedded OpenAI-compatible web service.
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) v18 or later
+- [Node.js](https://nodejs.org/) v20 or later
 - [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed on your machine
 
 ## Samples
@@ -31,7 +31,7 @@ These samples demonstrate how to use the [Foundry Local](https://learn.microsoft
 | [tool-calling-foundry-local](tool-calling-foundry-local/) | Tool calling with custom function definitions and streaming responses. |
 | [web-server-example](web-server-example/) | Start a local OpenAI-compatible web server and call it with the OpenAI SDK. |
 | [live-audio-transcription](live-audio-transcription/) | Real-time microphone-to-text transcription using `naudiodon2`. |
-| [verify-winml](verify-winml/) | Verify WinML 2.0 execution providers (Windows only). |
+| [verify-winml](verify-winml/) | Verify accelerator execution providers and native streaming chat through the unified SDK package. |
 | [tutorial-chat-assistant](tutorial-chat-assistant/) | Build an interactive multi-turn chat assistant (tutorial). |
 | [tutorial-document-summarizer](tutorial-document-summarizer/) | Summarize documents with AI (tutorial). |
 | [tutorial-tool-calling](tutorial-tool-calling/) | Create a tool-calling assistant (tutorial). |
@@ -60,4 +60,4 @@ These samples demonstrate how to use the [Foundry Local](https://learn.microsoft
    ```
 
 > [!TIP]
-> Each sample's `package.json` includes `foundry-local-sdk` as a dependency and `foundry-local-sdk-winml` as an optional dependency. On **Windows**, the WinML variant installs automatically for broader hardware acceleration. On **macOS and Linux**, the standard SDK is used. Just run `npm install` — platform detection is handled for you.
+> Every sample pins `foundry-local-sdk` 2.2.1. The unified package discovers and installs supported execution providers.

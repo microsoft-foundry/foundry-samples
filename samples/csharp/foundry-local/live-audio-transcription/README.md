@@ -1,10 +1,9 @@
 # Live Audio Transcription Example
 
-Real-time microphone-to-text transcription using the Foundry Local C# SDK with Nemotron ASR.
+Real-time microphone-to-text transcription using the Foundry Local C# SDK v2 with Nemotron ASR.
 
 ## Prerequisites
 
-- [Foundry Local](https://github.com/microsoft/Foundry-Local) installed
 - .NET 9 SDK
 - A microphone (optional — falls back to synthetic audio on non-Windows or with `--synth`)
 
@@ -33,33 +32,33 @@ dotnet run -- --synth
 ## How it works
 
 1. Initializes the Foundry Local SDK and loads the Nemotron ASR model
-2. Creates a `LiveAudioTranscriptionSession` with 16kHz/16-bit/mono PCM settings
-3. Captures microphone audio via `NAudio.WaveInEvent` (or generates synthetic audio as fallback)
-4. Pushes PCM chunks to the SDK via `session.AppendAsync()` through a bounded channel for backpressure
-5. Reads transcription results via `await foreach (var result in session.GetStream())`
-6. Access text via `result.Content[0].Text` (OpenAI Realtime ConversationItem pattern)
+2. Creates a native `AudioSession`, `Request`, and `ItemQueue` for 16kHz/16-bit/mono PCM
+3. Captures microphone audio via `NAudio.WaveIn` (or generates synthetic audio as fallback)
+4. Pushes owned `BytesItem` chunks into the input queue
+5. Reads `SpeechSegmentItem` results from `ProcessStreamingRequestAsync`
+6. Reads the complete transcript from the final `SpeechResultItem`
 
 ## API
 
 ```csharp
-var audioClient = await model.GetAudioClientAsync();
-var session = audioClient.CreateLiveTranscriptionSession();
-session.Settings.SampleRate = 16000;
-session.Settings.Channels = 1;
-session.Settings.Language = "en";
+using var session = new AudioSession(model);
+using var queue = new ItemQueue();
+using var request = new Request();
+session.SetStreaming(true);
+request.AddItem(AudioItem.CreateFormatDescriptor("pcm", 16000, 1));
+request.AddItem(queue, takeOwnership: false);
 
-await session.StartAsync();
+await using var stream = session.ProcessStreamingRequestAsync(request);
+queue.Push(BytesItem.CreateOwned(pcmBytes));
+queue.MarkFinished();
 
-// Push audio
-await session.AppendAsync(pcmBytes);
-
-// Read results
-await foreach (var result in session.GetStream())
+await foreach (var item in stream)
 {
-    Console.WriteLine(result.Content[0].Text);       // transcribed text
-    Console.WriteLine(result.Content[0].Transcript); // alias (OpenAI compat)
-    Console.WriteLine(result.IsFinal);               // true for final results
+    using (item)
+    {
+        if (item is SpeechSegmentItem segment)
+            Console.Write(segment.Text);
+    }
 }
-
-await session.StopAsync();
+using var finalResponse = await stream.FinalResponse;
 ```

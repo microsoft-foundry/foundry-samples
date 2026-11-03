@@ -1,20 +1,20 @@
-# Verify WinML 2.0 Execution Providers (C#)
+# Verify Unified WinML Capability (C#)
 
-This sample verifies that WinML 2.0 execution providers are correctly discovered,
-downloaded, and registered using the Foundry Local C# SDK. It uses registered WinML
-EP-backed model variants and finishes with one native streaming chat check.
+This sample verifies that the unified `Microsoft.AI.Foundry.Local` package exposes
+WinML 2.x execution-provider discovery, download, and registration on supported
+Windows hardware. It then loads an accelerated model variant and runs a native v2
+streaming chat request.
 
 ## Prerequisites
 
-- Windows with a compatible GPU
-- .NET 9.0 SDK
+- .NET 9 SDK
+- Windows with a compatible GPU or NPU for the accelerated checks
 
 ## Build & Run
 
-This sample uses the `Microsoft.AI.Foundry.Local.WinML` SDK package selected by
-the shared central package versions. The SDK package owns its native
-`Microsoft.AI.Foundry.Local.Core.WinML` dependency, so it restores the matching
-Core package transitively.
+WinML support is built into `Microsoft.AI.Foundry.Local`. On non-Windows systems,
+the sample validates unified-package initialization and reports that dynamic
+WinML EPs are unavailable rather than attempting accelerated inference.
 
 ```bash
 dotnet run

@@ -7,7 +7,7 @@ Initialize the SDK, download a model, and run non-streaming and streaming chat c
 ## Prerequisites
 
 - [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
-- Node.js 18+
+- Node.js 20+
 
 ## Run
 

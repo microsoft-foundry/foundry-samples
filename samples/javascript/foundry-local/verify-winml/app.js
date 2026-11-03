@@ -1,5 +1,5 @@
 /**
- * Foundry Local SDK - WinML 2.0 EP Verification Script (JavaScript)
+ * Foundry Local SDK - Accelerator Verification Script (JavaScript)
  *
  * Verifies:
  *   1. Execution providers are discovered and registered
@@ -7,7 +7,12 @@
  *   3. Streaming chat completions work on an accelerated model
  */
 
-import { FoundryLocalManager } from "foundry-local-sdk";
+import {
+  ChatSession,
+  FoundryLocalManager,
+  Item,
+  Request,
+} from "foundry-local-sdk";
 
 const PASS = "\x1b[92m[PASS]\x1b[0m";
 const FAIL = "\x1b[91m[FAIL]\x1b[0m";
@@ -195,18 +200,22 @@ async function main() {
   ];
 
   try {
-    const client = chosen.createChatClient();
-    client.settings.temperature = 0;
-    client.settings.maxTokens = 16;
+    const session = new ChatSession(chosen);
     let responseText = "";
     const start = Date.now();
-    for await (const chunk of client.completeStreamingChat(messages)) {
-      const content = chunk?.choices?.[0]?.delta?.content;
-      if (content) {
-        responseText += content;
-        process.stdout.write(content);
+    const request = new Request()
+      .addItem(Item.systemMessage(messages[0].content))
+      .addItem(Item.userMessage(messages[1].content))
+      .setOptions({ search: { temperature: 0, maxOutputTokens: 16 } });
+    const stream = session.processStreamingRequest(request);
+    for await (const item of stream) {
+      if (item.type === "text" && item.textType === "default") {
+        responseText += item.text;
+        process.stdout.write(item.text);
       }
     }
+    await stream.response;
+    session.dispose();
     const elapsed = ((Date.now() - start) / 1000).toFixed(2);
     console.log();
     logResult("Streaming Chat (Native)", responseText.length > 0, `${responseText.length} chars in ${elapsed}s`);

@@ -1,6 +1,6 @@
 # Tutorial: Chat Assistant (Rust)
 
-Build an interactive multi-turn chat assistant (tutorial).
+Build an interactive multi-turn chat assistant with the v2 stateful session API.
 
 > Part of the [Foundry Local samples for Rust](../).
 

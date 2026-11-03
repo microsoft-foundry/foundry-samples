@@ -1,5 +1,5 @@
 name: Audio Transcription (Rust)
-description: Audio transcription (non-streaming and streaming) using the Whisper model.
+description: Audio transcription (non-streaming and streaming) using the v2 AudioSession API.
 
 build: "cargo build --verbose"
 validate: "cargo check"

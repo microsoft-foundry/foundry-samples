@@ -1,7 +1,6 @@
 ﻿// <complete_code>
 // <imports>
 using Microsoft.AI.Foundry.Local;
-using Betalgo.Ranul.OpenAI.ObjectModels.RequestModels;
 // </imports>
 
 // <init>
@@ -84,28 +83,36 @@ Console.WriteLine("done.");
 // </model_setup>
 
 // <chat_completion>
-// Get a chat client
-var chatClient = await model.GetChatClientAsync();
-
-// Create a chat message
-List<ChatMessage> messages = new()
-{
-    new ChatMessage { Role = "user", Content = "Why is the sky blue?" }
-};
+// Create a stateful native chat session and enable streaming.
+using var chatSession = new ChatSession(model);
+chatSession.SetStreaming(true);
+using var request = new Request();
+request.AddItem(MessageItem.User("Why is the sky blue?"));
 
 // Get a streaming chat completion response
 Console.WriteLine("Chat completion response:");
-var streamingResponse = chatClient.CompleteChatStreamingAsync(messages, ct);
-await foreach (var chunk in streamingResponse)
+await using var streamingResponse = chatSession.ProcessStreamingRequestAsync(request, ct);
+await foreach (var item in streamingResponse)
 {
-    Console.Write(chunk.Choices[0].Message.Content);
-    Console.Out.Flush();
+    using (item)
+    {
+        if (item is TextItem { Type: TextItemType.Default } text)
+        {
+            Console.Write(text.Text);
+            Console.Out.Flush();
+        }
+    }
 }
+using var finalResponse = await streamingResponse.FinalResponse;
 Console.WriteLine();
 // </chat_completion>
 
 // <cleanup>
 // Tidy up - unload the model
+finalResponse.Dispose();
+await streamingResponse.DisposeAsync();
+request.Dispose();
+chatSession.Dispose();
 await model.UnloadAsync();
 // </cleanup>
 // </complete_code>

@@ -1,6 +1,6 @@
 # Embeddings (Rust)
 
-Generate single and batch text embeddings using the native embedding client.
+Generate single and batch text embeddings using the v2 `EmbeddingsSession` API.
 
 > Part of the [Foundry Local samples for Rust](../).
 

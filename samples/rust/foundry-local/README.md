@@ -10,7 +10,7 @@ description: Foundry Local Rust samples — chat, embeddings, audio, tool callin
 
 # 🚀 Foundry Local Rust Samples
 
-These samples demonstrate how to use the Rust binding for [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) (published on [crates.io](https://crates.io/crates/foundry-local-sdk) as `foundry-local-sdk`).
+These samples demonstrate the maintained v2 Rust API for [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) using `foundry-local-sdk` 2.2.1.
 
 The samples form a single Cargo workspace defined in [`Cargo.toml`](Cargo.toml).
 
@@ -23,13 +23,13 @@ The samples form a single Cargo workspace defined in [`Cargo.toml`](Cargo.toml).
 
 | Sample | Description |
 |--------|-------------|
-| [native-chat-completions](native-chat-completions/) | Non-streaming and streaming chat completions using the native chat client. |
-| [embeddings](embeddings/) | Generate single and batch text embeddings using the native embedding client. |
+| [native-chat-completions](native-chat-completions/) | Non-streaming and streaming chat completions using `ChatSession`. |
+| [embeddings](embeddings/) | Generate single and batch text embeddings using `EmbeddingsSession`. |
 | [audio-transcription-example](audio-transcription-example/) | Audio transcription (non-streaming and streaming) using the Whisper model. |
 | [foundry-local-webserver](foundry-local-webserver/) | Start a local OpenAI-compatible web server and call it with a standard HTTP client. |
 | [tool-calling-foundry-local](tool-calling-foundry-local/) | Tool calling with streaming responses, multi-turn conversation, and local tool execution. |
-| [live-audio-transcription](live-audio-transcription/) | Real-time microphone transcription using `cpal`. *(Requires SDK live-transcription API.)* |
-| [verify-winml](verify-winml/) | Verify WinML 2.0 execution providers (Windows only). |
+| [live-audio-transcription](live-audio-transcription/) | Real-time microphone transcription using a v2 input queue and `cpal`. |
+| [verify-winml](verify-winml/) | Verify accelerated WinML execution providers through the unified SDK (Windows only). |
 | [tutorial-chat-assistant](tutorial-chat-assistant/) | Build an interactive multi-turn chat assistant (tutorial). |
 | [tutorial-document-summarizer](tutorial-document-summarizer/) | Summarize documents with AI (tutorial). |
 | [tutorial-tool-calling](tutorial-tool-calling/) | Create a tool-calling assistant (tutorial). |
@@ -58,4 +58,4 @@ The samples form a single Cargo workspace defined in [`Cargo.toml`](Cargo.toml).
    ```
 
 > [!TIP]
-> Each sample's `Cargo.toml` uses `[target.'cfg(windows)'.dependencies]` to automatically enable the `winml` feature on Windows for broader hardware acceleration. On macOS and Linux, the standard SDK is used. No manual configuration needed.
+> The unified v2 SDK discovers and registers supported execution providers at runtime. No separate Windows package or `winml` Cargo feature is required.

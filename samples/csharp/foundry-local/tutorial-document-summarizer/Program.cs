@@ -1,7 +1,6 @@
 // <complete_code>
 // <imports>
 using Microsoft.AI.Foundry.Local;
-using Betalgo.Ranul.OpenAI.ObjectModels.RequestModels;
 using Microsoft.Extensions.Logging;
 // </imports>
 
@@ -51,8 +50,6 @@ await model.DownloadAsync(progress =>
 await model.LoadAsync();
 Console.WriteLine("Model loaded and ready.\n");
 
-// Get a chat client
-var chatClient = await model.GetChatClientAsync();
 // </init>
 
 // <summarization>
@@ -66,12 +63,12 @@ var target = args.Length > 0 ? args[0] : "document.txt";
 
 if (Directory.Exists(target))
 {
-    await SummarizeDirectoryAsync(chatClient, target, systemPrompt, ct);
+    await SummarizeDirectoryAsync(model, target, systemPrompt, ct);
 }
 else
 {
     Console.WriteLine($"--- {Path.GetFileName(target)} ---");
-    await SummarizeFileAsync(chatClient, target, systemPrompt, ct);
+    await SummarizeFileAsync(model, target, systemPrompt, ct);
 }
 // </summarization>
 
@@ -80,24 +77,27 @@ await model.UnloadAsync();
 Console.WriteLine("\nModel unloaded. Done!");
 
 async Task SummarizeFileAsync(
-    dynamic client,
+    IModel loadedModel,
     string filePath,
     string prompt,
     CancellationToken token)
 {
     var fileContent = await File.ReadAllTextAsync(filePath, token);
-    var messages = new List<ChatMessage>
-    {
-        new ChatMessage { Role = "system", Content = prompt },
-        new ChatMessage { Role = "user", Content = fileContent }
-    };
-
-    var response = await client.CompleteChatAsync(messages, token);
-    Console.WriteLine(response.Choices[0].Message.Content);
+    using var session = new ChatSession(loadedModel);
+    using var request = new Request();
+    request.AddItem(MessageItem.System(prompt));
+    request.AddItem(MessageItem.User(fileContent));
+    using var response = await session.ProcessRequestAsync(request, token);
+    Console.WriteLine(string.Concat(
+        response.OfType<MessageItem>()
+            .SelectMany(message => message.Parts)
+            .OfType<TextItem>()
+            .Where(text => text.Type == TextItemType.Default)
+            .Select(text => text.Text)));
 }
 
 async Task SummarizeDirectoryAsync(
-    dynamic client,
+    IModel loadedModel,
     string directory,
     string prompt,
     CancellationToken token)
@@ -115,7 +115,7 @@ async Task SummarizeDirectoryAsync(
     foreach (var txtFile in txtFiles)
     {
         Console.WriteLine($"--- {Path.GetFileName(txtFile)} ---");
-        await SummarizeFileAsync(client, txtFile, prompt, token);
+        await SummarizeFileAsync(loadedModel, txtFile, prompt, token);
         Console.WriteLine();
     }
 }

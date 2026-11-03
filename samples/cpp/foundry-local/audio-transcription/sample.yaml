@@ -1,0 +1,4 @@
+name: Foundry Local C++ audio transcription
+description: Transcribe a user-supplied audio file with a native audio session.
+build: cmake -S . -B build
+validate: cmake --build build --config Release --target audio-transcription
