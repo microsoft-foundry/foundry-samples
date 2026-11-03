@@ -1,0 +1,19 @@
+{
+  "jsonrpc": "2.0",
+  "id": "support-open-1",
+  "method": "SendMessage",
+  "params": {
+    "message": {
+      "messageId": "support-open-message-1",
+      "role": "ROLE_USER",
+      "parts": [
+        {
+          "text": "Open a synthetic support case titled Search returns HTTP503. Description: Our dummy search service started returning HTTP503 after a configuration change. No real customer impact. Save it and return the case ID."
+        }
+      ]
+    },
+    "configuration": {
+      "returnImmediately": false
+    }
+  }
+}
