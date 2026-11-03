@@ -12,7 +12,7 @@ tests:
     when:
       toolbox_label: code-interpreter
     turns:
-      - input: Use the code interpreter to calculate 113 multiplied by 624.
+      - input: Using available capabilities as appropriate, determine how many decimal digits are in 2 to the power of 234235.
         assertions:
           - source: assistant_text
             type: regex
