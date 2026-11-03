@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>github-copilot</AssemblyName>
+    <RootNamespace>CopilotSample</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Azure.AI.AgentServer.Activity" Version="1.0.0-alpha.20261102.1" />
+    <PackageReference Include="GitHub.Copilot.SDK" Version="1.0.28" />
+  </ItemGroup>
+</Project>
