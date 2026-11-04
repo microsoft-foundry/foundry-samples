@@ -34,8 +34,15 @@ timeout. Coding, filesystem and shell tools are not enabled.
 
 The `web-search` specialist artifact records actual search call IDs, success
 and returned source URLs. Model-only success is rejected if no successful search
-with source URLs occurred. The planner returns `specialist-calls` and `trip-state`
-artifacts, including acknowledged storage operations, versions and Task IDs.
+with source URLs occurred. The planner returns compact `specialist-calls`
+receipts containing tool, agent and Task ID, plus `trip-state` receipts containing
+operation names and plan ID/version/revision/status/history-count summaries.
+It does not repeat full specialist answers, requirements, metadata, recommendation
+text, history or ETags in these artifacts. Full records remain in storage and
+available to the model's tools; explicit history requests still retrieve full
+history. Ordinary show-plan requests are instructed to use `get_plan` alone.
+Both `--output default` and `--output raw` contain the same compact artifacts;
+raw output exposes the complete A2A envelope, not an expanded record dump.
 The readable answer also includes a Python-generated **Verified task IDs (this
 request)** section, listing the planner's Task ID and every completed specialist
 call ID, including repeated calls. Requests without delegation explicitly say no

@@ -265,7 +265,8 @@ Do not provide private addresses.
 - The answer includes relevant clickable citations and clearly separates
   exact-date evidence from generic policies or advertised rates.
 - Storage acknowledges the new plan and recommendation; final status is
-  **`unverified`**, with `source_mode: web_research` and `synthetic: false`.
+  **`unverified`**. Compact receipts show the plan ID, version, requirements
+  revision, status and history count; full records remain in storage.
 - Unknown prices/refundability/availability remain unknown. No invented total,
   guaranteed eligible pair or booking claim.
 
@@ -394,10 +395,14 @@ Do not automatically increase shared model capacity or bypass version conflicts.
 
 ## 8. Inspect evidence and report bugs
 
-- Choose `--output raw` **before** a test when full Task/artifact evidence is
-  needed. Do not repeat a write merely to change output format.
-- Inspect `specialist-calls`, nested specialist `web-search` evidence and
-  `trip-state`. Agent IDs, Task IDs, Plan IDs and record versions are different.
+- Choose `--output raw` **before** a test when the complete A2A envelope is needed.
+  Planner artifacts are compact in both output modes; raw does not restore full
+  plan/history dumps. Do not repeat a write merely to change output format.
+- `specialist-calls` lists actual completed tool/agent/Task IDs without repeating
+  specialist answers. `trip-state` lists operations and compact plan summaries.
+  Inspect web-search activity in traces or the specialist's own response artifacts.
+  Request full history explicitly when needed; ordinary reads need only `get_plan`.
+  Agent IDs, Task IDs, Plan IDs and record versions are different.
 - Open a **planning or date-refresh trace** in Foundry to inspect Flight/Hotel
   and web-search calls. Retrieval, metadata, history and clarification traces
   correctly have no specialist calls; the newest trace may be one of these.

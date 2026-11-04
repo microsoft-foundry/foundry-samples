@@ -94,14 +94,39 @@ class TravelExecutor(AgentExecutor):
             await updater.add_artifact(
                 parts=[new_text_part(answer, media_type="text/plain")]
             )
+            call_receipts = [
+                {key: call[key] for key in ("tool", "agent", "task_id")}
+                for call in calls
+            ]
+            state_receipts = []
+            for operation in evidence["state_store"]["operations"]:
+                if "plan" in operation:
+                    record = operation["plan"]
+                    summary = {
+                        key: record[key]
+                        for key in (
+                            "plan_id", "version", "requirements_revision", "status"
+                        )
+                    }
+                    summary["history_count"] = len(record["history"])
+                    state_receipts.append(
+                        {"action": operation["action"], "plan": summary}
+                    )
+                else:
+                    state_receipts.append(operation)
+            state_store = {**evidence["state_store"], "operations": state_receipts}
             await updater.add_artifact(
-                parts=[new_text_part(json.dumps(calls), media_type="application/json")],
+                parts=[
+                    new_text_part(
+                        json.dumps(call_receipts), media_type="application/json"
+                    )
+                ],
                 name="specialist-calls",
             )
             await updater.add_artifact(
                 parts=[
                     new_text_part(
-                        json.dumps(evidence["state_store"]),
+                        json.dumps(state_store),
                         media_type="application/json",
                     )
                 ],

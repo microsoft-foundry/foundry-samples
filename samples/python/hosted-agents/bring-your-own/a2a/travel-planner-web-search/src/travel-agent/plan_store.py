@@ -25,6 +25,10 @@ INSTRUCTIONS = """
 You have persistent, user-isolated trip storage, but no conversation memory.
 Always get_plan or list_plans to retrieve an existing plan; never pretend to
 remember it. A plan ID is different from an A2A Task ID.
+For an ordinary request to show a saved plan, use get_plan only. It already
+returns the current requirements, metadata, recommendation and history count.
+Use get_plan_history only when the user explicitly asks for history, earlier
+changes or previous recommendations, not to display the current plan.
 For a complete NEW trip, create_plan with all requirements and user metadata
 before consulting the Flight and Hotel tools. Ask about missing requirements
 before creating a plan. Express budget_cents as integer USD cents and distance
@@ -467,7 +471,7 @@ def build_tools(
         ),
         tool(
             "get_plan",
-            "Read saved requirements, metadata, current recommendation or stale marker, version and history count. Use get_plan_history for full history. Required before editing or replanning.",
+            "Read the current saved plan: requirements, metadata, recommendation or stale marker, version and history count. Use this alone for ordinary show-plan requests. Required before editing or replanning.",
             get,
             PlanId,
         ),
@@ -491,7 +495,7 @@ def build_tools(
         ),
         tool(
             "get_plan_history",
-            "Retrieve the saved plan's creation, edits and previous recommendations without changing it.",
+            "Retrieve full history only when the user explicitly asks for history, earlier changes or previous recommendations. Not needed to show the current plan. Does not change the record.",
             history,
             PlanId,
         ),
