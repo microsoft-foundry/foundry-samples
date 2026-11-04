@@ -80,9 +80,21 @@ public sealed class InvocationAdapter(InvocationHandler handler)
         finally
         {
             // Unblock a backpressured writer, cancel the handler and await its finally blocks.
-            lifetime.Cancel();
-            await pipe.Reader.CompleteAsync();
-            await producer;
+            try
+            {
+                lifetime.Cancel();
+            }
+            finally
+            {
+                try
+                {
+                    await pipe.Reader.CompleteAsync();
+                }
+                finally
+                {
+                    await producer;
+                }
+            }
         }
 
         async Task ProduceAsync()
@@ -106,7 +118,8 @@ public sealed class InvocationAdapter(InvocationHandler handler)
     private static void ValidateResponse(HttpResponse response)
     {
         if (response.StatusCode is < 200 or >= 300 ||
-            response.ContentType?.StartsWith("text/event-stream", StringComparison.OrdinalIgnoreCase) != true)
+            !string.Equals(response.ContentType?.Split(';', 2)[0].Trim(),
+                "text/event-stream", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Expected a successful SSE invocation response.");
         }
@@ -121,10 +134,20 @@ public sealed class InvocationAdapter(InvocationHandler handler)
         var chars = new char[1024];
         var pending = "";
         var skipLf = false;
+        var firstRead = true;
         int count;
         while ((count = await reader.ReadAsync(chars.AsMemory(), cancellationToken)) != 0)
         {
             var decoded = new string(chars, 0, count);
+            if (firstRead)
+            {
+                // SSE permits one leading UTF-8 BOM, not alternate encodings.
+                firstRead = false;
+                if (decoded.StartsWith('\uFEFF'))
+                {
+                    decoded = decoded[1..];
+                }
+            }
             var previousCr = decoded.EndsWith('\r');
             if (skipLf && decoded.StartsWith('\n'))
             {

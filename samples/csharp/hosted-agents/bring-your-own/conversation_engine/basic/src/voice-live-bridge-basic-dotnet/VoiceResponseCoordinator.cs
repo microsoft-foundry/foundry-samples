@@ -428,7 +428,7 @@ internal sealed class VoiceResponseCoordinator
                 }
                 // The state snapshot now belongs to this terminator. Cancellation callbacks
                 // may run inline, so select outcomes first and never cancel under the state lock.
-                await state.Lifetime.CancelAsync();
+                await NotifyCancellationAsync(state.Lifetime);
                 await Task.WhenAll(operations.Select(CancelAndDisposeAsync));
                 await state.WaitForInputResolutionsAsync();
             }
@@ -456,7 +456,7 @@ internal sealed class VoiceResponseCoordinator
     {
         try
         {
-            await operation.Cancellation.CancelAsync();
+            await NotifyCancellationAsync(operation.Cancellation);
             var work = operation.Work;
             if (work is not null &&
                 !ReferenceEquals(s_currentOperation.Value, operation) &&
@@ -472,6 +472,20 @@ internal sealed class VoiceResponseCoordinator
         finally
         {
             operation.Dispose();
+        }
+    }
+
+    private async Task NotifyCancellationAsync(CancellationTokenSource cancellation)
+    {
+        try
+        {
+            await cancellation.CancelAsync();
+        }
+        catch (Exception exception)
+        {
+            // Notification failures must not bypass joining the response workers.
+            _logger.LogWarning("Cancellation notification failed; error_type={ErrorType}",
+                exception.GetType().FullName);
         }
     }
 

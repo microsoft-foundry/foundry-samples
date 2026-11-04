@@ -71,6 +71,19 @@ public class SseFramingTests
         }
     }
 
+    [Test]
+    public async Task OneLeadingUtf8Bom_IsIgnoredEvenWhenSplitIntoBytes()
+    {
+        var raw = Encoding.UTF8.GetBytes("\uFEFFdata: {\"type\":\"token\",\"content\":\"\uFEFF你好 👋\"}\n\n");
+        for (var split = 0; split <= raw.Length; split++)
+        {
+            var events = await Parse(raw[..split], Array.Empty<byte>(), raw[split..]);
+            Assert.That(events.Single().GetProperty("content").GetString(), Is.EqualTo("\uFEFF你好 👋"));
+        }
+        Assert.That((await Parse(raw.Select(value => new[] { value }).ToArray())).Count, Is.EqualTo(1));
+        Assert.That(await Parse(Encoding.UTF8.GetBytes("\uFEFF"), raw), Is.Empty);
+    }
+
     private static async Task<List<JsonElement>> Parse(params byte[][] chunks)
     {
         await using var stream = new FragmentedStream(chunks);

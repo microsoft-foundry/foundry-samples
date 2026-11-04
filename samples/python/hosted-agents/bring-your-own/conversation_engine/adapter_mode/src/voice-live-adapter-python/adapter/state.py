@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+from collections.abc import AsyncIterator
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from enum import Enum
@@ -88,6 +89,8 @@ class ResponseOperation:
     turn: ApplicationTurn
     response_started: bool
     task: asyncio.Task[None] | None = None
+    output_iterator: AsyncIterator[Any] | None = None
+    output_cleanup: asyncio.Task[None] | None = None
     terminal_event: asyncio.Event | None = None
     output_item_count: int = 0
     capacity_released: bool = False

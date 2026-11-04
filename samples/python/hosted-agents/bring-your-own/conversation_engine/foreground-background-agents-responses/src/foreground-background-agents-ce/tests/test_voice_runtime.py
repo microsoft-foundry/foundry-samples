@@ -185,11 +185,48 @@ async def test_original_handler_exception_logs_are_private(
         )
 
     monkeypatch.setattr(logic, "_iter_llm_stream", router)
-    events = [event async for event in logic.handler({"stream": True}, context, signal)]
-    assert events[-1]["type"] == "response.completed"
+    events = []
+    if failure_point == "router":
+        with pytest.raises(RuntimeError, match=marker):
+            async for event in logic.handler({"stream": True}, context, signal):
+                events.append(event)
+        assert not any(event["type"] == "response.completed" for event in events)
+    else:
+        events = [event async for event in logic.handler({"stream": True}, context, signal)]
+        assert events[-1]["type"] == "response.completed"
+    assert marker not in json.dumps(events)
     records = assert_private_logs(caplog, marker)
     assert any("RuntimeError" in record.getMessage() for record in records)
     assert context.response_id not in logic._active_cancel_signals
+
+
+def test_router_failure_is_sanitized_response_error_and_next_turn_recovers(logic, monkeypatch):
+    marker = "PRIVATE_SYNTHETIC_MODEL_REQUEST_DETAIL"
+    original = logic._iter_llm_stream
+
+    async def router(*args, **kwargs):
+        if args[3][-1]["content"] == "fail":
+            raise RuntimeError(marker)
+        async for event in original(*args, **kwargs):
+            yield event
+
+    monkeypatch.setattr(logic, "_iter_llm_stream", router)
+    app = create_app(handler=logic.handler, configure_observability=None)
+    with TestClient(app) as client, client.websocket_connect("/voice_conversation_engine") as ws:
+        start(ws)
+        send_user(ws, "fail", "in_failure")
+        created = ws.receive_json()
+        failure = ws.receive_json()
+        assert created["type"] == "response.created"
+        assert failure["type"] == "error"
+        assert failure["code"] == "generation_failed"
+        assert failure["response_id"] == created["response_id"]
+        assert marker not in json.dumps(failure)
+        send_user(ws, "recovered", "in_recovery")
+        events = receive_until(ws, "response.done")
+        assert events[0]["type"] == "response.created"
+        assert events[0]["in_reply_to"] == ["in_recovery"]
+        assert output(events) == "recovered"
 
 
 @pytest.mark.asyncio

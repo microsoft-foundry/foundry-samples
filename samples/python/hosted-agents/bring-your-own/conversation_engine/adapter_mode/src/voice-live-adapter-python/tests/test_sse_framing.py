@@ -76,3 +76,55 @@ async def test_frame_content_budget_is_independent_of_split_delimiters(extra, en
 
 def test_collected_ids_fit_windows_environment_variables(request):
     assert all(len(item.nodeid) < 32_000 for item in request.session.items)
+
+
+@pytest.mark.parametrize("binary", [False, True])
+@pytest.mark.parametrize("batched", [False, True])
+async def test_large_valid_batches_are_not_limited_by_handler_write_boundaries(binary, batched):
+    tokens = ['data: {"type":"token","content":"x"}\n\n'] * 8000
+    done = 'data: ' + json.dumps({"type": "done", "full_text": "x" * 8000}) + '\n\n'
+    chunks = ["".join(tokens[:7000]), *tokens[7000:], done] if batched else [*tokens, done]
+
+    async def handler(_request):
+        async def body():
+            for chunk in chunks:
+                yield chunk.encode() if binary else chunk
+
+        return StreamingResponse(body(), media_type="text/event-stream")
+
+    output = [part async for part in InvocationAdapter(handler).stream("input", "in_batch")]
+    assert "".join(output) == "x" * 8000
+
+
+async def test_one_leading_utf8_bom_is_ignored_even_when_split_into_bytes():
+    token = {"type": "token", "content": "\ufeff你好 👋"}
+    raw = b"\xef\xbb\xbf" + ("data: " + json.dumps(token, ensure_ascii=False) + "\n\n").encode()
+    assert await parse([raw]) == [token]
+    for split in range(len(raw) + 1):
+        assert await parse([raw[:split], b"", raw[split:]]) == [token]
+    assert await parse([bytes([value]) for value in raw]) == [token]
+    # Only a single BOM at the very start is special.
+    assert await parse([b"\xef\xbb\xbf" + raw]) == []
+
+
+@pytest.mark.parametrize("media_type, accepted", [
+    ("text/event-stream", True),
+    ("Text/Event-Stream; charset=utf-8", True),
+    ("TEXT/EVENT-STREAM", True),
+    ("text/event-stream-invalid", False),
+    ("text/event-streaming; charset=utf-8", False),
+])
+async def test_sse_media_type_uses_exact_case_insensitive_token(media_type, accepted):
+    async def handler(_request):
+        async def body():
+            yield 'data: {"type":"token","content":"x"}\n\n'
+            yield 'data: {"type":"done","full_text":"x"}\n\n'
+
+        return StreamingResponse(body(), headers={"content-type": media_type})
+
+    source = InvocationAdapter(handler).stream("input", "in_media")
+    if accepted:
+        assert [chunk async for chunk in source] == ["x"]
+    else:
+        with pytest.raises(ValueError, match="Expected an SSE response"):
+            _ = [chunk async for chunk in source]

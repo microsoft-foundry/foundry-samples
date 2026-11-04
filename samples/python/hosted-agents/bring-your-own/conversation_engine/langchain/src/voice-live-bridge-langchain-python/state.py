@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+from collections.abc import AsyncIterator
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from enum import Enum
@@ -88,6 +89,8 @@ class ResponseOperation:
     turn: ApplicationTurn
     response_started: bool
     task: asyncio.Task[None] | None = None
+    output_iterator: AsyncIterator[Any] | None = None
+    output_cleanup: asyncio.Task[None] | None = None
     terminal_event: asyncio.Event | None = None
     output_item_count: int = 0
     capacity_released: bool = False
@@ -95,6 +98,7 @@ class ResponseOperation:
     outcome: OperationOutcome | None = None
     telemetry: ResponseTelemetry | None = None
     cancellation_requested: bool = False
+    running: bool = False
     previous_resolution: asyncio.Future[None] | None = None
     resolution_complete: asyncio.Future[None] | None = None
 
@@ -104,7 +108,7 @@ class ResponseOperation:
         if self.cancellation_requested:
             return
         self.cancellation_requested = True
-        if self.task is not None and not self.task.done():
+        if self.running and self.task is not None and not self.task.done():
             self.task.cancel()
 
     def select_outcome(self, outcome: OperationOutcome) -> None:

@@ -15,6 +15,60 @@ from task_store import TaskStatus
 from voice_runtime import Conversation, ResponseContextAdapter
 
 
+@pytest.mark.parametrize("count", [0, 2])
+async def test_router_rejects_non_single_tool_selection_without_partial_dispatch(
+    logic, monkeypatch, count
+):
+    async def router(*_args, **_kwargs):
+        for index in range(count):
+            yield SimpleNamespace(type="response.output_item.done", item=SimpleNamespace(
+                type="function_call", name="start_task" if index else "respond_directly",
+                arguments=json.dumps({"message": "Hello.", "request_summary": "work"}),
+            ))
+
+    monkeypatch.setattr(logic, "_iter_llm_stream", router)
+    conversation = Conversation()
+    context = ResponseContextAdapter("r_count", "hello", [], conversation)
+    events = []
+    with pytest.raises(ValueError, match="exactly one"):
+        async for event in logic.handler({"stream": True}, context, asyncio.Event()):
+            events.append(event)
+    assert not conversation.task_store._tasks
+    assert not any(event["type"] in {"response.completed", "response.output_text.delta"}
+                   for event in events)
+
+
+async def test_router_request_disables_parallel_tools_through_real_openai_adapter(
+    logic, monkeypatch
+):
+    requests = []
+
+    async def transport(request):
+        requests.append(json.loads(request.content))
+        payload = {"id": "chat_single", "object": "chat.completion.chunk", "created": 0,
+                   "model": "test-model", "choices": [{"index": 0, "finish_reason": "tool_calls",
+                   "delta": {"tool_calls": [{"index": 0, "id": "call_one", "type": "function",
+                   "function": {"name": "respond_directly",
+                   "arguments": json.dumps({"message": "Hello."})}}]}}]}
+        return httpx.Response(200, headers={"content-type": "text/event-stream"}, content=(
+            "data: " + json.dumps(payload) + "\n\ndata: [DONE]\n\n"
+        ).encode())
+
+    @asynccontextmanager
+    async def router_client():
+        async with AsyncOpenAI(api_key="local-test-only", base_url="https://example.invalid/v1",
+                               http_client=httpx.AsyncClient(transport=httpx.MockTransport(transport)),
+                               max_retries=0) as client:
+            yield client
+
+    monkeypatch.setattr(logic, "_router_client", router_client)
+    context = ResponseContextAdapter("r_single", "hello", [], Conversation())
+    events = [event async for event in logic.handler({"stream": True}, context, asyncio.Event())]
+    assert requests[0]["parallel_tool_calls"] is False
+    assert requests[0]["tool_choice"] == "required"
+    assert events[-1]["type"] == "response.completed"
+
+
 @pytest.fixture
 def logic(monkeypatch):
     monkeypatch.setenv("FOUNDRY_PROJECT_ENDPOINT", "https://example.invalid/api/projects/test")

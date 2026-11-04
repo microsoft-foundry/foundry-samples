@@ -88,6 +88,9 @@ class ResponseCoordinator:
             input_ids=input_ids,
             turn=ApplicationTurn(),
             response_started=response_started,
+            output_iterator=aiter(
+                self._fixed_chunks(text) if isinstance(text, (str, Mapping)) else text
+            ),
             telemetry=(
                 ResponseTelemetry(response_id, input_item_id, user_message_received_at)
                 if input_item_id is not None and user_message_received_at is not None
@@ -412,7 +415,10 @@ class ResponseCoordinator:
                     await coroutine
             finally:
                 coroutine.close()
-                await self._finish_resolution(operation)
+                try:
+                    await self._drain_output(operation)
+                finally:
+                    await self._finish_resolution(operation)
 
         wrapper = run()
         try:
@@ -497,7 +503,7 @@ class ResponseCoordinator:
         voice: dict[str, Any] | None,
     ) -> None:
         item_id: str | None = None
-        chunks = self._fixed_chunks(text) if isinstance(text, (str, Mapping)) else text
+        del text  # The accepted iterator is owned by the response operation.
         completed_text = ""
         data_bytes = 0
 
@@ -515,7 +521,8 @@ class ResponseCoordinator:
                 operation.output_item_count += 1
                 item_id, completed_text = None, ""
 
-        iterator = aiter(chunks)
+        iterator = operation.output_iterator
+        assert iterator is not None
         try:
             async for chunk in iterator:
                 if isinstance(chunk, Mapping):
@@ -556,8 +563,7 @@ class ResponseCoordinator:
                     await asyncio.sleep(0)
         finally:
             # Release producer resources on cancellation or a failed send, not only on exhaustion.
-            if close := getattr(iterator, "aclose", None):
-                await close()
+            await self._close_output(operation)
         await finish_text()
         if operation.output_item_count == 0:
             raise ValueError("Response ended without output")
@@ -565,6 +571,29 @@ class ResponseCoordinator:
         await operation.session.send(ResponseDone(response_id=operation.response_id))
         if operation.telemetry is not None:
             operation.telemetry.record_response_done_sent()
+
+    @staticmethod
+    async def _close_output(operation: ResponseOperation) -> None:
+        if operation.output_cleanup is None and operation.output_iterator is not None:
+            iterator, operation.output_iterator = operation.output_iterator, None
+
+            async def close() -> None:
+                if closer := getattr(iterator, "aclose", None):
+                    await closer()
+
+            operation.output_cleanup = asyncio.create_task(
+                close(), name=f"voice-output-cleanup-{operation.response_id}"
+            )
+        if operation.output_cleanup is not None:
+            # Cancellation of the response must not interrupt producer finalization.
+            await asyncio.shield(operation.output_cleanup)
+
+    async def _drain_output(self, operation: ResponseOperation) -> None:
+        try:
+            await self._close_output(operation)
+        except Exception as exception:
+            operation.select_outcome(OperationOutcome.ERROR)
+            logger.warning("Voice producer cleanup failed; error_type=%s", type(exception).__name__)
 
     @staticmethod
     async def _fixed_chunks(text: OutputChunk) -> AsyncIterable[OutputChunk]:

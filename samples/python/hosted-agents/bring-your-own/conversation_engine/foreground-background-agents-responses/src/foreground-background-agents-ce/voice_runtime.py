@@ -108,14 +108,24 @@ class VoiceRuntime(ProtocolRuntime):
         # Reserve history order now, independently of response completion/cleanup order.
         context.output_item["response_id"] = response_id
         conversation.history.append(context.output_item)
-        self._coordinator.start_response(
-            session,
-            state,
-            event.item_id,
-            self._stream_handler(context, signal),
-            received_at,
-            response_id=response_id,
-        )
+        try:
+            self._coordinator.start_response(
+                session,
+                state,
+                event.item_id,
+                self._stream_handler(context, signal),
+                received_at,
+                response_id=response_id,
+            )
+        finally:
+            operation = state.responses.get(response_id)
+            if operation is not None and operation.task is not None:
+                # Even closing an unstarted async generator does not run its finally.
+                operation.task.add_done_callback(
+                    lambda _: conversation.signals.pop(response_id, None)
+                )
+            else:
+                conversation.signals.pop(response_id, None)
 
     async def _stream_handler(
         self, context: ResponseContextAdapter, signal: asyncio.Event
@@ -140,7 +150,6 @@ class VoiceRuntime(ProtocolRuntime):
                 self._record_output(context, output)
                 yield delta
         finally:
-            context.conversation.signals.pop(context.response_id, None)
             self._record_output(context, output)
             await source.aclose()
 

@@ -131,6 +131,7 @@ async def _iter_llm_stream(responses_client, model, instructions, input_items, t
             else:
                 cc_tools.append(t)
         create_kwargs["tools"] = cc_tools
+        create_kwargs["parallel_tool_calls"] = False
     if tool_choice:
         create_kwargs["tool_choice"] = tool_choice
 
@@ -243,12 +244,8 @@ async def handler(
                     if getattr(event.item, "type", None) == "function_call":
                         tool_calls.append(event.item)
 
-        if not tool_calls:
-            # Fallback (shouldn't happen with tool_choice=required)
-            for evt in _emit_text_item(stream, "How can I help?"):
-                yield evt
-            yield stream.emit_completed()
-            return
+        if len(tool_calls) != 1:
+            raise ValueError("Expected exactly one router tool call")
 
         # ── Dispatch based on which tool the router chose ──
         tc = tool_calls[0]
@@ -394,8 +391,7 @@ async def handler(
 
     except Exception as exc:
         logger.error("Handler failed; error_type=%s", type(exc).__name__)
-        for evt in _emit_text_item(stream, f"Sorry, something went wrong: {exc}"):
-            yield evt
-        yield stream.emit_completed()
+        # The CE coordinator emits a sanitized response-scoped error, never success.
+        raise
     finally:
         _active_cancel_signals.pop(context.response_id, None)

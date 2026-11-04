@@ -3,12 +3,45 @@
 """Exercise overlapping turns and input admission through the real CE dispatcher."""
 
 import asyncio
+from types import SimpleNamespace
 
 import pytest
-from azure.ai.agentserver.invocations.voice import Session
+from azure.ai.agentserver.invocations.voice import InputTextPart, Session
 from test_voice_runtime import DeclineHostSocket, _enqueue_decline_start, _wait_for_decline_event
 
-from voice_runtime import create_app
+from voice_runtime import Conversation, VoiceRuntime, create_app
+
+
+async def test_pre_start_timeout_removes_signal_without_starting_handler():
+    calls = []
+
+    async def handler(*_args):
+        calls.append(True)
+        yield {"type": "response.output_text.delta", "delta": "unexpected"}
+
+    class LocalSession:
+        async def send(self, _event):
+            pass
+
+    runtime, session = VoiceRuntime(handler), LocalSession()
+    state = runtime._store.get_or_create(session)
+    assert state.try_begin_start()
+    state.activate()
+    conversation = Conversation()
+    runtime._conversations[session] = conversation
+    await runtime.on_user_message(session, SimpleNamespace(
+        item_id="in_queued", content=[InputTextPart(text="hello")]
+    ))
+    operation = next(iter(state.responses.values()))
+    await runtime.on_response_timeout(session, SimpleNamespace(
+        response_id=operation.response_id, item_ids=()
+    ))
+    await asyncio.wait_for(asyncio.gather(operation.task, return_exceptions=True), 2)
+    await asyncio.sleep(0)
+    assert not calls
+    assert not state.responses
+    assert not conversation.signals
+    await runtime.close()
 
 
 def texts(history):

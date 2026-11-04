@@ -51,37 +51,41 @@ def invocation_request(text: str | Mapping[str, Any], input_id: str) -> Request:
 
 async def sse_events(chunks: AsyncIterator[Any]) -> AsyncIterator[dict[str, Any]]:
     """Parse bounded JSON SSE frames with incremental UTF-8 and universal newlines."""
-    decoder = codecs.getincrementaldecoder("utf-8")()
+    decoder = codecs.getincrementaldecoder("utf-8-sig")()
     buffer = ""
     skip_lf = False
     async for chunk in chunks:
-        encoded = chunk.encode("utf-8") if isinstance(chunk, str) else bytes(chunk)
-        # Bound producer chunks before decoding/concatenating them.
-        if len(encoded) > MAX_FRAME_CHARACTERS * 4:
-            raise ValueError("SSE chunk exceeds its byte budget")
-        decoded = decoder.decode(encoded)
-        if decoded:
-            # CR ends a line immediately; swallow its optional LF even across chunks.
-            previous_cr = decoded.endswith("\r")
-            if skip_lf and decoded.startswith("\n"):
-                decoded = decoded[1:]
-            skip_lf = previous_cr
-            buffer += decoded.replace("\r\n", "\n").replace("\r", "\n")
-        while "\n\n" in buffer:
-            frame, _, buffer = buffer.partition("\n\n")
-            if len(frame) > MAX_FRAME_CHARACTERS:
+        # Handler write boundaries are not frame boundaries. Decode bounded slices
+        # while limiting individual frames, including a partial frame across writes.
+        if not isinstance(chunk, str):
+            chunk = memoryview(chunk)
+        for offset in range(0, len(chunk), 4096):
+            piece = chunk[offset : offset + 4096]
+            encoded = piece.encode("utf-8") if isinstance(piece, str) else piece
+            decoded = decoder.decode(encoded)
+            if decoded:
+                # CR ends a line immediately; swallow its optional LF across slices.
+                previous_cr = decoded.endswith("\r")
+                if skip_lf and decoded.startswith("\n"):
+                    decoded = decoded[1:]
+                skip_lf = previous_cr
+                buffer += decoded.replace("\r\n", "\n").replace("\r", "\n")
+            while "\n\n" in buffer:
+                frame, _, buffer = buffer.partition("\n\n")
+                if len(frame) > MAX_FRAME_CHARACTERS:
+                    raise ValueError("SSE frame exceeds its character budget")
+                data = [
+                    line[5:].removeprefix(" ")
+                    for line in frame.split("\n") if line.startswith("data:")
+                ]
+                if data:
+                    event = json.loads("\n".join(data))
+                    if not isinstance(event, dict):
+                        raise ValueError("Expected a JSON SSE object")
+                    yield event
+            # A trailing newline may be the first half of the blank-line delimiter.
+            if len(buffer.removesuffix("\n")) > MAX_FRAME_CHARACTERS:
                 raise ValueError("SSE frame exceeds its character budget")
-            data = [
-                line[5:].removeprefix(" ") for line in frame.split("\n") if line.startswith("data:")
-            ]
-            if data:
-                event = json.loads("\n".join(data))
-                if not isinstance(event, dict):
-                    raise ValueError("Expected a JSON SSE object")
-                yield event
-        # A trailing newline may be the first half of the blank-line delimiter.
-        if len(buffer.removesuffix("\n")) > MAX_FRAME_CHARACTERS:
-            raise ValueError("SSE frame exceeds its character budget")
     buffer += decoder.decode(b"", final=True)
     if buffer.strip():
         raise ValueError("SSE ended inside a frame")
@@ -103,7 +107,8 @@ class InvocationAdapter:
             iterator = aiter(response.body_iterator)
             if not 200 <= response.status_code < 300:
                 raise ValueError("Invocation failed")
-            if not response.headers.get("content-type", "").startswith("text/event-stream"):
+            media_type = response.headers.get("content-type", "").split(";", 1)[0].strip()
+            if media_type.lower() != "text/event-stream":
                 raise ValueError("Expected an SSE response")
             completed = False
             output = ""
