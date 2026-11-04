@@ -1,5 +1,9 @@
 # What this sample demonstrates
 
+For public web research instead of fixed dummy inventory, see the separate
+[travel planner with web search](../travel-planner-web-search/). That variant
+uses a Toolbox inside each specialist and saves explicitly unverified research.
+
 Three Copilot SDK agents collaborate over **direct native A2A 1.0**:
 
 - **Flight Agent** reasons over raw dummy flights and calculates prices.
