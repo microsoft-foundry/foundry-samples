@@ -8,7 +8,7 @@ dependencies = [
     "azure-identity",
     "debugpy",
     "fastapi",
-    "httpx",
+    "httpx<1",
     "opencv-python-headless",
     "pipecat-ai[silero,webrtc,websocket,azure]>=0.0.105",
     "pipecat-ai-subagents>=0.3.0",

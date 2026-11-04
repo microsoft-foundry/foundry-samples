@@ -123,7 +123,7 @@ The server may also push `{ "type": "closed" }` if the peer connection is torn d
 | `WEBRTC_TURN_USERNAME` | Required if `WEBRTC_TURN_URL` is set | TURN username. |
 | `WEBRTC_TURN_CREDENTIAL` | Required if `WEBRTC_TURN_URL` is set | TURN credential (password). |
 | `SERVER_HOST` | No | Bind address (default `0.0.0.0`). |
-| `SERVER_PORT` | No | Bind port (default `8089` locally; the container `Dockerfile` overrides this to `8088` for Foundry). |
+| `PORT` / `SERVER_PORT` | No | Bind port: `PORT` (set by `azd ai agent run`) takes precedence over `SERVER_PORT`, then defaults to `8089`. The container sets `SERVER_PORT=8088`. |
 
 ```bash
 cp .env.example .env
