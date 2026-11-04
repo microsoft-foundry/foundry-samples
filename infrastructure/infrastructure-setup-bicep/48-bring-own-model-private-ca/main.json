@@ -1,0 +1,1071 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.48.1.52935",
+      "templateHash": "5480651535896517804"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for all resources."
+      }
+    },
+    "cosmosLocation": {
+      "type": "string",
+      "defaultValue": "[parameters('location')]",
+      "metadata": {
+        "description": "Region for the Cosmos DB account only. Defaults to location; override (e.g. eastus2) when the main region lacks Cosmos capacity. The Cosmos private endpoint still lands in the spoke VNet in location."
+      }
+    },
+    "searchLocation": {
+      "type": "string",
+      "defaultValue": "[parameters('location')]",
+      "metadata": {
+        "description": "Region for the Azure AI Search service only. Defaults to location; override when the main region lacks Search capacity. The Search private endpoint still lands in the spoke VNet in location."
+      }
+    },
+    "namePrefix": {
+      "type": "string",
+      "defaultValue": "byomca",
+      "minLength": 1,
+      "maxLength": 11,
+      "metadata": {
+        "description": "Short prefix for resource names. Kept short because Key Vault and Foundry account names have length limits."
+      }
+    },
+    "foundryModelName": {
+      "type": "string",
+      "defaultValue": "gpt-4.1",
+      "metadata": {
+        "description": "OpenAI model deployed on the Foundry model account and exposed through the gateway."
+      }
+    },
+    "foundryModelVersion": {
+      "type": "string",
+      "defaultValue": "2025-04-14",
+      "metadata": {
+        "description": "Version of the Foundry model deployment."
+      }
+    },
+    "foundryModelCapacity": {
+      "type": "int",
+      "defaultValue": 40,
+      "metadata": {
+        "description": "Capacity (thousands of tokens per minute) for the Foundry model deployment."
+      }
+    },
+    "vnetAddressSpace": {
+      "type": "string",
+      "defaultValue": "172.24.0.0/16",
+      "metadata": {
+        "description": "Address space for the spoke VNet."
+      }
+    },
+    "agentSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "172.24.1.0/24",
+      "metadata": {
+        "description": "Delegated Standard-Agent subnet (Microsoft.App/environments). Injecting the account here provisions the agent runtime + single-tenant data proxy."
+      }
+    },
+    "peSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "172.24.2.0/24",
+      "metadata": {
+        "description": "Private-endpoint subnet (Foundry account, Storage, Cosmos, Search)."
+      }
+    },
+    "customDomainZone": {
+      "type": "string",
+      "defaultValue": "byomca.internal",
+      "metadata": {
+        "description": "Internal-only private DNS zone for the gateway custom domain (a BYO-gateway VAN-URL analog). The self-signed cert SAN must match <customDomainHost>.<customDomainZone>."
+      }
+    },
+    "customDomainHost": {
+      "type": "string",
+      "defaultValue": "gateway",
+      "metadata": {
+        "description": "Host label of the gateway custom domain, prepended to customDomainZone."
+      }
+    },
+    "aciSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "172.24.3.0/24",
+      "metadata": {
+        "description": "CIDR for the delegated subnet that hosts the nginx gateway container (Azure Container Instances)."
+      }
+    },
+    "gatewayCertPemB64": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Base64-encoded PEM of the self-signed gateway certificate (public cert). Emitted by bootstrap-cert; served by nginx on the TLS handshake the data proxy validates. Supplied by deploy.ps1."
+      }
+    },
+    "gatewayKeyPemB64": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Base64-encoded PEM of the self-signed gateway private key. Emitted by bootstrap-cert; used by nginx to serve the cert. Supplied by deploy.ps1."
+      }
+    },
+    "inferenceApiVersion": {
+      "type": "string",
+      "defaultValue": "2024-10-21",
+      "metadata": {
+        "description": "Inference API version the Foundry ApiManagement connection sends to the gateway."
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the pre-created Key Vault that holds the root CA public-cert PEM secret (created by bootstrap-cert.ps1/.sh before this deployment)."
+      }
+    },
+    "gatewayCaSecretVersion": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Pinned version of the root CA public-cert PEM Key Vault SECRET. Only needed for the VERIFY phase (enablePrivateCaTrust=true); leave empty for REPRO. Emitted by the bootstrap script."
+      }
+    },
+    "enablePrivateCaTrust": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Two-phase test switch.\nfalse (default) = REPRO: root CA NOT registered on the account; inference is expected to FAIL at the data proxy with certificate-not-trusted.\ntrue = VERIFY: root CA (public PEM) registered in account.trustedCertificateSources; recreate the capability host, then inference is expected to SUCCEED."
+      }
+    }
+  },
+  "variables": {
+    "suffix": "[take(uniqueString(resourceGroup().id), 5)]",
+    "foundryModelAccountName": "[toLower(replace(format('{0}models{1}', parameters('namePrefix'), variables('suffix')), '-', ''))]",
+    "foundryAgentAccountName": "[toLower(replace(format('{0}agents{1}', parameters('namePrefix'), variables('suffix')), '-', ''))]",
+    "gatewayAciName": "[format('{0}-gw-{1}', parameters('namePrefix'), variables('suffix'))]",
+    "lawName": "[format('law-{0}-{1}', parameters('namePrefix'), variables('suffix'))]",
+    "appiName": "[format('appi-{0}-{1}', parameters('namePrefix'), variables('suffix'))]",
+    "vnetName": "[format('vnet-{0}-{1}', parameters('namePrefix'), variables('suffix'))]",
+    "sanitizedNamePrefix": "[toLower(replace(parameters('namePrefix'), '-', ''))]",
+    "storageName": "[format('{0}stg{1}', variables('sanitizedNamePrefix'), variables('suffix'))]",
+    "cosmosName": "[toLower(format('{0}-cosmos-{1}', parameters('namePrefix'), variables('suffix')))]",
+    "searchName": "[toLower(format('{0}-search-{1}', parameters('namePrefix'), variables('suffix')))]",
+    "customDomainFqdn": "[format('{0}.{1}', parameters('customDomainHost'), parameters('customDomainZone'))]",
+    "gatewayCaSecretName": "trustedca-root-pem",
+    "apimApiPath": "inference",
+    "tokenAudience": "https://cognitiveservices.azure.com",
+    "gatewayTarget": "[format('https://{0}/{1}', variables('customDomainFqdn'), variables('apimApiPath'))]",
+    "modelHost": "[format('{0}.openai.azure.com', variables('foundryModelAccountName'))]",
+    "foundryModelEndpoint": "[format('https://{0}', variables('modelHost'))]",
+    "approvedCatalogModelsJson": "[format('[{{\"name\":\"{0}\",\"properties\":{{\"model\":{{\"name\":\"{1}\",\"version\":\"1\",\"format\":\"OpenAI\"}}}}}}]', parameters('foundryModelName'), parameters('foundryModelName'))]",
+    "gatewayConnectionMetadata": {
+      "audience": "[variables('tokenAudience')]",
+      "deploymentInPath": "true",
+      "inferenceAPIVersion": "[parameters('inferenceApiVersion')]",
+      "models": "[variables('approvedCatalogModelsJson')]",
+      "customHeaders": "{}",
+      "authConfig": "{}"
+    },
+    "commonTags": {
+      "scenario": "byom-private-ca",
+      "sample": "48-bring-own-model-private-ca"
+    },
+    "privateDnsZoneNames": [
+      "privatelink.cognitiveservices.azure.com",
+      "privatelink.openai.azure.com",
+      "privatelink.services.ai.azure.com",
+      "[format('privatelink.blob.{0}', environment().suffixes.storage)]",
+      "privatelink.documents.azure.com",
+      "privatelink.search.windows.net"
+    ],
+    "roleCognitiveServicesUser": "a97b65f3-24c7-4388-baec-2e87135dc908",
+    "roleKeyVaultSecretsUser": "4633458b-17de-408a-b874-0445c86b69e6",
+    "roleStorageBlobDataContributor": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
+    "roleStorageBlobDataOwner": "b7e6dc6d-f1e8-4753-8033-0f276bb0955b",
+    "roleCosmosDbOperator": "230815da-be43-4aae-9cb4-875f7bd000aa",
+    "roleSearchIndexDataContributor": "8ebe5a00-799e-43f5-93ac-243d3dce84a7",
+    "roleSearchServiceContributor": "7ca78c08-252a-4471-8644-bb5ff32d4ba0",
+    "cosmosBuiltInDataContributorRoleId": "00000000-0000-0000-0000-000000000002",
+    "nginxConfTemplate": "worker_processes 1;\r\nerror_log /dev/stderr warn;\r\npid /tmp/nginx.pid;\r\nevents { worker_connections 1024; }\r\nhttp {\r\n  include /etc/nginx/mime.types;\r\n  default_type application/octet-stream;\r\n  access_log /dev/stdout;\r\n  proxy_http_version 1.1;\r\n  server {\r\n    listen 443 ssl;\r\n    server_name __FQDN__;\r\n    ssl_certificate     /mnt/certs/server.crt;\r\n    ssl_certificate_key /mnt/certs/server.key;\r\n    location /__APIPATH__/ {\r\n      proxy_pass https://__MODELHOST__/openai/;\r\n      proxy_set_header Host __MODELHOST__;\r\n      proxy_ssl_server_name on;\r\n    }\r\n    location / { return 200 'gateway-ok'; }\r\n  }\r\n}\r\n",
+    "nginxConf": "[replace(replace(replace(variables('nginxConfTemplate'), '__FQDN__', variables('customDomainFqdn')), '__APIPATH__', variables('apimApiPath')), '__MODELHOST__', variables('modelHost'))]",
+    "agentAccountBaseProperties": {
+      "allowProjectManagement": true,
+      "customSubDomainName": "[variables('foundryAgentAccountName')]",
+      "publicNetworkAccess": "Enabled",
+      "disableLocalAuth": true,
+      "networkAcls": {
+        "defaultAction": "Allow",
+        "virtualNetworkRules": [],
+        "ipRules": []
+      },
+      "networkInjections": [
+        {
+          "scenario": "agent",
+          "subnetArmId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), 'snet-agent')]",
+          "useMicrosoftManagedNetwork": false
+        }
+      ]
+    },
+    "trustedCertificateSourcesProperty": "[if(parameters('enablePrivateCaTrust'), createObject('trustedCertificateSources', createArray(createObject('type', 'AzureKeyVault', 'resourceId', resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), 'certificateBundleReferences', createArray(createObject('secretName', variables('gatewayCaSecretName'), 'secretVersion', parameters('gatewayCaSecretVersion')))))), createObject())]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('lawName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "sku": {
+          "name": "PerGB2018"
+        },
+        "retentionInDays": 30
+      }
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('appiName')]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "Application_Type": "web",
+        "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('lawName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('lawName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('vnetName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('vnetAddressSpace')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "snet-agent",
+            "properties": {
+              "addressPrefixes": [
+                "[parameters('agentSubnetPrefix')]"
+              ],
+              "delegations": [
+                {
+                  "name": "Microsoft.App/environments",
+                  "properties": {
+                    "serviceName": "Microsoft.App/environments"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "snet-pe",
+            "properties": {
+              "addressPrefixes": [
+                "[parameters('peSubnetPrefix')]"
+              ]
+            }
+          },
+          {
+            "name": "snet-aci",
+            "properties": {
+              "addressPrefixes": [
+                "[parameters('aciSubnetPrefix')]"
+              ],
+              "delegations": [
+                {
+                  "name": "Microsoft.ContainerInstance/containerGroups",
+                  "properties": {
+                    "serviceName": "Microsoft.ContainerInstance/containerGroups"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "copy": {
+        "name": "privateDnsZones",
+        "count": "[length(variables('privateDnsZoneNames'))]"
+      },
+      "type": "Microsoft.Network/privateDnsZones",
+      "apiVersion": "2020-06-01",
+      "name": "[variables('privateDnsZoneNames')[copyIndex()]]",
+      "location": "global",
+      "tags": "[variables('commonTags')]"
+    },
+    {
+      "copy": {
+        "name": "privateDnsZoneLinks",
+        "count": "[length(variables('privateDnsZoneNames'))]"
+      },
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2020-06-01",
+      "name": "[format('{0}/{1}', variables('privateDnsZoneNames')[copyIndex()], format('link-{0}', variables('suffix')))]",
+      "location": "global",
+      "properties": {
+        "registrationEnabled": false,
+        "virtualNetwork": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[copyIndex()])]",
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones",
+      "apiVersion": "2020-06-01",
+      "name": "[parameters('customDomainZone')]",
+      "location": "global",
+      "tags": "[variables('commonTags')]"
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2020-06-01",
+      "name": "[format('{0}/{1}', parameters('customDomainZone'), format('link-{0}', variables('suffix')))]",
+      "location": "global",
+      "properties": {
+        "registrationEnabled": false,
+        "virtualNetwork": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', parameters('customDomainZone'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[variables('foundryModelAccountName')]",
+      "location": "[parameters('location')]",
+      "kind": "AIServices",
+      "tags": "[variables('commonTags')]",
+      "sku": {
+        "name": "S0"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "allowProjectManagement": false,
+        "customSubDomainName": "[variables('foundryModelAccountName')]",
+        "publicNetworkAccess": "Enabled",
+        "disableLocalAuth": true,
+        "networkAcls": {
+          "defaultAction": "Allow",
+          "virtualNetworkRules": [],
+          "ipRules": []
+        }
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}', variables('foundryModelAccountName'), parameters('foundryModelName'))]",
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": "[parameters('foundryModelCapacity')]"
+      },
+      "properties": {
+        "model": {
+          "name": "[parameters('foundryModelName')]",
+          "format": "OpenAI",
+          "version": "[parameters('foundryModelVersion')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryModelAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryModelAccountName'))]",
+      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryModelAccountName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), variables('roleCognitiveServicesUser'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleCognitiveServicesUser'))]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), '2025-04-01-preview', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryModelAccountName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.ContainerInstance/containerGroups",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('gatewayAciName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "sku": "Standard",
+        "osType": "Linux",
+        "restartPolicy": "Always",
+        "subnetIds": [
+          {
+            "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), 'snet-aci')]"
+          }
+        ],
+        "ipAddress": {
+          "type": "Private",
+          "ports": [
+            {
+              "protocol": "TCP",
+              "port": 443
+            }
+          ]
+        },
+        "volumes": [
+          {
+            "name": "certs",
+            "secret": {
+              "server.crt": "[parameters('gatewayCertPemB64')]",
+              "server.key": "[parameters('gatewayKeyPemB64')]"
+            }
+          },
+          {
+            "name": "conf",
+            "secret": {
+              "nginx.conf": "[base64(variables('nginxConf'))]"
+            }
+          }
+        ],
+        "containers": [
+          {
+            "name": "gateway",
+            "properties": {
+              "image": "mcr.microsoft.com/cbl-mariner/base/nginx:1.22",
+              "command": [
+                "nginx",
+                "-c",
+                "/mnt/conf/nginx.conf",
+                "-g",
+                "daemon off;"
+              ],
+              "ports": [
+                {
+                  "protocol": "TCP",
+                  "port": 443
+                }
+              ],
+              "resources": {
+                "requests": {
+                  "cpu": 1,
+                  "memoryInGB": 1
+                }
+              },
+              "volumeMounts": [
+                {
+                  "name": "certs",
+                  "mountPath": "/mnt/certs",
+                  "readOnly": true
+                },
+                {
+                  "name": "conf",
+                  "mountPath": "/mnt/conf",
+                  "readOnly": true
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones/A",
+      "apiVersion": "2020-06-01",
+      "name": "[format('{0}/{1}', parameters('customDomainZone'), parameters('customDomainHost'))]",
+      "properties": {
+        "ttl": 60,
+        "aRecords": [
+          {
+            "ipv4Address": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups', variables('gatewayAciName')), '2023-05-01').ipAddress.ip]"
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', parameters('customDomainZone'))]",
+        "[resourceId('Microsoft.ContainerInstance/containerGroups', variables('gatewayAciName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2026-11-15-preview",
+      "name": "[variables('foundryAgentAccountName')]",
+      "location": "[parameters('location')]",
+      "kind": "AIServices",
+      "tags": "[variables('commonTags')]",
+      "sku": {
+        "name": "S0"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": "[union(variables('agentAccountBaseProperties'), variables('trustedCertificateSourcesProperty'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAgentAccountName')), variables('roleKeyVaultSecretsUser'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleKeyVaultSecretsUser'))]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAgentAccountName')), '2026-11-15-preview', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAgentAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2023-11-01",
+      "name": "[format('pe-{0}', variables('foundryAgentAccountName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "subnet": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), 'snet-pe')]"
+        },
+        "privateLinkServiceConnections": [
+          {
+            "name": "psc-foundry-agent",
+            "properties": {
+              "privateLinkServiceId": "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAgentAccountName'))]",
+              "groupIds": [
+                "account"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAgentAccountName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2023-11-01",
+      "name": "[format('{0}/{1}', format('pe-{0}', variables('foundryAgentAccountName')), 'foundry-account-zones')]",
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "cognitiveservices",
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[0])]"
+            }
+          },
+          {
+            "name": "openai",
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[1])]"
+            }
+          },
+          {
+            "name": "services-ai",
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[2])]"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateEndpoints', format('pe-{0}', variables('foundryAgentAccountName')))]",
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[2])]",
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[0])]",
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[1])]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('storageName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "properties": {
+        "minimumTlsVersion": "TLS1_2",
+        "allowSharedKeyAccess": false,
+        "publicNetworkAccess": "Disabled"
+      }
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts",
+      "apiVersion": "2024-11-15",
+      "name": "[variables('cosmosName')]",
+      "location": "[parameters('cosmosLocation')]",
+      "tags": "[variables('commonTags')]",
+      "kind": "GlobalDocumentDB",
+      "properties": {
+        "databaseAccountOfferType": "Standard",
+        "publicNetworkAccess": "Disabled",
+        "consistencyPolicy": {
+          "defaultConsistencyLevel": "Session"
+        },
+        "locations": [
+          {
+            "locationName": "[parameters('cosmosLocation')]",
+            "failoverPriority": 0
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Search/searchServices",
+      "apiVersion": "2024-06-01-preview",
+      "name": "[variables('searchName')]",
+      "location": "[parameters('searchLocation')]",
+      "tags": "[variables('commonTags')]",
+      "sku": {
+        "name": "standard"
+      },
+      "properties": {
+        "disableLocalAuth": true,
+        "publicNetworkAccess": "disabled"
+      }
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2023-11-01",
+      "name": "[format('pe-{0}', variables('storageName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "subnet": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), 'snet-pe')]"
+        },
+        "privateLinkServiceConnections": [
+          {
+            "name": "[format('psc-{0}', variables('storageName'))]",
+            "properties": {
+              "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
+              "groupIds": [
+                "blob"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2023-11-01",
+      "name": "[format('{0}/{1}', format('pe-{0}', variables('storageName')), 'storage-dns')]",
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "blob",
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[3])]"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[3])]",
+        "[resourceId('Microsoft.Network/privateEndpoints', format('pe-{0}', variables('storageName')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2023-11-01",
+      "name": "[format('pe-{0}', variables('cosmosName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "subnet": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), 'snet-pe')]"
+        },
+        "privateLinkServiceConnections": [
+          {
+            "name": "[format('psc-{0}', variables('cosmosName'))]",
+            "properties": {
+              "privateLinkServiceId": "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName'))]",
+              "groupIds": [
+                "Sql"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2023-11-01",
+      "name": "[format('{0}/{1}', format('pe-{0}', variables('cosmosName')), 'cosmos-dns')]",
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "documents",
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[4])]"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateEndpoints', format('pe-{0}', variables('cosmosName')))]",
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[4])]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2023-11-01",
+      "name": "[format('pe-{0}', variables('searchName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "subnet": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), 'snet-pe')]"
+        },
+        "privateLinkServiceConnections": [
+          {
+            "name": "[format('psc-{0}', variables('searchName'))]",
+            "properties": {
+              "privateLinkServiceId": "[resourceId('Microsoft.Search/searchServices', variables('searchName'))]",
+              "groupIds": [
+                "searchService"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Search/searchServices', variables('searchName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2023-11-01",
+      "name": "[format('{0}/{1}', format('pe-{0}', variables('searchName')), 'search-dns')]",
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "search",
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[5])]"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[5])]",
+        "[resourceId('Microsoft.Network/privateEndpoints', format('pe-{0}', variables('searchName')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "description": "BYOM private-CA repro project",
+        "displayName": "BYOM Private CA"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAgentAccountName'))]",
+        "[resourceId('Microsoft.Network/privateEndpoints/privateDnsZoneGroups', format('pe-{0}', variables('foundryAgentAccountName')), 'foundry-account-zones')]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')), variables('cosmosName'))]",
+      "properties": {
+        "category": "CosmosDb",
+        "target": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName')), '2024-11-15').documentEndpoint]",
+        "authType": "AAD",
+        "metadata": {
+          "ApiType": "Azure",
+          "ResourceId": "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName'))]",
+          "location": "[parameters('location')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')), variables('storageName'))]",
+      "properties": {
+        "category": "AzureStorageAccount",
+        "target": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), '2023-05-01').primaryEndpoints.blob]",
+        "authType": "AAD",
+        "metadata": {
+          "ApiType": "Azure",
+          "ResourceId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
+          "location": "[parameters('location')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')), variables('searchName'))]",
+      "properties": {
+        "category": "CognitiveSearch",
+        "target": "[format('https://{0}.search.windows.net', variables('searchName'))]",
+        "authType": "AAD",
+        "metadata": {
+          "ApiType": "Azure",
+          "ApiVersion": "2025-05-01-preview",
+          "ResourceId": "[resourceId('Microsoft.Search/searchServices', variables('searchName'))]",
+          "location": "[parameters('location')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')))]",
+        "[resourceId('Microsoft.Search/searchServices', variables('searchName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName'))]",
+      "name": "[guid(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), variables('roleCosmosDbOperator'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleCosmosDbOperator'))]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), '2025-04-01-preview', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
+      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), variables('roleStorageBlobDataContributor'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleStorageBlobDataContributor'))]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), '2025-04-01-preview', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Search/searchServices', variables('searchName'))]",
+      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('searchName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), variables('roleSearchIndexDataContributor'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleSearchIndexDataContributor'))]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), '2025-04-01-preview', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')))]",
+        "[resourceId('Microsoft.Search/searchServices', variables('searchName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Search/searchServices', variables('searchName'))]",
+      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('searchName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), variables('roleSearchServiceContributor'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleSearchServiceContributor'))]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), '2025-04-01-preview', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')))]",
+        "[resourceId('Microsoft.Search/searchServices', variables('searchName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/capabilityHosts",
+      "apiVersion": "2026-05-15-preview",
+      "name": "[format('{0}/{1}/{2}', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')), 'agents')]",
+      "properties": {
+        "vectorStoreConnections": [
+          "[variables('searchName')]"
+        ],
+        "storageConnections": [
+          "[variables('storageName')]"
+        ],
+        "threadStorageConnections": [
+          "[variables('cosmosName')]"
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')), variables('cosmosName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')), variables('searchName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')), variables('storageName'))]",
+        "[extensionResourceId(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), variables('roleCosmosDbOperator')))]",
+        "[resourceId('Microsoft.Network/privateEndpoints/privateDnsZoneGroups', format('pe-{0}', variables('cosmosName')), 'cosmos-dns')]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')))]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('searchName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('searchName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), variables('roleSearchIndexDataContributor')))]",
+        "[resourceId('Microsoft.Network/privateEndpoints/privateDnsZoneGroups', format('pe-{0}', variables('searchName')), 'search-dns')]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('searchName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('searchName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), variables('roleSearchServiceContributor')))]",
+        "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), variables('roleStorageBlobDataContributor')))]",
+        "[resourceId('Microsoft.Network/privateEndpoints/privateDnsZoneGroups', format('pe-{0}', variables('storageName')), 'storage-dns')]"
+      ]
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments",
+      "apiVersion": "2024-11-15",
+      "name": "[format('{0}/{1}', variables('cosmosName'), guid(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), variables('cosmosBuiltInDataContributorRoleId')))]",
+      "properties": {
+        "roleDefinitionId": "[format('{0}/sqlRoleDefinitions/{1}', resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName')), variables('cosmosBuiltInDataContributorRoleId'))]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), '2025-04-01-preview', 'full').identity.principalId]",
+        "scope": "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects/capabilityHosts', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')), 'agents')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
+      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), variables('roleStorageBlobDataOwner'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleStorageBlobDataOwner'))]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), '2025-04-01-preview', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects/capabilityHosts', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')), 'agents')]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')), 'gateway')]",
+      "properties": {
+        "category": "ApiManagement",
+        "target": "[variables('gatewayTarget')]",
+        "authType": "ProjectManagedIdentity",
+        "audience": "[variables('tokenAudience')]",
+        "isSharedToAll": false,
+        "credentials": {},
+        "metadata": "[variables('gatewayConnectionMetadata')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ContainerInstance/containerGroups', variables('gatewayAciName'))]",
+        "[resourceId('Microsoft.Network/privateDnsZones/A', parameters('customDomainZone'), parameters('customDomainHost'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects/capabilityHosts', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')), 'agents')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "resourceGroupName": {
+      "type": "string",
+      "value": "[resourceGroup().name]"
+    },
+    "foundryAgentAccountName": {
+      "type": "string",
+      "value": "[variables('foundryAgentAccountName')]"
+    },
+    "projectName": {
+      "type": "string",
+      "value": "[format('{0}-project', parameters('namePrefix'))]"
+    },
+    "projectPrincipalId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix'))), '2025-04-01-preview', 'full').identity.principalId]"
+    },
+    "foundryModelEndpoint": {
+      "type": "string",
+      "value": "[variables('foundryModelEndpoint')]"
+    },
+    "gatewayAciName": {
+      "type": "string",
+      "value": "[variables('gatewayAciName')]"
+    },
+    "gatewayPrivateIp": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups', variables('gatewayAciName')), '2023-05-01').ipAddress.ip]"
+    },
+    "gatewayCustomDomainFqdn": {
+      "type": "string",
+      "value": "[variables('customDomainFqdn')]"
+    },
+    "connectedModelTarget": {
+      "type": "string",
+      "value": "[variables('gatewayTarget')]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[parameters('keyVaultName')]"
+    },
+    "gatewayCaSecretName": {
+      "type": "string",
+      "value": "[variables('gatewayCaSecretName')]"
+    },
+    "gatewayCaSecretVersion": {
+      "type": "string",
+      "value": "[parameters('gatewayCaSecretVersion')]"
+    },
+    "privateCaTrustEnabled": {
+      "type": "bool",
+      "value": "[parameters('enablePrivateCaTrust')]"
+    },
+    "testPhaseHint": {
+      "type": "string",
+      "value": "[if(parameters('enablePrivateCaTrust'), 'VERIFY phase: trustedCertificateSources is registered. Recreate the capability host so the data proxy picks up the trust bundle, then re-run inference (expect success).', 'REPRO phase: trustedCertificateSources is NOT registered. Run inference through the connected model (expect certificate-not-trusted at the data proxy).')]"
+    }
+  }
+}
