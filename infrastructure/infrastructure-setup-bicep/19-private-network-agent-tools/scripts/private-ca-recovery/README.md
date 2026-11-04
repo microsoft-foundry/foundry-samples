@@ -1,7 +1,12 @@
 # Private CA capability-host and agent recovery
 
-Use these scripts when you add or rotate `trustedCertificates` on an existing
-Foundry account and need the project runtime to load the updated CA trust.
+Use `Set-PrivateCaTrust.ps1` to add or rotate
+`properties.trustedCertificateSources` on an existing Foundry account.
+Successful updates propagate automatically to project capability hosts.
+**Routine CA trust changes do not require host recreation.**
+
+The other scripts are a separate destructive recovery workflow, not a required
+step after registering or rotating CA trust.
 
 > [!CAUTION]
 > Deleting a project capability host is a destructive reset. Existing agent,
@@ -48,9 +53,10 @@ Reproducibility safeguards include:
 
 The scripts are usable by any customer whose subscription, region, and Foundry
 account support the referenced features. They don't bypass service availability:
-`trustedCertificates` and Hosted Agents can be preview or allowlist-gated, and
-private networking, Key Vault RBAC, regional support, quotas, and agent API
-availability must already be satisfied for that customer.
+account CA trust is public preview in all Azure public cloud regions without
+subscription allowlisting for this feature. Hosted Agent preview access
+requirements remain unchanged. Private networking, Key Vault RBAC, regional
+model availability, quotas, and agent API availability must already be satisfied.
 
 For non-default layouts, use the provided parameters instead of changing the
 scripts: `-ProjectEndpoint` overrides endpoint discovery,
@@ -82,7 +88,80 @@ python -m venv .venv
 
 On Linux or macOS, use `.venv/bin/python` in the commands below.
 
-## 1. Export before deletion
+## Register or rotate CA trust (no host recreation)
+
+The account supports one `AzureKeyVault` source, up to 25 version-pinned secret
+references, and at most 100 CA certificates across those secrets. Store public
+root/intermediate PEM CA certificates, individually or as a bundle in a secret;
+never upload a private key or use a Key Vault certificate object.
+
+The service retrieves secrets with the account's primary attached user-assigned
+identity, or its system-assigned identity otherwise, not the project identity.
+Grant that identity **Key Vault Secrets User**. Restricted vaults also require
+the trusted Microsoft services firewall bypass (`networkAcls.bypass:
+AzureServices`); a private endpoint alone is not sufficient. The template's new
+vault uses `publicNetworkAccess: Enabled`, `defaultAction: Deny`, no public IP
+rules, and that bypass. Existing vault firewall settings are not modified.
+Upload secrets from a machine with authorized access to the vault.
+
+```powershell
+.\Set-PrivateCaTrust.ps1 `
+  -SubscriptionId "<subscription-id>" `
+  -ResourceGroup "<resource-group>" `
+  -AccountName "<foundry-account>" `
+  -KeyVaultResourceId "<key-vault-resource-id>" `
+  -CertificateReference @(
+    "private-root-ca-pem=<exact-secret-version>",
+    "private-intermediate-ca-pem=<exact-secret-version>"
+  )
+```
+
+The script uses `2026-07-15-preview` by default, updates only
+`properties.trustedCertificateSources`, preserves unrelated references in the
+same vault, and replaces the pinned version for each explicitly named secret.
+It refuses an unexpected source, another vault, malformed references, or an
+update exceeding 25 references. It never reads or prints secret values.
+The service validates certificate contents and the total certificate count.
+
+Use `-WhatIf` to inspect the proposed action without submitting a PATCH.
+Coordinate concurrent writers: the script rechecks the configuration before
+PATCH, but the recheck is not an atomic concurrency lock.
+
+The script saves the `Azure-AsyncOperation` URL to
+`<OutputPath>.operation.txt`, follows `Retry-After`, and monitors the LRO,
+including the pending `Updating` status. After `Succeeded`, it verifies all
+intended references, including preserved references, before writing the JSON
+report. `-OutputPath` defaults to `.foundry-recovery/private-ca-trust.json`
+beside the script; `-TimeoutSeconds` defaults to 1800 (30 minutes).
+A timeout or monitoring error does not cancel the update: check the saved
+operation before resubmitting. Failed/canceled operations and unknown statuses
+stop with an error.
+
+Test a managed-tool HTTPS request after successful propagation. For Hosted Agent
+direct HTTPS, use a newly provisioned sandbox; existing sessions or snapshots
+can retain the old trust. Application-specific CA stores may need separate
+configuration.
+
+Uploading a new secret version does not advance the pin. Rotate by invoking the
+script with the same secret name and its new exact version. Leaf renewal under
+the same issuing CA chain requires no account trust change.
+
+On partial failure, the account can hold the new configuration while some
+projects retain old trust. Inspect the LRO errors and fix the cause. Identical
+resubmission can be a no-op; change the configuration or pinned version, or
+contact support. Don't delete hosts as the default response to a propagation
+failure.
+
+ARM updates replace the entire trust array. To remove all customer CA
+references, explicitly PATCH `{"properties":{"trustedCertificateSources":[]}}`
+and monitor its LRO. The registration script intentionally doesn't clear trust.
+
+## Recovery only: export and recreate
+
+Follow the remaining steps only when an independently diagnosed recovery
+procedure requires host recreation, not for normal CA onboarding or rotation.
+
+### 1. Export before deletion
 
 This step is non-destructive:
 
@@ -132,28 +211,7 @@ don't commit it. Store durable non-secret configuration in source control and
 credentials in the normal secure configuration store. The included `.gitignore`
 excludes the default `.foundry-recovery` directory.
 
-## 2. Register the private CA references
-
-Upload each public root or intermediate CA PEM as a separate, versioned Key
-Vault secret. Then register the exact versions while preserving existing
-certificate references:
-
-```powershell
-.\Set-PrivateCaTrust.ps1 `
-  -SubscriptionId "<subscription-id>" `
-  -ResourceGroup "<resource-group>" `
-  -AccountName "<foundry-account>" `
-  -KeyVaultResourceId "<key-vault-resource-id>" `
-  -CertificateReference @(
-    "private-root-ca-pem=<secret-version>",
-    "private-intermediate-ca-pem=<secret-version>"
-  )
-```
-
-The script never reads or prints certificate secret values. It updates only the
-account's `trustedCertificates` property and verifies the stored references.
-
-## 3. Recreate the host and redeploy agents
+### 2. Recreate the host and redeploy agents
 
 Review both manifests, then run:
 
@@ -184,7 +242,7 @@ connection. It then:
    routing are incomplete.
 
 The account capability host normally doesn't need recreation for a
-`trustedCertificates` change. If your recovery procedure explicitly requires
+`trustedCertificateSources` change. If your recovery procedure explicitly requires
 it, add `-RecreateAccountCapabilityHost`; the script deletes project scope
 first and recreates account scope before project scope.
 
@@ -227,3 +285,16 @@ See:
 - [Capability hosts](https://learn.microsoft.com/azure/foundry/agents/concepts/capability-hosts)
 - [Foundry Agent Service resource and data loss recovery](https://learn.microsoft.com/azure/foundry/how-to/agent-service-operator-disaster-recovery)
 - [Manage Hosted Agents](https://learn.microsoft.com/azure/foundry/agents/how-to/manage-hosted-agent)
+
+## Local regression tests
+
+From this directory, run the trust tests with PowerShell and Pester 5 or later:
+
+```powershell
+Invoke-Pester -Path .\Set-PrivateCaTrust.Tests.ps1 -CI
+python -m unittest discover -p test_agent_recovery.py
+```
+
+Trust tests mock Azure authentication, HTTP requests, and polling delays; they
+do not contact Azure or read certificate secrets. The existing recovery tests
+require the pinned Python dependencies listed above.
