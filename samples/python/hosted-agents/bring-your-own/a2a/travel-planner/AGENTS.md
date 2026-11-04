@@ -13,6 +13,9 @@ Preserve request context across runtime callbacks without custom discovery/tool
 spans. Log lifecycle, Task IDs, durations and trace IDs, not credentials, raw
 headers, user messages, answers, response bodies or arbitrary exception text.
 LLMs own all travel decisions and arithmetic. No Python price checks or retries.
+Keep the model deployment/version/SKU/capacity declared in azure.yaml and all
+three agents' model environment values consistent. Verify model existence when
+using an existing project; a provisioning no-op does not create a deployment.
 The planner's LLM uses user-isolated FoundryStateStore tools for saved trip IDs,
 requirements, metadata, recommendations and history. Bind trusted caller context
 before callbacks; never expose identity controls to the model. Version/ETag

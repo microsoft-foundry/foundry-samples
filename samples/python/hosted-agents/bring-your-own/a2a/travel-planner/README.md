@@ -182,7 +182,8 @@ access or guarantee every internal operation is exported.
 
 - azd 1.37.2, agent extension 1.0.0-beta.23, Python 3.13 hosted runtime.
 - Existing Foundry project enabled for native A2A and Task storage.
-- Existing `gpt-5-nano` deployment, usable by all three agents.
+- A `gpt-5.4-mini` deployment usable by all three agents, or permission/quota
+  for an owner to create it as described below. Usage is billed at that model's rate.
 - **Direct-call access:** the planner's agent-instance managed identity needs
   permission to read/invoke the specialists, such as Foundry Agent Consumer on the
   target project. Ask the owner to grant only required access. Earlier delegated
@@ -193,6 +194,37 @@ forwards trusted platform context; local calls use DefaultAzureCredential.
 Do not inject static user tokens or add a Toolbox fallback.
 Package minimum is Python 3.11 for Copilot SDK. Keep committed locks; AgentServer
 alpha-source and repository contract policy gates remain applicable.
+
+### Model configuration
+
+[azure.yaml](azure.yaml) declares `gpt-5.4-mini`, version `2026-03-17`,
+`GlobalStandard`, capacity `100` (100,000 TPM and 100 RPM), and explicitly selects
+that deployment in all three agents' environment maps. It is not selected through
+an implicit model-name environment placeholder.
+
+The same unchanged golden trip passed with this model: hotel Jan 10-13,
+three nights at $725, flight $440, total $1,165, remaining $35, with an actual
+saved plan and specialist Task receipts. The earlier nano run shifted hotel
+check-in to Jan 11 and returned the wrong total. This is one successful comparison,
+not a guarantee of every model response or a full larger-model regression.
+
+For a new project managed by azd, the declaration describes the model required
+by provisioning. **When referencing an existing project, the installed
+1.0.0-beta.23 provider can report "nothing to provision" and skip model creation.**
+The YAML declaration alone is not proof that the deployment exists.
+
+For the existing-project flow below, have the owner verify that the model
+deployment exists before deploying agents. If absent, an authorized owner with
+available regional quota can create it in the project's parent Foundry account:
+
+```text
+az cognitiveservices account deployment create --name "<FOUNDRY-ACCOUNT>" --resource-group "<RESOURCE-GROUP>" --deployment-name gpt-5.4-mini --model-name gpt-5.4-mini --model-version 2026-03-17 --model-format OpenAI --sku-name GlobalStandard --sku-capacity 100 --subscription "<SUBSCRIPTION-ID>"
+```
+
+Do not overwrite an existing deployment or alter shared quota without approval.
+To choose a different deployment, update the declaration and all three agents'
+`AZURE_AI_MODEL_DEPLOYMENT_NAME` values together, then redeploy. Changing only
+an azd environment value does not override the explicit values in this manifest.
 
 ## Deploy
 
@@ -212,7 +244,6 @@ keys `flights`, `hotels`, `planner`, source paths and `codeConfiguration` unchan
 No Dockerfile/local Docker is required.
 
 ```powershell
-azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME gpt-5-nano
 azd deploy flights
 azd deploy hotels
 azd ai agent show flights --output json
@@ -293,7 +324,7 @@ From `src/travel-agent`:
 ```powershell
 az login
 $env:FOUNDRY_PROJECT_ENDPOINT = "<PROJECT-ENDPOINT>"
-$env:AZURE_AI_MODEL_DEPLOYMENT_NAME = "gpt-5-nano"
+$env:AZURE_AI_MODEL_DEPLOYMENT_NAME = "gpt-5.4-mini"
 $env:FLIGHT_AGENT_ENDPOINT = "<FLIGHT-A2A-ENDPOINT>"
 $env:HOTEL_AGENT_ENDPOINT = "<HOTEL-A2A-ENDPOINT>"
 $env:PORT = "8088"

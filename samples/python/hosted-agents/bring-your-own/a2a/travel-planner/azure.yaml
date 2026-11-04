@@ -7,6 +7,15 @@ requiredVersions:
 services:
   ai-project:
     host: azure.ai.project
+    deployments:
+      - name: gpt-5.4-mini
+        model:
+          format: OpenAI
+          name: gpt-5.4-mini
+          version: '2026-03-17'
+        sku:
+          name: GlobalStandard
+          capacity: 100
   flights:
     host: azure.ai.agent
     project: src/flight-agent
@@ -30,7 +39,7 @@ services:
           tags: [synthetic-travel, flights]
     env:
       PYTHONNOUSERSITE: '1'
-      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: gpt-5.4-mini
       OTEL_INSTRUMENTATION_A2A_SDK_ENABLED: 'false'
       OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false'
     container:
@@ -58,7 +67,7 @@ services:
           tags: [synthetic-travel, hotels]
     env:
       PYTHONNOUSERSITE: '1'
-      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: gpt-5.4-mini
       OTEL_INSTRUMENTATION_A2A_SDK_ENABLED: 'false'
       OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false'
     container:
@@ -89,7 +98,7 @@ services:
       FLIGHT_AGENT_ENDPOINT: ${FLIGHT_AGENT_ENDPOINT}
       HOTEL_AGENT_ENDPOINT: ${HOTEL_AGENT_ENDPOINT}
       TRAVEL_PLAN_STORE_NAME: travel-plans
-      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: gpt-5.4-mini
       OTEL_INSTRUMENTATION_A2A_SDK_ENABLED: 'false'
       OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false'
     container:
