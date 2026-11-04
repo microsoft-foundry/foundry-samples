@@ -72,6 +72,15 @@ class TravelExecutor(AgentExecutor):
             message = get_message_text(context.message)
             answer, evidence = await ask(INSTRUCTIONS, message)
             calls = evidence["specialist_calls"]
+            task_ids = [f"- Travel Planner: `{task.id}`"]
+            task_ids.extend(
+                f"- {call['agent']}: `{call['task_id']}`" for call in calls
+            )
+            if not calls:
+                task_ids.append("- Specialists: not called in this request.")
+            answer += "\n\n### Verified task IDs (this request)\n" + "\n".join(
+                task_ids
+            )
             records = {
                 operation["plan"]["plan_id"]: operation["plan"]
                 for operation in evidence["state_store"]["operations"]

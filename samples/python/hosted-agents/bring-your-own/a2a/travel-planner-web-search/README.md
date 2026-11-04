@@ -36,6 +36,11 @@ The `web-search` specialist artifact records actual search call IDs, success
 and returned source URLs. Model-only success is rejected if no successful search
 with source URLs occurred. The planner returns `specialist-calls` and `trip-state`
 artifacts, including acknowledged storage operations, versions and Task IDs.
+The readable answer also includes a Python-generated **Verified task IDs (this
+request)** section, listing the planner's Task ID and every completed specialist
+call ID, including repeated calls. Requests without delegation explicitly say no
+specialists were called. This list appears with both `--output default` and
+`--output raw`, independently of what the model repeats in its answer.
 W3C propagation and the planner's callback-context repair are retained; this does
 not guarantee complete span nesting in every telemetry UI.
 
