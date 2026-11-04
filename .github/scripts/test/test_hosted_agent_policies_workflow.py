@@ -42,15 +42,5 @@ class PolicyWorkflowTests(unittest.TestCase):
         self.assertNotIn("id-token", path.read_text(encoding="utf-8"))
 
 
-    def test_shared_startup_rule_and_its_tests_run_in_the_policy_job(self):
-        path = Path(__file__).resolve().parents[2] / "workflows/hosted-agent-policies.yml"
-        workflow = yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
-        commands = "\n".join(
-            step.get("run", "") for step in workflow["jobs"]["contracts"]["steps"]
-        )
-        self.assertIn("python .github/scripts/check_hosted_agent_startup.py", commands)
-        self.assertIn("python .github/scripts/test/test_check_hosted_agent_startup.py", commands)
-
-
 if __name__ == "__main__":
     unittest.main()

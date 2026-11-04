@@ -64,26 +64,6 @@ For custom SDK or REST deployments, include `"PYTHONNOUSERSITE": "1"` in the
 hosted agent definition's `environment_variables` map. For an image that does
 not already set it, pass `-e PYTHONNOUSERSITE=1` to `docker run`.
 
-### Module-hosted agents
-
-`azd ai agent run` uses the service's `startupCommand`, not its hosted
-`codeConfiguration.entryPoint`. When the hosted entrypoint uses
-`langchain_azure_ai.agents.hosting.run`, explicitly start the same module
-locally with matching protocol, graph/config selection, and `--option` values.
-Local `--host` and `--port` settings may differ. Running a `main.py` that only
-exports a graph does not start a server.
-
-The shared PR policy checks these parameters across Python hosted-agent
-manifests, without requiring Azure credentials or installing sample dependencies:
-
-```bash
-python .github/scripts/check_hosted_agent_startup.py
-```
-
-This static check does not prove that the service starts or remains healthy.
-Local startup/readiness smoke tests and cloud behavior tests are separate
-validation layers.
-
 ## Two protocols: Responses and Invocations
 
 Hosted agents support two protocols. Pick the one that matches your scenario.

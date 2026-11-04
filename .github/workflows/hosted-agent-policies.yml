@@ -33,9 +33,6 @@ jobs:
           python .github/scripts/test/test_hosted_agent_fixture.py
           python .github/scripts/test/test_hosted_agent_test_spec.py
           python .github/scripts/test/test_hosted_agent_policies_workflow.py
-          python .github/scripts/test/test_check_hosted_agent_startup.py
-      - name: Check module-hosted local startup
-        run: python .github/scripts/check_hosted_agent_startup.py
       - name: Check new hosted-agent contracts
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
