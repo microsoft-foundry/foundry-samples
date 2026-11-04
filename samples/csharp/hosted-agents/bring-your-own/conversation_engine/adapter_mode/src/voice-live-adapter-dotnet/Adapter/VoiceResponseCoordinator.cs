@@ -102,12 +102,14 @@ internal sealed class VoiceResponseCoordinator
             try
             {
                 var send = state.EnqueueInputResolution(() => session.SendAsync(
-                    new VoiceResponseNoneMessage(new[] { inputItemId }, reason), cancellation.Token));
+                    new VoiceResponseNoneMessage(new[] { inputItemId }, reason), cancellation.Token),
+                    operation.Cancellation.Token);
                 await Task.Yield();
                 await send;
                 operation.SelectOutcome(ResponseOutcome.None);
             }
-            catch (OperationCanceledException) when (cancellation.IsCancellationRequested || !state.IsActive)
+            catch (OperationCanceledException) when (
+                operation.Cancellation.IsCancellationRequested || cancellation.IsCancellationRequested || !state.IsActive)
             {
             }
             catch (Exception exception)
@@ -273,7 +275,7 @@ internal sealed class VoiceResponseCoordinator
                     new VoiceResponseCreatedMessage(
                         operation.ResponseId,
                         new[] { operation.InputItemId }),
-                    cancellationToken))
+                    cancellationToken), operation.Cancellation.Token)
                 : Task.CompletedTask;
             await Task.Yield();
             await created;
@@ -281,7 +283,8 @@ internal sealed class VoiceResponseCoordinator
 
             await SendOutputAsync(session, state, operation, plan, cancellationToken);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested || !state.IsActive)
+        catch (OperationCanceledException) when (
+            operation.Cancellation.IsCancellationRequested || cancellationToken.IsCancellationRequested || !state.IsActive)
         {
         }
         catch (Exception exception)
@@ -355,7 +358,7 @@ internal sealed class VoiceResponseCoordinator
                 new VoiceResponseCreatedMessage(
                     operation.ResponseId,
                     new[] { operation.InputItemId! }),
-                cancellationToken));
+                cancellationToken), operation.Cancellation.Token);
             await Task.Yield();
             await created;
             cancellationToken.ThrowIfCancellationRequested();
@@ -371,7 +374,8 @@ internal sealed class VoiceResponseCoordinator
                     "sample_self_correction"),
                 cancellationToken);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested || !state.IsActive)
+        catch (OperationCanceledException) when (
+            operation.Cancellation.IsCancellationRequested || cancellationToken.IsCancellationRequested || !state.IsActive)
         {
         }
         catch (Exception exception)
