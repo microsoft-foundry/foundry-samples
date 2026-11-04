@@ -490,10 +490,14 @@ class ResponseCoordinator:
             with operation.turn.activate():
                 await self._send_output(operation, text, streaming, voice)
             operation.select_outcome(OperationOutcome.RESPONSE)
-        except asyncio.CancelledError:
-            operation.select_outcome(OperationOutcome.CANCELLED)
-            raise
-        except Exception as exception:
+        except (asyncio.CancelledError, Exception) as exception:
+            if isinstance(exception, asyncio.CancelledError) and (
+                operation.cancellation_requested or not operation.state.active
+            ):
+                operation.select_outcome(OperationOutcome.CANCELLED)
+                raise
+            # Producer cancellation is a failure unless a protocol/session terminal won.
+            # Send that terminal before the task wrapper releases the generation gate.
             operation.select_outcome(OperationOutcome.ERROR)
             if operation.telemetry is not None:
                 operation.telemetry.record_failure(exception)

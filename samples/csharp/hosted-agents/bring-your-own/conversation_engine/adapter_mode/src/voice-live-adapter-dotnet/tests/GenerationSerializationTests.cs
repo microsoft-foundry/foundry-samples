@@ -149,6 +149,58 @@ public class GenerationSerializationTests
         }
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ProducerCancellation_FailsBeforeTheNextGeneration(bool afterOutput)
+    {
+        var coordinator = new VoiceResponseCoordinator(NullLogger<VoiceAgent>.Instance);
+        var state = ActiveState();
+        var session = new WireSession();
+        var closed = false;
+        coordinator.SendEcho(session, state, "in_first", First(), Stopwatch.GetTimestamp());
+        Assert.That(state.TryGetResponseForInput("in_first", out var firstId), Is.True);
+        Assert.That(state.TryGetOperation(firstId, out var first), Is.True);
+        coordinator.SendEcho(session, state, "in_second", Second(), Stopwatch.GetTimestamp());
+        Assert.That(state.TryGetResponseForInput("in_second", out var secondId), Is.True);
+        Assert.That(state.TryGetOperation(secondId, out var second), Is.True);
+        try
+        {
+            await Task.WhenAll(first.Work!, second.Work!).WaitAsync(Limit);
+            Assert.That(closed, Is.True);
+            Assert.That(session.Violations, Is.Empty);
+            var decisions = session.Messages.Where(message =>
+                message is VoiceResponseCreatedMessage or VoiceErrorMessage or VoiceResponseDoneMessage);
+            Assert.That(decisions.Select(message => message.GetType()), Is.EqualTo(new[]
+            {
+                typeof(VoiceResponseCreatedMessage), typeof(VoiceErrorMessage),
+                typeof(VoiceResponseCreatedMessage), typeof(VoiceResponseDoneMessage),
+            }));
+            var error = session.Messages.OfType<VoiceErrorMessage>().Single();
+            Assert.That(error.ResponseId, Is.EqualTo(firstId));
+            Assert.That(error.Code, Is.EqualTo("generation_failed"));
+            Assert.That(error.Message, Is.EqualTo("The response could not be generated."));
+            Assert.That(session.Messages.OfType<VoiceResponseDoneMessage>().Single().ResponseId,
+                Is.EqualTo(secondId));
+        }
+        finally
+        {
+            await coordinator.TerminateSessionAsync(state, ResponseOutcome.EndCall).WaitAsync(Limit);
+        }
+
+        async IAsyncEnumerable<string> First()
+        {
+            try
+            {
+                if (afterOutput) { yield return "first"; }
+                await Task.FromCanceled(new CancellationToken(canceled: true));
+            }
+            finally
+            {
+                closed = true;
+            }
+        }
+    }
+
     private static VoiceConnectionState ActiveState()
     {
         var state = new VoiceConnectionState();
@@ -185,6 +237,11 @@ public class GenerationSerializationTests
                 else if (message is VoiceResponseDoneMessage done)
                 {
                     if (_open != done.ResponseId) { Violations.Add("unbound_terminal"); }
+                    _open = null;
+                }
+                else if (message is VoiceErrorMessage error)
+                {
+                    if (_open != error.ResponseId) { Violations.Add("unbound_terminal"); }
                     _open = null;
                 }
                 return base.SendAsync(message, token);

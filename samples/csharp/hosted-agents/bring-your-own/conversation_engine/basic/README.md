@@ -60,6 +60,8 @@ blocking control callbacks. A committed terminal send or winning inbound termina
 event releases this gate independently of slow producer cleanup. Cleanup remains
 tracked and consumes task capacity until it finishes; self-cancel waits for its
 winning terminal acknowledgment before replacement output.
+A producer's own cancellation is a response-scoped failure unless a protocol or
+session terminal has already won; its failure frame precedes the next response.
 
 Transport exit signals cancellation synchronously. The scoped handler implements
 `IAsyncDisposable`, allowing SDK/DI scope disposal to await its termination tasks

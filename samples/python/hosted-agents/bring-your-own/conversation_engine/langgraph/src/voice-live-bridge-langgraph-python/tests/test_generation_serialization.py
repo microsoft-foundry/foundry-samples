@@ -103,6 +103,79 @@ async def test_reply_waits_for_previous_generation_done(already_open):
     ]
 
 
+@pytest.mark.parametrize("stage", ["before_output", "after_output", "cleanup"])
+async def test_producer_cancellation_fails_before_the_next_generation(stage):
+    coordinator, state, session = setup()
+    closed, error_started, release_error = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    original_send = session.send
+
+    async def send(event):
+        if event.type == "error":
+            error_started.set()
+            await release_error.wait()
+        await original_send(event)
+
+    session.send = send
+
+    async def cancelled_child():
+        child = asyncio.create_task(asyncio.sleep(60))
+        child.cancel("private upstream cancellation details")
+        await child
+
+    async def first():
+        try:
+            if stage != "before_output":
+                yield "first"
+            if stage != "cleanup":
+                await cancelled_child()
+        finally:
+            try:
+                if stage == "cleanup":
+                    await cancelled_child()
+            finally:
+                closed.set()
+
+    assert coordinator.start_response(session, state, "in_first", first(), response_id="r_first")
+    first_op = state.responses["r_first"]
+    assert coordinator.start_response(
+        session, state, "in_second", one_chunk(), response_id="r_second"
+    )
+    second_op = state.responses["r_second"]
+    try:
+        await asyncio.wait_for(error_started.wait(), 2)
+        assert closed.is_set()
+        assert first_op.outcome is OperationOutcome.ERROR
+        assert not first_op.cancellation_requested
+        assert first_op.generation_owned
+        assert not second_op.task.done()
+        assert [
+            event.response_id for event in session.sent if event.type == "response.created"
+        ] == ["r_first"]
+    finally:
+        release_error.set()
+        await join(first_op)
+        await join(second_op)
+        await coordinator.terminate_state(state, OperationOutcome.END_CALL)
+
+    assert not session.violations
+    assert [
+        (event.type, event.response_id)
+        for event in session.sent
+        if event.type in {"response.created", "error", "response.done"}
+    ] == [
+        ("response.created", "r_first"),
+        ("error", "r_first"),
+        ("response.created", "r_second"),
+        ("response.done", "r_second"),
+    ]
+    error = next(event for event in session.sent if event.type == "error")
+    assert error.code == "generation_failed"
+    assert error.message == "The response could not be generated."
+    assert first_op.outcome is OperationOutcome.ERROR
+    assert not state.responses and not state.input_responses
+    assert not state.generation_gate.locked()
+
+
 @pytest.mark.parametrize("control", ["barge_in", "response_cancelled", "timeout"])
 async def test_winning_terminal_releases_generation_before_slow_cleanup(control):
     coordinator, state, session = setup()
