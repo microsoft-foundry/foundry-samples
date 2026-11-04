@@ -28,3 +28,5 @@ showing every sample's latest status.
 Found a bug or have a suggestion? [Open an issue](https://github.com/microsoft-foundry/foundry-samples/issues/new) — we welcome feedback from everyone!
 
 Microsoft contributors with permission to create a branch in this repository can contribute a sample or fix by opening a pull request directly against `main`. Pull requests must pass the required `trusted` check and are merged by a maintainer. See the [contributing guidelines](CONTRIBUTING.md) for setup, validation, and review details.
+
+Create your contribution branch in this repository, not in a fork, so the required `trusted` check can pass.
