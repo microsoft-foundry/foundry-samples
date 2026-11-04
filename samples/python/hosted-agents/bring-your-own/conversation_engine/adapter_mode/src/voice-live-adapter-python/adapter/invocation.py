@@ -4,7 +4,7 @@
 
 import codecs
 import json
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from typing import Any
 
 from azure.ai.agentserver.core import get_request_context
@@ -14,11 +14,15 @@ from starlette.responses import StreamingResponse
 InvocationHandler = Callable[[Request], Awaitable[StreamingResponse]]
 MAX_FRAME_CHARACTERS = 65_536
 MAX_OUTPUT_CHARACTERS = 8_000
+MAX_DATA_BYTES = 65_536
 
 
-def invocation_request(text: str, input_id: str) -> Request:
+def invocation_request(text: str | Mapping[str, Any], input_id: str) -> Request:
     """Supply only the current SDK context, not identity from caller JSON."""
-    body = json.dumps({"input": text}).encode("utf-8")
+    # InputDataPart deeply freezes objects; thaw mappings only for JSON encoding.
+    body = json.dumps({"input": text}, default=dict, ensure_ascii=False, allow_nan=False).encode(
+        "utf-8"
+    )
     context = get_request_context()
 
     async def receive() -> dict[str, Any]:
@@ -72,12 +76,14 @@ async def sse_events(chunks: AsyncIterator[Any]) -> AsyncIterator[dict[str, Any]
 
 
 class InvocationAdapter:
-    """Translate token/done SSE into the existing coordinator's text stream."""
+    """Translate token/data/done SSE into ordered text and JSON output."""
 
     def __init__(self, handler: InvocationHandler) -> None:
         self._handler = handler
 
-    async def stream(self, text: str, input_id: str) -> AsyncIterator[str]:
+    async def stream(
+        self, text: str | Mapping[str, Any], input_id: str
+    ) -> AsyncIterator[str | dict[str, Any]]:
         response = await self._handler(invocation_request(text, input_id))
         iterator = None
         try:
@@ -89,6 +95,7 @@ class InvocationAdapter:
                 raise ValueError("Expected an SSE response")
             completed = False
             output = ""
+            data_bytes = 0
             async for event in sse_events(iterator):
                 if completed:
                     raise ValueError("SSE event after done")
@@ -100,6 +107,16 @@ class InvocationAdapter:
                         raise ValueError("Invocation output exceeds its character budget")
                     output += chunk
                     yield chunk
+                elif event.get("type") == "data":
+                    data = event.get("data")
+                    if not isinstance(data, dict):
+                        raise ValueError("Expected an application JSON object")
+                    data_bytes += len(
+                        json.dumps(data, ensure_ascii=False, allow_nan=False).encode("utf-8")
+                    )
+                    if data_bytes > MAX_DATA_BYTES:
+                        raise ValueError("Invocation data exceeds its byte budget")
+                    yield data
                 elif event.get("type") == "done" and event.get("full_text") == output:
                     completed = True
                 else:

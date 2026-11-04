@@ -42,6 +42,7 @@ it never imports Voice callbacks or allocates Bridge response IDs.
 
 Echo returns the input verbatim in word-sized chunks, preserving leading/trailing
 whitespace and Unicode. Slash-prefixed input is ordinary text, not a command.
+JSON objects are returned verbatim as non-audio application data.
 There is no model, tool, business-history store or external backend dependency.
 
 The internal request is `{"input":"Hello world"}`. The handler's SSE profile is:
@@ -66,7 +67,7 @@ multiline data fields are supported. `done.full_text` must match accumulated tok
 The adapter still drains the handler after `done`: later errors or final-save
 failures cannot become a successful `response.done`. Malformed/truncated SSE,
 HTTP errors and missing/duplicate completion fail rather than silently succeeding.
-A single output item is completed after handler finalization.
+Text items are completed before the next data item; response completion waits for handler finalization.
 
 ## Prerequisites
 
@@ -157,10 +158,39 @@ not support for invoking this CE-only Agent through HTTP.
 
 ## Customization and boundaries
 
+### JSON passthrough
+
+The caller sends a JSON object through the Voice wrapper:
+
+```json
+{"type":"response.create","response":{"invoke_input":{"customer_id":"demo","locale":"zh-CN"}}}
+```
+
+The adapter receives `input_data` and calls the same Echo function in process with
+`{"input":{"customer_id":"demo","locale":"zh-CN"}}`. The handler emits:
+
+```text
+data: {"type":"data","data":{"customer_id":"demo","locale":"zh-CN"}}
+
+data: {"type":"done","full_text":""}
+
+```
+
+The adapter sends `response.output_data.done`, preserving the complete application
+object, then `response.done` after cleanup. Voice Live exposes the object as
+`response.invocation.delta.delta` without text or audio. The target Voice Live
+deployment must support the application-data extension.
+
+With the Agent running, check its CE leg locally:
+
+```bash
+uv run --frozen python scripts/smoke_test.py --data '{"customer_id":"demo","locale":"zh-CN"}'
+```
+
 Replace the Echo handler and, if its event schema differs, the mapping in
 `adapter/invocation.py`. Keep the protocol runtime unchanged.
-This adapter supports the illustrated token/done SSE profile, not arbitrary
-HTTP middleware, HTTP LROs, structured data or automatic business-state recovery.
+This adapter supports the illustrated token/data/done SSE profile, not arbitrary
+HTTP middleware, HTTP LROs or automatic business-state recovery.
 
 The handler must cooperate with cancellation and release its nested generators,
 model/tool requests and resources in its own finalization. Cancelling output

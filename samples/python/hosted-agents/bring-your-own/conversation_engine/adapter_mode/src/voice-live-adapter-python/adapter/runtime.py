@@ -7,10 +7,12 @@ from __future__ import annotations
 import logging
 import os
 import time
+from collections.abc import AsyncIterator
 from typing import Any
 
 from azure.ai.agentserver.invocations.voice import (
     EndCallMode,
+    InputDataPart,
     InputTextPart,
     ResponseAccepted,
     ResponseCancelled,
@@ -147,7 +149,8 @@ class VoiceRuntime:
             return
 
         text = "".join(part.text for part in event.content if isinstance(part, InputTextPart))
-        if not text or len(text) > MAX_MESSAGE_CHARACTERS:
+        data_parts = [part.data for part in event.content if isinstance(part, InputDataPart)]
+        if not data_parts and (not text or len(text) > MAX_MESSAGE_CHARACTERS):
             self._coordinator.schedule_none(
                 session,
                 state,
@@ -162,8 +165,14 @@ class VoiceRuntime:
             )
             return
 
+        async def stream_output() -> AsyncIterator[str | dict[str, Any]]:
+            # Structured input takes precedence, just like response.invoke_input.
+            for value in data_parts if data_parts else [text]:
+                async for chunk in self._backend.stream(value, event.item_id):
+                    yield chunk
+
         self._coordinator.send_echo(
-            session, state, event.item_id, self._backend.stream(text, event.item_id), received_at
+            session, state, event.item_id, stream_output(), received_at
         )
 
     async def on_user_no_input(self, session: Session, event: UserNoInput) -> None:

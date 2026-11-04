@@ -8,11 +8,12 @@ import asyncio
 import logging
 import os
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from typing import Any
 
 from azure.ai.agentserver.invocations.voice import (
     EndCallMode,
+    InputDataPart,
     InputTextPart,
     ResponseAccepted,
     ResponseCancelled,
@@ -138,7 +139,7 @@ class VoiceRuntime:
             raise
 
     async def on_user_message(self, session: Session, event: UserMessage) -> None:
-        """Stream the same short children's story for every valid text message."""
+        """Pass JSON objects through, or stream the fixed story for text input."""
         received_at = time.monotonic()
         state = self._state_for(session)
         if state is None:
@@ -147,7 +148,8 @@ class VoiceRuntime:
             return
 
         text = "".join(part.text for part in event.content if isinstance(part, InputTextPart))
-        if not text or len(text) > MAX_MESSAGE_CHARACTERS:
+        data_parts = [part.data for part in event.content if isinstance(part, InputDataPart)]
+        if not data_parts and (not text or len(text) > MAX_MESSAGE_CHARACTERS):
             self._coordinator.schedule_none(
                 session,
                 state,
@@ -159,6 +161,17 @@ class VoiceRuntime:
         if not state.can_start_response():
             self._coordinator.schedule_none(
                 session, state, event.item_id, InputOrigin.USER, reason="capacity_exceeded"
+            )
+            return
+
+        if data_parts:
+            async def stream_data() -> AsyncIterator[Mapping[str, Any]]:
+                # Return each complete application object, without speaking it.
+                for data in data_parts:
+                    yield data
+
+            self._coordinator.send_echo(
+                session, state, event.item_id, stream_data(), received_at
             )
             return
 

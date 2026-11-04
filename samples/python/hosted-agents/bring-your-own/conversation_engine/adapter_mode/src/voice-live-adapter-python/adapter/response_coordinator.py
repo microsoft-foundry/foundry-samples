@@ -6,8 +6,9 @@ from __future__ import annotations
 
 import asyncio
 import contextvars
+import json
 import logging
-from collections.abc import AsyncIterable, Coroutine
+from collections.abc import AsyncIterable, Coroutine, Mapping
 from contextlib import nullcontext
 from typing import Any
 
@@ -19,6 +20,7 @@ from azure.ai.agentserver.invocations.voice import (
     ResponseCreated,
     ResponseDone,
     ResponseNone,
+    ResponseOutputDataDone,
     ResponseOutputTextDelta,
     ResponseOutputTextDone,
     Session,
@@ -40,6 +42,9 @@ from .state import (
 
 logger = logging.getLogger("voice_live_bridge")
 
+OutputChunk = str | Mapping[str, Any]
+MAX_DATA_BYTES = 65_536
+
 
 class ResponseCoordinator:
     """Coordinate response tasks for explicit connection-scoped state."""
@@ -52,7 +57,7 @@ class ResponseCoordinator:
         session: Session,
         state: SessionState,
         input_item_id: str,
-        chunks: AsyncIterable[str],
+        chunks: AsyncIterable[OutputChunk],
         received_at: float,
     ) -> bool:
         """Schedule a cancellable echo without blocking incoming control events."""
@@ -63,7 +68,7 @@ class ResponseCoordinator:
         session: Session,
         state: SessionState,
         input_item_id: str | None,
-        text: str | AsyncIterable[str],
+        text: OutputChunk | AsyncIterable[OutputChunk],
         user_message_received_at: float | None = None,
         *,
         streaming: bool = True,
@@ -71,7 +76,7 @@ class ResponseCoordinator:
         response_id: str | None = None,
         response_started: bool = False,
     ) -> bool:
-        """Schedule text output while the host continues to receive interruption events."""
+        """Schedule output while the host continues to receive interruption events."""
         if not state.can_start_response():
             return False
         response_id = response_id or new_response_id()
@@ -457,7 +462,7 @@ class ResponseCoordinator:
     async def _run_response(
         self,
         operation: ResponseOperation,
-        text: str | AsyncIterable[str],
+        text: OutputChunk | AsyncIterable[OutputChunk],
         streaming: bool,
         voice: dict[str, Any] | None,
     ) -> None:
@@ -487,16 +492,56 @@ class ResponseCoordinator:
     async def _send_output(
         self,
         operation: ResponseOperation,
-        text: str | AsyncIterable[str],
+        text: OutputChunk | AsyncIterable[OutputChunk],
         streaming: bool,
         voice: dict[str, Any] | None,
     ) -> None:
-        item_id = new_item_id()
-        chunks = self._fixed_chunks(text) if isinstance(text, str) else text
+        item_id: str | None = None
+        chunks = self._fixed_chunks(text) if isinstance(text, (str, Mapping)) else text
         completed_text = ""
+        data_bytes = 0
+
+        async def finish_text() -> None:
+            nonlocal item_id, completed_text
+            if item_id is not None:
+                await operation.session.send(
+                    ResponseOutputTextDone(
+                        response_id=operation.response_id,
+                        item_id=item_id,
+                        text=completed_text,
+                        voice=voice,
+                    )
+                )
+                operation.output_item_count += 1
+                item_id, completed_text = None, ""
+
         iterator = aiter(chunks)
         try:
             async for chunk in iterator:
+                if isinstance(chunk, Mapping):
+                    # SDK input objects are deeply frozen; preserve nested JSON values.
+                    data_bytes += len(
+                        json.dumps(chunk, default=dict, ensure_ascii=False, allow_nan=False)
+                        .encode("utf-8")
+                    )
+                    if data_bytes > MAX_DATA_BYTES:
+                        raise ValueError("Application data exceeds its byte budget")
+                    # A data item cannot interrupt an unfinished text item.
+                    await finish_text()
+                    await operation.session.send(
+                        ResponseOutputDataDone(
+                            response_id=operation.response_id,
+                            item_id=new_item_id(),
+                            data=chunk,
+                        )
+                    )
+                    operation.output_item_count += 1
+                    await asyncio.sleep(0)
+                    continue
+                if not isinstance(chunk, str):
+                    raise ValueError("Expected a text chunk or JSON object")
+                if item_id is None:
+                    item_id = new_item_id()
                 completed_text += chunk
                 if streaming:
                     await operation.session.send(
@@ -513,22 +558,16 @@ class ResponseCoordinator:
             # Release producer resources on cancellation or a failed send, not only on exhaustion.
             if close := getattr(iterator, "aclose", None):
                 await close()
-        await operation.session.send(
-            ResponseOutputTextDone(
-                response_id=operation.response_id,
-                item_id=item_id,
-                text=completed_text,
-                voice=voice,
-            )
-        )
-        operation.output_item_count = 1
+        await finish_text()
+        if operation.output_item_count == 0:
+            raise ValueError("Response ended without output")
         operation.release_capacity()
         await operation.session.send(ResponseDone(response_id=operation.response_id))
         if operation.telemetry is not None:
             operation.telemetry.record_response_done_sent()
 
     @staticmethod
-    async def _fixed_chunks(text: str) -> AsyncIterable[str]:
+    async def _fixed_chunks(text: OutputChunk) -> AsyncIterable[OutputChunk]:
         yield text
 
     async def _run_self_cancel(self, operation: ResponseOperation, text: str) -> None:

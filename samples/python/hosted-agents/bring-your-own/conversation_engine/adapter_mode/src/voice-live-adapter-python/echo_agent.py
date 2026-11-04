@@ -12,13 +12,21 @@ from starlette.responses import StreamingResponse
 
 
 async def handle_invocation(request: Request) -> StreamingResponse:
-    """Return the input verbatim as incremental token/done SSE events."""
+    """Echo text as token/done SSE, or a JSON object as data/done SSE."""
     payload = await request.json()
-    if not isinstance(payload, dict) or not isinstance(payload.get("input"), str):
-        raise ValueError("Expected an input string")
+    if not isinstance(payload, dict) or not isinstance(payload.get("input"), (str, dict)):
+        raise ValueError("Expected an input string or JSON object")
     text = payload["input"]
 
     async def stream() -> AsyncIterator[str]:
+        if isinstance(text, dict):
+            yield (
+                "data: "
+                + json.dumps({"type": "data", "data": text}, ensure_ascii=False)
+                + "\n\n"
+            )
+            yield 'data: {"type":"done","full_text":""}\n\n'
+            return
         for match in re.finditer(r"\s*\S+|\s+$", text):
             await asyncio.sleep(0)
             yield (

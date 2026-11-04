@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from azure.ai.agentserver.invocations.voice import InputDataPart
 from starlette.background import BackgroundTask
 from starlette.responses import StreamingResponse
 from starlette.testclient import TestClient
@@ -21,6 +22,40 @@ from echo_agent import handle_invocation
 
 def event(kind: str, **fields: Any) -> str:
     return "data: " + json.dumps({"type": kind, **fields}, ensure_ascii=False) + "\n\n"
+
+@pytest.mark.parametrize(
+    "data", [{}, {"type": "customer.context", "data": {"values": [None, False, 0, "你好 👋"]}}]
+)
+async def test_frozen_json_input_reaches_handler_and_returns_complete_object(data: dict) -> None:
+    received = []
+
+    async def handler(request: Any) -> StreamingResponse:
+        received.append(await request.json())
+        return await handle_invocation(request)
+
+    result = [
+        chunk async for chunk in InvocationAdapter(handler).stream(
+            InputDataPart(data=data).data, "in_json"
+        )
+    ]
+    assert received == [{"input": data}]
+    assert result == [data]
+    assert json.dumps(result[0], sort_keys=True) == json.dumps(data, sort_keys=True)
+
+
+async def test_sse_keeps_text_and_data_in_order() -> None:
+    async def handler(_request: Any) -> StreamingResponse:
+        async def chunks() -> AsyncIterator[str]:
+            yield event("token", content="before")
+            yield event("data", data={"type": "business.event", "data": {"value": 1}})
+            yield event("token", content=" after")
+            yield event("done", full_text="before after")
+
+        return StreamingResponse(chunks(), media_type="text/event-stream")
+
+    assert [chunk async for chunk in InvocationAdapter(handler).stream("input", "in_mixed")] == [
+        "before", {"type": "business.event", "data": {"value": 1}}, " after"
+    ]
 
 
 @pytest.mark.parametrize(
@@ -72,7 +107,8 @@ async def test_split_utf8_crlf_and_multiline_sse_are_decoded_incrementally() -> 
     ]
 
 
-async def test_first_chunk_precedes_later_work_and_close_disposes_the_source() -> None:
+@pytest.mark.parametrize("kind", ["token", "data"])
+async def test_first_chunk_precedes_later_work_and_close_disposes_the_source(kind: str) -> None:
     closed = False
     later_started = False
 
@@ -80,7 +116,10 @@ async def test_first_chunk_precedes_later_work_and_close_disposes_the_source() -
         async def chunks() -> AsyncIterator[str]:
             nonlocal closed, later_started
             try:
-                yield event("token", content="first")
+                yield (
+                    event("token", content="first") if kind == "token"
+                    else event("data", data={"value": "first"})
+                )
                 later_started = True
                 await asyncio.Future()
             finally:
@@ -89,7 +128,7 @@ async def test_first_chunk_precedes_later_work_and_close_disposes_the_source() -
         return StreamingResponse(chunks(), media_type="text/event-stream")
 
     stream = InvocationAdapter(handler).stream("input", "in_gated")
-    assert await anext(stream) == "first"
+    assert await anext(stream) == ("first" if kind == "token" else {"value": "first"})
     assert not later_started
     await stream.aclose()
     assert closed
@@ -106,6 +145,10 @@ async def test_first_chunk_precedes_later_work_and_close_disposes_the_source() -
         event("token", content="hello") + event("done", full_text="wrong"),
         event("done", full_text="") + event("done", full_text=""),
         event("unknown"),
+        event("data", data=[]),
+        event("data", data=None),
+        event("data", data={"value": float("nan")}),
+        event("done", full_text="") + event("data", data={}),
         "data: " + "x" * 65_537,
         event("token", content="x" * 8_001),
     ],
@@ -192,11 +235,15 @@ async def test_completion_waits_for_handler_finalization_and_background_work() -
     assert finalized and background_ran
 
 
-def test_state_save_failure_after_done_never_emits_a_success_terminal() -> None:
+@pytest.mark.parametrize("kind", ["token", "data"])
+def test_state_save_failure_after_done_never_emits_a_success_terminal(kind: str) -> None:
     async def handler(_request: Any) -> StreamingResponse:
         async def chunks() -> AsyncIterator[str]:
-            yield event("token", content="hello")
-            yield event("done", full_text="hello")
+            yield (
+                event("token", content="hello") if kind == "token"
+                else event("data", data={"value": "hello"})
+            )
+            yield event("done", full_text="hello" if kind == "token" else "")
             raise ValueError("controlled finalization failure")
 
         return StreamingResponse(chunks(), media_type="text/event-stream")
@@ -229,7 +276,9 @@ def test_state_save_failure_after_done_never_emits_a_success_terminal() -> None:
             )
             created = socket.receive_json()
             assert created["type"] == "response.created"
-            assert socket.receive_json()["type"] == "response.output_text.delta"
+            assert socket.receive_json()["type"] == (
+                "response.output_text.delta" if kind == "token" else "response.output_data.done"
+            )
             failed = socket.receive_json()
             assert failed["type"] == "error"
             assert failed["response_id"] == created["response_id"]
