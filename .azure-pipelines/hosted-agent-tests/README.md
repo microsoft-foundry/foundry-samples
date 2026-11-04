@@ -147,6 +147,26 @@ as rejecting MCP approval policies for Invocations. The PR policy applies both
 checks to new sample contracts. Cloud runners must validate and plan the contracts
 they consume before executing their turns.
 
+### Local sample lifecycle regression checks
+
+The shared tests directory also contains deterministic lifecycle checks against
+the actual sample graph and local Responses HTTP host. Run the HITL check from
+the repository root using the sample runtime dependencies:
+
+```bash
+uv run --frozen --project samples/python/hosted-agents/langgraph/responses/07-human-in-the-loop/src/langgraph-human-in-the-loop-responses python .azure-pipelines/scripts/hosted-agents/tests/test_langgraph_sample_lifecycle.py
+```
+
+This standard-library `unittest` check sends revision feedback through the rich
+`function_call_output` resume channel, approves the revised draft, then submits
+a new task in the same conversation. It asserts the exact model inputs: the
+revision includes its draft and feedback, while the new task includes neither.
+Mutation checks ensure that removing history reset or feedback application is
+detected at the corresponding assertion. The model is scripted and the graph
+checkpointer is in-memory; no Azure credentials or model calls are required.
+These are local regression checks, not cloud or UI acceptance. They require the
+sample runtime environment and are separate from the policy-only test suite.
+
 ## Complete document shape
 
 ```yaml
