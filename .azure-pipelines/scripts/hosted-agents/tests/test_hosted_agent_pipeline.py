@@ -128,6 +128,7 @@ exit 60
                 self.assertIn(f"  {name})", RUNNER)
                 if "task" in step:
                     self.assertEqual(step["task"], "AzureCLI@2")
+                    self.assertEqual(step["retryCountOnTaskFailure"], 3)
                     self.assertEqual(step["inputs"]["scriptLocation"], "scriptPath")
                     self.assertTrue(step["inputs"]["scriptPath"].endswith("/run-hosted-agent.sh"))
                 else:
@@ -157,6 +158,8 @@ exit 60
         self.assertIn("bash", self.steps["results"])
         self.assertEqual(self.steps["results"]["env"]["JOB_STATUS"], "$(Agent.JobStatus)")
         self.assertEqual(JOB["steps"][-2]["condition"], "always()")
+        self.assertEqual(JOB["steps"][-2]["retryCountOnTaskFailure"], 3)
+        self.assertIn("$(System.JobId)/$(System.JobAttempt)", JOB["variables"]["ADO_TASK_RETRY_STATE_DIR"])
         self.assertEqual(
             JOB["steps"][-2]["artifact"],
             "cloud-e2e-results-$(comboId)-attempt-$(System.JobAttempt)",
@@ -179,6 +182,7 @@ exit 60
             self.steps["voicelive"]["condition"],
             "and(succeeded(), eq(variables['VOICE_LIVE'], 'true'))",
         )
+        self.assertEqual(self.steps["voicelive"]["env"]["ADO_TASK_RETRY_STATE_DIR"], "")
         for name, minutes in {
             "provision": 15, "deploy": 30, "diagnose-deploy": 3, "invoke": 15,
             "guardrail": 10, "voicelive": 20, "status": 3, "evidence": 8,
@@ -296,6 +300,35 @@ exit 60
                 ".github/scripts/hosted_agent_test_spec.py",
             ):
                 self.assertIn(path, paths)
+
+    def test_task_retries_preserve_phase_result_without_replay(self):
+        for exit_code in (0, 7):
+            with self.subTest(exit_code=exit_code):
+                state_dir = self.work / f"retry-state-{exit_code}"
+                executions = self.work / f"executions-{exit_code}"
+                overrides = {
+                    "STEP_VERIFY_AZURE_AUTH": (
+                        f'echo executed >> "{executions.name}"\nexit {exit_code}'
+                    ),
+                }
+                environment = {"ADO_TASK_RETRY_STATE_DIR": str(state_dir)}
+                first = self.run_phase("scaffold", overrides, env=environment)
+                retried = self.run_phase("scaffold", overrides, env=environment)
+                self.assertEqual(first.returncode, exit_code, first.stderr)
+                self.assertEqual(retried.returncode, exit_code, retried.stderr)
+                self.assertEqual(executions.read_text().splitlines(), ["executed"])
+                self.assertIn("without replay", retried.stdout)
+
+    def test_task_retry_refuses_interrupted_phase(self):
+        state_dir = self.work / "retry-state"
+        state_dir.mkdir()
+        (state_dir / "deploy.started").touch()
+        result = self.run_phase(
+            "deploy", env={"ADO_TASK_RETRY_STATE_DIR": str(state_dir)}
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("refusing to replay", result.stdout)
+        self.assertNotIn("ran:STEP_", result.stdout)
 
     def test_ado_tls_gate_retries_with_backoff(self):
         bin_dir = self.install_tls_mocks()
