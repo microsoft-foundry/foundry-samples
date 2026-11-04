@@ -22,7 +22,6 @@ samples/csharp/hosted-agents/bring-your-own/conversation_engine/adapter_mode
 samples/csharp/hosted-agents/bring-your-own/conversation_engine/basic
 samples/python/hosted-agents/bring-your-own/conversation_engine/adapter_mode
 samples/python/hosted-agents/bring-your-own/conversation_engine/basic
-samples/python/hosted-agents/bring-your-own/conversation_engine/foreground-background-agents-responses
 samples/python/hosted-agents/bring-your-own/conversation_engine/langchain
 samples/python/hosted-agents/bring-your-own/conversation_engine/langgraph
 
