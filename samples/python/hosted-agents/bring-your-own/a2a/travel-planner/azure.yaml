@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
-name: a2a-toolbox-travel
+name: a2a-travel
 requiredVersions:
   azd: '>=1.37.2'
   extensions:
@@ -77,16 +77,17 @@ services:
     agentEndpoint:
       protocols: [a2a, responses]
     agentCard:
-      description: Copilot SDK Travel Planner uses managed Toolbox A2A tools to collaborate with Flight and Hotel agents.
+      description: Copilot SDK Travel Planner discovers Flight and Hotel Agent Cards and calls their native A2A interfaces directly.
       version: 1.0.0
       skills:
         - id: planner
           name: Travel Planner
-          description: Ask both specialists through Toolbox and reason about the itinerary and budget.
-          tags: [synthetic-travel, toolbox]
+          description: Ask both specialists over native A2A and reason about the itinerary and budget.
+          tags: [synthetic-travel, a2a]
     env:
       PYTHONNOUSERSITE: '1'
-      TOOLBOX_ENDPOINT: ${TOOLBOX_ENDPOINT}
+      FLIGHT_AGENT_ENDPOINT: ${FLIGHT_AGENT_ENDPOINT}
+      HOTEL_AGENT_ENDPOINT: ${HOTEL_AGENT_ENDPOINT}
       AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
       OTEL_INSTRUMENTATION_A2A_SDK_ENABLED: 'false'
       OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false'
