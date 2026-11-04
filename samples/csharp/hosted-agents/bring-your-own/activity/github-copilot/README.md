@@ -80,8 +80,9 @@ Pending and shared files need a retention/cleanup policy for production use.
 - For deployment: azd 1.27.1+, Azure CLI, a supported hosted-agent region,
   and Contributor plus User Access Administrator (or Owner) at the deployment
   scope. Your Teams policy must allow sideloading the app.
-- The container includes Python and document libraries for model-generated
-  Office/PDF files. Local Office/PDF generation additionally needs those tools;
+- The optional Dockerfile includes Python and document libraries for
+  model-generated Office/PDF files. The default direct-code deployment does not
+  use that Dockerfile. Office/PDF generation needs those tools in the runtime;
   text-file generation does not.
 
 ## Option 1: Azure Developer CLI (`azd`)
@@ -104,10 +105,18 @@ azd provision
 azd deploy
 ```
 
-Provisioning sets up the Foundry project, registry, and declared model.
-Deployment builds remotely, creates an agent version, and configures its
-Activity endpoint and Bot/Teams channel. Follow the generated Teams app setup
-instructions to package and sideload the app.
+Provisioning sets up the Foundry project and declared model. The configured
+direct-code deployment publishes the .NET application, creates an agent
+version, and configures its Activity endpoint and Bot/Teams channel.
+Follow the generated `TEAMS_APP_SETUP.md` next to the source project.
+It describes uploading the generated `appPackage.zip` in Teams, or installing
+it for the signed-in user with the Microsoft 365 Agents Toolkit CLI:
+
+```powershell
+npm install -g @microsoft/m365agentstoolkit-cli
+atk auth login
+atk install --file-path .\src\github-copilot-dotnet-activity\appPackage.zip --scope Personal
+```
 
 Do not rerun bare `azd ai agent init` in an initialized sample directory.
 For a separate project, initialize once with

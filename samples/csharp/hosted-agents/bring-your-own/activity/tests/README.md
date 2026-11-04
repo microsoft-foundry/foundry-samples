@@ -11,6 +11,9 @@ default. Offline tests reference the actual sample projects, not copied handlers
 They cover native TestAdapter replies, welcome/card actions, non-streaming
 fallback, user-facing errors, persistence/isolation, file URL/path/size checks,
 mocked download/consent upload, and readiness/202/session headers.
+The Echo HTTP round-trip test starts real Kestrel hosts for the agent and a
+local connector, posts multiple messages to `/activity/messages`, and asserts
+the outbound replies received by the connector.
 The model is replaced only in the offline Copilot handler tests.
 
 ## Opt-in live model test
@@ -20,12 +23,16 @@ Sign in with `az login` and use an existing Foundry project/model:
 ```powershell
 $env:FOUNDRY_PROJECT_ENDPOINT = "https://<account>.services.ai.azure.com/api/projects/<project>"
 $env:AZURE_AI_MODEL_DEPLOYMENT_NAME = "gpt-5-mini"
-dotnet test .\samples\csharp\hosted-agents\bring-your-own\activity\tests\ActivitySamples.Tests.csproj --filter "TestCategory=Live"
+dotnet test .\samples\csharp\hosted-agents\bring-your-own\activity\tests\ActivitySamples.Tests.csproj --settings .\samples\csharp\hosted-agents\bring-your-own\activity\tests\live.runsettings
 ```
 
-This test starts the bundled Copilot runtime and uses Azure credentials to
-invoke the model. It checks add/list/complete tools, conversation resume,
+These tests start the bundled Copilot runtime and use Azure credentials to
+invoke the model. They check add/list/complete tools, conversation resume,
 shared-text-file reading, and generation of a downloadable text file.
+The live HTTP test additionally sends Activity messages through Kestrel and
+the M365 adapter, and verifies actual outbound connector replies and task state
+across turns. Use the live settings file: `--filter` alone is combined with
+the default offline exclusion and does not execute live tests.
 It incurs model inference charges. Configuration is required; the test fails
 explicitly rather than silently skipping when it is missing.
 

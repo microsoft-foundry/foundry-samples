@@ -55,11 +55,20 @@ azd provision
 azd deploy
 ```
 
-The Foundry provider provisions the project and registry. Deployment builds
-the image remotely, creates an agent version, and configures the Bot/Teams
-channel for the declared Activity endpoint. Follow the generated Teams setup
-instructions to package and sideload the app; send `hello` and expect
-`Echo: hello`.
+The Foundry provider provisions the project. The configured direct-code
+deployment publishes the .NET application, creates an agent version, and
+configures the Bot/Teams channel for the declared Activity endpoint.
+Follow the generated `TEAMS_APP_SETUP.md` next to the source project.
+It describes uploading the generated `appPackage.zip` in Teams, or installing
+it for the signed-in user with the Microsoft 365 Agents Toolkit CLI:
+
+```powershell
+npm install -g @microsoft/m365agentstoolkit-cli
+atk auth login
+atk install --file-path .\src\echo-dotnet-activity\appPackage.zip --scope Personal
+```
+
+Send `hello` in the installed app and expect `Echo: hello`.
 
 Do not rerun bare `azd ai agent init` in this already configured directory:
 it can add another service. If initializing a separate directory, use

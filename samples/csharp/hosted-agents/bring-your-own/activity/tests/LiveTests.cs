@@ -46,10 +46,10 @@ public sealed class LiveTests
                     [new AttachmentFile { Path = source, DisplayName = "shared-test.txt" }]);
                 Assert.That(read, Does.Contain("ACTIVITY-7319"));
 
-                var (_, generated) = await AskAsync(
+                var (generationReply, generated) = await AskAsync(
                     "Create a file named activity-report.txt in your working directory containing ACTIVITY-7319, "
                     + "then call deliver_file with its absolute path.");
-                Assert.That(generated.Files, Has.Count.EqualTo(1));
+                Assert.That(generated.Files, Has.Count.EqualTo(1), generationReply);
                 Assert.That(await File.ReadAllTextAsync(generated.Files.Single()), Does.Contain("ACTIVITY-7319"));
                 TestContext.Progress.WriteLine("LIVE: Foundry model, add/list/complete tools, resumed conversation, file reading and generation passed.");
             }
@@ -62,7 +62,8 @@ public sealed class LiveTests
             {
                 var text = new StringBuilder();
                 var result = await assistant.ReplyAsync(conversation, prompt, attachments ?? [],
-                    chunk => text.Append(chunk), _ => { }, CancellationToken.None);
+                    chunk => text.Append(chunk),
+                    progress => TestContext.Progress.WriteLine(progress), CancellationToken.None);
                 return (text.ToString(), result);
             }
         }

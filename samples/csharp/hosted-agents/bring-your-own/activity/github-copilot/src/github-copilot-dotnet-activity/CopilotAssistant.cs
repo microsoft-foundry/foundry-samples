@@ -93,6 +93,9 @@ public sealed class CopilotAssistant : IAssistant, IHostedService, IAsyncDisposa
             var token = await _credential.GetTokenAsync(new TokenRequestContext(["https://ai.azure.com/.default"]), cancellationToken);
             var provider = new ProviderConfig { Type = "azure", BaseUrl = _endpoint, WireApi = "responses", BearerToken = token.Token };
             var sessionId = TaskStore.SessionId(conversationId);
+            var workspace = _store.Workspace(conversationId);
+            var instructions = $"{Instructions}\nYour conversation working directory is: {workspace}\n"
+                + "Use this exact absolute directory for file operations; do not guess a home or working directory.";
             var sessions = await _client.ListSessionsAsync(cancellationToken: cancellationToken);
 
             // Reattach on each turn so a durable conversation never retains an expired bearer token.
@@ -100,16 +103,16 @@ public sealed class CopilotAssistant : IAssistant, IHostedService, IAsyncDisposa
                 ? await _client.ResumeSessionAsync(sessionId, new ResumeSessionConfig
                 {
                     Model = _model, Provider = provider, Tools = tools, Streaming = true,
-                    SystemMessage = new() { Mode = SystemMessageMode.Replace, Content = Instructions },
-                    WorkingDirectory = _store.Workspace(conversationId),
+                    SystemMessage = new() { Mode = SystemMessageMode.Replace, Content = instructions },
+                    WorkingDirectory = workspace,
                     AvailableTools = new ToolSet().AddBuiltIn("*").AddCustom("*"),
                     OnPermissionRequest = PermissionHandler.ApproveAll
                 }, cancellationToken)
                 : await _client.CreateSessionAsync(new SessionConfig
                 {
                     SessionId = sessionId, Model = _model, Provider = provider, Tools = tools, Streaming = true,
-                    SystemMessage = new() { Mode = SystemMessageMode.Replace, Content = Instructions },
-                    WorkingDirectory = _store.Workspace(conversationId),
+                    SystemMessage = new() { Mode = SystemMessageMode.Replace, Content = instructions },
+                    WorkingDirectory = workspace,
                     AvailableTools = new ToolSet().AddBuiltIn("*").AddCustom("*"),
                     OnPermissionRequest = PermissionHandler.ApproveAll
                 }, cancellationToken);
