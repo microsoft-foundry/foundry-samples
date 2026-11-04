@@ -77,17 +77,18 @@ services:
     agentEndpoint:
       protocols: [a2a, responses]
     agentCard:
-      description: Copilot SDK Travel Planner discovers Flight and Hotel Agent Cards and calls their native A2A interfaces directly.
+      description: Copilot SDK Travel Planner discovers specialist Agent Cards and saves versioned trips, metadata and revisions in user-isolated state storage.
       version: 1.0.0
       skills:
         - id: planner
           name: Travel Planner
-          description: Ask both specialists over native A2A and reason about the itinerary and budget.
+          description: Plan and revise saved synthetic trips by plan ID, consulting specialists over native A2A for new requirements.
           tags: [synthetic-travel, a2a]
     env:
       PYTHONNOUSERSITE: '1'
       FLIGHT_AGENT_ENDPOINT: ${FLIGHT_AGENT_ENDPOINT}
       HOTEL_AGENT_ENDPOINT: ${HOTEL_AGENT_ENDPOINT}
+      TRAVEL_PLAN_STORE_NAME: travel-plans
       AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
       OTEL_INSTRUMENTATION_A2A_SDK_ENABLED: 'false'
       OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false'

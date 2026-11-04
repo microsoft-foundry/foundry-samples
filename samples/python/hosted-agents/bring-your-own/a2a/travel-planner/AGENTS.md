@@ -13,4 +13,10 @@ Preserve request context across runtime callbacks without custom discovery/tool
 spans. Log lifecycle, Task IDs, durations and trace IDs, not credentials, raw
 headers, user messages, answers, response bodies or arbitrary exception text.
 LLMs own all travel decisions and arithmetic. No Python price checks or retries.
+The planner's LLM uses user-isolated FoundryStateStore tools for saved trip IDs,
+requirements, metadata, recommendations and history. Bind trusted caller context
+before callbacks; never expose identity controls to the model. Version/ETag
+conditions must protect writes. Requirement changes mark recommendations stale
+until both specialists return fresh Tasks and a version-matched recommendation
+is saved. Metadata-only changes preserve the requirement revision and pricing.
 Do not add sample tests, test clients or dedicated workflows. Keep locks genuine.

@@ -8,6 +8,9 @@ Three Copilot SDK agents collaborate over **direct native A2A 1.0**:
   their descriptions and skills as Copilot custom tools. Its Copilot session
   selects which agent to call and composes the request. The native A2A client
   invokes the advertised interface and returns the actual answer to Copilot.
+- The planner's LLM also saves and retrieves trips by **plan ID**, revises their
+  requirements and metadata, and saves refreshed recommendations through
+  user-isolated **FoundryStateStore** tools.
 
 ```text
 User --A2A--> Travel Planner
@@ -42,7 +45,7 @@ travel-planner/
 |-- azure.yaml
 |-- trip-request.json
 `-- src/
-    |-- travel-agent/   main.py, client.py, tools.py, agents.py, pyproject.toml, uv.lock
+    |-- travel-agent/   main.py, client.py, tools.py, agents.py, plan_store.py, pyproject.toml, uv.lock
     |-- flight-agent/   main.py, client.py, catalog.py, pyproject.toml, uv.lock
     `-- hotel-agent/    main.py, client.py, catalog.py, pyproject.toml, uv.lock
 ```
@@ -55,8 +58,70 @@ Each agent's `client.py` uses Copilot SDK with a Foundry BYOK provider. Only the
 planner registers custom delegation tools; specialists have no tools.
 The planner returns a separate `specialist-calls` artifact with actual successful
 tool results and Task IDs (empty for clarification without delegation).
+The `trip-state` artifact contains acknowledged state-store operations and saved
+records. A verified footer reports plan IDs, versions and statuses from actual
+tool receipts rather than relying only on model prose.
 Each request is self-contained; no conversation-history merge is implemented.
 No sample tests or test client are included.
+
+### Saved trips and revisions
+
+The planner gets a fresh Copilot session for every request, but its state-store
+tools retain trip data across sessions:
+
+| Tool | Purpose |
+|---|---|
+| `create_plan` | Save complete requirements and optional JSON metadata; generate a `plan-...` ID |
+| `get_plan` | Retrieve requirements, metadata, version, current recommendation/stale marker and history count |
+| `update_plan` | Patch requested requirements or top-level metadata using the read version |
+| `save_plan_recommendation` | Save ready/no-match model output with actual fresh specialist Task IDs |
+| `list_plans` | List the caller's saved plan IDs, 20 per page |
+| `get_plan_history` | Retrieve creation, changes and previous recommendations |
+
+For a new complete trip, Copilot creates a draft, consults both specialists and
+saves its recommendation. For existing trips, it reads the saved record instead
+of pretending to remember earlier conversations. All writes must succeed before
+the planner reports success.
+
+Changing dates, route, budget, traveler count, refundability or distance increments
+the **requirements revision** and marks the recommendation `needs_replan`.
+The previous recommendation stays in history and is not current. The LLM then
+queries both specialists with the revised requirements and saves a new `ready` or
+`no_match` recommendation. A failed refresh leaves the saved requirements pending,
+not falsely current; the failure includes acknowledged saved plan IDs.
+Normal read/write tool results omit full history to avoid repeatedly sending old
+recommendations to the model. Full records remain in storage and acknowledged
+`trip-state` artifacts; `get_plan_history` retrieves the complete history.
+If the model fails after a write (for example, on a rate limit), the failed Task
+reports the last acknowledged plan ID/version/status. A failed final response does
+not roll back an already acknowledged write.
+
+Metadata-only changes increment the record **version** but preserve its
+requirements revision and current recommendation. Metadata patches add or replace
+top-level keys; `remove_metadata_keys` explicitly deletes keys. Nested values are
+supported, but the model must preserve unmentioned nested fields when replacing
+an object. Metadata is data, not instructions or hidden travel constraints.
+
+Each update uses both the model's `expected_version` and the storage ETag.
+Concurrent edits or a stale recommendation save fail with a precondition error,
+so the LLM must reread and reconsider changes. A recommendation save also requires
+both actual specialist calls after reading/changing that plan version.
+Python validates storage shape, dates and write evidence, not model price arithmetic
+or the semantic correctness of specialist queries.
+
+The store defaults to `travel-plans`, user isolation enabled and 30-day item
+retention. Change `TRAVEL_PLAN_STORE_NAME` in the planner's `azure.yaml` env map to
+choose a different store. Existing stores must have isolation enabled; the sample
+does not silently accept a shared store. Caller context is captured outside the
+model and passed to storage calls. Locally the SDK uses its file-backed storage;
+hosted requests use Foundry storage. No new Cosmos DB or external database is
+required. Business plan IDs and native A2A Task IDs are separate.
+Conditional writes use a specific `if_match` ETag. The SDK's `require_exists`
+alternative is mutually exclusive with `if_match` and is not combined with it.
+
+Metadata is limited to 16,000 serialized bytes and the whole record to 128,000
+bytes. History is retained, never silently truncated; oversized writes fail
+explicitly. Store only synthetic data, not credentials or real bookings.
 
 ### Tracing across Python, Copilot and the specialists
 
@@ -238,6 +303,33 @@ uv run --frozen --python 3.13 python main.py
 Local success uses your signed-in identity; it does not prove hosted managed
 identity permissions. A 404 on a protected Card may mean missing access as well
 as an incorrect URL. Resolve the cause rather than bypassing authentication.
+
+## Revise a saved plan in fresh sessions
+
+The initial complete-trip invocation now returns a generated plan ID. Use that
+**plan ID**, not the A2A Task UUID, in later natural-language requests:
+
+```powershell
+azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 `
+    --new-session --output raw `
+    "Show saved plan <PLAN-ID>, including requirements, metadata and whether its recommendation is current."
+
+azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 `
+    --new-session --output raw `
+    "For plan <PLAN-ID>, change departure to 2027-01-11, return to 2027-01-14 and arrival deadline to 2027-01-12T09:00:00-08:00. Keep other requirements, refresh both specialists and save the revised recommendation."
+
+azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 `
+    --new-session --output raw `
+    'For plan <PLAN-ID>, add metadata cost_center "CC-42" and purpose "business". Do not change trip requirements or rerun specialists.'
+
+azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 `
+    --new-session --output raw "Show the saved change history for plan <PLAN-ID>."
+```
+
+The fixed synthetic catalogs do not guarantee options for changed dates. A saved
+`no_match` result after a fresh search is valid; do not invent inventory to make
+every revision succeed. Inspect `trip-state` receipts and the stored version,
+requirements revision, metadata and specialist Task IDs independently of prose.
 
 ## Cleanup
 
