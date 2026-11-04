@@ -11,6 +11,10 @@ default. Offline tests reference the actual sample projects, not copied handlers
 They cover native TestAdapter replies, welcome/card actions, non-streaming
 fallback, user-facing errors, persistence/isolation, file URL/path/size checks,
 mocked download/consent upload, and readiness/202/session headers.
+Card validation tests verify that empty or missing titles return an actionable
+BadRequest without changing tasks or triggering the generic error reply.
+Streaming tests verify that only root-agent text deltas are forwarded; subagent
+and empty deltas do not suppress the final-response fallback.
 The Echo HTTP round-trip test starts real Kestrel hosts for the agent and a
 local connector, posts multiple messages to `/activity/messages`, and asserts
 the outbound replies received by the connector.

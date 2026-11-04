@@ -143,6 +143,68 @@ public sealed class AgentTests
         }).StartTestAsync();
     }
 
+    [TestCase("")]
+    [TestCase(" \t\r\n")]
+    [TestCase(null)]
+    public async Task EmptyCardTaskTitlesReturnBadRequestWithoutChangingTasks(string? title)
+    {
+        await AssertInvalidCardTaskAsync(new { newTask = title });
+    }
+
+    [Test]
+    public async Task MissingCardTaskTitleReturnsBadRequestWithoutChangingTasks()
+    {
+        await AssertInvalidCardTaskAsync(new { });
+    }
+
+    private async Task AssertInvalidCardTaskAsync(object data)
+    {
+        const string conversationId = "card-validation";
+        var existing = _store.Add(conversationId, "Keep this task");
+        await using var host = CopilotHost(new StubAssistant());
+        await host.CreateTestFlow().Send(new Activity
+        {
+            Type = ActivityTypes.Invoke, Name = "adaptiveCard/action",
+            Conversation = new ConversationAccount { Id = conversationId },
+            Value = new { action = new { verb = "add_task", data } }
+        }).AssertReply(activity =>
+        {
+            Assert.That(activity.Type, Is.EqualTo(ActivityTypes.InvokeResponse));
+            var response = JsonSerializer.SerializeToElement(activity.Value);
+            Assert.That(response.GetProperty("Status").GetInt32(), Is.EqualTo(200));
+            var body = response.GetProperty("Body");
+            Assert.That(body.GetProperty("statusCode").GetInt32(), Is.EqualTo(400));
+            Assert.That(body.GetProperty("type").GetString(), Is.EqualTo("application/vnd.microsoft.error"));
+            Assert.That(body.GetProperty("value").GetProperty("code").GetString(), Is.EqualTo("BadRequest"));
+            Assert.That(body.GetProperty("value").GetProperty("message").GetString(),
+                Is.EqualTo("Enter a task title before selecting Add."));
+        }).StartTestAsync();
+        Assert.That(_store.List(conversationId), Is.EqualTo(new[] { existing }));
+        Assert.That(host.Adapter.GetNextReply(), Is.Null, "Validation must not trigger the generic turn-error reply.");
+    }
+
+    [TestCase(null, "Main reply", true)]
+    [TestCase("", "Main reply", true)]
+    [TestCase("subagent-1", "Delegated reply", false)]
+    [TestCase(null, "", false)]
+    [TestCase(null, null, false)]
+    public void OnlyRootAssistantDeltasAreForwarded(string? agentId, string? content, bool expected)
+    {
+        var ev = GitHub.Copilot.SessionEvent.FromJson(JsonSerializer.Serialize(new
+        {
+            type = "assistant.message_delta",
+            id = Guid.NewGuid().ToString(),
+            timestamp = DateTimeOffset.UtcNow,
+            parentId = (string?)null,
+            agentId,
+            data = new { messageId = "test-message", deltaContent = content }
+        }));
+        var chunks = new List<string>();
+        var streamed = CopilotAssistant.TryForwardRootAssistantDelta(ev, chunks.Add);
+        Assert.That(streamed, Is.EqualTo(expected));
+        Assert.That(chunks, Is.EqualTo(expected ? new[] { content } : Array.Empty<string>()));
+    }
+
     private AgentTestHost CopilotHost(IAssistant assistant) => AgentTestHost.Create(builder =>
     {
         builder.Services.AddTransient<IAgent>(_ => new CopilotAgent(

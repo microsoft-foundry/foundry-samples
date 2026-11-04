@@ -165,7 +165,22 @@ public sealed class CopilotAgent : AgentApplication
         switch (verb)
         {
             case "add_task":
-                _store.Add(conversationId, data.GetProperty("newTask").GetString() ?? "");
+                var title = data.ValueKind == JsonValueKind.Object
+                    && data.TryGetProperty("newTask", out var titleValue)
+                    && titleValue.ValueKind == JsonValueKind.String
+                        ? titleValue.GetString()
+                        : null;
+                if (string.IsNullOrWhiteSpace(title))
+                {
+                    await InvokeResponseAsync(context, 200, new
+                    {
+                        statusCode = 400,
+                        type = "application/vnd.microsoft.error",
+                        value = new { code = "BadRequest", message = "Enter a task title before selecting Add." }
+                    }, cancellationToken);
+                    return;
+                }
+                _store.Add(conversationId, title);
                 break;
             case "complete_task":
                 _store.Complete(conversationId, data.GetProperty("taskId").GetString() ?? "");

@@ -1,10 +1,13 @@
 // Copyright (c) Microsoft. All rights reserved.
 
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using Azure.Core;
 using Azure.Identity;
 using GitHub.Copilot;
 using Microsoft.Extensions.AI;
+
+[assembly: InternalsVisibleTo("ActivitySamples.Tests")]
 
 namespace CopilotSample;
 
@@ -120,10 +123,9 @@ public sealed class CopilotAssistant : IAssistant, IHostedService, IAsyncDisposa
             var streamed = false;
             using var subscription = session.On<SessionEvent>(ev =>
             {
-                if (ev is AssistantMessageDeltaEvent delta && !string.IsNullOrEmpty(delta.Data.DeltaContent))
+                if (TryForwardRootAssistantDelta(ev, onText))
                 {
                     streamed = true;
-                    onText(delta.Data.DeltaContent);
                 }
                 else if (ev is ToolExecutionStartEvent tool)
                 {
@@ -154,6 +156,19 @@ public sealed class CopilotAssistant : IAssistant, IHostedService, IAsyncDisposa
         {
             gate.Release();
         }
+    }
+
+    internal static bool TryForwardRootAssistantDelta(SessionEvent ev, Action<string> onText)
+    {
+        if (ev is not AssistantMessageDeltaEvent delta
+            || !string.IsNullOrEmpty(ev.AgentId)
+            || string.IsNullOrEmpty(delta.Data.DeltaContent))
+        {
+            return false;
+        }
+
+        onText(delta.Data.DeltaContent);
+        return true;
     }
 
     public async ValueTask DisposeAsync()
