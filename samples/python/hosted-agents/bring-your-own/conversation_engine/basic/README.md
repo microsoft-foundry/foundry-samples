@@ -192,6 +192,9 @@ returns the complete object in `response.output_data.done`, then `response.done`
 The caller receives that object in `response.invocation.delta.delta`, with no
 text or audio. This requires the application-data extension in the target Voice Live deployment.
 
+Application data is limited to 65,536 bytes per response, measured as compact
+UTF-8 JSON, matching Voice Live's data-budget calculation.
+
 To check the Agent leg locally with the server running:
 
 ```bash

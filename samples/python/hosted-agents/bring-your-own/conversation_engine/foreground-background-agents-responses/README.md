@@ -52,6 +52,8 @@ Worker service, second Hosted protocol or proactive result-notification redesign
 - The CE context supplies the task store, worker handles and last 20 history items
   per connection, replacing the context/state previously provided by the HTTP host.
 - `heard_text` replaces interrupted assistant output in subsequent model history.
+- A queued turn retains its prior-input boundary, but freezes history only when
+  its handler starts, including earlier replies' latest output/heard-text updates.
 - Session end, disconnect and server shutdown cancel the connection's tasks and
   discard its memory. There is no durable task queue or reconnect recovery.
 - Original task delivery bookkeeping is retained; this sample does not promise

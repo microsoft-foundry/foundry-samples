@@ -188,6 +188,10 @@ object, then `response.done` after cleanup. Voice Live exposes the object as
 `response.invocation.delta.delta` without text or audio. The target Voice Live
 deployment must support the application-data extension.
 
+Application data is limited to 65,536 bytes per response, measured as compact
+UTF-8 JSON. The Echo handler emits compact SSE JSON so formatting whitespace does
+not expand an otherwise valid object beyond the separate frame budget.
+
 With the Agent running, check its CE leg locally:
 
 ```bash

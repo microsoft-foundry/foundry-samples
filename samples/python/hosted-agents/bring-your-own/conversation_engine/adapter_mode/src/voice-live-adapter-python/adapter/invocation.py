@@ -23,9 +23,9 @@ MAX_FRAME_CHARACTERS = MAX_DATA_BYTES + len(
 def invocation_request(text: str | Mapping[str, Any], input_id: str) -> Request:
     """Supply only the current SDK context, not identity from caller JSON."""
     # InputDataPart deeply freezes objects; thaw mappings only for JSON encoding.
-    body = json.dumps({"input": text}, default=dict, ensure_ascii=False, allow_nan=False).encode(
-        "utf-8"
-    )
+    body = json.dumps(
+        {"input": text}, default=dict, ensure_ascii=False, allow_nan=False, separators=(",", ":")
+    ).encode("utf-8")
     context = get_request_context()
 
     async def receive() -> dict[str, Any]:
@@ -129,7 +129,9 @@ class InvocationAdapter:
                     if not isinstance(data, dict):
                         raise ValueError("Expected an application JSON object")
                     data_bytes += len(
-                        json.dumps(data, ensure_ascii=False, allow_nan=False).encode("utf-8")
+                        json.dumps(
+                            data, ensure_ascii=False, allow_nan=False, separators=(",", ":")
+                        ).encode("utf-8")
                     )
                     if data_bytes > MAX_DATA_BYTES:
                         raise ValueError("Invocation data exceeds its byte budget")

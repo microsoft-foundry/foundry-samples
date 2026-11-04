@@ -8,11 +8,13 @@ using Azure.AI.AgentServer.Invocations.Voice;
 namespace VoiceHostedAgent;
 
 /// <summary>Sample-maintained CE lifecycle around an in-process invocation handler.</summary>
-public class VoiceAgent : VoiceHandler
+public class VoiceAgent : VoiceHandler, IAsyncDisposable
 {
     private const int MaximumInputCharacters = 8_000;
 
     private readonly ConditionalWeakTable<VoiceSession, VoiceConnectionState> _connections = new();
+    private readonly object _terminationSync = new();
+    private readonly HashSet<Task> _terminationTasks = new();
     private readonly VoiceResponseCoordinator _responses;
     private readonly InvocationAdapter _backend;
     private readonly ILogger<VoiceAgent> _logger;
@@ -234,10 +236,60 @@ public class VoiceAgent : VoiceHandler
     {
         if (_connections.TryGetValue(session, out var state))
         {
-            _responses.Observe(
-                _responses.TerminateSessionAsync(
-                    state,
-                    ResponseOutcome.TransportError));
+            var termination = _responses.TerminateSessionAsync(state, ResponseOutcome.TransportError);
+            lock (_terminationSync)
+            {
+                _terminationTasks.Add(termination);
+            }
+            _responses.Observe(ObserveTerminationAsync(termination));
+        }
+    }
+
+    /// <summary>The SDK signals transport exit synchronously; its DI scope awaits this drain.</summary>
+    public async ValueTask DisposeAsync()
+    {
+        while (true)
+        {
+            Task[] pending;
+            lock (_terminationSync)
+            {
+                pending = _terminationTasks.ToArray();
+            }
+            if (pending.Length == 0)
+            {
+                return;
+            }
+            try
+            {
+                await Task.WhenAll(pending);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning("Voice shutdown cleanup failed; error_type={ErrorType}",
+                    exception.GetType().FullName);
+            }
+            finally
+            {
+                lock (_terminationSync)
+                {
+                    _terminationTasks.ExceptWith(pending);
+                }
+            }
+        }
+    }
+
+    private async Task ObserveTerminationAsync(Task termination)
+    {
+        try
+        {
+            await termination;
+        }
+        finally
+        {
+            lock (_terminationSync)
+            {
+                _terminationTasks.Remove(termination);
+            }
         }
     }
 

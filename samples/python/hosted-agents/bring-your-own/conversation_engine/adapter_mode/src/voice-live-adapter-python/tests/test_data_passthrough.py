@@ -31,6 +31,7 @@ from scripts.smoke_test import main as smoke_main
     [
         {},
         {"customer_id": "demo", "locale": "zh-CN"},
+        pytest.param({"v": [1234567] * 8000}, id="dense-numeric-array"),
         {"type": "customer.context", "data": {"values": [None, False, 0, 1.25, "  你好 👋\n"]}},
     ],
 )
@@ -167,7 +168,7 @@ async def test_data_utf8_byte_budget(extra_bytes: int) -> None:
     coordinator = ResponseCoordinator()
     state = active_state()
     session = RecordingSession()
-    overhead = len(json.dumps({"value": ""}).encode("utf-8"))
+    overhead = len(json.dumps({"value": ""}, separators=(",", ":")).encode("utf-8"))
     budget = MAX_DATA_BYTES - overhead + extra_bytes
     data = {"value": "👋" * (budget // 4) + "x" * (budget % 4)}
     assert coordinator.start_response(session, state, "in_budget", data)

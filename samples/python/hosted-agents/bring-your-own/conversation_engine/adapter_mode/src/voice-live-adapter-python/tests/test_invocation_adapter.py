@@ -26,11 +26,11 @@ def event(kind: str, **fields: Any) -> str:
 
 
 def boundary_data(character: str, extra_bytes: int) -> dict[str, str]:
-    overhead = len(json.dumps({"value": ""}).encode("utf-8"))
+    overhead = len(json.dumps({"value": ""}, separators=(",", ":")).encode("utf-8"))
     unit_bytes = len(json.dumps(character, ensure_ascii=False).encode("utf-8")) - 2
     count, remainder = divmod(invocation.MAX_DATA_BYTES - overhead + extra_bytes, unit_bytes)
     data = {"value": character * count + "x" * remainder}
-    assert len(json.dumps(data, ensure_ascii=False).encode("utf-8")) == (
+    assert len(json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8")) == (
         invocation.MAX_DATA_BYTES + extra_bytes
     )
     return data

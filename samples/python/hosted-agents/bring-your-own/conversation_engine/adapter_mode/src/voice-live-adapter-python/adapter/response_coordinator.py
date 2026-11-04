@@ -550,7 +550,10 @@ class ResponseCoordinator:
                 if isinstance(chunk, Mapping):
                     # SDK input objects are deeply frozen; preserve nested JSON values.
                     data_bytes += len(
-                        json.dumps(chunk, default=dict, ensure_ascii=False, allow_nan=False)
+                        json.dumps(
+                            chunk, default=dict, ensure_ascii=False, allow_nan=False,
+                            separators=(",", ":"),
+                        )
                         .encode("utf-8")
                     )
                     if data_bytes > MAX_DATA_BYTES:

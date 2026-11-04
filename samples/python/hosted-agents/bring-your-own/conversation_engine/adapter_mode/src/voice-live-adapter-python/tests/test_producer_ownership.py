@@ -119,4 +119,3 @@ async def test_producer_close_failure_is_not_reported_as_success():
     assert session.sent[-1].type == "error"
     assert not any(event.type == "response.done" for event in session.sent)
     assert not state.responses
-

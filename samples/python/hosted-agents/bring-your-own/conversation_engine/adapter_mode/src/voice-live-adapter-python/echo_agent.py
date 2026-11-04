@@ -22,7 +22,10 @@ async def handle_invocation(request: Request) -> StreamingResponse:
         if isinstance(text, dict):
             yield (
                 "data: "
-                + json.dumps({"type": "data", "data": text}, ensure_ascii=False)
+                + json.dumps(
+                    {"type": "data", "data": text}, ensure_ascii=False,
+                    allow_nan=False, separators=(",", ":"),
+                )
                 + "\n\n"
             )
             yield 'data: {"type":"done","full_text":""}\n\n'

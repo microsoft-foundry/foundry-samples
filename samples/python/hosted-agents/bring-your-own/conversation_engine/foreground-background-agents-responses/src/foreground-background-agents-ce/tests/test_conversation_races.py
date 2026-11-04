@@ -106,6 +106,83 @@ async def test_next_turn_sees_committed_history_before_interrupted_cleanup_finis
         await runtime.close()
 
 
+@pytest.mark.parametrize(
+    "terminal", ["complete", "user.barge_in", "response.cancelled", "response.timeout"]
+)
+async def test_queued_history_freezes_latest_prior_turns_without_future_inputs(terminal):
+    finish_first, release_cleanup = asyncio.Event(), asyncio.Event()
+    cleanup_started, queued = asyncio.Event(), asyncio.Event()
+    snapshots = {}
+
+    async def handler(request, context, _signal):
+        if request["input"] == "old question":
+            try:
+                yield {"type": "response.output_text.delta", "delta": "first part"}
+                await finish_first.wait()
+                yield {"type": "response.output_text.delta", "delta": " rest"}
+            finally:
+                cleanup_started.set()
+                await release_cleanup.wait()
+        else:
+            snapshots[request["input"]] = await context.get_history()
+            answer = "second answer" if request["input"] == "second question" else "third answer"
+            yield {"type": "response.output_text.delta", "delta": answer}
+
+    app = create_app(handler=handler, configure_observability=None)
+    runtime = app.state.voice_runtime
+    original = app._voice_callbacks["user.message"]
+
+    async def observe_queued(session, event):
+        await original(session, event)
+        if event.item_id == "in_third":
+            queued.set()
+
+    app._voice_callbacks["user.message"] = observe_queued
+    socket = DeclineHostSocket()
+    _enqueue_decline_start(socket)
+    socket.enqueue("user.message", item_id="in_old",
+                   content=[{"type": "input_text", "text": "old question"}])
+    connection = asyncio.create_task(app._handle_voice_connection(socket))
+    try:
+        await _wait_for_decline_event(socket, lambda: any(
+            event["type"] == "response.output_text.delta" for event in socket.frames
+        ))
+        state = runtime._store.active(Session._current(socket))
+        first = state.responses[state.input_responses["in_old"]]
+        for item_id, text in [("in_second", "second question"), ("in_third", "future question")]:
+            socket.enqueue("user.message", item_id=item_id,
+                           content=[{"type": "input_text", "text": text}])
+        await asyncio.wait_for(queued.wait(), 2)
+        assert not snapshots  # Both handlers are waiting for the first wire generation.
+        if terminal == "complete":
+            finish_first.set()
+            release_cleanup.set()
+            expected_old = "first part rest"
+        else:
+            fields = ({"stage": "max_duration"} if terminal == "response.timeout"
+                      else {"heard_text": "first"})
+            socket.enqueue(terminal, response_id=first.response_id, **fields)
+            await asyncio.wait_for(cleanup_started.wait(), 2)
+            expected_old = "first part" if terminal == "response.timeout" else "first"
+        expected_done = 3 if terminal == "complete" else 2
+        await _wait_for_decline_event(socket, lambda: sum(
+            event["type"] == "response.done" for event in socket.frames
+        ) == expected_done)
+        previous = ["old question", expected_old]
+        assert texts(snapshots["second question"]) == previous
+        assert texts(snapshots["future question"]) == previous + [
+            "second question", "second answer"
+        ]
+        if terminal != "complete":
+            assert not first.task.done()  # History was corrected before old cleanup finished.
+    finally:
+        finish_first.set()
+        release_cleanup.set()
+        socket.enqueue("session.end", reason="test_complete")
+        await asyncio.wait_for(connection, 2)
+        await runtime.close()
+
+
 @pytest.mark.parametrize("first_kind", ["user.message", "user.no_input"])
 async def test_duplicate_no_input_cannot_teardown_an_active_conversation_or_worker(first_kind):
     async def handler(request, _context, _signal):

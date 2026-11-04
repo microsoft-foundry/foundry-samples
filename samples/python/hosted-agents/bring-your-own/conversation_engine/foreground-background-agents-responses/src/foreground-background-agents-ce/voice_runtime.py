@@ -101,7 +101,7 @@ class VoiceRuntime(ProtocolRuntime):
         response_id = new_response_id()
         signal = asyncio.Event()
         context = ResponseContextAdapter(
-            response_id, text, deepcopy(list(conversation.history)), conversation
+            response_id, text, list(conversation.history), conversation
         )
         conversation.signals[response_id] = signal
         conversation.history.append({"content": [{"type": "input_text", "text": text}]})
@@ -132,6 +132,9 @@ class VoiceRuntime(ProtocolRuntime):
     ) -> AsyncIterator[str]:
         """Translate original text deltas; keep ack → wait → result behavior unchanged."""
         request = {"input": context.text, "stream": True}
+        # Retain this input's prefix, but freeze it only after acquiring the wire
+        # generation: earlier output/heard-text changes must reach queued turns.
+        context.history = deepcopy(context.history)
         source = self._handler(request, context, signal)
         output = ""
         last_index = None

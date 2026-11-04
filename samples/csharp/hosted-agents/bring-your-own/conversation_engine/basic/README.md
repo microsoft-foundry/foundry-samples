@@ -61,6 +61,11 @@ event releases this gate independently of slow producer cleanup. Cleanup remains
 tracked and consumes task capacity until it finishes; self-cancel waits for its
 winning terminal acknowledgment before replacement output.
 
+Transport exit signals cancellation synchronously. The scoped handler implements
+`IAsyncDisposable`, allowing SDK/DI scope disposal to await its termination tasks
+before releasing services. Graceful host shutdown still requires cooperative
+producer cleanup within the host's configured shutdown grace period.
+
 ## Prerequisites
 
 1. [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
