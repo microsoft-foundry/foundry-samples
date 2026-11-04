@@ -636,6 +636,7 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
   kind: 'GlobalDocumentDB'
   properties: {
     databaseAccountOfferType: 'Standard'
+    disableLocalAuth: true
     publicNetworkAccess: 'Disabled'
     consistencyPolicy: {
       defaultConsistencyLevel: 'Session'

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "5480651535896517804"
+      "templateHash": "9236340571392768514"
     }
   },
   "parameters": {
@@ -600,8 +600,8 @@
       "dependsOn": [
         "[resourceId('Microsoft.Network/privateEndpoints', format('pe-{0}', variables('foundryAgentAccountName')))]",
         "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[2])]",
-        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[0])]",
-        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[1])]"
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[1])]",
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[0])]"
       ]
     },
     {
@@ -629,6 +629,7 @@
       "kind": "GlobalDocumentDB",
       "properties": {
         "databaseAccountOfferType": "Standard",
+        "disableLocalAuth": true,
         "publicNetworkAccess": "Disabled",
         "consistencyPolicy": {
           "defaultConsistencyLevel": "Session"
