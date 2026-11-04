@@ -280,8 +280,6 @@ async def handler(
         tool_name = tc.name
         logger.info("Router tool selected")
 
-        new_task = None
-
         if tool_name == "respond_directly":
             # Pure chat — stream the message from arguments
             message = arguments.get("message", "")
@@ -289,12 +287,18 @@ async def handler(
                 yield evt
 
         elif tool_name == "start_task":
-            # Delegate to worker — stream ack from arguments
+            # Admit conversation-owned work before yielding an interruptible acknowledgment.
+            _, new_task = execute_router_tool("start_task", arguments, _store)
+            if new_task:
+                logger.info("Starting worker for task %s", new_task.task_id)
+                worker_input = _build_input(new_task.query, history)
+                task_handle = asyncio.create_task(run_worker(new_task, worker_input, _responses_client, _model))
+                _background_tasks.add(task_handle)
+                task_handle.add_done_callback(_background_tasks.discard)
+
             ack = arguments.get("ack_message", "On it.")
             for evt in _emit_text_item(stream, ack):
                 yield evt
-
-            _, new_task = execute_router_tool("start_task", arguments, _store)
 
         elif tool_name == "check_task_status":
             result_text, _ = execute_router_tool("check_task_status", arguments, _store)
@@ -325,14 +329,6 @@ async def handler(
         else:
             for evt in _emit_text_item(stream, "I'm not sure how to help with that."):
                 yield evt
-
-        # ── Kick off Worker if a task was created ──
-        if new_task:
-            logger.info("Starting worker for task %s", new_task.task_id)
-            worker_input = _build_input(new_task.query, history)
-            task_handle = asyncio.create_task(run_worker(new_task, worker_input, _responses_client, _model))
-            _background_tasks.add(task_handle)
-            task_handle.add_done_callback(_background_tasks.discard)
 
         # ── Wait for active tasks ──
         # Wait for any running/queued tasks to finish (including ones from prior turns).

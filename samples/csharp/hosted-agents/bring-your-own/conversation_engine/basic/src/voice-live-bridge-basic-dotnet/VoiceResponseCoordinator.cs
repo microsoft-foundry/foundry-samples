@@ -293,7 +293,7 @@ internal sealed class VoiceResponseCoordinator
             operation.RecordFailure(exception);
             _logger.LogError("Voice response {ResponseId} failed; error_type={ErrorType}",
                 operation.ResponseId, exception.GetType().FullName);
-            await TrySendErrorAsync(session, state, operation.ResponseId);
+            await TrySendErrorAsync(session, state, operation.ResponseId, cancellationToken);
         }
         finally
         {
@@ -389,7 +389,8 @@ internal sealed class VoiceResponseCoordinator
     private async Task TrySendErrorAsync(
         VoiceSession session,
         VoiceConnectionState state,
-        string responseId)
+        string responseId,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -402,7 +403,7 @@ internal sealed class VoiceResponseCoordinator
                     "generation_failed",
                     "The response could not be generated.",
                     responseId),
-                state.Lifetime.Token);
+                cancellationToken);
         }
         catch (Exception exception)
         {

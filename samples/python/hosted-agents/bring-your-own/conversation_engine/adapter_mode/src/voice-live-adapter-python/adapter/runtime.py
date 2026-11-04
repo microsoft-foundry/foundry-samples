@@ -8,6 +8,7 @@ import logging
 import os
 import time
 from collections.abc import AsyncIterator
+from contextlib import aclosing
 from typing import Any
 
 from azure.ai.agentserver.invocations.voice import (
@@ -168,8 +169,9 @@ class VoiceRuntime:
         async def stream_output() -> AsyncIterator[str | dict[str, Any]]:
             # Structured input takes precedence, just like response.invoke_input.
             for value in data_parts if data_parts else [text]:
-                async for chunk in self._backend.stream(value, event.item_id):
-                    yield chunk
+                async with aclosing(self._backend.stream(value, event.item_id)) as source:
+                    async for chunk in source:
+                        yield chunk
 
         self._coordinator.send_echo(
             session, state, event.item_id, stream_output(), received_at
