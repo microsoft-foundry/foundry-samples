@@ -23,7 +23,8 @@ Responses endpoint. Bridge message version remains `1.0`.
 `router_agent.py`, `worker_agent.py`, and `task_store.py` are copied verbatim.
 The model deployment declared in `azure.yaml`, model environment variables, model
 access code, prompts, meta-tools, mock tools and worker loop remain the original's.
-The new CE layer replaces the old HTTP/SSE host and its request context.
+The new CE layer replaces the old HTTP/SSE host and its request context, and adds
+transport-aware delivery reservations and tool-result-based cancellation acknowledgments.
 
 ## How it works
 
@@ -49,15 +50,23 @@ Worker service, second Hosted protocol or proactive result-notification redesign
   but does not cancel the Worker. A later user turn can deliver the saved result.
 - An explicit `cancel_task` sets the original Worker's cooperative cancellation
   event. It does not forcibly interrupt an in-flight synchronous model/tool call.
+  The reply confirms an accepted cancellation request, not completed cancellation;
+  a rejected request is not acknowledged as successful.
 - The CE context supplies the task store, worker handles and last 20 history items
   per connection, replacing the context/state previously provided by the HTTP host.
 - `heard_text` replaces interrupted assistant output in subsequent model history.
+  Generated text is recorded only after its CE send succeeds; blocked or failed sends
+  do not become assistant history. Successful sends still do not prove audio was heard.
 - A queued turn retains its prior-input boundary, but freezes history only when
   its handler starts, including earlier replies' latest output/heard-text updates.
 - Session end, disconnect and server shutdown cancel the connection's tasks and
   discard its memory. There is no durable task queue or reconnect recovery.
-- Original task delivery bookkeeping is retained; this sample does not promise
-  exactly-once playback or delivery across interruptions/disconnection.
+- `delivery.py` reserves completed results per response without changing the original
+  task store. A reservation becomes `DELIVERED` only after the complete result text
+  was sent and `response.done` succeeds. Failure/interruption releases the reservation
+  for retry; a Router acknowledgment or paraphrase alone does not consume the result.
+  This conservative policy may repeat a partial or paraphrased result; it does not
+  promise exactly-once playback or delivery across interruptions/disconnection.
 
 The CE layer retains input/response-ID correlation, duplicate-input tracking,
 bounded response capacity, cancellation/timeouts, no-input handling and cleanup
@@ -71,6 +80,10 @@ tracked and consumes task capacity until it finishes; self-cancel waits for its
 winning terminal acknowledgment before replacement output.
 A producer's own cancellation is a response-scoped failure unless a protocol or
 session terminal has already won; its failure frame precedes the next response.
+Once a protocol/session terminal wins, new output, completion and failure sends are
+suppressed, even if the producer ignores cancellation. Cleanup failures remain local
+diagnostics. Already-in-flight transport frames can still race with that terminal;
+the Bridge's terminal arbitration handles those late frames.
 
 ## Prerequisites
 

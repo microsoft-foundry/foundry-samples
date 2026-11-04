@@ -201,6 +201,86 @@ public class GenerationSerializationTests
         }
     }
 
+    [TestCase("cleanup_error", false)]
+    [TestCase("continue", false)]
+    [TestCase("return", false)]
+    [TestCase("cleanup_error", true)]
+    [TestCase("continue", true)]
+    [TestCase("return", true)]
+    public async Task WinningCancellation_SuppressesEveryLateFrame(string behavior, bool sessionEnd)
+    {
+        var coordinator = new VoiceResponseCoordinator(NullLogger<VoiceAgent>.Instance);
+        var state = ActiveState();
+        var session = new WireSession();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var interrupted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var closed = false;
+        coordinator.SendEcho(session, state, "in_first", First(), Stopwatch.GetTimestamp());
+        Assert.That(state.TryGetResponseForInput("in_first", out var firstId), Is.True);
+        Assert.That(state.TryGetOperation(firstId, out var first), Is.True);
+        await started.Task.WaitAsync(Limit);
+        var cut = session.Messages.Count;
+        session.ExternalTerminal();
+        Task? termination = null;
+        if (sessionEnd)
+        {
+            termination = coordinator.TerminateSessionAsync(state, ResponseOutcome.EndCall);
+        }
+        else
+        {
+            coordinator.CancelOperation(state, firstId, ResponseOutcome.Cancelled);
+        }
+        try
+        {
+            await interrupted.Task.WaitAsync(Limit);
+            if (!sessionEnd)
+            {
+                coordinator.SendEcho(session, state, "in_second", Second(), Stopwatch.GetTimestamp());
+                Assert.That(state.TryGetResponseForInput("in_second", out var secondId), Is.True);
+                Assert.That(state.TryGetOperation(secondId, out var second), Is.True);
+                await second.Work!.WaitAsync(Limit);
+            }
+            release.TrySetResult();
+            await first.Work!.WaitAsync(Limit);
+            Assert.That(closed, Is.True);
+            Assert.That(session.Violations, Is.Empty);
+            Assert.That(session.Messages.Skip(cut).Any(message => message switch
+            {
+                VoiceResponseOutputTextDeltaMessage delta => delta.ResponseId == firstId,
+                VoiceResponseOutputTextDoneMessage done => done.ResponseId == firstId,
+                VoiceResponseDoneMessage done => done.ResponseId == firstId,
+                VoiceErrorMessage error => error.ResponseId == firstId,
+                _ => false,
+            }), Is.False);
+        }
+        finally
+        {
+            release.TrySetResult();
+            await coordinator.TerminateSessionAsync(state, ResponseOutcome.EndCall).WaitAsync(Limit);
+            if (termination is not null) { await termination.WaitAsync(Limit); }
+        }
+
+        async IAsyncEnumerable<string> First([EnumeratorCancellation] CancellationToken token = default)
+        {
+            try
+            {
+                yield return "first";
+                started.TrySetResult();
+                try { await Task.Delay(Timeout.Infinite, token); }
+                catch (OperationCanceledException) { }
+                interrupted.TrySetResult();
+                await release.Task;
+                if (behavior == "cleanup_error") { throw new InvalidOperationException("Synthetic cleanup failure."); }
+                if (behavior == "continue") { yield return "STALE"; }
+            }
+            finally
+            {
+                closed = true;
+            }
+        }
+    }
+
     private static VoiceConnectionState ActiveState()
     {
         var state = new VoiceConnectionState();

@@ -221,6 +221,67 @@ async def test_winning_terminal_releases_generation_before_slow_cleanup(control)
         await coordinator.terminate_state(state, OperationOutcome.END_CALL)
 
 
+@pytest.mark.parametrize("behavior", ["cleanup_error", "continue", "return"])
+@pytest.mark.parametrize("control", ["barge_in", "response_cancelled", "timeout", "session_end"])
+async def test_winning_cancellation_suppresses_every_late_frame(behavior, control):
+    coordinator, state, session = setup()
+    started, interrupted, release = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    closed = asyncio.Event()
+
+    async def first():
+        try:
+            yield "first"
+            started.set()
+            await asyncio.Future()
+        except asyncio.CancelledError:
+            interrupted.set()
+            await release.wait()
+            if behavior == "cleanup_error":
+                raise RuntimeError("synthetic cleanup failure") from None
+            if behavior == "continue":
+                yield "STALE"
+            return
+        finally:
+            closed.set()
+
+    assert coordinator.start_response(session, state, "in_first", first(), response_id="r_first")
+    first_op = state.responses["r_first"]
+    await asyncio.wait_for(started.wait(), 2)
+    cut = len(session.sent)
+    session.open_response = None  # The Bridge has already committed the winning terminal.
+    termination = None
+    if control == "session_end":
+        termination = asyncio.create_task(
+            coordinator.terminate_state(state, OperationOutcome.END_CALL)
+        )
+    elif control == "timeout":
+        coordinator.response_timeout(state, "r_first", None)
+    elif control == "barge_in":
+        coordinator.barge_in(state, "r_first", "first")
+    else:
+        coordinator.response_cancelled(state, "r_first", "first")
+    try:
+        await asyncio.wait_for(interrupted.wait(), 2)
+        if termination is None:
+            assert coordinator.start_response(
+                session, state, "in_second", one_chunk(), response_id="r_second"
+            )
+            await join(state.responses["r_second"])
+        release.set()
+        await join(first_op)
+        assert closed.is_set()
+        assert not [
+            event for event in session.sent[cut:]
+            if getattr(event, "response_id", None) == "r_first"
+        ]
+        assert not session.violations
+    finally:
+        release.set()
+        await coordinator.terminate_state(state, OperationOutcome.END_CALL)
+        if termination is not None:
+            await asyncio.wait_for(termination, 2)
+
+
 async def test_self_cancel_holds_generation_until_winning_terminal_acknowledgment():
     coordinator, state, session = setup()
     assert coordinator.start_self_cancel(session, state, "in_self", "first", 0.0)
@@ -361,6 +422,74 @@ async def test_real_sdk_adapter_reports_producer_cancellation_and_recovers():
         assert socket.frames[-1]["response_id"] == second_id
         assert closed.is_set()
     finally:
+        socket.enqueue("session.end", reason="test_complete")
+        await asyncio.wait_for(connection, 2)
+        await runtime.close()
+
+
+@pytest.mark.parametrize("behavior", ["cleanup_error", "continue", "return"])
+@pytest.mark.parametrize("control", ["user.barge_in", "response.cancelled", "response.timeout"])
+async def test_real_sdk_adapter_suppresses_cancelled_handler_frames(behavior, control):
+    started, interrupted, release = asyncio.Event(), asyncio.Event(), asyncio.Event()
+
+    async def handler(request):
+        text = (await request.json())["input"]
+
+        async def chunks():
+            try:
+                yield "data: " + json.dumps({"type": "token", "content": text}) + "\n\n"
+                if text == "first":
+                    started.set()
+                    await asyncio.Future()
+            except asyncio.CancelledError:
+                interrupted.set()
+                await release.wait()
+                if behavior == "cleanup_error":
+                    raise RuntimeError("synthetic cleanup failure") from None
+                if behavior == "continue":
+                    yield 'data: {"type":"token","content":"STALE"}\n\n'
+                    text_after_cancel = text + "STALE"
+                else:
+                    text_after_cancel = text
+                yield "data: " + json.dumps({
+                    "type": "done", "full_text": text_after_cancel
+                }) + "\n\n"
+                return
+            yield "data: " + json.dumps({"type": "done", "full_text": text}) + "\n\n"
+
+        return StreamingResponse(chunks(), media_type="text/event-stream")
+
+    app = create_app(handler, configure_observability=None)
+    runtime, socket = app.state.voice_runtime, HostSocket()
+    socket.enqueue(
+        "session.start", protocol_version="1.0", reconnect=False,
+        response_timeouts={"first_output_ms": 1000, "idle_ms": 1000, "max_duration_ms": 30_000},
+    )
+    socket.enqueue("user.message", item_id="in_first",
+                   content=[{"type": "input_text", "text": "first"}])
+    connection = asyncio.create_task(app._handle_voice_connection(socket))
+    try:
+        await asyncio.wait_for(started.wait(), 2)
+        from azure.ai.agentserver.invocations.voice import Session
+
+        first = next(iter(runtime._store.active(Session._current(socket)).responses.values()))
+        cut = len(socket.frames)
+        fields = {"stage": "idle"} if control == "response.timeout" else {"heard_text": "first"}
+        socket.enqueue(control, response_id=first.response_id, **fields)
+        await asyncio.wait_for(interrupted.wait(), 2)
+        socket.enqueue("user.message", item_id="in_second",
+                       content=[{"type": "input_text", "text": "second"}])
+        async with asyncio.timeout(2):
+            while not any(frame["type"] == "response.done" for frame in socket.frames):
+                socket.changed.clear()
+                await socket.changed.wait()
+        release.set()
+        await join(first)
+        assert not [frame for frame in socket.frames[cut:]
+                    if frame.get("response_id") == first.response_id]
+        assert not any(frame["type"] == "error" for frame in socket.frames)
+    finally:
+        release.set()
         socket.enqueue("session.end", reason="test_complete")
         await asyncio.wait_for(connection, 2)
         await runtime.close()

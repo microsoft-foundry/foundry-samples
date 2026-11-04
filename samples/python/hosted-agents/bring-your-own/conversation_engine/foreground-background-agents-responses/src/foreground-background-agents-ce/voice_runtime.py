@@ -20,16 +20,16 @@ from azure.ai.agentserver.invocations.voice import (
     new_response_id,
 )
 
+from delivery import ConversationTaskStore
 from protocol import ProtocolRuntime
 from state import MAX_MESSAGE_CHARACTERS, InputOrigin
-from task_store import TaskStore
 
 
 @dataclass
 class Conversation:
     """The request context formerly supplied by the Responses host, scoped to CE."""
 
-    task_store: TaskStore = field(default_factory=TaskStore)
+    task_store: ConversationTaskStore = field(default_factory=ConversationTaskStore)
     background_tasks: set[asyncio.Task[Any]] = field(default_factory=set)
     history: deque[dict[str, Any]] = field(default_factory=lambda: deque(maxlen=20))
     signals: dict[str, asyncio.Event] = field(default_factory=dict)
@@ -43,9 +43,10 @@ class ResponseContextAdapter:
     history: list[dict[str, Any]]
     conversation: Conversation
     output_item: dict[str, Any] = field(default_factory=lambda: {"content": []})
+    sent_text: str = ""
 
     @property
-    def task_store(self) -> TaskStore:
+    def task_store(self) -> ConversationTaskStore:
         return self.conversation.task_store
 
     @property
@@ -57,6 +58,17 @@ class ResponseContextAdapter:
 
     async def get_history(self) -> list[dict[str, Any]]:
         return self.history
+
+    def text_sent(self, text: str) -> None:
+        self.sent_text += text
+        heard = self.conversation.heard.get(self.response_id, self.sent_text)
+        self.output_item["content"] = [{"type": "output_text", "text": heard}] if heard else []
+
+    def completed(self) -> None:
+        self.task_store.commit_delivery(self.response_id, self.sent_text)
+
+    def stopped(self) -> None:
+        self.task_store.release_delivery(self.response_id)
 
 
 class VoiceRuntime(ProtocolRuntime):
@@ -116,6 +128,7 @@ class VoiceRuntime(ProtocolRuntime):
                 self._stream_handler(context, signal),
                 received_at,
                 response_id=response_id,
+                observer=context,
             )
         finally:
             operation = state.responses.get(response_id)
@@ -136,7 +149,6 @@ class VoiceRuntime(ProtocolRuntime):
         # generation: earlier output/heard-text changes must reach queued turns.
         context.history = deepcopy(context.history)
         source = self._handler(request, context, signal)
-        output = ""
         last_index = None
         try:
             async for event in source:
@@ -144,24 +156,12 @@ class VoiceRuntime(ProtocolRuntime):
                     continue
                 index = event.get("output_index", 0)
                 if last_index is not None and index != last_index:
-                    output += "\n\n"
-                    self._record_output(context, output)
                     yield "\n\n"
                 last_index = index
                 delta = event["delta"]
-                output += delta
-                self._record_output(context, output)
                 yield delta
         finally:
-            self._record_output(context, output)
             await source.aclose()
-
-    @staticmethod
-    def _record_output(context: ResponseContextAdapter, output: str) -> None:
-        heard = context.conversation.heard.get(context.response_id, output)
-        context.output_item["content"] = (
-            [{"type": "output_text", "text": heard}] if heard else []
-        )
 
     def _interrupt(self, session: Session, response_id: str, heard_text: str | None = None) -> None:
         conversation = self._conversations.get(session)
@@ -172,6 +172,7 @@ class VoiceRuntime(ProtocolRuntime):
             return
         if signal := conversation.signals.get(response_id):
             signal.set()
+        conversation.task_store.release_delivery(response_id)
         if heard_text is not None:
             conversation.heard[response_id] = heard_text[:MAX_MESSAGE_CHARACTERS]
             while len(conversation.heard) > 64:

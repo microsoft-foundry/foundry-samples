@@ -62,6 +62,10 @@ tracked and consumes task capacity until it finishes; self-cancel waits for its
 winning terminal acknowledgment before replacement output.
 A producer's own cancellation is a response-scoped failure unless a protocol or
 session terminal has already won; its failure frame precedes the next response.
+Once a protocol/session terminal wins, new output, completion and failure sends are
+suppressed, even if the producer ignores cancellation. Cleanup failures remain local
+diagnostics. Already-in-flight transport frames can still race with that terminal;
+the Bridge's terminal arbitration handles those late frames.
 
 Transport exit signals cancellation synchronously. The scoped handler implements
 `IAsyncDisposable`, allowing SDK/DI scope disposal to await its termination tasks

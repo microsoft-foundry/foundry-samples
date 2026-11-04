@@ -458,9 +458,24 @@ class ResponseCoordinator:
                 operation.generation_owned = True
             if operation.cancellation_requested:
                 raise asyncio.CancelledError()
-            await operation.session.send(message)
+            await ResponseCoordinator._send_active(operation, message)
         finally:
             self._release_resolution(operation)
+
+    @staticmethod
+    def _ensure_active(operation: ResponseOperation) -> None:
+        # task.cancel() is advisory: a producer may catch it or fail during cleanup.
+        if operation.cancellation_requested or not operation.state.active or operation.outcome in {
+            OperationOutcome.CANCELLED, OperationOutcome.TIMEOUT, OperationOutcome.END_CALL,
+            OperationOutcome.TRANSPORT_ERROR,
+        }:
+            raise asyncio.CancelledError()
+
+    @staticmethod
+    async def _send_active(operation: ResponseOperation, message: Any) -> None:
+        ResponseCoordinator._ensure_active(operation)
+        await operation.session.send(message)
+        ResponseCoordinator._ensure_active(operation)
 
     async def _run_response(
         self,
@@ -486,11 +501,13 @@ class ResponseCoordinator:
                 await self._send_output(operation, text, streaming, voice)
             operation.select_outcome(OperationOutcome.RESPONSE)
         except (asyncio.CancelledError, Exception) as exception:
-            if isinstance(exception, asyncio.CancelledError) and (
-                operation.cancellation_requested or not operation.state.active
-            ):
-                operation.select_outcome(OperationOutcome.CANCELLED)
-                raise
+            if operation.cancellation_requested or not operation.state.active:
+                if isinstance(exception, asyncio.CancelledError):
+                    operation.select_outcome(OperationOutcome.CANCELLED)
+                    raise
+                logger.warning("Response cleanup failed after termination; error_type=%s",
+                               type(exception).__name__)
+                return
             # Producer cancellation is a failure unless a protocol/session terminal won.
             # Send that terminal before the task wrapper releases the generation gate.
             operation.select_outcome(OperationOutcome.ERROR)
@@ -513,9 +530,11 @@ class ResponseCoordinator:
         assert iterator is not None
         try:
             async for chunk in iterator:
+                self._ensure_active(operation)
                 completed_text += chunk
                 if streaming:
-                    await operation.session.send(
+                    await ResponseCoordinator._send_active(
+                        operation,
                         ResponseOutputTextDelta(
                             response_id=operation.response_id,
                             item_id=item_id,
@@ -528,7 +547,8 @@ class ResponseCoordinator:
         finally:
             # Release producer resources on cancellation or a failed send, not only on exhaustion.
             await self._close_output(operation)
-        await operation.session.send(
+        await ResponseCoordinator._send_active(
+            operation,
             ResponseOutputTextDone(
                 response_id=operation.response_id,
                 item_id=item_id,
@@ -538,7 +558,9 @@ class ResponseCoordinator:
         )
         operation.output_item_count = 1
         operation.release_capacity()
-        await operation.session.send(ResponseDone(response_id=operation.response_id))
+        await ResponseCoordinator._send_active(
+            operation, ResponseDone(response_id=operation.response_id)
+        )
         if operation.telemetry is not None:
             operation.telemetry.record_response_done_sent()
 
@@ -581,14 +603,16 @@ class ResponseCoordinator:
                     ),
                 )
                 operation.response_started = True
-                await operation.session.send(
+                await ResponseCoordinator._send_active(
+                    operation,
                     ResponseOutputTextDelta(
                         response_id=operation.response_id,
                         item_id=item_id,
                         delta=text,
                     )
                 )
-                await operation.session.send(
+                await ResponseCoordinator._send_active(
+                    operation,
                     ResponseCancel(
                         response_id=operation.response_id,
                         reason="sample_self_correction",
@@ -654,7 +678,8 @@ class ResponseCoordinator:
     @staticmethod
     async def _report_failure(operation: ResponseOperation) -> None:
         try:
-            await operation.session.send(
+            await ResponseCoordinator._send_active(
+                operation,
                 AgentError(
                     code="generation_failed",
                     message="The response could not be generated.",

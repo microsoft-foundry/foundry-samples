@@ -7,8 +7,12 @@ This Python-only sample migrates the Responses foreground/background sample to
 
 - Preserve `router_agent.py`, `worker_agent.py`, and `task_store.py` verbatim from
   `bring-your-own/voicelive/foreground-background-agents-responses-voicelive`.
-- `agent_logic.py` preserves that sample's model access and handler; only transport
-  registration and the framework-provided context are adapted.
+- `agent_logic.py` preserves that sample's model access and routing. CE-specific
+  delivery reservations and cancellation acknowledgments use actual transport/tool outcomes.
+- `delivery.py` extends the original task store without editing it: reserve results
+  per response, commit only fully sent results after successful `response.done`,
+  and release reservations on failure/interruption. Do not equate generation or
+  transport send success with confirmed audio playback or exactly-once delivery.
 - `voice_runtime.py` supplies CE context, response streaming, history and cleanup.
 - `protocol.py`, `state.py`, `response_coordinator.py`, and `response_telemetry.py`
   retain the existing CE sample's protocol and lifecycle handling.

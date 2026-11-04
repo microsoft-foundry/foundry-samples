@@ -335,7 +335,7 @@ def test_explicit_cancel_stops_worker(logic, monkeypatch):
             frame("user.barge_in", response_id=ack[0]["response_id"], heard_text="Looking")
         )
         send_user(ws, "cancel", "in_cancel")
-        assert "Cancelled." in output(receive_until(ws, "response.done"))
+        assert "Cancellation requested." in output(receive_until(ws, "response.done"))
         assert worker.cancelled.wait(2)
 
 

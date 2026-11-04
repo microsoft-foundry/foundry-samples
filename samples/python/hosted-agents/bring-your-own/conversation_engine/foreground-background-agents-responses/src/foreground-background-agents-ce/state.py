@@ -10,7 +10,7 @@ from collections.abc import AsyncIterator
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import Any, Protocol
 
 from azure.ai.agentserver.invocations.voice import Session
 
@@ -80,6 +80,16 @@ class ProactiveRequest:
     text: str
 
 
+class ResponseObserver(Protocol):
+    """Synchronous application bookkeeping at successful transport boundaries."""
+
+    def text_sent(self, text: str) -> None: ...
+
+    def completed(self) -> None: ...
+
+    def stopped(self) -> None: ...
+
+
 @dataclass(slots=True)
 class ResponseOperation:
     session: Session
@@ -102,6 +112,7 @@ class ResponseOperation:
     running: bool = False
     previous_resolution: asyncio.Future[None] | None = None
     resolution_complete: asyncio.Future[None] | None = None
+    observer: ResponseObserver | None = None
 
     def request_cancellation(self, outcome: OperationOutcome) -> None:
         """Cancel once; later control events must not interrupt async cleanup."""

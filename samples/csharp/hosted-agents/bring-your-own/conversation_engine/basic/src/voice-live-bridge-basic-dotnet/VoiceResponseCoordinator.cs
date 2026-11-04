@@ -293,10 +293,16 @@ internal sealed class VoiceResponseCoordinator
         }
         catch (Exception exception)
         {
+            if (operation.IsCancellationRequested || cancellationToken.IsCancellationRequested || !state.IsActive)
+            {
+                _logger.LogDebug("Response cleanup failed after termination; error_type={ErrorType}",
+                    exception.GetType().FullName);
+                return;
+            }
             operation.RecordFailure(exception);
             _logger.LogError("Voice response {ResponseId} failed; error_type={ErrorType}",
                 operation.ResponseId, exception.GetType().FullName);
-            await TrySendErrorAsync(session, state, operation.ResponseId, cancellationToken);
+            await TrySendErrorAsync(session, state, operation, cancellationToken);
         }
         finally
         {
@@ -316,7 +322,7 @@ internal sealed class VoiceResponseCoordinator
         var text = new StringBuilder();
         await foreach (var chunk in plan.Chunks.WithCancellation(cancellationToken))
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            EnsureActive(state, operation, cancellationToken);
             text.Append(chunk);
             if (plan.Streaming)
             {
@@ -327,11 +333,13 @@ internal sealed class VoiceResponseCoordinator
                         chunk,
                         plan.Voice),
                     cancellationToken);
+                EnsureActive(state, operation, cancellationToken);
                 // Let incoming interruption and timeout events run between words.
                 await Task.Yield();
             }
         }
 
+        EnsureActive(state, operation, cancellationToken);
         await session.SendAsync(
             new VoiceResponseOutputTextDoneMessage(
                 operation.ResponseId,
@@ -339,10 +347,13 @@ internal sealed class VoiceResponseCoordinator
                 text.ToString(),
                 plan.Voice),
             cancellationToken);
+        EnsureActive(state, operation, cancellationToken);
         state.MarkTerminal(operation.ResponseId);
+        EnsureActive(state, operation, cancellationToken);
         await session.SendAsync(
             new VoiceResponseDoneMessage(operation.ResponseId),
             cancellationToken);
+        EnsureActive(state, operation, cancellationToken);
         operation.RecordCompleted();
     }
 
@@ -391,23 +402,30 @@ internal sealed class VoiceResponseCoordinator
         }
     }
 
+    private static void EnsureActive(
+        VoiceConnectionState state, ResponseOperation operation, CancellationToken token)
+    {
+        if (operation.IsCancellationRequested || !state.IsActive)
+        {
+            throw new OperationCanceledException(token);
+        }
+        token.ThrowIfCancellationRequested();
+    }
+
     private async Task TrySendErrorAsync(
         VoiceSession session,
         VoiceConnectionState state,
-        string responseId,
+        ResponseOperation operation,
         CancellationToken cancellationToken)
     {
         try
         {
-            if (!state.IsActive)
-            {
-                return;
-            }
+            EnsureActive(state, operation, cancellationToken);
             await session.SendAsync(
                 new VoiceErrorMessage(
                     "generation_failed",
                     "The response could not be generated.",
-                    responseId),
+                    operation.ResponseId),
                 cancellationToken);
         }
         catch (Exception exception)

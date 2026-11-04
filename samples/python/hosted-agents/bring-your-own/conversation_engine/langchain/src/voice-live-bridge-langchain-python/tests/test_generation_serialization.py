@@ -219,6 +219,67 @@ async def test_winning_terminal_releases_generation_before_slow_cleanup(control)
         await coordinator.terminate_state(state, OperationOutcome.END_CALL)
 
 
+@pytest.mark.parametrize("behavior", ["cleanup_error", "continue", "return"])
+@pytest.mark.parametrize("control", ["barge_in", "response_cancelled", "timeout", "session_end"])
+async def test_winning_cancellation_suppresses_every_late_frame(behavior, control):
+    coordinator, state, session = setup()
+    started, interrupted, release = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    closed = asyncio.Event()
+
+    async def first():
+        try:
+            yield "first"
+            started.set()
+            await asyncio.Future()
+        except asyncio.CancelledError:
+            interrupted.set()
+            await release.wait()
+            if behavior == "cleanup_error":
+                raise RuntimeError("synthetic cleanup failure") from None
+            if behavior == "continue":
+                yield "STALE"
+            return
+        finally:
+            closed.set()
+
+    assert coordinator.start_response(session, state, "in_first", first(), response_id="r_first")
+    first_op = state.responses["r_first"]
+    await asyncio.wait_for(started.wait(), 2)
+    cut = len(session.sent)
+    session.open_response = None  # The Bridge has already committed the winning terminal.
+    termination = None
+    if control == "session_end":
+        termination = asyncio.create_task(
+            coordinator.terminate_state(state, OperationOutcome.END_CALL)
+        )
+    elif control == "timeout":
+        coordinator.response_timeout(state, "r_first", None)
+    elif control == "barge_in":
+        coordinator.barge_in(state, "r_first", "first")
+    else:
+        coordinator.response_cancelled(state, "r_first", "first")
+    try:
+        await asyncio.wait_for(interrupted.wait(), 2)
+        if termination is None:
+            assert coordinator.start_response(
+                session, state, "in_second", one_chunk(), response_id="r_second"
+            )
+            await join(state.responses["r_second"])
+        release.set()
+        await join(first_op)
+        assert closed.is_set()
+        assert not [
+            event for event in session.sent[cut:]
+            if getattr(event, "response_id", None) == "r_first"
+        ]
+        assert not session.violations
+    finally:
+        release.set()
+        await coordinator.terminate_state(state, OperationOutcome.END_CALL)
+        if termination is not None:
+            await asyncio.wait_for(termination, 2)
+
+
 async def test_self_cancel_holds_generation_until_winning_terminal_acknowledgment():
     coordinator, state, session = setup()
     assert coordinator.start_self_cancel(session, state, "in_self", "first", 0.0)

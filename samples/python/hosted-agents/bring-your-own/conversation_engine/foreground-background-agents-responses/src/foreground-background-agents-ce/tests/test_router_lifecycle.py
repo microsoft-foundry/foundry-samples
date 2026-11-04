@@ -245,7 +245,14 @@ async def test_overlapping_waiters_finish_and_only_one_claims_completed_result(l
 
     async def consume(response_id):
         context = ResponseContextAdapter(response_id, "hello", [], conversation)
-        return [event async for event in logic.handler({"stream": True}, context, asyncio.Event())]
+        events = [event async for event in logic.handler(
+            {"stream": True}, context, asyncio.Event()
+        )]
+        # This unit consumer explicitly acknowledges delivery; real SDK tests exercise send failure.
+        context.text_sent("".join(event.get("delta", "") for event in events))
+        context.completed()
+        context.stopped()
+        return events
 
     responses = [asyncio.create_task(consume(f"r_{i}")) for i in range(2)]
     try:

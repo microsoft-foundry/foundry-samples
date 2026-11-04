@@ -209,7 +209,7 @@ async def handler(
 
     try:
         # ── Collect previously completed task results ──
-        completed = _store.collect_completed()
+        completed = _store.reserve_completed(context.response_id)
         completed_context = ""
         if completed:
             parts = [f"Completed task \"{t.query}\": {t.result}" for t in completed]
@@ -294,7 +294,9 @@ async def handler(
 
         elif tool_name == "cancel_task":
             result_text, _ = execute_router_tool("cancel_task", arguments, _store)
-            ack = arguments.get("ack_message", "Cancelled.")
+            # The tool accepts a cooperative request; it does not prove the Worker has stopped.
+            ack = ("Cancellation requested." if json.loads(result_text).get("cancelled")
+                   else "There is no running task to cancel.")
             for evt in _emit_text_item(stream, ack):
                 yield evt
 
@@ -375,9 +377,9 @@ async def handler(
             # Deliver results for tasks that finished while we were waiting
             if not _cancellation_signal.is_set():
                 for task in active:
-                    if task.status == TaskStatus.COMPLETED and task.result:
-                        # Claim synchronously, before yielding: only one waiter delivers the result.
-                        task.status = TaskStatus.DELIVERED
+                    if (task.status == TaskStatus.COMPLETED and task.result
+                            and _store.reserve_result(context.response_id, task)):
+                        # The coordinator commits this claim only after successful response.done.
                         for evt in _emit_text_item(stream, task.result):
                             yield evt
                     elif task.status == TaskStatus.FAILED:
