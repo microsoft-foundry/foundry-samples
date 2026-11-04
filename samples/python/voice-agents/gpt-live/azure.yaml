@@ -1,0 +1,37 @@
+requiredVersions:
+  azd: ">=1.37.0"
+  extensions:
+    azure.ai.agents: ">=1.0.0-beta.24"
+name: gpt-live-response-delegation
+services:
+  ai-project:
+    host: azure.ai.project
+  gpt-live-response-delegation:
+    host: azure.ai.agent
+    kind: voice
+    name: gpt-live-response-delegation
+    uses:
+      - ai-project
+    subProtocol: live
+    modelType: self_deployed
+    model:
+      id: gpt-live-1
+    instructions: >-
+      You are a concise spoken English teacher. Always delegate grammar
+      correction requests before answering.
+    store: false
+    audio:
+      format:
+        type: audio/pcm
+        rate: 24000
+      output:
+        voice: marin
+    delegation:
+      type: responses
+      responses:
+        model: gpt-5.6-terra
+        instructions: >-
+          Correct the learner's sentence, explain the grammar briefly, and give
+          one example.
+infra:
+  provider: microsoft.foundry
