@@ -109,7 +109,7 @@ internal sealed class VoiceResponseCoordinator
                 operation.SelectOutcome(ResponseOutcome.None);
             }
             catch (OperationCanceledException) when (
-                operation.Cancellation.IsCancellationRequested || cancellation.IsCancellationRequested || !state.IsActive)
+                operation.IsCancellationRequested || cancellation.IsCancellationRequested || !state.IsActive)
             {
             }
             catch (Exception exception)
@@ -198,6 +198,8 @@ internal sealed class VoiceResponseCoordinator
     {
         if (state.TryGetOperation(responseId, out var operation) && operation.TryRequestCancellation(outcome))
         {
+            // The inbound terminal event has already closed the Bridge generation.
+            operation.ReleaseGeneration();
             Observe(CancelTrackedOperationAsync(state, operation));
         }
     }
@@ -271,12 +273,13 @@ internal sealed class VoiceResponseCoordinator
         {
             // Enqueue before yielding: background worker scheduling must not reorder inputs.
             var created = operation.InputItemId is not null
-                ? state.EnqueueInputResolution(() => session.SendAsync(
-                    new VoiceResponseCreatedMessage(
-                        operation.ResponseId,
-                        new[] { operation.InputItemId }),
-                    cancellationToken), operation.Cancellation.Token)
-                : Task.CompletedTask;
+                ? state.EnqueueInputResolution(async () =>
+                {
+                    await AcquireGenerationAsync(state, operation, cancellationToken);
+                    await session.SendAsync(new VoiceResponseCreatedMessage(
+                        operation.ResponseId, new[] { operation.InputItemId }), cancellationToken);
+                }, operation.Cancellation.Token)
+                : AcquireGenerationAsync(state, operation, cancellationToken);
             await Task.Yield();
             await created;
             cancellationToken.ThrowIfCancellationRequested();
@@ -284,7 +287,7 @@ internal sealed class VoiceResponseCoordinator
             await SendOutputAsync(session, state, operation, plan, cancellationToken);
         }
         catch (OperationCanceledException) when (
-            operation.Cancellation.IsCancellationRequested || cancellationToken.IsCancellationRequested || !state.IsActive)
+            operation.IsCancellationRequested || cancellationToken.IsCancellationRequested || !state.IsActive)
         {
         }
         catch (Exception exception)
@@ -296,6 +299,7 @@ internal sealed class VoiceResponseCoordinator
         }
         finally
         {
+            operation.ReleaseGeneration();
             RemoveOperation(state, operation.ResponseId);
         }
     }
@@ -354,11 +358,12 @@ internal sealed class VoiceResponseCoordinator
         try
         {
             var itemId = VoiceIds.CreateItemId();
-            var created = state.EnqueueInputResolution(() => session.SendAsync(
-                new VoiceResponseCreatedMessage(
-                    operation.ResponseId,
-                    new[] { operation.InputItemId! }),
-                cancellationToken), operation.Cancellation.Token);
+            var created = state.EnqueueInputResolution(async () =>
+            {
+                await AcquireGenerationAsync(state, operation, cancellationToken);
+                await session.SendAsync(new VoiceResponseCreatedMessage(
+                    operation.ResponseId, new[] { operation.InputItemId! }), cancellationToken);
+            }, operation.Cancellation.Token);
             await Task.Yield();
             await created;
             cancellationToken.ThrowIfCancellationRequested();
@@ -375,7 +380,7 @@ internal sealed class VoiceResponseCoordinator
                 cancellationToken);
         }
         catch (OperationCanceledException) when (
-            operation.Cancellation.IsCancellationRequested || cancellationToken.IsCancellationRequested || !state.IsActive)
+            operation.IsCancellationRequested || cancellationToken.IsCancellationRequested || !state.IsActive)
         {
         }
         catch (Exception exception)
@@ -447,6 +452,7 @@ internal sealed class VoiceResponseCoordinator
     {
         if (state.TryRemoveOperation(responseId, out var operation))
         {
+            operation.ReleaseGeneration();
             operation.Dispose();
         }
     }
@@ -470,7 +476,17 @@ internal sealed class VoiceResponseCoordinator
         }
         finally
         {
+            operation.ReleaseGeneration();
             operation.Dispose();
+        }
+    }
+
+    private static async Task AcquireGenerationAsync(
+        VoiceConnectionState state, ResponseOperation operation, CancellationToken token)
+    {
+        if (!await operation.TryAcquireGenerationAsync(state.GenerationGate, token))
+        {
+            throw new OperationCanceledException(token);
         }
     }
 

@@ -69,6 +69,13 @@ failures cannot become a successful `response.done`. Malformed/truncated SSE,
 HTTP errors and missing/duplicate completion fail rather than silently succeeding.
 Text items are completed before the next data item; response completion waits for handler finalization.
 
+Scheduled replies share a per-connection wire-generation gate: only one response
+may be open, while additional accepted inputs wait in the bounded queue without
+blocking control callbacks. A committed terminal send or winning inbound terminal
+event releases this gate independently of slow producer cleanup. Cleanup remains
+tracked and consumes task capacity until it finishes; self-cancel waits for its
+winning terminal acknowledgment before replacement output.
+
 ## Prerequisites
 
 1. Python 3.13 and uv. Runtime dependencies are fully pinned in `uv.lock`, including public

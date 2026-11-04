@@ -91,6 +91,7 @@ class ResponseOperation:
     task: asyncio.Task[None] | None = None
     output_iterator: AsyncIterator[Any] | None = None
     output_cleanup: asyncio.Task[None] | None = None
+    generation_owned: bool = False
     terminal_event: asyncio.Event | None = None
     output_item_count: int = 0
     capacity_released: bool = False
@@ -127,6 +128,12 @@ class ResponseOperation:
         """Allow a new response to start before this task's done callback runs."""
         self.capacity_released = True
 
+    def release_generation(self) -> None:
+        """Release only this operation's wire generation, not its cleanup capacity."""
+        if self.generation_owned:
+            self.generation_owned = False
+            self.state.generation_gate.release()
+
 
 @dataclass(slots=True)
 class SessionState:
@@ -137,6 +144,7 @@ class SessionState:
     seen_inputs: set[bytes] = field(default_factory=set)
     phase: SessionPhase = SessionPhase.AWAITING_START
     input_resolution_tail: asyncio.Future[None] | None = None
+    generation_gate: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     def track_response(self, response_id: str) -> None:
         """Retain bounded playback state after response.done for late interruption events."""

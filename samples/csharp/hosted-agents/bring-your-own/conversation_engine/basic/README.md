@@ -54,6 +54,13 @@ fully represented. `VOICE_SAMPLE_REJECT_START=true` also exercises startup rejec
 Bridge Protocol `1.0` is the application contract; the manifest's `voice_conversation_engine` `1.0.0` selects
 the independently versioned Hosted Agent ingress.
 
+Scheduled replies share a per-connection wire-generation gate: only one response
+may be open, while additional accepted inputs wait in the bounded queue without
+blocking control callbacks. A committed terminal send or winning inbound terminal
+event releases this gate independently of slow producer cleanup. Cleanup remains
+tracked and consumes task capacity until it finishes; self-cancel waits for its
+winning terminal acknowledgment before replacement output.
+
 ## Prerequisites
 
 1. [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).

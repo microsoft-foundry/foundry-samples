@@ -39,6 +39,13 @@ capacity, proactive admission, task cancellation, telemetry, and session cleanup
 `heard_text` updates are retained for known responses, including recent completed responses,
 without keeping an LLM prompt or model conversation history.
 
+Scheduled replies share a per-connection wire-generation gate: only one response
+may be open, while additional accepted inputs wait in the bounded queue without
+blocking control callbacks. A committed terminal send or winning inbound terminal
+event releases this gate independently of slow producer cleanup. Cleanup remains
+tracked and consumes task capacity until it finishes; self-cancel waits for its
+winning terminal acknowledgment before replacement output.
+
 ## Prerequisites
 
 1. Python 3.13 and uv.

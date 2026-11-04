@@ -55,6 +55,7 @@ internal sealed class VoiceConnectionState
     private Task _inputResolutionTail = Task.CompletedTask;
 
     internal CancellationTokenSource Lifetime { get; } = new();
+    internal SemaphoreSlim GenerationGate { get; } = new(1, 1);
 
     /// <summary>Reserve wire order in callback order, before scheduling response output.</summary>
     internal Task EnqueueInputResolution(Func<Task> send, CancellationToken cancellationToken = default)

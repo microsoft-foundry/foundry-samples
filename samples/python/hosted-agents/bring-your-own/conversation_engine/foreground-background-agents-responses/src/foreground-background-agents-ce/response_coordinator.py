@@ -198,6 +198,7 @@ class ResponseCoordinator:
         if operation is None:
             return
         operation.select_outcome(OperationOutcome.CANCELLED)
+        operation.release_generation()
         if operation.terminal_event is not None:
             operation.terminal_event.set()
         else:
@@ -225,6 +226,7 @@ class ResponseCoordinator:
         if operation is None:
             return
         operation.request_cancellation(outcome)
+        operation.release_generation()
 
     def schedule_none(
         self,
@@ -413,6 +415,8 @@ class ResponseCoordinator:
                     await coroutine
             finally:
                 coroutine.close()
+                operation.release_generation()
+                self._release_resolution(operation)
                 await self._drain_output(operation)
 
         wrapper = run()
@@ -450,6 +454,11 @@ class ResponseCoordinator:
         try:
             if operation.previous_resolution is not None:
                 await asyncio.shield(operation.previous_resolution)
+            if isinstance(message, ResponseCreated):
+                await operation.state.generation_gate.acquire()
+                operation.generation_owned = True
+            if operation.cancellation_requested:
+                raise asyncio.CancelledError()
             await operation.session.send(message)
         finally:
             self._release_resolution(operation)
@@ -462,6 +471,9 @@ class ResponseCoordinator:
         voice: dict[str, Any] | None,
     ) -> None:
         try:
+            if operation.response_started:
+                await operation.state.generation_gate.acquire()
+                operation.generation_owned = True
             if not operation.response_started:
                 await self._send_resolution(
                     operation,

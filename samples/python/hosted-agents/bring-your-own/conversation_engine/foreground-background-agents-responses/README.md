@@ -61,6 +61,13 @@ The CE layer retains input/response-ID correlation, duplicate-input tracking,
 bounded response capacity, cancellation/timeouts, no-input handling and cleanup
 from the basic CE sample. It does not await the handler in the receive callback.
 
+Scheduled replies share a per-connection wire-generation gate: only one response
+may be open, while additional accepted inputs wait in the bounded queue without
+blocking control callbacks. A committed terminal send or winning inbound terminal
+event releases this gate independently of slow producer cleanup. Cleanup remains
+tracked and consumes task capacity until it finishes; self-cancel waits for its
+winning terminal acknowledgment before replacement output.
+
 ## Prerequisites
 
 1. Python 3.13 and uv 0.11.7 or later.

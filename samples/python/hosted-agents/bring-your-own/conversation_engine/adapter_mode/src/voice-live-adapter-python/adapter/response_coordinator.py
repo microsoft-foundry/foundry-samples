@@ -203,6 +203,7 @@ class ResponseCoordinator:
         if operation is None:
             return
         operation.select_outcome(OperationOutcome.CANCELLED)
+        operation.release_generation()
         if operation.terminal_event is not None:
             operation.terminal_event.set()
         elif operation.task is not None:
@@ -230,6 +231,7 @@ class ResponseCoordinator:
         if operation is None:
             return
         operation.request_cancellation(outcome)
+        operation.release_generation()
 
     def schedule_none(
         self,
@@ -415,6 +417,8 @@ class ResponseCoordinator:
                     await coroutine
             finally:
                 coroutine.close()
+                operation.release_generation()
+                self._release_resolution(operation)
                 try:
                     await self._drain_output(operation)
                 finally:
@@ -447,18 +451,33 @@ class ResponseCoordinator:
         )
 
     @staticmethod
+    def _release_resolution(operation: ResponseOperation) -> None:
+        completion = operation.resolution_complete
+        if completion is None or completion.done():
+            return
+        previous = operation.previous_resolution
+        if previous is not None and not previous.done():
+            previous.add_done_callback(lambda _: ResponseCoordinator._release_resolution(operation))
+        else:
+            completion.set_result(None)
+
+    @staticmethod
     async def _finish_resolution(operation: ResponseOperation) -> None:
         completion = operation.resolution_complete
         if completion is None or completion.done():
             return
         if operation.previous_resolution is not None:
             await asyncio.shield(operation.previous_resolution)
-        completion.set_result(None)
+        if not completion.done():
+            completion.set_result(None)
 
     async def _send_resolution(self, operation: ResponseOperation, message: Any) -> None:
         try:
             if operation.previous_resolution is not None:
                 await asyncio.shield(operation.previous_resolution)
+            if isinstance(message, ResponseCreated):
+                await operation.state.generation_gate.acquire()
+                operation.generation_owned = True
             if operation.cancellation_requested:
                 raise asyncio.CancelledError()
             await operation.session.send(message)
@@ -473,6 +492,9 @@ class ResponseCoordinator:
         voice: dict[str, Any] | None,
     ) -> None:
         try:
+            if operation.response_started:
+                await operation.state.generation_gate.acquire()
+                operation.generation_owned = True
             if not operation.response_started:
                 await self._send_resolution(
                     operation,
