@@ -7,11 +7,11 @@ A [LangGraph](https://langchain-ai.github.io/langgraph/) **human-in-the-loop** a
 ### Graph shape
 
 ```
-START → draft → await_approval ──approve──► END (emit final draft)
-                       │
-                       └──revise(feedback)──► draft (loop)
-                       │
-                       └──reject──► host returns response.failed (interrupt_rejected)
+START → start_task → draft → await_approval ──approve──► END (emit final draft)
+                                 │
+                                 └──revise(feedback)──► draft (loop)
+                                 │
+                                 └──reject──► host returns response.failed (interrupt_rejected)
 ```
 
 The graph state declares three channels:
@@ -19,6 +19,12 @@ The graph state declares three channels:
 - **`messages`** — the channel the Responses host emits to the client. Only the **final approved draft** is appended to it.
 - **`draft`** — the current proposal text under review.
 - **`revision_history`** — list of `{draft, feedback}` pairs from prior revision rounds; each round seeds the next `draft` call with the rejected draft and the reviewer's feedback.
+
+After completing a task, a new user message in the same conversation starts a new
+task. `start_task` clears the previous draft and revision history, while `draft`
+selects the latest user message rather than the first conversation message.
+Revision feedback resumes the existing task directly and retains its revision
+history; it does not pass through `start_task`.
 
 Routing out of `await_approval` is done by returning a [`Command(goto=...)`](https://langchain-ai.github.io/langgraph/how-tos/command/) instead of static edges, so the same node can finalize, loop, or stay paused depending on the resume value.
 
