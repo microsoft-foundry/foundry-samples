@@ -18,6 +18,10 @@ Azure Storage → Event Grid → Service Bus → Azure Functions → Azure Speec
 
 The deployment includes storage, a Foundry resource, managed identity authentication and monitoring. Batch jobs are submitted and polled automatically.
 
+New transcription requests use the generally available [Speech to text REST API version `2025-10-15`](https://learn.microsoft.com/azure/ai-services/speech-service/rest-speech-to-text) for all three engines. Existing batch jobs continue to be polled using their saved service URLs.
+
+HTTP requests carry `User-Agent: IngestionClient/2.0 (Ingestion Client v2)` so service-side logs can attribute requests to this sample. This header contains no user, customer or deployment identifiers.
+
 ## Prerequisites
 
 - An Azure subscription with permission to deploy resources and assign roles.
@@ -74,6 +78,17 @@ To change an engine's settings, edit its JSON file in the input storage account'
 - `llm.json`
 
 Changes take effect within about a minute without redeployment. The included [JSON schemas](config/schemas) describe the available settings.
+
+## Local checks
+
+With the dependencies in `src/requirements.txt` installed, run the regression checks from this sample's directory:
+
+```powershell
+$env:PYTHONPATH = ".\src"
+python -m unittest discover -s .\tests -v
+```
+
+These checks mock HTTP and storage calls; they do not require Azure credentials or deployed resources.
 
 ## Important notes
 

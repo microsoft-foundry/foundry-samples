@@ -16,8 +16,8 @@ import requests
 from shared import storage
 
 _SCOPE = "https://cognitiveservices.azure.com/.default"
-_FAST_API_VERSION = "2025-10-15"
-_BATCH_API_PATH = "speechtotext/v3.2/transcriptions"
+_API_VERSION = "2025-10-15"
+USER_AGENT = "IngestionClient/2.0 (Ingestion Client v2)"
 _RETRY_STATUS = {429, 500, 502, 503, 504}
 _SYNC_TIMEOUT_SECONDS = 1200  # allow long fast/llm sync files (up to ~20 min audio)
 
@@ -61,7 +61,11 @@ def _post_json_with_retry(url: str, body: Dict[str, Any], timeout: int = 60, max
     for attempt in range(max_attempts):
         resp = requests.post(
             url,
-            headers={"Authorization": f"Bearer {_token()}", "Content-Type": "application/json"},
+            headers={
+                "Authorization": f"Bearer {_token()}",
+                "Content-Type": "application/json",
+                "User-Agent": USER_AGENT,
+            },
             json=body,
             timeout=timeout,
         )
@@ -121,7 +125,7 @@ def transcribe_sync(audio, filename: str, cfg: Dict[str, Any], llm: bool) -> Dic
     `audio` may be raw bytes or a seekable file-like object (used for long audio so
     it doesn't all sit in memory).
     """
-    url = f"{_endpoint()}/speechtotext/transcriptions:transcribe?api-version={_FAST_API_VERSION}"
+    url = f"{_endpoint()}/speechtotext/transcriptions:transcribe?api-version={_API_VERSION}"
     definition = _build_definition(cfg, llm)
     backoff = 2
     last_status = None
@@ -132,7 +136,12 @@ def transcribe_sync(audio, filename: str, cfg: Dict[str, Any], llm: bool) -> Dic
             "audio": (os.path.basename(filename), audio, "application/octet-stream"),
             "definition": (None, json.dumps(definition), "application/json"),
         }
-        resp = requests.post(url, headers={"Authorization": f"Bearer {_token()}"}, files=files, timeout=_SYNC_TIMEOUT_SECONDS)
+        resp = requests.post(
+            url,
+            headers={"Authorization": f"Bearer {_token()}", "User-Agent": USER_AGENT},
+            files=files,
+            timeout=_SYNC_TIMEOUT_SECONDS,
+        )
         if resp.status_code == 200:
             return resp.json()
         last_status = resp.status_code
@@ -160,10 +169,8 @@ def _batch_properties(cfg: Dict[str, Any], ttl_hours: int) -> Dict[str, Any]:
     }
 
     if diar.get("enabled"):
-        properties["diarizationEnabled"] = True
         max_speakers = int(diar.get("maxSpeakers", 2) or 2)
-        if max_speakers > 2:  # richer diarization is required for 3+ speakers
-            properties["diarization"] = {"speakers": {"minCount": 1, "maxCount": max_speakers}}
+        properties["diarization"] = {"enabled": True, "maxSpeakers": max_speakers}
 
     channels = cfg.get("channels") or []
     if channels:
@@ -221,7 +228,7 @@ def submit_batch_group(container: str, blobs: List[str], cfg: Dict[str, Any]) ->
     if model_uri:
         body["model"] = {"self": model_uri}
 
-    url = f"{_endpoint()}/{_BATCH_API_PATH}"
+    url = f"{_endpoint()}/speechtotext/transcriptions:submit?api-version={_API_VERSION}"
     job = _post_json_with_retry(url, body, timeout=120)
     job_url = job.get("self")
     job_id = (

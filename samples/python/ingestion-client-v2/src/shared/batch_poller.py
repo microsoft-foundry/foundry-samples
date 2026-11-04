@@ -47,8 +47,15 @@ def _collect_succeeded(job_url: str, job_json: dict, sources: list, token: str, 
     deleted). Returns False on a transient failure to list files (retry next cycle).
     """
     output_container = os.environ["OUTPUT_CONTAINER"]
-    files_url = job_json.get("links", {}).get("files") or f"{job_url}/files"
-    fr = requests.get(files_url, headers={"Authorization": f"Bearer {token}"}, timeout=60)
+    files_url = job_json.get("links", {}).get("files")
+    if not files_url:
+        job_parts = urlparse(job_url)
+        files_url = job_parts._replace(path=f"{job_parts.path.rstrip('/')}/files").geturl()
+    fr = requests.get(
+        files_url,
+        headers={"Authorization": f"Bearer {token}", "User-Agent": speech.USER_AGENT},
+        timeout=60,
+    )
     if fr.status_code != 200:
         logging.warning("Could not list files for job (HTTP %s); retrying next cycle", fr.status_code)
         return False
@@ -60,7 +67,7 @@ def _collect_succeeded(job_url: str, job_json: dict, sources: list, token: str, 
         content_url = fv.get("links", {}).get("contentUrl")
         if not content_url:
             continue
-        tr = requests.get(content_url, timeout=600)
+        tr = requests.get(content_url, headers={"User-Agent": speech.USER_AGENT}, timeout=600)
         if tr.status_code != 200:
             continue
         try:
@@ -107,7 +114,11 @@ def poll_batch_jobs() -> None:
         if not job_url:
             continue
 
-        resp = requests.get(job_url, headers={"Authorization": f"Bearer {token}"}, timeout=60)
+        resp = requests.get(
+            job_url,
+            headers={"Authorization": f"Bearer {token}", "User-Agent": speech.USER_AGENT},
+            timeout=60,
+        )
         if resp.status_code != 200:
             logging.warning("Polling %s returned HTTP %d", record_name, resp.status_code)
             continue

@@ -6,7 +6,7 @@
   // (base models only). Examples: ["en-US"]  or  ["en-US", "de-DE", "es-ES"].
   "locales": ["en-US"],
 
-  // Separate speakers on mono audio. maxSpeakers > 2 uses the richer diarization model.
+  // Separate speakers on mono audio, up to maxSpeakers.
   "diarization": {
     "enabled": false,
     "maxSpeakers": 4    // 2-35

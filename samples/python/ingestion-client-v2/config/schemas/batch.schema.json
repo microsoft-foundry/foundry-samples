@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Ingestion Client v2 - Batch transcription config",
-  "description": "Config for files uploaded to audio-input/batch/. Asynchronous batch transcription (v3.2).",
+  "description": "Config for files uploaded to audio-input/batch/. Asynchronous batch transcription (API version 2025-10-15).",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -14,7 +14,7 @@
     "diarization": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Separate speakers on mono audio. maxSpeakers > 2 uses the richer diarization model.",
+      "description": "Separate speakers on mono audio, up to maxSpeakers.",
       "properties": {
         "enabled": { "type": "boolean" },
         "maxSpeakers": { "type": "integer", "minimum": 2, "maximum": 35 }
