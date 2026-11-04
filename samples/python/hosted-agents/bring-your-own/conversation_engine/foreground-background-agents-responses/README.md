@@ -24,7 +24,8 @@ Responses endpoint. Bridge message version remains `1.0`.
 The model deployment declared in `azure.yaml`, model environment variables, model
 access code, prompts, meta-tools, mock tools and worker loop remain the original's.
 The new CE layer replaces the old HTTP/SSE host and its request context, and adds
-transport-aware delivery reservations and tool-result-based cancellation acknowledgments.
+transport-aware delivery reservations, a CE-only task-ID annotation on the copied
+Router tool schema, and tool-result-based cancellation acknowledgments.
 
 ## How it works
 
@@ -59,14 +60,21 @@ Worker service, second Hosted protocol or proactive result-notification redesign
   do not become assistant history. Successful sends still do not prove audio was heard.
 - A queued turn retains its prior-input boundary, but freezes history only when
   its handler starts, including earlier replies' latest output/heard-text updates.
-- Session end, disconnect and server shutdown cancel the connection's tasks and
-  discard its memory. There is no durable task queue or reconnect recovery.
+- Session end, disconnect and server shutdown signal cooperative Worker cancellation.
+  In-flight synchronous model/tool calls cannot be forcibly stopped: their Workers
+  remain tracked until they settle, and session-end/server cleanup waits for them.
+  There is no durable task queue or reconnect recovery.
 - `delivery.py` reserves completed results per response without changing the original
-  task store. A reservation becomes `DELIVERED` only after the complete result text
-  was sent and `response.done` succeeds. Failure/interruption releases the reservation
-  for retry; a Router acknowledgment or paraphrase alone does not consume the result.
-  This conservative policy may repeat a partial or paraphrased result; it does not
-  promise exactly-once playback or delivery across interruptions/disconnection.
+  task store. The CE-local `respond_directly.delivered_task_ids` argument identifies
+  the results the Router actually conveys, including summaries and translations;
+  chat/acknowledgments use an empty list. Direct result reads and late Worker results
+  also reserve and record the specific task before successful response completion.
+  A reservation becomes `DELIVERED` only after the associated message is sent and
+  `response.done` succeeds. Text substring matching is not a delivery signal.
+  Failure/interruption releases uncommitted reservations for retry. This is a
+  transport-level business acknowledgment, not proof of audio playback; it relies
+  on the Router identifying results accurately and does not promise exactly-once
+  playback or delivery across interruptions/disconnection.
 
 The CE layer retains input/response-ID correlation, duplicate-input tracking,
 bounded response capacity, cancellation/timeouts, no-input handling and cleanup

@@ -193,7 +193,7 @@ chunks exist, and cancellation/failure closes the source. No tests make cloud ca
 
 ```bash
 uv run --frozen python -m pytest -q
-ruff check .
+uv run --frozen python -m ruff check .
 ```
 
 The sample's build, validation, and test commands are also listed in `sample.yaml`.

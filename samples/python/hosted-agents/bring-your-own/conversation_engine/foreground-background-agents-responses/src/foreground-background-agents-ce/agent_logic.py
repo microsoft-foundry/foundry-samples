@@ -22,6 +22,7 @@ import logging
 import os
 from collections.abc import AsyncIterable
 from contextlib import aclosing, asynccontextmanager
+from copy import deepcopy
 from typing import Any
 
 from azure.ai.projects import AIProjectClient
@@ -33,7 +34,7 @@ from text_stream import TextEventStream
 from task_store import TaskStatus
 from router_agent import (
     ROUTER_SYSTEM_PROMPT,
-    ROUTER_TOOLS,
+    ROUTER_TOOLS as ORIGINAL_ROUTER_TOOLS,
     ROUTER_TOOL_CHOICE,
     build_task_context,
     build_delivered_context,
@@ -42,6 +43,27 @@ from router_agent import (
 from worker_agent import run_worker
 
 logger = logging.getLogger(__name__)
+
+# Keep the original Router unchanged; this CE-only annotation is not a wire field.
+ROUTER_TOOLS = deepcopy(ORIGINAL_ROUTER_TOOLS)
+_direct_reply = next(tool for tool in ROUTER_TOOLS if tool["name"] == "respond_directly")
+_direct_reply["parameters"]["properties"]["delivered_task_ids"] = {
+    "type": "array",
+    "items": {"type": "string"},
+    "description": (
+        "IDs of the Recently completed tasks whose results this message delivers, "
+        "including summaries or translations. Use [] for chat or acknowledgments."
+    ),
+}
+_direct_reply["parameters"]["required"].append("delivered_task_ids")
+_DELIVERY_INSTRUCTIONS = (
+    "\nCE result delivery: Recently completed entries include task IDs. In "
+    "respond_directly, set delivered_task_ids to exactly the tasks whose results "
+    "you actually convey in message, including accurate summaries or translations. "
+    "A generic acknowledgment is not result delivery: use []. Never list a task "
+    "whose result you omit, or a task not in Recently completed. These IDs are "
+    "internal bookkeeping; do not speak them."
+)
 
 # ── Environment & Clients ─────────────────────────────────────────────────────
 
@@ -212,7 +234,7 @@ async def handler(
         completed = _store.reserve_completed(context.response_id)
         completed_context = ""
         if completed:
-            parts = [f"Completed task \"{t.query}\": {t.result}" for t in completed]
+            parts = [f"Completed task {t.task_id} \"{t.query}\": {t.result}" for t in completed]
             completed_context = "\n".join(parts)
 
         # Cleanup old tasks
@@ -235,7 +257,8 @@ async def handler(
         tool_calls = []
 
         async with aclosing(_iter_llm_stream(
-            _responses_client, _model, ROUTER_SYSTEM_PROMPT, input_items, ROUTER_TOOLS,
+            _responses_client, _model, ROUTER_SYSTEM_PROMPT + _DELIVERY_INSTRUCTIONS,
+            input_items, ROUTER_TOOLS,
             tool_choice=ROUTER_TOOL_CHOICE,
         )) as router_stream:
             async for event in router_stream:
@@ -256,8 +279,16 @@ async def handler(
         if tool_name == "respond_directly":
             # Pure chat — stream the message from arguments
             message = arguments.get("message", "")
+            delivered_ids = arguments.get("delivered_task_ids", [])
+            offered_ids = {task.task_id for task in completed}
+            if (not isinstance(delivered_ids, list)
+                    or any(not isinstance(task_id, str) or task_id not in offered_ids
+                           for task_id in delivered_ids)):
+                raise ValueError("Invalid delivered task IDs")
             for evt in _emit_text_item(stream, message):
                 yield evt
+            if message:
+                _store.record_emitted(context.response_id, delivered_ids)
 
         elif tool_name == "start_task":
             # Admit conversation-owned work before yielding an interruptible acknowledgment.
@@ -285,12 +316,18 @@ async def handler(
             result_data = json.loads(result_text)
             # If task is completed/delivered, include the result in the response
             task_obj = _store.get(arguments.get("task_id", "latest"))
+            reserved = bool(task_obj and _store.reserve_result(context.response_id, task_obj))
             if task_obj and task_obj.status in (TaskStatus.COMPLETED, TaskStatus.DELIVERED) and task_obj.result:
-                msg = ack + "\n\n" + task_obj.result if ack else task_obj.result
+                if reserved or task_obj.status is TaskStatus.DELIVERED:
+                    msg = ack + "\n\n" + task_obj.result if ack else task_obj.result
+                else:
+                    msg = "The result is already being delivered."
             else:
                 msg = ack or f"Task {result_data.get('task_id', '?')}: {result_data.get('status', 'unknown')}"
             for evt in _emit_text_item(stream, msg):
                 yield evt
+            if reserved and task_obj.result:
+                _store.record_emitted(context.response_id, [task_obj.task_id])
 
         elif tool_name == "cancel_task":
             result_text, _ = execute_router_tool("cancel_task", arguments, _store)
@@ -304,8 +341,14 @@ async def handler(
             result_text, _ = execute_router_tool("get_task_result", arguments, _store)
             result_data = json.loads(result_text)
             msg = result_data.get("result") or result_data.get("error", "No result yet.")
+            task_obj = _store.get(arguments.get("task_id", "latest"))
+            reserved = bool(task_obj and _store.reserve_result(context.response_id, task_obj))
+            if task_obj and task_obj.status is TaskStatus.COMPLETED and not reserved:
+                msg = "The result is already being delivered."
             for evt in _emit_text_item(stream, msg):
                 yield evt
+            if reserved and task_obj.result:
+                _store.record_emitted(context.response_id, [task_obj.task_id])
 
         else:
             for evt in _emit_text_item(stream, "I'm not sure how to help with that."):
@@ -382,6 +425,7 @@ async def handler(
                         # The coordinator commits this claim only after successful response.done.
                         for evt in _emit_text_item(stream, task.result):
                             yield evt
+                        _store.record_emitted(context.response_id, [task.task_id])
                     elif task.status == TaskStatus.FAILED:
                         for evt in _emit_text_item(stream, f"Something went wrong: {task.result}"):
                             yield evt

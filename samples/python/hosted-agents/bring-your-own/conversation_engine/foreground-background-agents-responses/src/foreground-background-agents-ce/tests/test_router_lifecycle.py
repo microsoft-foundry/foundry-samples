@@ -66,6 +66,13 @@ async def test_router_request_disables_parallel_tools_through_real_openai_adapte
     events = [event async for event in logic.handler({"stream": True}, context, asyncio.Event())]
     assert requests[0]["parallel_tool_calls"] is False
     assert requests[0]["tool_choice"] == "required"
+    direct_tool = next(tool["function"] for tool in requests[0]["tools"]
+                       if tool["function"]["name"] == "respond_directly")
+    assert "delivered_task_ids" in direct_tool["parameters"]["required"]
+    assert direct_tool["parameters"]["properties"]["delivered_task_ids"]["type"] == "array"
+    import router_agent
+
+    assert "delivered_task_ids" not in router_agent.ROUTER_TOOLS[0]["parameters"]["properties"]
     assert events[-1]["type"] == "response.completed"
 
 

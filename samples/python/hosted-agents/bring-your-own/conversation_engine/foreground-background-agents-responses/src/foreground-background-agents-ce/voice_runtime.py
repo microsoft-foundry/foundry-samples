@@ -65,7 +65,7 @@ class ResponseContextAdapter:
         self.output_item["content"] = [{"type": "output_text", "text": heard}] if heard else []
 
     def completed(self) -> None:
-        self.task_store.commit_delivery(self.response_id, self.sent_text)
+        self.task_store.commit_delivery(self.response_id)
 
     def stopped(self) -> None:
         self.task_store.release_delivery(self.response_id)
@@ -217,7 +217,7 @@ class VoiceRuntime(ProtocolRuntime):
             if state is not None and not state.active:
                 workers = self._detach_conversation(session)
                 if workers:
-                    await asyncio.gather(*workers, return_exceptions=True)
+                    await self._drain_workers(workers)
 
     def _detach_conversation(self, session: Session) -> tuple[asyncio.Task[Any], ...]:
         conversation = self._conversations.pop(session, None)
@@ -229,16 +229,22 @@ class VoiceRuntime(ProtocolRuntime):
             task.cancel_event.set()
         workers = tuple(conversation.background_tasks)
         for worker in workers:
-            worker.cancel()
+            # The original Worker finishes its current executor call before checking
+            # cancel_event. Cancelling its asyncio wrapper would abandon that call.
             self._detached_workers.add(worker)
             worker.add_done_callback(self._detached_workers.discard)
         return workers
+
+    @staticmethod
+    async def _drain_workers(workers: tuple[asyncio.Task[Any], ...]) -> None:
+        # A cancelled join must not cancel wrappers around still-running threads.
+        await asyncio.shield(asyncio.gather(*workers, return_exceptions=True))
 
     async def on_session_end(self, session: Session, event: Any) -> None:
         workers = self._detach_conversation(session)
         await super().on_session_end(session, event)
         if workers:
-            await asyncio.gather(*workers, return_exceptions=True)
+            await self._drain_workers(workers)
 
     def on_connection_terminating(self, session: Session) -> None:
         self._detach_conversation(session)
@@ -249,7 +255,7 @@ class VoiceRuntime(ProtocolRuntime):
             self._detach_conversation(session)
         await super().close()
         if self._detached_workers:
-            await asyncio.gather(*tuple(self._detached_workers), return_exceptions=True)
+            await self._drain_workers(tuple(self._detached_workers))
 
 
 def create_app(

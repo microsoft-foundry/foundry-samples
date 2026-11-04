@@ -71,7 +71,7 @@ async def test_history_contains_only_successfully_sent_text_after_timeout(partia
         await runtime.close()
 
 
-def test_result_reservation_is_exclusive_reversible_and_requires_sent_result():
+def test_result_reservation_is_exclusive_reversible_and_requires_explicit_emission():
     store = ConversationTaskStore()
     task = store.create_task("work")
     task.result, task.status = "complete result", TaskStatus.COMPLETED
@@ -80,10 +80,12 @@ def test_result_reservation_is_exclusive_reversible_and_requires_sent_result():
     assert store.reserve_completed("r_second") == []
     store.release_delivery("r_first")
     assert store.reserve_completed("r_second") == [task]
-    store.commit_delivery("r_second", "ack only")
+    store.commit_delivery("r_second")
     assert task.status is TaskStatus.COMPLETED
     assert store.reserve_completed("r_third") == [task]
-    store.commit_delivery("r_third", "Here is the complete result.")
+    assert store.reserve_result("r_third", task)  # A direct-read path may own it already.
+    store.record_emitted("r_third", [task.task_id])
+    store.commit_delivery("r_third")
     assert task.status is TaskStatus.DELIVERED
     assert not store._delivery_owners
 
@@ -129,9 +131,10 @@ async def settle_responses(runtime, session):
     await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), 2)
 
 
-def reply(text):
+def reply(text, *task_ids):
     return SimpleNamespace(type="response.output_item.done", item=SimpleNamespace(
-        type="function_call", name="respond_directly", arguments={"message": text}
+        type="function_call", name="respond_directly",
+        arguments={"message": text, "delivered_task_ids": list(task_ids)}
     ))
 
 
@@ -142,7 +145,7 @@ async def test_router_failure_rolls_back_result_for_next_turn(logic, monkeypatch
         calls.append(args[3])
         if len(calls) == 1:
             raise RuntimeError("synthetic router failure")
-        yield reply("RESULT")
+        yield reply("RESULT", task.task_id)
 
     runtime, socket, connection, session = await setup_app(logic, monkeypatch, router)
     task = runtime._conversations[session].task_store.create_task("work")
@@ -183,7 +186,10 @@ async def test_result_delivery_interruption_releases_claim_for_retry(
 
     async def router(*args, **_kwargs):
         calls.append(args[3])
-        yield reply("ack" if running and len(calls) == 1 else "RESULT")
+        if running and len(calls) == 1:
+            yield reply("ack")
+        else:
+            yield reply("RESULT", task.task_id)
 
     runtime, socket, connection, session = await setup_app(logic, monkeypatch, router)
     task = runtime._conversations[session].task_store.create_task("work")
@@ -232,7 +238,7 @@ async def test_result_delivery_interruption_releases_claim_for_retry(
 ])
 async def test_failed_delivery_boundary_keeps_result_retryable(logic, monkeypatch, boundary):
     async def router(*_args, **_kwargs):
-        yield reply("RESULT")
+        yield reply("RESULT", task.task_id)
 
     if boundary == "finalization":
         original_handler = logic.handler
@@ -298,3 +304,115 @@ async def test_failed_cancel_is_not_acknowledged_as_success(logic, monkeypatch, 
         )
     finally:
         await stop_app(runtime, socket, connection)
+
+
+@pytest.mark.parametrize("message", ["All circuits are healthy.", "所有线路均正常。"])
+async def test_paraphrased_or_translated_result_is_not_reoffered(logic, monkeypatch, message):
+    calls = []
+
+    async def router(*args, **_kwargs):
+        calls.append(args[3])
+        if len(calls) == 1:
+            assert task.task_id in str(args[3])
+            yield reply(message, task.task_id)
+        else:
+            yield reply("You're welcome.")
+
+    runtime, socket, connection, session = await setup_app(logic, monkeypatch, router)
+    task = runtime._conversations[session].task_store.create_task("check circuits")
+    task.result = "Circuit A is operational. Circuit B is operational. No faults were detected."
+    task.status = TaskStatus.COMPLETED
+    try:
+        for index, text in enumerate(["result?", "Thanks"]):
+            socket.enqueue("user.message", item_id=f"in_{index}",
+                           content=[{"type": "input_text", "text": text}])
+            await _wait_for_decline_event(socket, lambda expected=index + 1: sum(
+                event["type"] == "response.done" for event in socket.frames
+            ) == expected)
+            await settle_responses(runtime, session)
+            assert task.status is TaskStatus.DELIVERED
+        assert "Recently completed" not in str(calls[1])
+        assert "Recently delivered" in str(calls[1])
+    finally:
+        await stop_app(runtime, socket, connection)
+
+
+async def test_substring_collision_does_not_consume_an_omitted_result(logic, monkeypatch):
+    async def router(*_args, **_kwargs):
+        yield reply("The second result is 10.", second.task_id)
+
+    runtime, socket, connection, session = await setup_app(logic, monkeypatch, router)
+    store = runtime._conversations[session].task_store
+    first, second = store.create_task("first"), store.create_task("second")
+    first.result, second.result = "1", "10"
+    first.status = second.status = TaskStatus.COMPLETED
+    try:
+        socket.enqueue("user.message", item_id="in_results",
+                       content=[{"type": "input_text", "text": "results?"}])
+        await _wait_for_decline_event(socket, lambda: any(
+            event["type"] == "response.done" for event in socket.frames
+        ))
+        await settle_responses(runtime, session)
+        assert second.status is TaskStatus.DELIVERED
+        assert first.status is TaskStatus.COMPLETED
+        assert store.reserve_completed("r_next") == [first]
+    finally:
+        await stop_app(runtime, socket, connection)
+
+
+@pytest.mark.parametrize("tool", ["check_task_status", "get_task_result"])
+@pytest.mark.parametrize("completed_before_router", [False, True])
+async def test_direct_result_paths_reserve_before_emission(
+    logic, monkeypatch, tool, completed_before_router
+):
+    async def router(*_args, **_kwargs):
+        # A Worker finishes after the entry scan, during model I/O.
+        await asyncio.sleep(0)
+        task.result, task.status = "RESULT", TaskStatus.COMPLETED
+        yield SimpleNamespace(type="response.output_item.done", item=SimpleNamespace(
+            type="function_call", name=tool,
+            arguments={"task_id": "latest", "ack_message": "Ready."},
+        ))
+
+    runtime, socket, connection, session = await setup_app(logic, monkeypatch, router)
+    store = runtime._conversations[session].task_store
+    task = store.create_task("work")
+    task.result = "RESULT"
+    task.status = TaskStatus.COMPLETED if completed_before_router else TaskStatus.RUNNING
+    try:
+        socket.enqueue("user.message", item_id="in_result",
+                       content=[{"type": "input_text", "text": "result?"}])
+        await _wait_for_decline_event(socket, lambda: any(
+            event["type"] == "response.done" for event in socket.frames
+        ))
+        await settle_responses(runtime, session)
+        assert "RESULT" in "".join(event.get("delta", "") for event in socket.frames)
+        assert task.status is TaskStatus.DELIVERED
+        assert store.reserve_completed("r_next") == []
+    finally:
+        await stop_app(runtime, socket, connection)
+
+
+def test_emission_cannot_claim_another_responses_result():
+    store = ConversationTaskStore()
+    task = store.create_task("work")
+    task.result, task.status = "RESULT", TaskStatus.COMPLETED
+    store.reserve_completed("r_owner")
+    with pytest.raises(ValueError, match="owned reservation"):
+        store.record_emitted("r_other", [task.task_id])
+    store.commit_delivery("r_other")
+    assert task.status is TaskStatus.COMPLETED
+
+
+def test_released_emission_is_not_committed_by_a_later_response():
+    store = ConversationTaskStore()
+    task = store.create_task("work")
+    task.result, task.status = "RESULT", TaskStatus.COMPLETED
+    store.reserve_completed("r_first")
+    store.record_emitted("r_first", [task.task_id])
+    store.release_delivery("r_first")
+    store.reserve_completed("r_second")
+    store.commit_delivery("r_first")
+    store.commit_delivery("r_second")
+    assert task.status is TaskStatus.COMPLETED
+    assert not store._emitted_results

@@ -9,6 +9,7 @@ import pytest
 from azure.ai.agentserver.invocations.voice import InputTextPart, Session
 from test_voice_runtime import DeclineHostSocket, _enqueue_decline_start, _wait_for_decline_event
 
+from task_store import TaskStatus
 from voice_runtime import Conversation, VoiceRuntime, create_app
 
 
@@ -203,7 +204,9 @@ async def test_duplicate_no_input_cannot_teardown_an_active_conversation_or_work
         ))
         session = Session._current(socket)
         conversation = runtime._conversations[session]
-        worker = asyncio.create_task(asyncio.Event().wait())
+        business_task = conversation.task_store.create_task("cooperative worker")
+        business_task.status = TaskStatus.RUNNING
+        worker = asyncio.create_task(business_task.cancel_event.wait())
         conversation.background_tasks.add(worker)
         worker.add_done_callback(conversation.background_tasks.discard)
         socket.enqueue("user.no_input", item_id="in_claimed", count=3)

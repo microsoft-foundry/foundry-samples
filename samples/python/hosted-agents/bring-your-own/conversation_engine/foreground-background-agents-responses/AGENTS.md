@@ -10,7 +10,8 @@ This Python-only sample migrates the Responses foreground/background sample to
 - `agent_logic.py` preserves that sample's model access and routing. CE-specific
   delivery reservations and cancellation acknowledgments use actual transport/tool outcomes.
 - `delivery.py` extends the original task store without editing it: reserve results
-  per response, commit only fully sent results after successful `response.done`,
+  per response, explicitly associate emitted results with task IDs (including
+  Router summaries/translations), commit only after successful `response.done`,
   and release reservations on failure/interruption. Do not equate generation or
   transport send success with confirmed audio playback or exactly-once delivery.
 - `voice_runtime.py` supplies CE context, response streaming, history and cleanup.
@@ -19,7 +20,9 @@ This Python-only sample migrates the Responses foreground/background sample to
 - Do not add a separate Agent, HTTP hop, second registered Hosted protocol, new
   model endpoint/key configuration, proactive business notification, or backend rewrite.
 - Keep barge-in distinct from cancelling a worker. Cancel session-owned workers
-  on session termination, but not when an individual response is interrupted.
+  cooperatively on session termination, but not when an individual response is
+  interrupted. Retain/drain Workers until their in-flight executor calls settle;
+  cancelling an asyncio wrapper does not stop its synchronous model/tool call.
 - Never block the CE receive loop on a model call or tool operation.
 
 ## Deployment and validation
