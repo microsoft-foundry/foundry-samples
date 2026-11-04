@@ -13,6 +13,7 @@ from azure.ai.agentserver.invocations.voice import InputDataPart
 from starlette.background import BackgroundTask
 from starlette.responses import StreamingResponse
 from starlette.testclient import TestClient
+from test_voice_runtime import frame, receive_until, send_user, start
 
 from adapter import invocation
 from adapter.invocation import InvocationAdapter, invocation_request
@@ -22,6 +23,74 @@ from echo_agent import handle_invocation
 
 def event(kind: str, **fields: Any) -> str:
     return "data: " + json.dumps({"type": kind, **fields}, ensure_ascii=False) + "\n\n"
+
+
+def boundary_data(character: str, extra_bytes: int) -> dict[str, str]:
+    overhead = len(json.dumps({"value": ""}).encode("utf-8"))
+    unit_bytes = len(json.dumps(character, ensure_ascii=False).encode("utf-8")) - 2
+    count, remainder = divmod(invocation.MAX_DATA_BYTES - overhead + extra_bytes, unit_bytes)
+    data = {"value": character * count + "x" * remainder}
+    assert len(json.dumps(data, ensure_ascii=False).encode("utf-8")) == (
+        invocation.MAX_DATA_BYTES + extra_bytes
+    )
+    return data
+
+
+@pytest.mark.parametrize("extra_bytes", [-1, 0, 1])
+@pytest.mark.parametrize("character", ["x", "界", "👋", "\n", '"', "\\"])
+async def test_handler_adapter_data_byte_boundary(character: str, extra_bytes: int) -> None:
+    data = boundary_data(character, extra_bytes)
+    stream = InvocationAdapter(handle_invocation).stream(
+        InputDataPart(data=data).data, "in_boundary"
+    )
+    if extra_bytes > 0:
+        with pytest.raises(ValueError, match="Invocation data exceeds its byte budget"):
+            _ = [chunk async for chunk in stream]
+    else:
+        assert [chunk async for chunk in stream] == [data]
+
+
+@pytest.mark.parametrize("extra_bytes", [-1, 0, 1])
+def test_data_boundary_over_ce_socket_and_recovery(extra_bytes: int) -> None:
+    data = boundary_data("x", extra_bytes)
+    with TestClient(create_app(handle_invocation, configure_observability=None)) as client:
+        with client.websocket_connect("/voice_conversation_engine") as socket:
+            assert start(socket)["type"] == "session.ready"
+            socket.send_json(
+                frame(
+                    "user.message",
+                    item_id="in_boundary",
+                    content=[{"type": "input_data", "data": data}],
+                )
+            )
+            created = socket.receive_json()
+            assert created["type"] == "response.created"
+            assert created["in_reply_to"] == ["in_boundary"]
+            output = socket.receive_json()
+            assert output["response_id"] == created["response_id"]
+            if extra_bytes > 0:
+                assert output["type"] == "error"
+            else:
+                assert output["type"] == "response.output_data.done"
+                assert output["data"] == data
+                done = socket.receive_json()
+                assert done["type"] == "response.done"
+                assert done["response_id"] == created["response_id"]
+            send_user(socket, "in_recovery", "ok")
+            frames = receive_until(socket, "response.done")
+            assert frames[0]["in_reply_to"] == ["in_recovery"]
+            assert frames[-2]["type"] == "response.output_text.done"
+            assert frames[-2]["text"] == "ok"
+
+
+@pytest.mark.parametrize("terminated", [False, True])
+async def test_sse_frame_budget_bounds_complete_and_incomplete_frames(terminated: bool) -> None:
+    async def chunks() -> AsyncIterator[str]:
+        yield "data: " + "x" * invocation.MAX_FRAME_CHARACTERS + ("\n\n" if terminated else "")
+
+    with pytest.raises(ValueError, match="frame exceeds its character budget"):
+        _ = [message async for message in invocation.sse_events(chunks())]
+
 
 @pytest.mark.parametrize(
     "data", [{}, {"type": "customer.context", "data": {"values": [None, False, 0, "你好 👋"]}}]

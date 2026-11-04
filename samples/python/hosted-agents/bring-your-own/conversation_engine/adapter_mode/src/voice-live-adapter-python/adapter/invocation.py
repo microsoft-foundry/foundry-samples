@@ -12,9 +12,12 @@ from starlette.requests import Request
 from starlette.responses import StreamingResponse
 
 InvocationHandler = Callable[[Request], Awaitable[StreamingResponse]]
-MAX_FRAME_CHARACTERS = 65_536
 MAX_OUTPUT_CHARACTERS = 8_000
 MAX_DATA_BYTES = 65_536
+# The bounded SSE/JSON envelope is additional to the application-data byte budget.
+MAX_FRAME_CHARACTERS = MAX_DATA_BYTES + len(
+    "data: " + json.dumps({"type": "data", "data": {}})
+)
 
 
 def invocation_request(text: str | Mapping[str, Any], input_id: str) -> Request:
