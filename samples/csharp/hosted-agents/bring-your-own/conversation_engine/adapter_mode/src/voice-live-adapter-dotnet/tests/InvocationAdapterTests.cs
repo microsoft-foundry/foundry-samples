@@ -252,6 +252,26 @@ public class InvocationAdapterTests
         Assert.That(results, Is.EqualTo(new[] { "first customer", "second customer" }));
     }
 
+    [TestCase("\n")]
+    [TestCase("\r")]
+    [TestCase("\r\n")]
+    public async Task OriginalHandler_StreamAcceptsEverySseLineEnding(string ending)
+    {
+        var handler = new CallbackHandler(async (_, response, _, token) =>
+        {
+            response.ContentType = "text/event-stream";
+            var raw = "data: " + JsonSerializer.Serialize(new { type = "token", content = "你好 👋" }) +
+                ending + ending + "data: " + JsonSerializer.Serialize(new { type = "done", full_text = "你好 👋" }) +
+                ending + ending;
+            foreach (var value in Encoding.UTF8.GetBytes(raw))
+            {
+                await response.Body.WriteAsync(new[] { value }, token);
+                await response.Body.FlushAsync(token);
+            }
+        });
+        Assert.That(await Collect(new InvocationAdapter(handler)).WaitAsync(Timeout), Is.EqualTo("你好 👋"));
+    }
+
     private static async Task<string> Collect(InvocationAdapter adapter, string text = "input")
     {
         var output = new StringBuilder();

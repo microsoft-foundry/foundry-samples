@@ -221,6 +221,11 @@ async def test_first_chunk_precedes_later_work_and_close_disposes_the_source(kin
         "data: " + "x" * 65_537,
         event("token", content="x" * 8_001),
     ],
+    ids=[
+        "missing-done", "invalid-json", "incomplete-frame", "non-string-token", "empty-token",
+        "mismatched-done", "duplicate-done", "unknown-event", "array-data", "null-data",
+        "non-finite-data", "data-after-done", "oversized-frame", "oversized-token",
+    ],
 )
 async def test_invalid_or_incomplete_sse_is_not_success(body: str) -> None:
     closed = False

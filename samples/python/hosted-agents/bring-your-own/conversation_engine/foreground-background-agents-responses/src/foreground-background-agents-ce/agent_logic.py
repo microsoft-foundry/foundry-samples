@@ -21,11 +21,13 @@ import json
 import logging
 import os
 from collections.abc import AsyncIterable
-from concurrent.futures import ThreadPoolExecutor
+from contextlib import aclosing, asynccontextmanager
 from typing import Any
 
 from azure.ai.projects import AIProjectClient
+from azure.ai.projects.aio import AIProjectClient as AsyncAIProjectClient
 from azure.identity import DefaultAzureCredential
+from azure.identity.aio import DefaultAzureCredential as AsyncDefaultAzureCredential
 
 from text_stream import TextEventStream
 from task_store import TaskStatus
@@ -54,11 +56,9 @@ if not _model:
 _credential = DefaultAzureCredential()
 _project_client = AIProjectClient(endpoint=_endpoint, credential=_credential)
 _responses_client = _project_client.get_openai_client().responses
-_chat_completion_client = _project_client.get_openai_client().chat.completions
 
 # ── Shared State ──────────────────────────────────────────────────────────────
 
-_llm_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="llm")  # dedicated pool for LLM calls
 _active_cancel_signals: dict[str, asyncio.Event] = {}  # response_id -> cancellation signal
 
 import re
@@ -95,13 +95,20 @@ def _emit_text_item(stream: TextEventStream, text: str):
     return stream.text_events(text)
 
 
+@asynccontextmanager
+async def _router_client():
+    # Keep the original Foundry project/authentication route; own all async resources per call.
+    async with AsyncDefaultAzureCredential() as credential:
+        async with AsyncAIProjectClient(endpoint=_endpoint, credential=credential) as project:
+            async with project.get_openai_client() as client:
+                yield client
+
+
 async def _iter_llm_stream(responses_client, model, instructions, input_items, tools, tool_choice=None):
-    """Run a streaming LLM call via chat completions in a thread, yielding events."""
+    """Stream Chat Completions asynchronously so response cancellation closes upstream I/O."""
+    del responses_client
     from types import SimpleNamespace
     import time
-
-    q: asyncio.Queue = asyncio.Queue()
-    loop = asyncio.get_running_loop()
 
     # Convert responses-API style input to chat completions messages
     messages = []
@@ -127,13 +134,12 @@ async def _iter_llm_stream(responses_client, model, instructions, input_items, t
     if tool_choice:
         create_kwargs["tool_choice"] = tool_choice
 
-    def _run():
-        try:
-            accumulated_tool_calls: dict = {}  # index -> {id, name, arguments}
-            has_text = False
-
-            stream = _chat_completion_client.create(**create_kwargs)
-            for chunk in stream:
+    _stream_start = time.monotonic()
+    accumulated_tool_calls: dict = {}  # index -> {id, name, arguments}
+    has_text = False
+    async with _router_client() as client:
+        async with await client.chat.completions.create(**create_kwargs) as stream:
+            async for chunk in stream:
                 if not chunk.choices:
                     continue
                 choice = chunk.choices[0]
@@ -142,10 +148,7 @@ async def _iter_llm_stream(responses_client, model, instructions, input_items, t
                 # Text content
                 if delta.content:
                     has_text = True
-                    loop.call_soon_threadsafe(
-                        q.put_nowait,
-                        SimpleNamespace(type="response.output_text.delta", delta=delta.content),
-                    )
+                    yield SimpleNamespace(type="response.output_text.delta", delta=delta.content)
 
                 # Tool call deltas (accumulated across chunks)
                 if delta.tool_calls:
@@ -163,46 +166,18 @@ async def _iter_llm_stream(responses_client, model, instructions, input_items, t
                 if choice.finish_reason:
                     break
 
-            # Emit text done
-            if has_text:
-                loop.call_soon_threadsafe(
-                    q.put_nowait,
-                    SimpleNamespace(type="response.output_text.done"),
-                )
-
-            # Emit completed tool calls as response.output_item.done
-            for idx in sorted(accumulated_tool_calls.keys()):
-                tc_data = accumulated_tool_calls[idx]
-                item = SimpleNamespace(
-                    type="function_call",
-                    name=tc_data["name"],
-                    arguments=tc_data["arguments"],
-                    call_id=tc_data["id"],
-                )
-                loop.call_soon_threadsafe(
-                    q.put_nowait,
-                    SimpleNamespace(type="response.output_item.done", item=item),
-                )
-        except Exception as exc:
-            loop.call_soon_threadsafe(q.put_nowait, exc)
-            return
-        loop.call_soon_threadsafe(q.put_nowait, None)  # sentinel
-
-    _stream_start = time.monotonic()
-    loop.run_in_executor(_llm_executor, _run)
-
-    event_count = 0
-    while True:
-        event = await q.get()
-        if event is None:
-            break
-        if isinstance(event, Exception):
-            raise event
-        event_count += 1
-        yield event
+    if has_text:
+        yield SimpleNamespace(type="response.output_text.done")
+    for idx in sorted(accumulated_tool_calls):
+        tc_data = accumulated_tool_calls[idx]
+        yield SimpleNamespace(
+            type="response.output_item.done",
+            item=SimpleNamespace(type="function_call", name=tc_data["name"],
+                                 arguments=tc_data["arguments"], call_id=tc_data["id"]),
+        )
 
     _stream_elapsed = time.monotonic() - _stream_start
-    logger.info("LLM stream (chat completions): %d events in %.1fms", event_count, _stream_elapsed * 1000)
+    logger.info("LLM stream (chat completions) finished in %.1fms", _stream_elapsed * 1000)
 
 
 # ── Request Handler ───────────────────────────────────────────────────────────
@@ -258,14 +233,15 @@ async def handler(
         # ── Router Agent: single LLM call with tool_choice=required ──
         tool_calls = []
 
-        async for event in _iter_llm_stream(
+        async with aclosing(_iter_llm_stream(
             _responses_client, _model, ROUTER_SYSTEM_PROMPT, input_items, ROUTER_TOOLS,
             tool_choice=ROUTER_TOOL_CHOICE,
-        ):
-            event_type = getattr(event, "type", None)
-            if event_type == "response.output_item.done":
-                if getattr(event.item, "type", None) == "function_call":
-                    tool_calls.append(event.item)
+        )) as router_stream:
+            async for event in router_stream:
+                event_type = getattr(event, "type", None)
+                if event_type == "response.output_item.done":
+                    if getattr(event.item, "type", None) == "function_call":
+                        tool_calls.append(event.item)
 
         if not tool_calls:
             # Fallback (shouldn't happen with tool_choice=required)
@@ -289,6 +265,12 @@ async def handler(
         elif tool_name == "start_task":
             # Admit conversation-owned work before yielding an interruptible acknowledgment.
             _, new_task = execute_router_tool("start_task", arguments, _store)
+            if new_task is None:
+                # The single-worker guard can reject a different request as well as a duplicate.
+                for evt in _emit_text_item(stream, "I'm still working on an earlier request. I haven't started a new task."):
+                    yield evt
+                yield stream.emit_completed()
+                return
             if new_task:
                 logger.info("Starting worker for task %s", new_task.task_id)
                 worker_input = _build_input(new_task.query, history)
@@ -346,7 +328,7 @@ async def handler(
             while not _cancellation_signal.is_set():
                 await asyncio.sleep(_TASK_POLL_INTERVAL)
                 # Check if all active tasks have resolved
-                if all(t.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED)
+                if all(t.status in (TaskStatus.COMPLETED, TaskStatus.DELIVERED, TaskStatus.FAILED, TaskStatus.CANCELLED)
                        for t in active):
                     break
 
@@ -381,11 +363,12 @@ async def handler(
                     ]
                     try:
                         status_text = ""
-                        async for evt in _iter_llm_stream(
+                        async with aclosing(_iter_llm_stream(
                             _responses_client, _model, None, status_prompt, tools=None,
-                        ):
-                            if getattr(evt, "type", None) == "response.output_text.delta":
-                                status_text += evt.delta
+                        )) as status_stream:
+                            async for evt in status_stream:
+                                if getattr(evt, "type", None) == "response.output_text.delta":
+                                    status_text += evt.delta
                         if status_text.strip():
                             for evt in _emit_text_item(stream, status_text.strip()):
                                 yield evt
@@ -396,6 +379,7 @@ async def handler(
             if not _cancellation_signal.is_set():
                 for task in active:
                     if task.status == TaskStatus.COMPLETED and task.result:
+                        # Claim synchronously, before yielding: only one waiter delivers the result.
                         task.status = TaskStatus.DELIVERED
                         for evt in _emit_text_item(stream, task.result):
                             yield evt

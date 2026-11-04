@@ -8,6 +8,7 @@ import asyncio
 import time
 from collections import deque
 from collections.abc import AsyncIterator, Callable
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -41,6 +42,7 @@ class ResponseContextAdapter:
     text: str
     history: list[dict[str, Any]]
     conversation: Conversation
+    output_item: dict[str, Any] = field(default_factory=lambda: {"content": []})
 
     @property
     def task_store(self) -> TaskStore:
@@ -99,10 +101,13 @@ class VoiceRuntime(ProtocolRuntime):
         response_id = new_response_id()
         signal = asyncio.Event()
         context = ResponseContextAdapter(
-            response_id, text, list(conversation.history), conversation
+            response_id, text, deepcopy(list(conversation.history)), conversation
         )
         conversation.signals[response_id] = signal
         conversation.history.append({"content": [{"type": "input_text", "text": text}]})
+        # Reserve history order now, independently of response completion/cleanup order.
+        context.output_item["response_id"] = response_id
+        conversation.history.append(context.output_item)
         self._coordinator.start_response(
             session,
             state,
@@ -127,22 +132,24 @@ class VoiceRuntime(ProtocolRuntime):
                 index = event.get("output_index", 0)
                 if last_index is not None and index != last_index:
                     output += "\n\n"
+                    self._record_output(context, output)
                     yield "\n\n"
                 last_index = index
                 delta = event["delta"]
                 output += delta
+                self._record_output(context, output)
                 yield delta
         finally:
-            await source.aclose()
             context.conversation.signals.pop(context.response_id, None)
-            heard = context.conversation.heard.get(context.response_id, output)
-            if heard:
-                context.conversation.history.append(
-                    {
-                        "response_id": context.response_id,
-                        "content": [{"type": "output_text", "text": heard}],
-                    }
-                )
+            self._record_output(context, output)
+            await source.aclose()
+
+    @staticmethod
+    def _record_output(context: ResponseContextAdapter, output: str) -> None:
+        heard = context.conversation.heard.get(context.response_id, output)
+        context.output_item["content"] = (
+            [{"type": "output_text", "text": heard}] if heard else []
+        )
 
     def _interrupt(self, session: Session, response_id: str, heard_text: str | None = None) -> None:
         conversation = self._conversations.get(session)
@@ -159,7 +166,10 @@ class VoiceRuntime(ProtocolRuntime):
                 conversation.heard.pop(next(iter(conversation.heard)))
             for item in conversation.history:
                 if item.get("response_id") == response_id:
-                    item["content"] = [{"type": "output_text", "text": heard_text}]
+                    item["content"] = (
+                        [{"type": "output_text", "text": heard_text[:MAX_MESSAGE_CHARACTERS]}]
+                        if heard_text else []
+                    )
 
     async def on_user_barge_in(self, session: Session, event: Any) -> None:
         self._interrupt(session, event.response_id, event.heard_text)
@@ -186,9 +196,15 @@ class VoiceRuntime(ProtocolRuntime):
         await super().on_response_timeout(session, event)
 
     async def on_user_no_input(self, session: Session, event: Any) -> None:
-        if event.count >= 3:
-            self._detach_conversation(session)
-        await super().on_user_no_input(session, event)
+        state = self._state_for(session)
+        try:
+            await super().on_user_no_input(session, event)
+        finally:
+            # Duplicates leave state active. Only an admitted termination may tear it down.
+            if state is not None and not state.active:
+                workers = self._detach_conversation(session)
+                if workers:
+                    await asyncio.gather(*workers, return_exceptions=True)
 
     def _detach_conversation(self, session: Session) -> tuple[asyncio.Task[Any], ...]:
         conversation = self._conversations.pop(session, None)

@@ -50,15 +50,23 @@ def invocation_request(text: str | Mapping[str, Any], input_id: str) -> Request:
 
 
 async def sse_events(chunks: AsyncIterator[Any]) -> AsyncIterator[dict[str, Any]]:
-    """Parse bounded JSON SSE frames, including split UTF-8 and CRLF chunks."""
+    """Parse bounded JSON SSE frames with incremental UTF-8 and universal newlines."""
     decoder = codecs.getincrementaldecoder("utf-8")()
     buffer = ""
+    skip_lf = False
     async for chunk in chunks:
         encoded = chunk.encode("utf-8") if isinstance(chunk, str) else bytes(chunk)
         # Bound producer chunks before decoding/concatenating them.
         if len(encoded) > MAX_FRAME_CHARACTERS * 4:
             raise ValueError("SSE chunk exceeds its byte budget")
-        buffer = (buffer + decoder.decode(encoded)).replace("\r\n", "\n")
+        decoded = decoder.decode(encoded)
+        if decoded:
+            # CR ends a line immediately; swallow its optional LF even across chunks.
+            previous_cr = decoded.endswith("\r")
+            if skip_lf and decoded.startswith("\n"):
+                decoded = decoded[1:]
+            skip_lf = previous_cr
+            buffer += decoded.replace("\r\n", "\n").replace("\r", "\n")
         while "\n\n" in buffer:
             frame, _, buffer = buffer.partition("\n\n")
             if len(frame) > MAX_FRAME_CHARACTERS:
@@ -71,7 +79,8 @@ async def sse_events(chunks: AsyncIterator[Any]) -> AsyncIterator[dict[str, Any]
                 if not isinstance(event, dict):
                     raise ValueError("Expected a JSON SSE object")
                 yield event
-        if len(buffer) > MAX_FRAME_CHARACTERS:
+        # A trailing newline may be the first half of the blank-line delimiter.
+        if len(buffer.removesuffix("\n")) > MAX_FRAME_CHARACTERS:
             raise ValueError("SSE frame exceeds its character budget")
     buffer += decoder.decode(b"", final=True)
     if buffer.strip():

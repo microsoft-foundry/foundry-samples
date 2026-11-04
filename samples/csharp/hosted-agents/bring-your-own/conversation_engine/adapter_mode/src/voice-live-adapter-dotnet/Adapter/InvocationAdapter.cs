@@ -112,7 +112,7 @@ public sealed class InvocationAdapter(InvocationHandler handler)
         }
     }
 
-    private static async IAsyncEnumerable<JsonElement> ReadEventsAsync(
+    internal static async IAsyncEnumerable<JsonElement> ReadEventsAsync(
         Stream input,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -120,10 +120,18 @@ public sealed class InvocationAdapter(InvocationHandler handler)
             detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
         var chars = new char[1024];
         var pending = "";
+        var skipLf = false;
         int count;
         while ((count = await reader.ReadAsync(chars.AsMemory(), cancellationToken)) != 0)
         {
-            pending = (pending + new string(chars, 0, count)).Replace("\r\n", "\n", StringComparison.Ordinal);
+            var decoded = new string(chars, 0, count);
+            var previousCr = decoded.EndsWith('\r');
+            if (skipLf && decoded.StartsWith('\n'))
+            {
+                decoded = decoded[1..];
+            }
+            skipLf = previousCr;
+            pending += decoded.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
             int boundary;
             while ((boundary = pending.IndexOf("\n\n", StringComparison.Ordinal)) >= 0)
             {
@@ -145,7 +153,9 @@ public sealed class InvocationAdapter(InvocationHandler handler)
                     yield return document.RootElement.Clone();
                 }
             }
-            if (pending.Length > MaximumFrameCharacters)
+            // A trailing newline can still become part of the blank-line delimiter.
+            var contentLength = pending.Length - (pending.EndsWith('\n') ? 1 : 0);
+            if (contentLength > MaximumFrameCharacters)
             {
                 throw new InvalidOperationException("SSE frame exceeds its character budget.");
             }
