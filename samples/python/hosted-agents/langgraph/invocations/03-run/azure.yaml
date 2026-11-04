@@ -28,6 +28,7 @@ services:
         - Python
     project: src/langgraph-run-invocations
     language: python
+    startupCommand: uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol invocations
     codeConfiguration:
       runtime: python_3_13
       entryPoint: '-m langchain_azure_ai.agents.hosting.run --protocol invocations'

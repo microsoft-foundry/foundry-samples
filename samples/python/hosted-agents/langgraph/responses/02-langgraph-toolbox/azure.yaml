@@ -30,6 +30,7 @@ services:
         - Python
     project: src/toolbox-langgraph
     language: python
+    startupCommand: uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses
     codeConfiguration:
       runtime: python_3_13
       entryPoint: '-m langchain_azure_ai.agents.hosting.run --protocol responses'

@@ -67,6 +67,9 @@ azd ai agent run
 
 The agent host will start on `http://localhost:8088`.
 
+The service's `startupCommand` in `azure.yaml` starts the Responses host.
+`main.py` only exports the graph; running it directly does not start a server.
+
 ### Invoke the local agent
 
 In a separate terminal, invoke the running agent:
