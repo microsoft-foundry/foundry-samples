@@ -37,7 +37,6 @@ internal sealed class VoiceConnectionState
     internal const int MaximumActiveResponses = 8;
     internal const int MaximumPendingProactiveResponses = 8;
     internal const int MaximumTerminalSends = 8;
-    internal const int MaximumPendingDeclines = 8;
     internal const int MaximumTrackedInputItems = 4096;
     internal const int MaximumTrackedPlaybackResponses = 64;
 
@@ -48,17 +47,15 @@ internal sealed class VoiceConnectionState
     private readonly Dictionary<string, ResponsePlan> _proactiveRequests = new(StringComparer.Ordinal);
     private readonly HashSet<string> _activeResponseIds = new(StringComparer.Ordinal);
     private readonly HashSet<string> _terminalResponseIds = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _declineResponseIds = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _heardTextByResponse = new(StringComparer.Ordinal);
     private ConnectionPhase _phase;
     private TaskCompletionSource? _terminationCompletion;
     private Task _inputResolutionTail = Task.CompletedTask;
 
     internal CancellationTokenSource Lifetime { get; } = new();
-    internal SemaphoreSlim GenerationGate { get; } = new(1, 1);
 
     /// <summary>Reserve wire order in callback order, before scheduling response output.</summary>
-    internal Task EnqueueInputResolution(Func<Task> send, CancellationToken cancellationToken = default)
+    internal Task EnqueueInputResolution(Func<Task> send)
     {
         Task previous;
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -80,9 +77,6 @@ internal sealed class VoiceConnectionState
             try
             {
                 Lifetime.Token.ThrowIfCancellationRequested();
-                // CancelAsync propagates to linked tokens asynchronously. Check the
-                // operation's original token after its predecessor, before sending.
-                cancellationToken.ThrowIfCancellationRequested();
                 await send().ConfigureAwait(false);
             }
             finally
@@ -171,29 +165,21 @@ internal sealed class VoiceConnectionState
         }
     }
 
-    internal bool TryReserveOperation(ResponseOperation operation, bool declineOnly = false)
+    internal bool TryReserveOperation(ResponseOperation operation)
     {
         lock (_sync)
         {
             if (_phase != ConnectionPhase.Active ||
-                (!declineOnly && (_activeResponseIds.Count >= MaximumActiveResponses ||
-                    _terminalResponseIds.Count >= MaximumTerminalSends)) ||
-                (declineOnly && _declineResponseIds.Count >= MaximumPendingDeclines) ||
+                _activeResponseIds.Count >= MaximumActiveResponses ||
+                _terminalResponseIds.Count >= MaximumTerminalSends ||
                 _operations.ContainsKey(operation.ResponseId))
             {
                 return false;
             }
 
             _operations.Add(operation.ResponseId, operation);
-            if (declineOnly)
-            {
-                _declineResponseIds.Add(operation.ResponseId);
-            }
-            else
-            {
-                TrackResponse(operation.ResponseId);
-                _activeResponseIds.Add(operation.ResponseId);
-            }
+            TrackResponse(operation.ResponseId);
+            _activeResponseIds.Add(operation.ResponseId);
             if (operation.InputItemId is not null)
             {
                 _inputResponses[operation.InputItemId] = operation.ResponseId;
@@ -324,20 +310,11 @@ internal sealed class VoiceConnectionState
 
             _activeResponseIds.Remove(responseId);
             _terminalResponseIds.Remove(responseId);
-            _declineResponseIds.Remove(responseId);
             if (operation.InputItemId is not null)
             {
                 _inputResponses.Remove(operation.InputItemId);
             }
             return true;
-        }
-    }
-
-    internal bool TryGetOperation(string responseId, out ResponseOperation operation)
-    {
-        lock (_sync)
-        {
-            return _operations.TryGetValue(responseId, out operation!);
         }
     }
 
@@ -361,7 +338,6 @@ internal sealed class VoiceConnectionState
             _operations.Clear();
             _activeResponseIds.Clear();
             _terminalResponseIds.Clear();
-            _declineResponseIds.Clear();
             _inputResponses.Clear();
             _proactiveRequests.Clear();
             _heardTextByResponse.Clear();

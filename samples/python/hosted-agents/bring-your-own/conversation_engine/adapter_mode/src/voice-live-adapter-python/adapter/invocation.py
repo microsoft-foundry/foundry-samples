@@ -12,20 +12,17 @@ from starlette.requests import Request
 from starlette.responses import StreamingResponse
 
 InvocationHandler = Callable[[Request], Awaitable[StreamingResponse]]
+MAX_FRAME_CHARACTERS = 65_536
 MAX_OUTPUT_CHARACTERS = 8_000
 MAX_DATA_BYTES = 65_536
-# The bounded SSE/JSON envelope is additional to the application-data byte budget.
-MAX_FRAME_CHARACTERS = MAX_DATA_BYTES + len(
-    "data: " + json.dumps({"type": "data", "data": {}})
-)
 
 
 def invocation_request(text: str | Mapping[str, Any], input_id: str) -> Request:
     """Supply only the current SDK context, not identity from caller JSON."""
     # InputDataPart deeply freezes objects; thaw mappings only for JSON encoding.
-    body = json.dumps(
-        {"input": text}, default=dict, ensure_ascii=False, allow_nan=False, separators=(",", ":")
-    ).encode("utf-8")
+    body = json.dumps({"input": text}, default=dict, ensure_ascii=False, allow_nan=False).encode(
+        "utf-8"
+    )
     context = get_request_context()
 
     async def receive() -> dict[str, Any]:
@@ -50,42 +47,29 @@ def invocation_request(text: str | Mapping[str, Any], input_id: str) -> Request:
 
 
 async def sse_events(chunks: AsyncIterator[Any]) -> AsyncIterator[dict[str, Any]]:
-    """Parse bounded JSON SSE frames with incremental UTF-8 and universal newlines."""
-    decoder = codecs.getincrementaldecoder("utf-8-sig")()
+    """Parse bounded JSON SSE frames, including split UTF-8 and CRLF chunks."""
+    decoder = codecs.getincrementaldecoder("utf-8")()
     buffer = ""
-    skip_lf = False
     async for chunk in chunks:
-        # Handler write boundaries are not frame boundaries. Decode bounded slices
-        # while limiting individual frames, including a partial frame across writes.
-        if not isinstance(chunk, str):
-            chunk = memoryview(chunk)
-        for offset in range(0, len(chunk), 4096):
-            piece = chunk[offset : offset + 4096]
-            encoded = piece.encode("utf-8") if isinstance(piece, str) else piece
-            decoded = decoder.decode(encoded)
-            if decoded:
-                # CR ends a line immediately; swallow its optional LF across slices.
-                previous_cr = decoded.endswith("\r")
-                if skip_lf and decoded.startswith("\n"):
-                    decoded = decoded[1:]
-                skip_lf = previous_cr
-                buffer += decoded.replace("\r\n", "\n").replace("\r", "\n")
-            while "\n\n" in buffer:
-                frame, _, buffer = buffer.partition("\n\n")
-                if len(frame) > MAX_FRAME_CHARACTERS:
-                    raise ValueError("SSE frame exceeds its character budget")
-                data = [
-                    line[5:].removeprefix(" ")
-                    for line in frame.split("\n") if line.startswith("data:")
-                ]
-                if data:
-                    event = json.loads("\n".join(data))
-                    if not isinstance(event, dict):
-                        raise ValueError("Expected a JSON SSE object")
-                    yield event
-            # A trailing newline may be the first half of the blank-line delimiter.
-            if len(buffer.removesuffix("\n")) > MAX_FRAME_CHARACTERS:
+        encoded = chunk.encode("utf-8") if isinstance(chunk, str) else bytes(chunk)
+        # Bound producer chunks before decoding/concatenating them.
+        if len(encoded) > MAX_FRAME_CHARACTERS * 4:
+            raise ValueError("SSE chunk exceeds its byte budget")
+        buffer = (buffer + decoder.decode(encoded)).replace("\r\n", "\n")
+        while "\n\n" in buffer:
+            frame, _, buffer = buffer.partition("\n\n")
+            if len(frame) > MAX_FRAME_CHARACTERS:
                 raise ValueError("SSE frame exceeds its character budget")
+            data = [
+                line[5:].removeprefix(" ") for line in frame.split("\n") if line.startswith("data:")
+            ]
+            if data:
+                event = json.loads("\n".join(data))
+                if not isinstance(event, dict):
+                    raise ValueError("Expected a JSON SSE object")
+                yield event
+        if len(buffer) > MAX_FRAME_CHARACTERS:
+            raise ValueError("SSE frame exceeds its character budget")
     buffer += decoder.decode(b"", final=True)
     if buffer.strip():
         raise ValueError("SSE ended inside a frame")
@@ -103,13 +87,11 @@ class InvocationAdapter:
         response = await self._handler(invocation_request(text, input_id))
         iterator = None
         try:
-            # Rejected responses must also close their streaming body.
-            iterator = aiter(response.body_iterator)
             if not 200 <= response.status_code < 300:
                 raise ValueError("Invocation failed")
-            media_type = response.headers.get("content-type", "").split(";", 1)[0].strip()
-            if media_type.lower() != "text/event-stream":
+            if not response.headers.get("content-type", "").startswith("text/event-stream"):
                 raise ValueError("Expected an SSE response")
+            iterator = aiter(response.body_iterator)
             completed = False
             output = ""
             data_bytes = 0
@@ -129,9 +111,7 @@ class InvocationAdapter:
                     if not isinstance(data, dict):
                         raise ValueError("Expected an application JSON object")
                     data_bytes += len(
-                        json.dumps(
-                            data, ensure_ascii=False, allow_nan=False, separators=(",", ":")
-                        ).encode("utf-8")
+                        json.dumps(data, ensure_ascii=False, allow_nan=False).encode("utf-8")
                     )
                     if data_bytes > MAX_DATA_BYTES:
                         raise ValueError("Invocation data exceeds its byte budget")

@@ -69,26 +69,6 @@ failures cannot become a successful `response.done`. Malformed/truncated SSE,
 HTTP errors and missing/duplicate completion fail rather than silently succeeding.
 Text items are completed before the next data item; response completion waits for handler finalization.
 
-Scheduled replies share a per-connection wire-generation gate: only one response
-may be open, while additional accepted inputs wait in the bounded queue without
-blocking control callbacks. A committed terminal send or winning inbound terminal
-event releases this gate independently of slow producer cleanup. Cleanup remains
-tracked and consumes task capacity until it finishes; self-cancel waits for its
-winning terminal acknowledgment before replacement output.
-Cancelling a queued response closes its accepted producer without waiting for
-an earlier blocked send; the deferred resolution node still preserves successor
-order and consumes bounded admission capacity until its predecessor settles.
-Session cleanup retains an independent owner when a session-end/shutdown join
-is cancelled; repeated shutdown still joins outstanding finalization. End-call
-control callbacks retain cleanup before sending the terminal instruction, without
-waiting for producer finalization in serial receive dispatch.
-A producer's own cancellation is a response-scoped failure unless a protocol or
-session terminal has already won; its failure frame precedes the next response.
-Once a protocol/session terminal wins, new output, completion and failure sends are
-suppressed, even if the producer ignores cancellation. Cleanup failures remain local
-diagnostics. Already-in-flight transport frames can still race with that terminal;
-the Bridge's terminal arbitration handles those late frames.
-
 ## Prerequisites
 
 1. Python 3.13 and uv. Runtime dependencies are fully pinned in `uv.lock`, including public
@@ -200,10 +180,6 @@ The adapter sends `response.output_data.done`, preserving the complete applicati
 object, then `response.done` after cleanup. Voice Live exposes the object as
 `response.invocation.delta.delta` without text or audio. The target Voice Live
 deployment must support the application-data extension.
-
-Application data is limited to 65,536 bytes per response, measured as compact
-UTF-8 JSON. The Echo handler emits compact SSE JSON so formatting whitespace does
-not expand an otherwise valid object beyond the separate frame budget.
 
 With the Agent running, check its CE leg locally:
 

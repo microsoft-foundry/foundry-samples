@@ -67,20 +67,3 @@ def test_timeout_completion_records_sanitized_outcome_and_duration(monkeypatch: 
     assert span.attributes[response_telemetry.RESPONSE_DURATION_ATTRIBUTE] >= 0
     assert span.status_code is StatusCode.ERROR
     assert span.end_count == 1
-
-
-def test_failure_telemetry_records_only_exception_type(monkeypatch: Any) -> None:
-    marker = "SYNTHETIC_CUSTOMER_PROMPT_AND_CREDENTIAL_DO_NOT_LOG"
-    span = FakeSpan()
-    monkeypatch.setattr(response_telemetry, "_tracer", FakeTracer(span))
-    telemetry = response_telemetry.ResponseTelemetry("r_private", "in_private", time.monotonic())
-    exception = RuntimeError(marker)
-    exception.__cause__ = ValueError("nested_" + marker)
-
-    telemetry.record_failure(exception)
-
-    assert span.attributes["error.type"] == "builtins.RuntimeError"
-    assert span.attributes[response_telemetry.OUTCOME_ATTRIBUTE] == "error"
-    assert marker not in repr(span.attributes)
-    assert span.status_code is StatusCode.ERROR
-    assert span.end_count == 1

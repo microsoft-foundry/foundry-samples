@@ -23,9 +23,7 @@ Responses endpoint. Bridge message version remains `1.0`.
 `router_agent.py`, `worker_agent.py`, and `task_store.py` are copied verbatim.
 The model deployment declared in `azure.yaml`, model environment variables, model
 access code, prompts, meta-tools, mock tools and worker loop remain the original's.
-The new CE layer replaces the old HTTP/SSE host and its request context, and adds
-transport-aware delivery reservations, a CE-only task-ID annotation on the copied
-Router tool schema, and tool-result-based cancellation acknowledgments.
+The new CE layer replaces the old HTTP/SSE host and its request context.
 
 ## How it works
 
@@ -51,56 +49,17 @@ Worker service, second Hosted protocol or proactive result-notification redesign
   but does not cancel the Worker. A later user turn can deliver the saved result.
 - An explicit `cancel_task` sets the original Worker's cooperative cancellation
   event. It does not forcibly interrupt an in-flight synchronous model/tool call.
-  The reply confirms an accepted cancellation request, not completed cancellation;
-  a rejected request is not acknowledged as successful.
 - The CE context supplies the task store, worker handles and last 20 history items
   per connection, replacing the context/state previously provided by the HTTP host.
 - `heard_text` replaces interrupted assistant output in subsequent model history.
-  Generated text is recorded only after its CE send succeeds; blocked or failed sends
-  do not become assistant history. Successful sends still do not prove audio was heard.
-- A queued turn retains its prior-input boundary, but freezes history only when
-  its handler starts, including earlier replies' latest output/heard-text updates.
-- Session end, disconnect and server shutdown signal cooperative Worker cancellation.
-  In-flight synchronous model/tool calls cannot be forcibly stopped: their Workers
-  remain tracked until they settle, and server cleanup waits for them even if an
-  earlier session-end join was cancelled. The third no-input callback sends EndCall
-  and detaches Workers without waiting, so session.end/disconnect can be dispatched
-  while an in-flight call finishes.
-  There is no durable task queue or reconnect recovery.
-- `delivery.py` reserves completed results per response without changing the original
-  task store. The CE-local `respond_directly.delivered_task_ids` argument identifies
-  the results the Router actually conveys, including summaries and translations;
-  chat/acknowledgments use an empty list. Direct result reads and late Worker results
-  also reserve and record the specific task before successful response completion.
-  Task identities are retained across Router/acknowledgment I/O, so a Worker that
-  finishes during either await is still considered for delivery in the current response.
-  A reservation becomes `DELIVERED` only after the associated message is sent and
-  `response.done` succeeds. Text substring matching is not a delivery signal.
-  Failure/interruption releases uncommitted reservations for retry. This is a
-  transport-level business acknowledgment, not proof of audio playback; it relies
-  on the Router identifying results accurately and does not promise exactly-once
-  playback or delivery across interruptions/disconnection.
+- Session end, disconnect and server shutdown cancel the connection's tasks and
+  discard its memory. There is no durable task queue or reconnect recovery.
+- Original task delivery bookkeeping is retained; this sample does not promise
+  exactly-once playback or delivery across interruptions/disconnection.
 
 The CE layer retains input/response-ID correlation, duplicate-input tracking,
 bounded response capacity, cancellation/timeouts, no-input handling and cleanup
 from the basic CE sample. It does not await the handler in the receive callback.
-
-Scheduled replies share a per-connection wire-generation gate: only one response
-may be open, while additional accepted inputs wait in the bounded queue without
-blocking control callbacks. A committed terminal send or winning inbound terminal
-event releases this gate independently of slow producer cleanup. Cleanup remains
-tracked and consumes task capacity until it finishes; self-cancel waits for its
-winning terminal acknowledgment before replacement output.
-Session cleanup retains an independent owner when a session-end/shutdown join
-is cancelled; repeated shutdown still joins outstanding finalization. End-call
-control callbacks retain cleanup before sending the terminal instruction, without
-waiting for producer finalization in serial receive dispatch.
-A producer's own cancellation is a response-scoped failure unless a protocol or
-session terminal has already won; its failure frame precedes the next response.
-Once a protocol/session terminal wins, new output, completion and failure sends are
-suppressed, even if the producer ignores cancellation. Cleanup failures remain local
-diagnostics. Already-in-flight transport frames can still race with that terminal;
-the Bridge's terminal arbitration handles those late frames.
 
 ## Prerequisites
 

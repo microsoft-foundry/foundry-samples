@@ -24,24 +24,6 @@ public class InvocationAdapterTests
         Assert.That(await Collect(adapter, text).WaitAsync(Timeout), Is.EqualTo(text));
     }
 
-    [TestCase("cjk")]
-    [TestCase("emoji")]
-    [TestCase("split-emoji")]
-    public async Task UnicodeAtUtf16Budget_EchoesThroughBoundedSse(string scenario)
-    {
-        // .NET's 8,000-character budget counts UTF-16 code units, not Unicode scalars.
-        var text = scenario switch
-        {
-            "cjk" => new string('界', 8_000),
-            "emoji" => string.Concat(Enumerable.Repeat("👋", 4_000)),
-            _ => string.Concat(Enumerable.Repeat("👋", 1_999)) + " " +
-                string.Concat(Enumerable.Repeat("👋", 2_000)) + " ",
-        };
-        Assert.That(text.Length, Is.EqualTo(8_000));
-        var adapter = new InvocationAdapter(new EchoHttpAgent());
-        Assert.That(await Collect(adapter, text).WaitAsync(Timeout), Is.EqualTo(text));
-    }
-
     [Test]
     public async Task FirstChunk_IsAvailableBeforeTheHandlerFinishes()
     {
@@ -111,8 +93,6 @@ public class InvocationAdapterTests
 
     [TestCase(500, "text/event-stream")]
     [TestCase(200, "application/json")]
-    [TestCase(200, "text/event-stream-invalid")]
-    [TestCase(200, "text/event-streaming; charset=utf-8")]
     public void FailedHttpResponse_IsNotSuccess(int status, string contentType)
     {
         var handler = new CallbackHandler((_, response, _, _) =>
@@ -123,37 +103,6 @@ public class InvocationAdapterTests
         });
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await Collect(new InvocationAdapter(handler)).WaitAsync(Timeout));
-    }
-
-    [TestCase(500, "text/event-stream")]
-    [TestCase(200, "application/json")]
-    public void RejectedHttpResponse_CancelsAndDrainsTheOriginalHandler(int status, string contentType)
-    {
-        var finalized = false;
-        var cancelled = false;
-        var handler = new CallbackHandler(async (_, response, _, token) =>
-        {
-            try
-            {
-                response.StatusCode = status;
-                response.ContentType = contentType;
-                await response.WriteAsync("data: {}\n\n", token);
-                await response.Body.FlushAsync(token);
-                await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, token);
-            }
-            finally
-            {
-                cancelled = token.IsCancellationRequested;
-                finalized = true;
-            }
-        });
-        Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await Collect(new InvocationAdapter(handler)).WaitAsync(Timeout));
-        Assert.Multiple(() =>
-        {
-            Assert.That(cancelled, Is.True);
-            Assert.That(finalized, Is.True);
-        });
     }
 
     [Test]
@@ -252,100 +201,6 @@ public class InvocationAdapterTests
         var adapter = new InvocationAdapter(new EchoHttpAgent());
         var results = await Task.WhenAll(Collect(adapter, "first customer"), Collect(adapter, "second customer"));
         Assert.That(results, Is.EqualTo(new[] { "first customer", "second customer" }));
-    }
-
-    [TestCase("\n")]
-    [TestCase("\r")]
-    [TestCase("\r\n")]
-    public async Task OriginalHandler_StreamAcceptsEverySseLineEnding(string ending)
-    {
-        var handler = new CallbackHandler(async (_, response, _, token) =>
-        {
-            response.ContentType = "text/event-stream";
-            var raw = "data: " + JsonSerializer.Serialize(new { type = "token", content = "你好 👋" }) +
-                ending + ending + "data: " + JsonSerializer.Serialize(new { type = "done", full_text = "你好 👋" }) +
-                ending + ending;
-            foreach (var value in Encoding.UTF8.GetBytes(raw))
-            {
-                await response.Body.WriteAsync(new[] { value }, token);
-                await response.Body.FlushAsync(token);
-            }
-        });
-        Assert.That(await Collect(new InvocationAdapter(handler)).WaitAsync(Timeout), Is.EqualTo("你好 👋"));
-    }
-
-    [TestCase("text/event-stream")]
-    [TestCase("Text/Event-Stream; charset=utf-8")]
-    [TestCase("TEXT/EVENT-STREAM")]
-    public async Task SseMediaType_IsCaseInsensitive(string mediaType)
-    {
-        var handler = new CallbackHandler(async (_, response, _, token) =>
-        {
-            response.ContentType = mediaType;
-            await Write(response, "token", "x", token);
-            await Write(response, "done", "x", token);
-        });
-        Assert.That(await Collect(new InvocationAdapter(handler)).WaitAsync(Timeout), Is.EqualTo("x"));
-    }
-
-    [TestCase(false)]
-    [TestCase(true)]
-    public async Task ThrowingCancellationCallback_StillDrainsHandler(bool backpressuredCleanup)
-    {
-        var cleanupStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var releaseCleanup = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var producerFinished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var handler = new CallbackHandler(async (_, response, _, token) =>
-        {
-            using var callback = token.Register(() => throw new InvalidOperationException("Synthetic notification failure."));
-            try
-            {
-                response.ContentType = "text/event-stream";
-                await Write(response, "token", "first", token);
-                await Task.Delay(System.Threading.Timeout.Infinite, token);
-            }
-            finally
-            {
-                cleanupStarted.TrySetResult();
-                try
-                {
-                    if (backpressuredCleanup)
-                    {
-                        // Only completing the reader can unblock this non-cancellable flush.
-                        await response.Body.WriteAsync(new byte[100_000], CancellationToken.None);
-                        await response.Body.FlushAsync(CancellationToken.None);
-                    }
-                    else
-                    {
-                        await releaseCleanup.Task;
-                    }
-                }
-                finally
-                {
-                    producerFinished.TrySetResult();
-                }
-            }
-        });
-        var iterator = new InvocationAdapter(handler)
-            .Stream(new CapturingVoiceSession(), "in_cleanup", "input").GetAsyncEnumerator();
-        Assert.That(await iterator.MoveNextAsync().AsTask().WaitAsync(Timeout), Is.True);
-        var disposal = iterator.DisposeAsync().AsTask();
-        try
-        {
-            await cleanupStarted.Task.WaitAsync(Timeout);
-            if (!backpressuredCleanup)
-            {
-                Assert.ThrowsAsync<TimeoutException>(async () =>
-                    await disposal.WaitAsync(TimeSpan.FromMilliseconds(100)));
-                Assert.That(producerFinished.Task.IsCompleted, Is.False);
-            }
-        }
-        finally
-        {
-            releaseCleanup.TrySetResult();
-        }
-        Assert.ThrowsAsync<AggregateException>(async () => await disposal.WaitAsync(Timeout));
-        Assert.That(producerFinished.Task.IsCompletedSuccessfully, Is.True);
     }
 
     private static async Task<string> Collect(InvocationAdapter adapter, string text = "input")

@@ -80,21 +80,9 @@ public sealed class InvocationAdapter(InvocationHandler handler)
         finally
         {
             // Unblock a backpressured writer, cancel the handler and await its finally blocks.
-            try
-            {
-                lifetime.Cancel();
-            }
-            finally
-            {
-                try
-                {
-                    await pipe.Reader.CompleteAsync();
-                }
-                finally
-                {
-                    await producer;
-                }
-            }
+            lifetime.Cancel();
+            await pipe.Reader.CompleteAsync();
+            await producer;
         }
 
         async Task ProduceAsync()
@@ -118,14 +106,13 @@ public sealed class InvocationAdapter(InvocationHandler handler)
     private static void ValidateResponse(HttpResponse response)
     {
         if (response.StatusCode is < 200 or >= 300 ||
-            !string.Equals(response.ContentType?.Split(';', 2)[0].Trim(),
-                "text/event-stream", StringComparison.OrdinalIgnoreCase))
+            response.ContentType?.StartsWith("text/event-stream", StringComparison.OrdinalIgnoreCase) != true)
         {
             throw new InvalidOperationException("Expected a successful SSE invocation response.");
         }
     }
 
-    internal static async IAsyncEnumerable<JsonElement> ReadEventsAsync(
+    private static async IAsyncEnumerable<JsonElement> ReadEventsAsync(
         Stream input,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -133,28 +120,10 @@ public sealed class InvocationAdapter(InvocationHandler handler)
             detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
         var chars = new char[1024];
         var pending = "";
-        var skipLf = false;
-        var firstRead = true;
         int count;
         while ((count = await reader.ReadAsync(chars.AsMemory(), cancellationToken)) != 0)
         {
-            var decoded = new string(chars, 0, count);
-            if (firstRead)
-            {
-                // SSE permits one leading UTF-8 BOM, not alternate encodings.
-                firstRead = false;
-                if (decoded.StartsWith('\uFEFF'))
-                {
-                    decoded = decoded[1..];
-                }
-            }
-            var previousCr = decoded.EndsWith('\r');
-            if (skipLf && decoded.StartsWith('\n'))
-            {
-                decoded = decoded[1..];
-            }
-            skipLf = previousCr;
-            pending += decoded.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+            pending = (pending + new string(chars, 0, count)).Replace("\r\n", "\n", StringComparison.Ordinal);
             int boundary;
             while ((boundary = pending.IndexOf("\n\n", StringComparison.Ordinal)) >= 0)
             {
@@ -176,9 +145,7 @@ public sealed class InvocationAdapter(InvocationHandler handler)
                     yield return document.RootElement.Clone();
                 }
             }
-            // A trailing newline can still become part of the blank-line delimiter.
-            var contentLength = pending.Length - (pending.EndsWith('\n') ? 1 : 0);
-            if (contentLength > MaximumFrameCharacters)
+            if (pending.Length > MaximumFrameCharacters)
             {
                 throw new InvalidOperationException("SSE frame exceeds its character budget.");
             }

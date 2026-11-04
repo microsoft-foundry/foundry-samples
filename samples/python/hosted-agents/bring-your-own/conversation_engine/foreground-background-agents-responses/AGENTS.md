@@ -7,26 +7,16 @@ This Python-only sample migrates the Responses foreground/background sample to
 
 - Preserve `router_agent.py`, `worker_agent.py`, and `task_store.py` verbatim from
   `bring-your-own/voicelive/foreground-background-agents-responses-voicelive`.
-- `agent_logic.py` preserves that sample's model access and routing. CE-specific
-  delivery reservations and cancellation acknowledgments use actual transport/tool outcomes.
-- `delivery.py` extends the original task store without editing it: reserve results
-  per response, explicitly associate emitted results with task IDs (including
-  Router summaries/translations), commit only after successful `response.done`,
-  and release reservations on failure/interruption. Do not equate generation or
-  transport send success with confirmed audio playback or exactly-once delivery.
+- `agent_logic.py` preserves that sample's model access and handler; only transport
+  registration and the framework-provided context are adapted.
 - `voice_runtime.py` supplies CE context, response streaming, history and cleanup.
 - `protocol.py`, `state.py`, `response_coordinator.py`, and `response_telemetry.py`
   retain the existing CE sample's protocol and lifecycle handling.
 - Do not add a separate Agent, HTTP hop, second registered Hosted protocol, new
   model endpoint/key configuration, proactive business notification, or backend rewrite.
 - Keep barge-in distinct from cancelling a worker. Cancel session-owned workers
-  cooperatively on session termination, but not when an individual response is
-  interrupted. Retain/drain Workers until their in-flight executor calls settle;
-  cancelling an asyncio wrapper does not stop its synchronous model/tool call.
+  on session termination, but not when an individual response is interrupted.
 - Never block the CE receive loop on a model call or tool operation.
-  In particular, no-input/end-call control callbacks retain and signal cleanup,
-  rather than joining Workers there. A cancelled session-end/shutdown join must
-  not cancel the retained cleanup owner; later close() must still drain it.
 
 ## Deployment and validation
 

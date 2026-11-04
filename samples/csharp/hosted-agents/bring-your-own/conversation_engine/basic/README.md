@@ -54,28 +54,6 @@ fully represented. `VOICE_SAMPLE_REJECT_START=true` also exercises startup rejec
 Bridge Protocol `1.0` is the application contract; the manifest's `voice_conversation_engine` `1.0.0` selects
 the independently versioned Hosted Agent ingress.
 
-Scheduled replies share a per-connection wire-generation gate: only one response
-may be open, while additional accepted inputs wait in the bounded queue without
-blocking control callbacks. A committed terminal send or winning inbound terminal
-event releases this gate independently of slow producer cleanup. Cleanup remains
-tracked and consumes task capacity until it finishes; self-cancel waits for its
-winning terminal acknowledgment before replacement output.
-Session cleanup retains an independent owner when a session-end/shutdown join
-is cancelled; repeated shutdown still joins outstanding finalization. End-call
-control callbacks retain cleanup before sending the terminal instruction, without
-waiting for producer finalization in serial receive dispatch.
-A producer's own cancellation is a response-scoped failure unless a protocol or
-session terminal has already won; its failure frame precedes the next response.
-Once a protocol/session terminal wins, new output, completion and failure sends are
-suppressed, even if the producer ignores cancellation. Cleanup failures remain local
-diagnostics. Already-in-flight transport frames can still race with that terminal;
-the Bridge's terminal arbitration handles those late frames.
-
-Transport exit signals cancellation synchronously. The scoped handler implements
-`IAsyncDisposable`, allowing SDK/DI scope disposal to await its termination tasks
-before releasing services. Graceful host shutdown still requires cooperative
-producer cleanup within the host's configured shutdown grace period.
-
 ## Prerequisites
 
 1. [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).

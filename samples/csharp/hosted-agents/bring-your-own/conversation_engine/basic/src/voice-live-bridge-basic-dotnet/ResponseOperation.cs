@@ -15,8 +15,6 @@ internal sealed class ResponseOperation : IDisposable
     private readonly long? _userMessageReceivedTimestamp;
     private ResponseOutcome? _outcome;
     private bool _telemetryCompleted;
-    private bool _cancellationRequested;
-    private SemaphoreSlim? _generationGate;
 
     internal ResponseOperation(
         string responseId,
@@ -38,43 +36,6 @@ internal sealed class ResponseOperation : IDisposable
     internal string? InputItemId { get; }
 
     internal CancellationTokenSource Cancellation { get; }
-
-    internal bool IsCancellationRequested
-    {
-        get
-        {
-            lock (_sync)
-            {
-                return _cancellationRequested || Cancellation.IsCancellationRequested;
-            }
-        }
-    }
-
-    internal async Task<bool> TryAcquireGenerationAsync(SemaphoreSlim gate, CancellationToken token)
-    {
-        await gate.WaitAsync(token);
-        lock (_sync)
-        {
-            if (_disposed != 0 || _cancellationRequested)
-            {
-                gate.Release();
-                return false;
-            }
-            _generationGate = gate;
-            return true;
-        }
-    }
-
-    internal void ReleaseGeneration()
-    {
-        SemaphoreSlim? gate;
-        lock (_sync)
-        {
-            gate = _generationGate;
-            _generationGate = null;
-        }
-        gate?.Release();
-    }
 
     internal Task? Work
     {
@@ -111,20 +72,6 @@ internal sealed class ResponseOperation : IDisposable
         lock (_sync)
         {
             _outcome ??= outcome;
-        }
-    }
-
-    internal bool TryRequestCancellation(ResponseOutcome outcome)
-    {
-        lock (_sync)
-        {
-            _outcome ??= outcome;
-            if (_disposed != 0 || _cancellationRequested)
-            {
-                return false;
-            }
-            _cancellationRequested = true;
-            return true;
         }
     }
 

@@ -8,13 +8,11 @@ using Azure.AI.AgentServer.Invocations.Voice;
 namespace VoiceHostedAgent;
 
 /// <summary>Sample-maintained CE lifecycle around an in-process invocation handler.</summary>
-public class VoiceAgent : VoiceHandler, IAsyncDisposable
+public class VoiceAgent : VoiceHandler
 {
     private const int MaximumInputCharacters = 8_000;
 
     private readonly ConditionalWeakTable<VoiceSession, VoiceConnectionState> _connections = new();
-    private readonly object _terminationSync = new();
-    private readonly HashSet<Task> _terminationTasks = new();
     private readonly VoiceResponseCoordinator _responses;
     private readonly InvocationAdapter _backend;
     private readonly ILogger<VoiceAgent> _logger;
@@ -119,7 +117,11 @@ public class VoiceAgent : VoiceHandler, IAsyncDisposable
 
         if (noInput.Count >= 3)
         {
-            return BeginEndCallAsync(session, state, cancellationToken);
+            return _responses.TerminateAndEndCallAsync(
+                session,
+                state,
+                VoiceEndCallMode.Drain,
+                cancellationToken);
         }
 
         _responses.StartResponse(
@@ -224,7 +226,7 @@ public class VoiceAgent : VoiceHandler, IAsyncDisposable
     {
         if (_connections.TryGetValue(session, out var state))
         {
-            await TrackTermination(_responses.TerminateSessionAsync(state, ResponseOutcome.EndCall));
+            await _responses.TerminateSessionAsync(state, ResponseOutcome.EndCall);
         }
     }
 
@@ -232,77 +234,10 @@ public class VoiceAgent : VoiceHandler, IAsyncDisposable
     {
         if (_connections.TryGetValue(session, out var state))
         {
-            TrackTermination(_responses.TerminateSessionAsync(state, ResponseOutcome.TransportError));
-        }
-    }
-
-    /// <summary>The SDK signals transport exit synchronously; its DI scope awaits this drain.</summary>
-    public async ValueTask DisposeAsync()
-    {
-        while (true)
-        {
-            Task[] pending;
-            lock (_terminationSync)
-            {
-                pending = _terminationTasks.ToArray();
-            }
-            if (pending.Length == 0)
-            {
-                return;
-            }
-            try
-            {
-                await Task.WhenAll(pending);
-            }
-            catch (Exception exception)
-            {
-                _logger.LogWarning("Voice shutdown cleanup failed; error_type={ErrorType}",
-                    exception.GetType().FullName);
-            }
-            finally
-            {
-                lock (_terminationSync)
-                {
-                    _terminationTasks.ExceptWith(pending);
-                }
-            }
-        }
-    }
-
-    private Task TrackTermination(Task termination)
-    {
-        lock (_terminationSync)
-        {
-            _terminationTasks.Add(termination);
-        }
-        _responses.Observe(ObserveTerminationAsync(termination));
-        return termination;
-    }
-
-    private Task BeginEndCallAsync(
-        VoiceSession session,
-        VoiceConnectionState state,
-        CancellationToken cancellationToken,
-        string reason = "sample_completed")
-    {
-        // Mark terminal and retain cleanup before sending EndCall. The serial
-        // receive callback must not wait for producer finalization.
-        TrackTermination(_responses.TerminateSessionAsync(state, ResponseOutcome.EndCall));
-        return session.SendAsync(new VoiceEndCallMessage(reason, VoiceEndCallMode.Drain), cancellationToken);
-    }
-
-    private async Task ObserveTerminationAsync(Task termination)
-    {
-        try
-        {
-            await termination;
-        }
-        finally
-        {
-            lock (_terminationSync)
-            {
-                _terminationTasks.Remove(termination);
-            }
+            _responses.Observe(
+                _responses.TerminateSessionAsync(
+                    state,
+                    ResponseOutcome.TransportError));
         }
     }
 
@@ -348,9 +283,10 @@ public class VoiceAgent : VoiceHandler, IAsyncDisposable
         reason switch
         {
             null => Task.CompletedTask,
-            "session_input_limit" => BeginEndCallAsync(
+            "session_input_limit" => _responses.TerminateAndEndCallAsync(
                 session,
                 state,
+                VoiceEndCallMode.Drain,
                 cancellationToken,
                 reason),
             _ => _responses.SendNoneAsync(session, state, inputItemId, reason),

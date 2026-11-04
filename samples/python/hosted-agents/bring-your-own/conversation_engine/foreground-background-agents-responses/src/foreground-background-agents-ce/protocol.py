@@ -114,17 +114,6 @@ class ProtocolRuntime:
             state.reject()
             await session.send(SessionRejected(code="protocol_mismatch", retriable=False))
             return
-        if event.reconnect:
-            # Connection-scoped history cannot be restored; never acknowledge an empty resume.
-            state.reject()
-            await session.send(
-                SessionRejected(
-                    code="startup_failed",
-                    retriable=False,
-                    message="This sample does not support reconnect recovery.",
-                )
-            )
-            return
         if os.getenv("VOICE_SAMPLE_REJECT_START", "").lower() == "true":
             state.reject()
             await session.send(
@@ -152,13 +141,12 @@ class ProtocolRuntime:
         if not await self._claim_input(session, state, event.item_id, InputOrigin.NO_INPUT):
             return
         if event.count >= 3:
-            self._coordinator.detach_terminating_state(state, OperationOutcome.END_CALL)
+            await self._coordinator.terminate_state(state, OperationOutcome.END_CALL)
             await self._coordinator.send_end_call(session, EndCallMode.DRAIN, InputOrigin.NO_INPUT)
             return
         if not state.can_start_response():
-            self._coordinator.schedule_none(
+            await self._coordinator.send_none(
                 session,
-                state,
                 event.item_id,
                 InputOrigin.NO_INPUT,
                 reason="capacity_exceeded",
@@ -232,7 +220,7 @@ class ProtocolRuntime:
         if claim is InputClaim.DUPLICATE:
             logger.warning("Ignoring duplicate Voice input item")
             return False
-        self._coordinator.detach_terminating_state(state, OperationOutcome.END_CALL)
+        await self._coordinator.terminate_state(state, OperationOutcome.END_CALL)
         await self._coordinator.send_end_call(
             session,
             EndCallMode.DRAIN,
@@ -243,10 +231,10 @@ class ProtocolRuntime:
 
     async def close(self) -> None:
         """Cancel all sessions and finish detached response tasks once."""
-        if not self._closed:
-            self._closed = True
-            # Register every state before the first await; cancellation of this
-            # join must not lose later sessions from the detached snapshot.
-            for state in self._store.drain():
-                self._coordinator.detach_terminating_state(state, OperationOutcome.CANCELLED)
+        if self._closed:
+            return
+        self._closed = True
+        states = self._store.drain()
+        for state in states:
+            await self._coordinator.terminate_state(state, OperationOutcome.CANCELLED)
         await self._coordinator.wait_for_detached_tasks()
