@@ -44,14 +44,33 @@ These are **syntax references, not resources to recreate, redeploy or delete**.
 Use unique names and your own new Plan ID. The reference plan is user-isolated,
 already saved, and **not a shared fresh-test fixture**.
 
-## 1. Install and sign in - Windows Command Prompt
+## 1. Check tools, enable A2A and sign in
 
-### Open a new Command Prompt, then run
+### Choose the command for your terminal
+
+If your prompt starts with **`PS`**, use **PowerShell**:
+
+```powershell
+$env:AZD_ALPHA_ENABLE_AGENTS_A2A = "true"
+$env:AZD_ALPHA_ENABLE_AGENTS_A2A
+```
+
+For **Command Prompt (`cmd.exe`)** instead:
+
+```cmd
+set "AZD_ALPHA_ENABLE_AGENTS_A2A=true"
+echo %AZD_ALPHA_ENABLE_AGENTS_A2A%
+```
+
+The check should print `true`. Run only the block for your shell; `set` in
+PowerShell does not set this environment variable. Repeat the appropriate block
+whenever you open a new terminal, and run the remaining commands in that terminal.
+
+### These commands work in either shell
 
 ```text
 azd version
 az version
-set "AZD_ALPHA_ENABLE_AGENTS_A2A=true"
 azd extension install azure.ai.agents --version 1.0.0-beta.23 --source azd
 azd auth login
 az login
@@ -70,8 +89,9 @@ If the model is missing, use the provisioning step below.
 
 Use an authorized project with native A2A enabled by the organizer; the local
 flag above does not grant project access or enable the service for a subscription.
-Create an empty folder and open Command Prompt there. If this is a new terminal,
-run `set "AZD_ALPHA_ENABLE_AGENTS_A2A=true"` again, then use your project ARM ID:
+Create an empty folder and open your chosen terminal there. In a new terminal,
+repeat the matching A2A environment-variable block from Section 1, then use your
+project ARM ID:
 
 ```text
 azd ai agent init --src . -t "https://github.com/Hameedkunkanoor/foundry-samples/blob/feature/a2a-llm-release-planner/samples/python/hosted-agents/bring-your-own/a2a/travel-planner-web-search/azure.yaml" --project-id "<PROJECT-ARM-ID>" -e travel-web-bugbash
@@ -252,6 +272,22 @@ Do not provide private addresses.
 Copy **your new `plan-...` ID** for the tests below. Their filled examples use our
 existing `plan-5b753f084fe2439f963eb1c1ef77ab9f`, a syntax reference only.
 Do not run write examples against that reference record.
+
+Commands below use `<PLAN-ID>`: replace it with your actual new Plan ID.
+If you prefer a variable, the syntax depends on your shell:
+
+```powershell
+$planId = "PASTE_YOUR_NEW_PLAN_ID_HERE"
+```
+
+In PowerShell, use `$planId` inside the double-quoted prompts.
+
+```cmd
+set "PLAN_ID=PASTE_YOUR_NEW_PLAN_ID_HERE"
+```
+
+In Command Prompt, use `%PLAN_ID%` inside the prompts instead. Do not mix the
+variable syntaxes. Changing the current folder does not change your shell.
 
 ## 6. Saved-trip checks in fresh sessions
 
