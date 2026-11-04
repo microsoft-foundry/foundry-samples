@@ -149,23 +149,29 @@ they consume before executing their turns.
 
 ### Local sample lifecycle regression checks
 
-The shared tests directory also contains deterministic lifecycle checks against
-the actual sample graph and local Responses HTTP host. Run the HITL check from
-the repository root using the sample runtime dependencies:
+Runtime lifecycle checks live in the separate `runtime-tests` directory, outside
+the lightweight `tests/test_*.py` policy discovery path. They exercise the actual
+sample graph and local Responses HTTP host. Run them from the repository root:
 
 ```bash
-uv run --frozen --project samples/python/hosted-agents/langgraph/responses/07-human-in-the-loop/src/langgraph-human-in-the-loop-responses python .azure-pipelines/scripts/hosted-agents/tests/test_langgraph_sample_lifecycle.py
+python -m pip install "uv==0.11.7"
+python .azure-pipelines/scripts/hosted-agents/run_runtime_tests.py
 ```
 
 This standard-library `unittest` check sends revision feedback through the rich
 `function_call_output` resume channel, approves the revised draft, then submits
 a new task in the same conversation. It asserts the exact model inputs: the
 revision includes its draft and feedback, while the new task includes neither.
-Mutation checks ensure that removing history reset or feedback application is
-detected at the corresponding assertion. The model is scripted and the graph
-checkpointer is in-memory; no Azure credentials or model calls are required.
-These are local regression checks, not cloud or UI acceptance. They require the
-sample runtime environment and are separate from the policy-only test suite.
+The model is scripted and the graph checkpointer is in-memory; no Azure
+credentials or model calls are required. No test rewrites or matches the sample's
+source implementation. Mutation checks are development evidence only.
+
+The entrypoint first runs `uv sync --frozen --python 3.13` against the sample's
+committed runtime project, then executes runtime test discovery in that isolated
+environment. Dependency or test failures propagate; missing dependencies are not
+skipped. GitHub scripts self-test runs it in a dedicated credential-free job,
+and ADO runs it in a separate step after lightweight policy tests. These are
+local runtime regressions, not cloud or UI acceptance.
 
 ## Complete document shape
 

@@ -1,7 +1,7 @@
 """Local sample lifecycle regressions using runtime dependencies, not Azure access.
 
-Run from the repository root in the HITL sample's Python environment:
-    python .azure-pipelines/scripts/hosted-agents/tests/test_langgraph_sample_lifecycle.py
+Run with the sample's frozen runtime dependencies:
+    python .azure-pipelines/scripts/hosted-agents/run_runtime_tests.py
 """
 
 from __future__ import annotations
@@ -29,13 +29,9 @@ SAMPLE = ROOT / (
 
 
 class LangGraphSampleLifecycleTests(unittest.TestCase):
-    def exercise_lifecycle(self, source: str) -> None:
+    def test_revision_then_new_task_isolates_model_context(self) -> None:
         state_root = self.enterContext(tempfile.TemporaryDirectory())
-        source_path = Path(state_root) / "main.py"
-        source_path.write_text(source, encoding="utf-8")
-        spec = importlib.util.spec_from_file_location(
-            "hitl_sample_lifecycle", source_path
-        )
+        spec = importlib.util.spec_from_file_location("hitl_sample_lifecycle", SAMPLE)
         self.assertIsNotNone(spec)
         self.assertIsNotNone(spec.loader)
         module = importlib.util.module_from_spec(spec)
@@ -175,23 +171,6 @@ class LangGraphSampleLifecycleTests(unittest.TestCase):
                     ),
                     final,
                 )
-
-    def test_revision_then_new_task_isolates_model_context(self) -> None:
-        self.exercise_lifecycle(SAMPLE.read_text(encoding="utf-8"))
-
-    def test_detects_missing_history_reset(self) -> None:
-        source = SAMPLE.read_text(encoding="utf-8")
-        original = 'return {"draft": "", "revision_history": []}'
-        self.assertIn(original, source)
-        with self.assertRaisesRegex(AssertionError, "new task must exclude"):
-            self.exercise_lifecycle(source.replace(original, 'return {"draft": ""}', 1))
-
-    def test_detects_missing_feedback_application(self) -> None:
-        source = SAMPLE.read_text(encoding="utf-8")
-        original = 'for rev in state.get("revision_history", []):'
-        self.assertIn(original, source)
-        with self.assertRaisesRegex(AssertionError, "revision must apply"):
-            self.exercise_lifecycle(source.replace(original, "for rev in []:", 1))
 
 
 if __name__ == "__main__":
