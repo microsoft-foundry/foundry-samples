@@ -1339,16 +1339,26 @@ fi
 turn=0
 overall_exit=0
 quota_retries=0
-previous_response_id=""
+declare -A response_ids=()
 while IFS= read -r turn_record || [ -n "$turn_record" ]; do
   [ -z "$turn_record" ] && continue
   turn=$(jq -r '.global_turn' <<< "$turn_record")
   test_turn=$(jq -r '.turn // .global_turn' <<< "$turn_record")
   test_turn_count=$(jq -r '.test_turn_count // 1' <<< "$turn_record")
   if [ "$test_turn" -eq 1 ]; then
-    previous_response_id=""
+    response_ids=()
   fi
   if [ "$PROTOCOL" = "responses" ] && [ "$test_turn_count" -gt 1 ]; then
+    previous_turn=$(jq -r --argjson default "$((test_turn - 1))" '.previous_turn // $default' <<< "$turn_record")
+    previous_response_id=""
+    if [ "$previous_turn" -gt 0 ]; then
+      previous_response_id="${response_ids[$previous_turn]:-}"
+      if [ -z "$previous_response_id" ]; then
+        echo "##vso[task.logissue type=error]Turn $turn cannot continue from test turn $previous_turn: no successful stored response"
+        overall_exit=1
+        break
+      fi
+    fi
     turn_record=$(jq -c --arg previous "$previous_response_id" '
       . + {persist_response: true}
       | if $previous == "" then . else .previous_response_id = $previous end
@@ -1508,7 +1518,16 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
       echo "##vso[task.logissue type=error]Turn $turn did not return a response id for multi-turn continuation"
       turn_exit=1
     else
-      previous_response_id="$next_response_id"
+      for stored_id in "${response_ids[@]}"; do
+        if [ "$next_response_id" = "$stored_id" ]; then
+          echo "##vso[task.logissue type=error]Turn $turn reused a response id from an earlier turn"
+          turn_exit=1
+          break
+        fi
+      done
+      if [ $turn_exit -eq 0 ]; then
+        response_ids[$test_turn]="$next_response_id"
+      fi
     fi
   fi
 
