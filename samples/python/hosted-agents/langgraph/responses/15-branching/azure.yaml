@@ -1,0 +1,30 @@
+name: langchain-azure-branching-responses
+
+infra:
+  provider: microsoft.foundry
+
+services:
+  langchain-azure-branching-responses:
+    project: src/langgraph-branching
+    host: azure.ai.agent
+    language: python
+    kind: hosted
+    name: langchain-azure-branching-responses
+    description: >
+      A number-memory agent demonstrating branching, rewind, and regeneration.
+    codeConfiguration:
+      runtime: python_3_13
+      entryPoint: main.py
+      dependencyResolution: remote_build
+    container:
+      resources:
+        cpu: "0.25"
+        memory: 0.5Gi
+    environmentVariables:
+      - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
+        value: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+    protocols:
+      - protocol: responses
+        version: 2.0.0
+    env:
+      PYTHONNOUSERSITE: "1"
