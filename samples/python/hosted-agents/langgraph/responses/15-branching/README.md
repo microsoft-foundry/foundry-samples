@@ -5,7 +5,7 @@ with `enable_response_branching=True`. Clients use `previous_response_id`
 to demonstrate branching, rewind, and regeneration with a remembered
 number instead of continuing from the latest checkpoint in the thread.
 
-## How It Works
+## How it works
 
 ### Model Integration
 
@@ -17,8 +17,8 @@ See [main.py](src/langgraph-branching/main.py) for the full implementation.
 
 ### Branching, rewind, and regeneration
 
-The [client](src/langgraph-branching/client.py) asks the agent to remember 10, creates branches B
-and C from A, then returns to B after C.
+The [client](src/langgraph-branching/client.py) asks the agent to remember 10,
+creates branches B and C from A, then returns to B after C.
 
 #### Call sequence
 
@@ -98,44 +98,171 @@ keep graph checkpoints in Foundry State Store.
   storage are configured. See the [resilient sample](../09-resilient/README.md)
   for background recovery setup.
 
-## Running the Agent Host
+## Prerequisites
 
-This sample uses `uv` and Python 3.13 for the hosted runtime. From this
-sample's directory:
+- An existing Microsoft Foundry project with a deployed chat model. This
+  sample reuses that project and model; it does not provision them.
+- **Python 3.13** and **[uv 0.11.7](https://docs.astral.sh/uv/getting-started/installation/)**,
+  matching the hosted runtime and dependency-policy tooling.
+- The project's HTTPS endpoint, its full ARM resource ID for deployment, and
+  the model's **deployment name**. This sample uses `gpt-5.4-mini` throughout;
+  ensure that deployment exists in your project.
+- An Azure identity with model-inference access for local runs. Deploying
+  additionally requires permission to create hosted agents and versions;
+  invoking a deployed agent requires agent-invocation permission. See the
+  [hosted-agent permissions](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agent-permissions).
+
+## Option 1: Azure Developer CLI (`azd`)
+
+### Set up the tools
+
+Install [Azure Developer CLI](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
+and [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), then
+install the Foundry extension and sign in:
+
+```bash
+azd ext install microsoft.foundry
+azd auth login
+az login
+```
+
+`azd auth login` authenticates deployment tooling. The local Python host and
+the deployed-agent client use `DefaultAzureCredential`, which can use the
+Azure CLI identity from `az login`.
+
+### Configure the existing project
+
+From this sample's root directory, containing `azure.yaml`, install the
+locked Python environment and configure an azd environment:
+
+```bash
+uv sync --project src/langgraph-branching --frozen --python 3.13
+cp src/langgraph-branching/.env.example src/langgraph-branching/.env
+azd env new branching-demo --subscription <subscription-id> --location <project-region>
+azd env set AZURE_AI_PROJECT_ID "<project-resource-id>"
+azd env set FOUNDRY_PROJECT_ENDPOINT "https://<resource>.services.ai.azure.com/api/projects/<project>"
+azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME "gpt-5.4-mini"
+```
+
+The project resource ID is the full ARM ID, ending in
+`/providers/Microsoft.CognitiveServices/accounts/<resource>/projects/<project>`;
+it is not the HTTPS endpoint. In `src/langgraph-branching/.env`, replace the
+endpoint placeholder and keep `AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-5.4-mini`,
+matching the azd environment above.
+No `azd provision` is needed when reusing the existing project and model.
+
+### Run the agent locally
+
+From the sample's root directory:
+
+```bash
+uv run --project src/langgraph-branching --frozen azd ai agent run --no-client
+```
+
+The host listens on `http://localhost:8088`. `--no-client` starts only the
+host so the branching client can send its requests. Add `--port 8090` if
+port 8088 is already in use.
+
+### Invoke the local agent
+
+In another terminal, from the sample's root directory:
+
+```bash
+uv run --directory src/langgraph-branching --frozen client.py
+```
+
+See the [number example](#run-the-number-example) for the expected results
+and a custom host address.
+
+### Deploy to Foundry
+
+After testing locally, run from the sample's root directory:
+
+```bash
+azd deploy
+azd ai agent show
+```
+
+The [azure.yaml](azure.yaml) uses direct-code deployment with Python 3.13
+and remote dependency resolution; Docker and a container registry are not
+required. Runtime dependencies are declared in
+[pyproject.toml](src/langgraph-branching/pyproject.toml) and fully pinned in
+[uv.lock](src/langgraph-branching/uv.lock) for reproducible installation.
+[.agentignore](src/langgraph-branching/.agentignore) excludes local credentials,
+virtual environments, and azd state from the runtime package. The agent declares
+Responses protocol `2.0.0` for deployment routing and Foundry state-store request
+context.
+
+### Invoke the deployed agent
+
+Use the deployed agent's OpenAI protocol base URL, without `/responses`
+or the query string. From the sample's root directory:
+
+```bash
+uv run --directory src/langgraph-branching --frozen client.py --azure --base-url "https://<resource>.services.ai.azure.com/api/projects/<project>/agents/<agent-name>/endpoint/protocols/openai"
+```
+
+`--azure` obtains a token with `DefaultAzureCredential` and adds
+`api-version=v1`. The client sends the same A/B/C/D/E/F requests as the local
+example, using `FoundryCheckpointSaver` on the hosted agent. See the
+[deployment guide](../../README.md#deploying-the-agent-to-foundry) for
+Foundry prerequisites.
+
+## Option 2: VS Code (Foundry Toolkit)
+
+### Set up the environment
+
+Install [VS Code](https://code.visualstudio.com/), the
+[Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio),
+the [Python extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python),
+and [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli).
+Open this sample's root folder as the VS Code workspace.
+
+From the VS Code terminal:
 
 ```bash
 cd src/langgraph-branching
 uv sync --frozen --python 3.13
 cp .env.example .env
+az login
 ```
 
-Set `FOUNDRY_PROJECT_ENDPOINT` and `AZURE_AI_MODEL_DEPLOYMENT_NAME` in `.env`
-to your existing Foundry project and model deployment, using
-[.env.example](src/langgraph-branching/.env.example) as a reference.
-Authenticate with Azure CLI before starting the host:
+Set `FOUNDRY_PROJECT_ENDPOINT` in `.env` to your existing project endpoint
+and keep `AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-5.4-mini`. Use
+[.env.example](src/langgraph-branching/.env.example) as a reference and keep
+`.env` local. Select the source directory's `.venv` interpreter in VS Code.
+
+### Run locally and open the Inspector
+
+From `src/langgraph-branching`:
 
 ```bash
-az login
 uv run --frozen main.py
 ```
 
-### Run with azd
+The host listens on `http://localhost:8088`. Open the Command Palette and
+run **Foundry Toolkit: Open Agent Inspector** to interact with it. Use the
+[number example](#run-the-number-example) for the complete branching,
+rewind, and regeneration flow.
 
-Use `azd` with the Foundry extension. From this sample's root directory,
-create an environment bound to your existing project and model deployment:
+For **F5** debugging, first generate local launch and task configuration
+for this existing project with the
+[Toolkit's Copilot configuration tools](https://code.visualstudio.com/docs/intelligentapps/copilot-tools#generate-and-test-agent-code).
+That optional generation path requires GitHub Copilot Chat access. Review
+the generated entry point (`src/langgraph-branching/main.py`), source working
+directory, `.venv` interpreter, and `.env` file before pressing F5. Cloning
+the sample does not create these debug files; keep generated `.vscode`
+configuration local.
 
-```bash
-azd env new branching-demo --subscription <subscription-id> --location <project-region>
-azd env set AZURE_AI_PROJECT_ID "<project-resource-id>"
-azd env set FOUNDRY_PROJECT_ENDPOINT "https://<resource>.services.ai.azure.com/api/projects/<project>"
-azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME gpt-4.1-mini
-uv run --project src/langgraph-branching --frozen azd ai agent run --no-client
-```
+### Deploy with Foundry Toolkit
 
-Use the same project endpoint and model deployment in
-`src/langgraph-branching/.env`. `--no-client` starts only the host so the
-branching client below can send its six requests. Add `--port 8090` if port
-8088 is already in use.
+1. Open the Command Palette and run **Foundry Toolkit: Deploy Hosted Agent**.
+2. Select your existing Foundry project and choose **Code** deployment.
+3. Confirm the source directory, Python 3.13 runtime, `main.py` entry point,
+  and `gpt-5.4-mini` model deployment name before deploying.
+
+Use the [deployed-agent client](#invoke-the-deployed-agent) to run the
+branching example against the resulting endpoint.
 
 ## Interacting with the agent
 
@@ -147,7 +274,7 @@ In another terminal, from `src/langgraph-branching`, run:
 uv run --frozen client.py
 ```
 
-The client sends six non-streaming requests and prints assistant reply.
+The client sends six non-streaming requests and prints the assistant replies.
 The expected numbers are `10`, `11`, `12`, `11`, `12`, `11`.
 
 For a different host address or port:
@@ -206,35 +333,19 @@ Branch selection works the same way with `"stream": true`. For the raw
 requests above, add that field to the body and use `curl -N` to read SSE
 events, including `response.output_text.delta` and `response.completed`.
 
-## Deploying the Agent to Foundry
+## Troubleshooting
 
-Complete the dependency installation and azd environment setup above,
-then deploy from the sample's root directory:
+- **Model deployment not found:** verify that `gpt-5.4-mini` is deployed in
+  your Foundry project and matches both the source `.env` and azd environment.
+  Existing environment variables take precedence over values loaded from `.env`.
+- **Authentication or permission errors:** sign in with `az login` for the
+  Python host/client and `azd auth login` for deployment, using identities
+  with the permissions required for that operation.
+- **A local parent response cannot be reused after a restart:** `MemorySaver`
+  loses graph checkpoints when the process exits. Run the number example
+  again to create a fresh root response.
 
-```bash
-azd deploy
-azd ai agent show
-```
+## Next steps
 
-The [azure.yaml](azure.yaml) uses direct-code deployment with Python 3.13
-and remote dependency resolution; Docker and a container registry are not
-required. Runtime dependencies are declared in
-[pyproject.toml](src/langgraph-branching/pyproject.toml) and fully pinned in
-[uv.lock](src/langgraph-branching/uv.lock) for reproducible installation.
-[.agentignore](src/langgraph-branching/.agentignore) excludes local credentials,
-virtual environments, and azd state from the runtime package. The agent declares
-Responses protocol `2.0.0` for deployment routing and Foundry state-store request
-context. No `azd provision` is needed when reusing an existing project and model.
-
-Use the deployed agent's OpenAI protocol base URL, without `/responses`
-or the query string. From `src/langgraph-branching`, run:
-
-```bash
-uv run --frozen client.py --azure --base-url "https://<resource>.services.ai.azure.com/api/projects/<project>/agents/<agent-name>/endpoint/protocols/openai"
-```
-
-`--azure` obtains a token with `DefaultAzureCredential` and adds
-`api-version=v1`. The client sends the same A/B/C/D/E/F requests as the local
-example, using `FoundryCheckpointSaver` on the hosted agent. See the
-[deployment guide](../../README.md#deploying-the-agent-to-foundry) for
-Foundry prerequisites.
+- [Resilient execution sample](../09-resilient/README.md)
+- [Hosted-agent deployment guide](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/deploy-hosted-agent)

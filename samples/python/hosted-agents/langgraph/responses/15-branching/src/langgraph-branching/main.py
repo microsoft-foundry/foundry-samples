@@ -7,7 +7,7 @@ continuing from the latest checkpoint in the thread.
 Required environment variables (set in ``.env`` or your shell):
 
     FOUNDRY_PROJECT_ENDPOINT        Foundry project endpoint
-    AZURE_AI_MODEL_DEPLOYMENT_NAME  defaults to "gpt-4o"
+    AZURE_AI_MODEL_DEPLOYMENT_NAME  defaults to "gpt-5.4-mini"
     PORT                            optional, defaults to 8088
 
 Run::
@@ -50,7 +50,7 @@ _AZURE_AI_SCOPE = "https://ai.azure.com/.default"
 
 def _build_chat_model() -> ChatOpenAI:
     project_endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"].rstrip("/")
-    deployment = os.environ.get("AZURE_AI_MODEL_DEPLOYMENT_NAME", "gpt-4o")
+    deployment = os.environ.get("AZURE_AI_MODEL_DEPLOYMENT_NAME", "gpt-5.4-mini")
     credential = DefaultAzureCredential()
     project = AIProjectClient(endpoint=project_endpoint, credential=credential)
     openai_client = project.get_openai_client()
