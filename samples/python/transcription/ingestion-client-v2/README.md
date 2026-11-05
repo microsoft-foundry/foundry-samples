@@ -44,7 +44,7 @@ azd auth login
 From the root of your `foundry-samples` checkout:
 
 ```powershell
-cd samples\python\ingestion-client-v2
+cd samples\python\transcription\ingestion-client-v2
 azd up
 ```
 
