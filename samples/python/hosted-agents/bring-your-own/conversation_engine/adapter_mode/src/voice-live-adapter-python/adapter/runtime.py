@@ -7,10 +7,13 @@ from __future__ import annotations
 import logging
 import os
 import time
+from collections.abc import AsyncIterator
+from contextlib import aclosing
 from typing import Any
 
 from azure.ai.agentserver.invocations.voice import (
     EndCallMode,
+    InputDataPart,
     InputTextPart,
     ResponseAccepted,
     ResponseCancelled,
@@ -147,7 +150,8 @@ class VoiceRuntime:
             return
 
         text = "".join(part.text for part in event.content if isinstance(part, InputTextPart))
-        if not text or len(text) > MAX_MESSAGE_CHARACTERS:
+        data_parts = [part.data for part in event.content if isinstance(part, InputDataPart)]
+        if not data_parts and (not text or len(text) > MAX_MESSAGE_CHARACTERS):
             self._coordinator.schedule_none(
                 session,
                 state,
@@ -162,8 +166,15 @@ class VoiceRuntime:
             )
             return
 
+        async def stream_output() -> AsyncIterator[str | dict[str, Any]]:
+            # Structured input takes precedence, just like response.invoke_input.
+            for value in data_parts if data_parts else [text]:
+                async with aclosing(self._backend.stream(value, event.item_id)) as source:
+                    async for chunk in source:
+                        yield chunk
+
         self._coordinator.send_echo(
-            session, state, event.item_id, self._backend.stream(text, event.item_id), received_at
+            session, state, event.item_id, stream_output(), received_at
         )
 
     async def on_user_no_input(self, session: Session, event: UserNoInput) -> None:
@@ -173,7 +184,7 @@ class VoiceRuntime:
         if not await self._claim_input(session, state, event.item_id, InputOrigin.NO_INPUT):
             return
         if event.count >= 3:
-            await self._coordinator.terminate_state(state, OperationOutcome.END_CALL)
+            self._coordinator.detach_terminating_state(state, OperationOutcome.END_CALL)
             await self._coordinator.send_end_call(session, EndCallMode.DRAIN, InputOrigin.NO_INPUT)
             return
         if not state.can_start_response():
@@ -253,7 +264,7 @@ class VoiceRuntime:
         if claim is InputClaim.DUPLICATE:
             logger.warning("Ignoring duplicate Voice input item")
             return False
-        await self._coordinator.terminate_state(state, OperationOutcome.END_CALL)
+        self._coordinator.detach_terminating_state(state, OperationOutcome.END_CALL)
         await self._coordinator.send_end_call(
             session,
             EndCallMode.DRAIN,
@@ -264,12 +275,12 @@ class VoiceRuntime:
 
     async def close(self) -> None:
         """Cancel all sessions and finish detached response tasks once."""
-        if self._closed:
-            return
-        self._closed = True
-        states = self._store.drain()
-        for state in states:
-            await self._coordinator.terminate_state(state, OperationOutcome.CANCELLED)
+        if not self._closed:
+            self._closed = True
+            # Register every state before the first await; cancellation of this
+            # join must not lose later sessions from the detached snapshot.
+            for state in self._store.drain():
+                self._coordinator.detach_terminating_state(state, OperationOutcome.CANCELLED)
         await self._coordinator.wait_for_detached_tasks()
 
 

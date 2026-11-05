@@ -185,11 +185,48 @@ async def test_original_handler_exception_logs_are_private(
         )
 
     monkeypatch.setattr(logic, "_iter_llm_stream", router)
-    events = [event async for event in logic.handler({"stream": True}, context, signal)]
-    assert events[-1]["type"] == "response.completed"
+    events = []
+    if failure_point == "router":
+        with pytest.raises(RuntimeError, match=marker):
+            async for event in logic.handler({"stream": True}, context, signal):
+                events.append(event)
+        assert not any(event["type"] == "response.completed" for event in events)
+    else:
+        events = [event async for event in logic.handler({"stream": True}, context, signal)]
+        assert events[-1]["type"] == "response.completed"
+    assert marker not in json.dumps(events)
     records = assert_private_logs(caplog, marker)
     assert any("RuntimeError" in record.getMessage() for record in records)
     assert context.response_id not in logic._active_cancel_signals
+
+
+def test_router_failure_is_sanitized_response_error_and_next_turn_recovers(logic, monkeypatch):
+    marker = "PRIVATE_SYNTHETIC_MODEL_REQUEST_DETAIL"
+    original = logic._iter_llm_stream
+
+    async def router(*args, **kwargs):
+        if args[3][-1]["content"] == "fail":
+            raise RuntimeError(marker)
+        async for event in original(*args, **kwargs):
+            yield event
+
+    monkeypatch.setattr(logic, "_iter_llm_stream", router)
+    app = create_app(handler=logic.handler, configure_observability=None)
+    with TestClient(app) as client, client.websocket_connect("/voice_conversation_engine") as ws:
+        start(ws)
+        send_user(ws, "fail", "in_failure")
+        created = ws.receive_json()
+        failure = ws.receive_json()
+        assert created["type"] == "response.created"
+        assert failure["type"] == "error"
+        assert failure["code"] == "generation_failed"
+        assert failure["response_id"] == created["response_id"]
+        assert marker not in json.dumps(failure)
+        send_user(ws, "recovered", "in_recovery")
+        events = receive_until(ws, "response.done")
+        assert events[0]["type"] == "response.created"
+        assert events[0]["in_reply_to"] == ["in_recovery"]
+        assert output(events) == "recovered"
 
 
 @pytest.mark.asyncio
@@ -298,7 +335,7 @@ def test_explicit_cancel_stops_worker(logic, monkeypatch):
             frame("user.barge_in", response_id=ack[0]["response_id"], heard_text="Looking")
         )
         send_user(ws, "cancel", "in_cancel")
-        assert "Cancelled." in output(receive_until(ws, "response.done"))
+        assert "Cancellation requested." in output(receive_until(ws, "response.done"))
         assert worker.cancelled.wait(2)
 
 
@@ -414,6 +451,84 @@ class DeclineHostSocket:
             await self.release_none.wait()
         self.frames.append(event)
         self.changed.set()
+
+
+class AcknowledgmentHostSocket(DeclineHostSocket):
+    """Block the first delta before it reaches the transport, not the next model read."""
+
+    def __init__(self):
+        super().__init__()
+        self.delta_started = asyncio.Event()
+        self.release_delta = asyncio.Event()
+
+    async def send_text(self, text):
+        if (
+            json.loads(text)["type"] == "response.output_text.delta"
+            and not self.delta_started.is_set()
+        ):
+            self.delta_started.set()
+            await self.release_delta.wait()
+        await super().send_text(text)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("control", ["user.barge_in", "response.cancelled", "response.timeout"])
+async def test_interrupt_during_first_acknowledgment_keeps_delegated_work(
+    logic, monkeypatch, control
+):
+    from azure.ai.agentserver.invocations.voice import Session
+
+    worker = Worker()
+    monkeypatch.setattr(logic, "run_worker", worker)
+    socket = AcknowledgmentHostSocket()
+    app = create_app(handler=logic.handler, configure_observability=None)
+    runtime = app.state.voice_runtime
+    _enqueue_decline_start(socket)
+    socket.enqueue(
+        "user.message", item_id="in_search",
+        content=[{"type": "input_text", "text": "search Quincy North"}],
+    )
+    connection = asyncio.create_task(app._handle_voice_connection(socket))
+    try:
+        await asyncio.wait_for(socket.delta_started.wait(), 2)
+        session = Session._current(socket)
+        state = runtime._store.active(session)
+        conversation = runtime._conversations[session]
+        operation = next(iter(state.responses.values()))
+        fields = {"response_id": operation.response_id}
+        fields.update(
+            {"stage": "max_duration"} if control == "response.timeout" else {"heard_text": ""}
+        )
+        socket.enqueue(control, **fields)
+        await asyncio.wait_for(asyncio.gather(operation.task, return_exceptions=True), 2)
+
+        # Do not wait for worker.started before interrupting: that hid the original race.
+        task = conversation.task_store.get("latest")
+        assert task is not None, "interrupted acknowledgment discarded the delegated task"
+        assert worker.calls == 1
+        assert task.status is TaskStatus.RUNNING
+        assert not worker.cancelled.is_set()
+        assert not any(e["type"] == "response.done" for e in socket.frames)
+
+        worker.release.set()
+        await asyncio.wait_for(asyncio.gather(*conversation.background_tasks), 2)
+        socket.enqueue(
+            "user.message", item_id="in_status",
+            content=[{"type": "input_text", "text": "status"}],
+        )
+        await _wait_for_decline_event(
+            socket, lambda: any(e["type"] == "response.done" for e in socket.frames)
+        )
+        assert "OS2, Row C, Rack 7" in output(socket.frames)
+        assert worker.calls == 1
+    finally:
+        socket.release_delta.set()
+        worker.release.set()
+        socket.enqueue("session.end", reason="test_complete")
+        await asyncio.wait_for(connection, 2)
+        await runtime.close()
+    assert runtime._conversations == {}
+    assert not conversation.background_tasks
 
 
 def _create_decline_app() -> Any:

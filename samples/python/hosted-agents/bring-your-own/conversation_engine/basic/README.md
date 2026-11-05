@@ -13,7 +13,8 @@ Microsoft has no responsibility to you or others with respect to any of these sa
 ## What this sample demonstrates
 
 This sample implements Voice Live Bridge Protocol `1.0` with the typed AgentServer Voice API.
-Each valid user message triggers the same fixed, thirty-word children's story, streamed word by word.
+Each valid text message triggers the same fixed, thirty-word children's story, streamed word by word.
+Structured JSON input is returned verbatim without speech.
 The echo server does not initialize a model or interpret commands.
 
 Voice Live owns speech recognition, turn detection, synthesis, and playback interruption.
@@ -24,7 +25,7 @@ No LLM client, framework adapter, or model-specific configuration is included.
 `on_user_message` validates the input, defines the story, and passes an asynchronous word generator to
 `send_echo`. There is no command parser or model call; the input text does not change the story.
 
-`send_echo` accepts `AsyncIterable[str]`, schedules cancellable work, and returns immediately.
+`send_echo` accepts an async stream of text chunks or JSON objects, schedules cancellable work, and returns immediately.
 The coordinator uses `async for` and sends each chunk as soon as it arrives; it does not collect
 the source first. To integrate your own streaming logic, replace the local `stream_story` async
 generator in `on_user_message`. Source cleanup runs on completion, cancellation, and send failure.
@@ -37,6 +38,23 @@ The protocol layer retains response/input-ID correlation, bounded active and ter
 capacity, proactive admission, task cancellation, telemetry, and session cleanup.
 `heard_text` updates are retained for known responses, including recent completed responses,
 without keeping an LLM prompt or model conversation history.
+
+Scheduled replies share a per-connection wire-generation gate: only one response
+may be open, while additional accepted inputs wait in the bounded queue without
+blocking control callbacks. A committed terminal send or winning inbound terminal
+event releases this gate independently of slow producer cleanup. Cleanup remains
+tracked and consumes task capacity until it finishes; self-cancel waits for its
+winning terminal acknowledgment before replacement output.
+Session cleanup retains an independent owner when a session-end/shutdown join
+is cancelled; repeated shutdown still joins outstanding finalization. End-call
+control callbacks retain cleanup before sending the terminal instruction, without
+waiting for producer finalization in serial receive dispatch.
+A producer's own cancellation is a response-scoped failure unless a protocol or
+session terminal has already won; its failure frame precedes the next response.
+Once a protocol/session terminal wins, new output, completion and failure sends are
+suppressed, even if the producer ignores cancellation. Cleanup failures remain local
+diagnostics. Already-in-flight transport frames can still race with that terminal;
+the Bridge's terminal arbitration handles those late frames.
 
 ## Prerequisites
 
@@ -162,14 +180,36 @@ Voice configuration and the managed audio experience belong to the Voice wrapper
 
 ## User messages
 
-Every valid user message, including `/end` and Unicode text, triggers this same thirty-word story:
+Every valid text message, including `/end` and Unicode text, triggers this same thirty-word story:
 
 > Once a little rabbit found a lonely star. She carried it up the tallest hill, where friendly
 > fireflies helped it shine again. That night, everyone dreamed of kindness and adventure.
 
 There is no command parser. Each response sends thirty word deltas sharing one output item,
 then the full story in `response.output_text.done`, followed by `response.done`.
-Empty and oversized input still receive `response.none`.
+Empty and oversized text input still receive `response.none`.
+
+### JSON passthrough
+
+Send a JSON object through the Voice wrapper using the existing caller API:
+
+```json
+{"type":"response.create","response":{"invoke_input":{"customer_id":"demo","locale":"zh-CN"}}}
+```
+
+Voice Live forwards it as `user.message` with an `input_data` part. The sample
+returns the complete object in `response.output_data.done`, then `response.done`.
+The caller receives that object in `response.invocation.delta.delta`, with no
+text or audio. This requires the application-data extension in the target Voice Live deployment.
+
+Application data is limited to 65,536 bytes per response, measured as compact
+UTF-8 JSON, matching Voice Live's data-budget calculation.
+
+To check the Agent leg locally with the server running:
+
+```bash
+uv run --frozen python scripts/smoke_test.py --data '{"customer_id":"demo","locale":"zh-CN"}'
+```
 
 ## Test
 
@@ -179,7 +219,7 @@ chunks exist, and cancellation/failure closes the source. No tests make cloud ca
 
 ```bash
 uv run --frozen python -m pytest -q
-ruff check .
+uv run --frozen python -m ruff check .
 ```
 
 The sample's build, validation, and test commands are also listed in `sample.yaml`.

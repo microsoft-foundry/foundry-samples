@@ -34,6 +34,7 @@ from state import (
     InputOrigin,
     OperationOutcome,
     ProactiveRequest,
+    ResponseObserver,
     ResponseOperation,
     SessionState,
 )
@@ -70,6 +71,7 @@ class ResponseCoordinator:
         voice: dict[str, Any] | None = None,
         response_id: str | None = None,
         response_started: bool = False,
+        observer: ResponseObserver | None = None,
     ) -> bool:
         """Schedule text output while the host continues to receive interruption events."""
         if not state.can_start_response():
@@ -83,6 +85,10 @@ class ResponseCoordinator:
             input_ids=input_ids,
             turn=ApplicationTurn(),
             response_started=response_started,
+            observer=observer,
+            output_iterator=aiter(
+                self._fixed_chunks(text) if isinstance(text, str) else text
+            ),
             telemetry=(
                 ResponseTelemetry(response_id, input_item_id, user_message_received_at)
                 if input_item_id is not None and user_message_received_at is not None
@@ -195,6 +201,9 @@ class ResponseCoordinator:
         if operation is None:
             return
         operation.select_outcome(OperationOutcome.CANCELLED)
+        if operation.observer is not None:
+            operation.observer.stopped()
+        operation.release_generation()
         if operation.terminal_event is not None:
             operation.terminal_event.set()
         else:
@@ -222,6 +231,9 @@ class ResponseCoordinator:
         if operation is None:
             return
         operation.request_cancellation(outcome)
+        if operation.observer is not None:
+            operation.observer.stopped()
+        operation.release_generation()
 
     def schedule_none(
         self,
@@ -367,8 +379,26 @@ class ResponseCoordinator:
             raise
 
     async def terminate_state(self, state: SessionState, outcome: OperationOutcome) -> None:
-        """Cancel and await all operations belonging to one state."""
+        """Join a retained termination owner without cancelling its cleanup."""
+        await asyncio.shield(self._begin_termination(state, outcome))
+
+    def _begin_termination(
+        self, state: SessionState, outcome: OperationOutcome
+    ) -> asyncio.Task[None]:
+        if state.termination_task is not None:
+            return state.termination_task
         tasks = self._mark_terminating(state, outcome)
+        task = asyncio.create_task(
+            self._finish_termination(state, tasks, outcome), name="voice-session-termination"
+        )
+        state.termination_task = task
+        self._detached_tasks.add(task)
+        task.add_done_callback(self._termination_done, context=contextvars.Context())
+        return task
+
+    async def _finish_termination(
+        self, state: SessionState, tasks: list[asyncio.Task[None]], outcome: OperationOutcome
+    ) -> None:
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
         if state.input_resolution_tail is not None:
@@ -377,20 +407,21 @@ class ResponseCoordinator:
             self._finalize(state, operation, outcome)
         self._clear_state(state)
 
+    def _termination_done(self, task: asyncio.Task[None]) -> None:
+        self._detached_tasks.discard(task)
+        if not task.cancelled() and (exception := task.exception()) is not None:
+            logger.warning("Voice session cleanup failed; error_type=%s", type(exception).__name__)
+
     def detach_terminating_state(self, state: SessionState, outcome: OperationOutcome) -> None:
-        """Synchronously terminate state and track tasks that must finish later."""
-        tasks = self._mark_terminating(state, outcome)
+        """Retain a termination owner before returning to receive dispatch."""
+        self._begin_termination(state, outcome)
         self._clear_state(state)
-        for task in tasks:
-            self._detached_tasks.add(task)
-            task.add_done_callback(self._detached_tasks.discard)
 
     async def wait_for_detached_tasks(self) -> None:
-        """Wait for all transport-detached response tasks."""
+        """Drain retained termination owners even after an earlier join was cancelled."""
         while self._detached_tasks:
             tasks = tuple(self._detached_tasks)
-            await asyncio.gather(*tasks, return_exceptions=True)
-            self._detached_tasks.difference_update(tasks)
+            await asyncio.shield(asyncio.gather(*tasks, return_exceptions=True))
 
     def _start_task(
         self,
@@ -402,14 +433,30 @@ class ResponseCoordinator:
             operation.previous_resolution = state.input_resolution_tail
             operation.resolution_complete = asyncio.get_running_loop().create_future()
             state.input_resolution_tail = operation.resolution_complete
+
+        async def run() -> None:
+            operation.running = True
+            try:
+                if not operation.cancellation_requested:
+                    await coroutine
+            finally:
+                coroutine.close()
+                if operation.observer is not None:
+                    operation.observer.stopped()
+                operation.release_generation()
+                self._release_resolution(operation)
+                await self._drain_output(operation)
+
+        wrapper = run()
         try:
             activation = operation.telemetry.activate() if operation.telemetry else nullcontext()
             with activation:
                 task = asyncio.create_task(
-                    coroutine,
+                    wrapper,
                     name=f"voice-response-{operation.response_id}",
                 )
         except BaseException:
+            wrapper.close()
             coroutine.close()
             self._release_resolution(operation)
             self._finalize(state, operation, OperationOutcome.ABANDONED)
@@ -435,9 +482,29 @@ class ResponseCoordinator:
         try:
             if operation.previous_resolution is not None:
                 await asyncio.shield(operation.previous_resolution)
-            await operation.session.send(message)
+            if isinstance(message, ResponseCreated):
+                await operation.state.generation_gate.acquire()
+                operation.generation_owned = True
+            if operation.cancellation_requested:
+                raise asyncio.CancelledError()
+            await ResponseCoordinator._send_active(operation, message)
         finally:
             self._release_resolution(operation)
+
+    @staticmethod
+    def _ensure_active(operation: ResponseOperation) -> None:
+        # task.cancel() is advisory: a producer may catch it or fail during cleanup.
+        if operation.cancellation_requested or not operation.state.active or operation.outcome in {
+            OperationOutcome.CANCELLED, OperationOutcome.TIMEOUT, OperationOutcome.END_CALL,
+            OperationOutcome.TRANSPORT_ERROR,
+        }:
+            raise asyncio.CancelledError()
+
+    @staticmethod
+    async def _send_active(operation: ResponseOperation, message: Any) -> None:
+        ResponseCoordinator._ensure_active(operation)
+        await operation.session.send(message)
+        ResponseCoordinator._ensure_active(operation)
 
     async def _run_response(
         self,
@@ -447,6 +514,9 @@ class ResponseCoordinator:
         voice: dict[str, Any] | None,
     ) -> None:
         try:
+            if operation.response_started:
+                await operation.state.generation_gate.acquire()
+                operation.generation_owned = True
             if not operation.response_started:
                 await self._send_resolution(
                     operation,
@@ -459,10 +529,18 @@ class ResponseCoordinator:
             with operation.turn.activate():
                 await self._send_output(operation, text, streaming, voice)
             operation.select_outcome(OperationOutcome.RESPONSE)
-        except asyncio.CancelledError:
-            operation.select_outcome(OperationOutcome.CANCELLED)
-            raise
-        except Exception as exception:
+        except (asyncio.CancelledError, Exception) as exception:
+            if operation.observer is not None:
+                operation.observer.stopped()
+            if operation.cancellation_requested or not operation.state.active:
+                if isinstance(exception, asyncio.CancelledError):
+                    operation.select_outcome(OperationOutcome.CANCELLED)
+                    raise
+                logger.warning("Response cleanup failed after termination; error_type=%s",
+                               type(exception).__name__)
+                return
+            # Producer cancellation is a failure unless a protocol/session terminal won.
+            # Send that terminal before the task wrapper releases the generation gate.
             operation.select_outcome(OperationOutcome.ERROR)
             if operation.telemetry is not None:
                 operation.telemetry.record_failure(exception)
@@ -477,14 +555,17 @@ class ResponseCoordinator:
         voice: dict[str, Any] | None,
     ) -> None:
         item_id = new_item_id()
-        chunks = self._fixed_chunks(text) if isinstance(text, str) else text
+        del text  # The accepted iterator is owned by the response operation.
         completed_text = ""
-        iterator = aiter(chunks)
+        iterator = operation.output_iterator
+        assert iterator is not None
         try:
             async for chunk in iterator:
+                self._ensure_active(operation)
                 completed_text += chunk
                 if streaming:
-                    await operation.session.send(
+                    await ResponseCoordinator._send_active(
+                        operation,
                         ResponseOutputTextDelta(
                             response_id=operation.response_id,
                             item_id=item_id,
@@ -492,13 +573,15 @@ class ResponseCoordinator:
                             voice=voice,
                         )
                     )
+                    if operation.observer is not None:
+                        operation.observer.text_sent(chunk)
                     # Let control callbacks run even if the producer/send completes synchronously.
                     await asyncio.sleep(0)
         finally:
             # Release producer resources on cancellation or a failed send, not only on exhaustion.
-            if close := getattr(iterator, "aclose", None):
-                await close()
-        await operation.session.send(
+            await self._close_output(operation)
+        await ResponseCoordinator._send_active(
+            operation,
             ResponseOutputTextDone(
                 response_id=operation.response_id,
                 item_id=item_id,
@@ -507,10 +590,39 @@ class ResponseCoordinator:
             )
         )
         operation.output_item_count = 1
+        if not streaming and operation.observer is not None:
+            operation.observer.text_sent(completed_text)
         operation.release_capacity()
-        await operation.session.send(ResponseDone(response_id=operation.response_id))
+        await ResponseCoordinator._send_active(
+            operation, ResponseDone(response_id=operation.response_id)
+        )
+        if operation.observer is not None:
+            operation.observer.completed()
         if operation.telemetry is not None:
             operation.telemetry.record_response_done_sent()
+
+    @staticmethod
+    async def _close_output(operation: ResponseOperation) -> None:
+        if operation.output_cleanup is None and operation.output_iterator is not None:
+            iterator, operation.output_iterator = operation.output_iterator, None
+
+            async def close() -> None:
+                if closer := getattr(iterator, "aclose", None):
+                    await closer()
+
+            operation.output_cleanup = asyncio.create_task(
+                close(), name=f"voice-output-cleanup-{operation.response_id}"
+            )
+        if operation.output_cleanup is not None:
+            # Cancellation of the response must not interrupt producer finalization.
+            await asyncio.shield(operation.output_cleanup)
+
+    async def _drain_output(self, operation: ResponseOperation) -> None:
+        try:
+            await self._close_output(operation)
+        except Exception as exception:
+            operation.select_outcome(OperationOutcome.ERROR)
+            logger.warning("Voice producer cleanup failed; error_type=%s", type(exception).__name__)
 
     @staticmethod
     async def _fixed_chunks(text: str) -> AsyncIterable[str]:
@@ -528,14 +640,16 @@ class ResponseCoordinator:
                     ),
                 )
                 operation.response_started = True
-                await operation.session.send(
+                await ResponseCoordinator._send_active(
+                    operation,
                     ResponseOutputTextDelta(
                         response_id=operation.response_id,
                         item_id=item_id,
                         delta=text,
                     )
                 )
-                await operation.session.send(
+                await ResponseCoordinator._send_active(
+                    operation,
                     ResponseCancel(
                         response_id=operation.response_id,
                         reason="sample_self_correction",
@@ -575,6 +689,8 @@ class ResponseCoordinator:
         fallback: OperationOutcome,
     ) -> None:
         operation.complete(fallback)
+        if operation.observer is not None:
+            operation.observer.stopped()
         state.responses.pop(operation.response_id, None)
         for input_id in operation.input_ids:
             if state.input_responses.get(input_id) == operation.response_id:
@@ -589,6 +705,8 @@ class ResponseCoordinator:
         tasks: list[asyncio.Task[None]] = []
         for operation in tuple(state.responses.values()):
             operation.request_cancellation(outcome)
+            if operation.observer is not None:
+                operation.observer.stopped()
             if operation.task is not None and not operation.task.done():
                 tasks.append(operation.task)
         return tasks
@@ -601,7 +719,8 @@ class ResponseCoordinator:
     @staticmethod
     async def _report_failure(operation: ResponseOperation) -> None:
         try:
-            await operation.session.send(
+            await ResponseCoordinator._send_active(
+                operation,
                 AgentError(
                     code="generation_failed",
                     message="The response could not be generated.",

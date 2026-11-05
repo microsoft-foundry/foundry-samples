@@ -8,6 +8,7 @@ import asyncio
 import time
 from collections import deque
 from collections.abc import AsyncIterator, Callable
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -19,16 +20,16 @@ from azure.ai.agentserver.invocations.voice import (
     new_response_id,
 )
 
+from delivery import ConversationTaskStore
 from protocol import ProtocolRuntime
 from state import MAX_MESSAGE_CHARACTERS, InputOrigin
-from task_store import TaskStore
 
 
 @dataclass
 class Conversation:
     """The request context formerly supplied by the Responses host, scoped to CE."""
 
-    task_store: TaskStore = field(default_factory=TaskStore)
+    task_store: ConversationTaskStore = field(default_factory=ConversationTaskStore)
     background_tasks: set[asyncio.Task[Any]] = field(default_factory=set)
     history: deque[dict[str, Any]] = field(default_factory=lambda: deque(maxlen=20))
     signals: dict[str, asyncio.Event] = field(default_factory=dict)
@@ -41,9 +42,11 @@ class ResponseContextAdapter:
     text: str
     history: list[dict[str, Any]]
     conversation: Conversation
+    output_item: dict[str, Any] = field(default_factory=lambda: {"content": []})
+    sent_text: str = ""
 
     @property
-    def task_store(self) -> TaskStore:
+    def task_store(self) -> ConversationTaskStore:
         return self.conversation.task_store
 
     @property
@@ -55,6 +58,17 @@ class ResponseContextAdapter:
 
     async def get_history(self) -> list[dict[str, Any]]:
         return self.history
+
+    def text_sent(self, text: str) -> None:
+        self.sent_text += text
+        heard = self.conversation.heard.get(self.response_id, self.sent_text)
+        self.output_item["content"] = [{"type": "output_text", "text": heard}] if heard else []
+
+    def completed(self) -> None:
+        self.task_store.commit_delivery(self.response_id)
+
+    def stopped(self) -> None:
+        self.task_store.release_delivery(self.response_id)
 
 
 class VoiceRuntime(ProtocolRuntime):
@@ -103,22 +117,38 @@ class VoiceRuntime(ProtocolRuntime):
         )
         conversation.signals[response_id] = signal
         conversation.history.append({"content": [{"type": "input_text", "text": text}]})
-        self._coordinator.start_response(
-            session,
-            state,
-            event.item_id,
-            self._stream_handler(context, signal),
-            received_at,
-            response_id=response_id,
-        )
+        # Reserve history order now, independently of response completion/cleanup order.
+        context.output_item["response_id"] = response_id
+        conversation.history.append(context.output_item)
+        try:
+            self._coordinator.start_response(
+                session,
+                state,
+                event.item_id,
+                self._stream_handler(context, signal),
+                received_at,
+                response_id=response_id,
+                observer=context,
+            )
+        finally:
+            operation = state.responses.get(response_id)
+            if operation is not None and operation.task is not None:
+                # Even closing an unstarted async generator does not run its finally.
+                operation.task.add_done_callback(
+                    lambda _: conversation.signals.pop(response_id, None)
+                )
+            else:
+                conversation.signals.pop(response_id, None)
 
     async def _stream_handler(
         self, context: ResponseContextAdapter, signal: asyncio.Event
     ) -> AsyncIterator[str]:
         """Translate original text deltas; keep ack → wait → result behavior unchanged."""
         request = {"input": context.text, "stream": True}
+        # Retain this input's prefix, but freeze it only after acquiring the wire
+        # generation: earlier output/heard-text changes must reach queued turns.
+        context.history = deepcopy(context.history)
         source = self._handler(request, context, signal)
-        output = ""
         last_index = None
         try:
             async for event in source:
@@ -126,23 +156,12 @@ class VoiceRuntime(ProtocolRuntime):
                     continue
                 index = event.get("output_index", 0)
                 if last_index is not None and index != last_index:
-                    output += "\n\n"
                     yield "\n\n"
                 last_index = index
                 delta = event["delta"]
-                output += delta
                 yield delta
         finally:
             await source.aclose()
-            context.conversation.signals.pop(context.response_id, None)
-            heard = context.conversation.heard.get(context.response_id, output)
-            if heard:
-                context.conversation.history.append(
-                    {
-                        "response_id": context.response_id,
-                        "content": [{"type": "output_text", "text": heard}],
-                    }
-                )
 
     def _interrupt(self, session: Session, response_id: str, heard_text: str | None = None) -> None:
         conversation = self._conversations.get(session)
@@ -153,13 +172,17 @@ class VoiceRuntime(ProtocolRuntime):
             return
         if signal := conversation.signals.get(response_id):
             signal.set()
+        conversation.task_store.release_delivery(response_id)
         if heard_text is not None:
             conversation.heard[response_id] = heard_text[:MAX_MESSAGE_CHARACTERS]
             while len(conversation.heard) > 64:
                 conversation.heard.pop(next(iter(conversation.heard)))
             for item in conversation.history:
                 if item.get("response_id") == response_id:
-                    item["content"] = [{"type": "output_text", "text": heard_text}]
+                    item["content"] = (
+                        [{"type": "output_text", "text": heard_text[:MAX_MESSAGE_CHARACTERS]}]
+                        if heard_text else []
+                    )
 
     async def on_user_barge_in(self, session: Session, event: Any) -> None:
         self._interrupt(session, event.response_id, event.heard_text)
@@ -186,9 +209,15 @@ class VoiceRuntime(ProtocolRuntime):
         await super().on_response_timeout(session, event)
 
     async def on_user_no_input(self, session: Session, event: Any) -> None:
-        if event.count >= 3:
-            self._detach_conversation(session)
-        await super().on_user_no_input(session, event)
+        state = self._state_for(session)
+        try:
+            await super().on_user_no_input(session, event)
+        finally:
+            # Duplicates leave state active. Only an admitted termination may tear it down.
+            if state is not None and not state.active:
+                # EndCall is already sent. Do not hold the serial receive callback
+                # while a Worker finishes an in-flight synchronous model/tool call.
+                self._detach_conversation(session)
 
     def _detach_conversation(self, session: Session) -> tuple[asyncio.Task[Any], ...]:
         conversation = self._conversations.pop(session, None)
@@ -200,16 +229,22 @@ class VoiceRuntime(ProtocolRuntime):
             task.cancel_event.set()
         workers = tuple(conversation.background_tasks)
         for worker in workers:
-            worker.cancel()
+            # The original Worker finishes its current executor call before checking
+            # cancel_event. Cancelling its asyncio wrapper would abandon that call.
             self._detached_workers.add(worker)
             worker.add_done_callback(self._detached_workers.discard)
         return workers
+
+    @staticmethod
+    async def _drain_workers(workers: tuple[asyncio.Task[Any], ...]) -> None:
+        # A cancelled join must not cancel wrappers around still-running threads.
+        await asyncio.shield(asyncio.gather(*workers, return_exceptions=True))
 
     async def on_session_end(self, session: Session, event: Any) -> None:
         workers = self._detach_conversation(session)
         await super().on_session_end(session, event)
         if workers:
-            await asyncio.gather(*workers, return_exceptions=True)
+            await self._drain_workers(workers)
 
     def on_connection_terminating(self, session: Session) -> None:
         self._detach_conversation(session)
@@ -220,7 +255,7 @@ class VoiceRuntime(ProtocolRuntime):
             self._detach_conversation(session)
         await super().close()
         if self._detached_workers:
-            await asyncio.gather(*tuple(self._detached_workers), return_exceptions=True)
+            await self._drain_workers(tuple(self._detached_workers))
 
 
 def create_app(

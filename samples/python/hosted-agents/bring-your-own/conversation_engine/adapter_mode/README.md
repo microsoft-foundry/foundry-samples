@@ -42,6 +42,7 @@ it never imports Voice callbacks or allocates Bridge response IDs.
 
 Echo returns the input verbatim in word-sized chunks, preserving leading/trailing
 whitespace and Unicode. Slash-prefixed input is ordinary text, not a command.
+JSON objects are returned verbatim as non-audio application data.
 There is no model, tool, business-history store or external backend dependency.
 
 The internal request is `{"input":"Hello world"}`. The handler's SSE profile is:
@@ -66,7 +67,27 @@ multiline data fields are supported. `done.full_text` must match accumulated tok
 The adapter still drains the handler after `done`: later errors or final-save
 failures cannot become a successful `response.done`. Malformed/truncated SSE,
 HTTP errors and missing/duplicate completion fail rather than silently succeeding.
-A single output item is completed after handler finalization.
+Text items are completed before the next data item; response completion waits for handler finalization.
+
+Scheduled replies share a per-connection wire-generation gate: only one response
+may be open, while additional accepted inputs wait in the bounded queue without
+blocking control callbacks. A committed terminal send or winning inbound terminal
+event releases this gate independently of slow producer cleanup. Cleanup remains
+tracked and consumes task capacity until it finishes; self-cancel waits for its
+winning terminal acknowledgment before replacement output.
+Cancelling a queued response closes its accepted producer without waiting for
+an earlier blocked send; the deferred resolution node still preserves successor
+order and consumes bounded admission capacity until its predecessor settles.
+Session cleanup retains an independent owner when a session-end/shutdown join
+is cancelled; repeated shutdown still joins outstanding finalization. End-call
+control callbacks retain cleanup before sending the terminal instruction, without
+waiting for producer finalization in serial receive dispatch.
+A producer's own cancellation is a response-scoped failure unless a protocol or
+session terminal has already won; its failure frame precedes the next response.
+Once a protocol/session terminal wins, new output, completion and failure sends are
+suppressed, even if the producer ignores cancellation. Cleanup failures remain local
+diagnostics. Already-in-flight transport frames can still race with that terminal;
+the Bridge's terminal arbitration handles those late frames.
 
 ## Prerequisites
 
@@ -157,10 +178,43 @@ not support for invoking this CE-only Agent through HTTP.
 
 ## Customization and boundaries
 
+### JSON passthrough
+
+The caller sends a JSON object through the Voice wrapper:
+
+```json
+{"type":"response.create","response":{"invoke_input":{"customer_id":"demo","locale":"zh-CN"}}}
+```
+
+The adapter receives `input_data` and calls the same Echo function in process with
+`{"input":{"customer_id":"demo","locale":"zh-CN"}}`. The handler emits:
+
+```text
+data: {"type":"data","data":{"customer_id":"demo","locale":"zh-CN"}}
+
+data: {"type":"done","full_text":""}
+
+```
+
+The adapter sends `response.output_data.done`, preserving the complete application
+object, then `response.done` after cleanup. Voice Live exposes the object as
+`response.invocation.delta.delta` without text or audio. The target Voice Live
+deployment must support the application-data extension.
+
+Application data is limited to 65,536 bytes per response, measured as compact
+UTF-8 JSON. The Echo handler emits compact SSE JSON so formatting whitespace does
+not expand an otherwise valid object beyond the separate frame budget.
+
+With the Agent running, check its CE leg locally:
+
+```bash
+uv run --frozen python scripts/smoke_test.py --data '{"customer_id":"demo","locale":"zh-CN"}'
+```
+
 Replace the Echo handler and, if its event schema differs, the mapping in
 `adapter/invocation.py`. Keep the protocol runtime unchanged.
-This adapter supports the illustrated token/done SSE profile, not arbitrary
-HTTP middleware, HTTP LROs, structured data or automatic business-state recovery.
+This adapter supports the illustrated token/data/done SSE profile, not arbitrary
+HTTP middleware, HTTP LROs or automatic business-state recovery.
 
 The handler must cooperate with cancellation and release its nested generators,
 model/tool requests and resources in its own finalization. Cancelling output

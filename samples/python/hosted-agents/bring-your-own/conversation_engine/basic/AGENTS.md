@@ -64,7 +64,7 @@ Voice Live Bridge WebSocket events; use `scripts/smoke_test.py` for the local pr
   response tasks, interruption/cancellation/timeout handling, and connection state.
 - Simplifying `on_user_message` must not remove other protocol callbacks, response/input-ID
   correlation, caller-heard state, or cleanup. Keep the receive loop free to process interruptions.
-- Protocol `1.0` supports text input only. Do not add DTMF, image input, history mutation, or
+- Protocol `1.0` supports text and the application-JSON extension. Do not add DTMF, image input, history mutation, or
   hosted-agent handoff under this version.
 
 ## Microsoft Foundry Skill

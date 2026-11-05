@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+from collections.abc import AsyncIterator
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from enum import Enum
@@ -88,6 +89,9 @@ class ResponseOperation:
     turn: ApplicationTurn
     response_started: bool
     task: asyncio.Task[None] | None = None
+    output_iterator: AsyncIterator[Any] | None = None
+    output_cleanup: asyncio.Task[None] | None = None
+    generation_owned: bool = False
     terminal_event: asyncio.Event | None = None
     output_item_count: int = 0
     capacity_released: bool = False
@@ -95,6 +99,7 @@ class ResponseOperation:
     outcome: OperationOutcome | None = None
     telemetry: ResponseTelemetry | None = None
     cancellation_requested: bool = False
+    running: bool = False
     previous_resolution: asyncio.Future[None] | None = None
     resolution_complete: asyncio.Future[None] | None = None
 
@@ -104,7 +109,7 @@ class ResponseOperation:
         if self.cancellation_requested:
             return
         self.cancellation_requested = True
-        if self.task is not None and not self.task.done():
+        if self.running and self.task is not None and not self.task.done():
             self.task.cancel()
 
     def select_outcome(self, outcome: OperationOutcome) -> None:
@@ -123,6 +128,12 @@ class ResponseOperation:
         """Allow a new response to start before this task's done callback runs."""
         self.capacity_released = True
 
+    def release_generation(self) -> None:
+        """Release only this operation's wire generation, not its cleanup capacity."""
+        if self.generation_owned:
+            self.generation_owned = False
+            self.state.generation_gate.release()
+
 
 @dataclass(slots=True)
 class SessionState:
@@ -133,6 +144,8 @@ class SessionState:
     seen_inputs: set[bytes] = field(default_factory=set)
     phase: SessionPhase = SessionPhase.AWAITING_START
     input_resolution_tail: asyncio.Future[None] | None = None
+    termination_task: asyncio.Task[None] | None = field(default=None, repr=False)
+    generation_gate: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     def track_response(self, response_id: str) -> None:
         """Retain bounded playback state after response.done for late interruption events."""

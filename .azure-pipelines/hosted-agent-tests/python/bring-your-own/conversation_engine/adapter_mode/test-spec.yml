@@ -6,6 +6,16 @@ sample:
   owner: wujin
   experiences: [azd]
 tests:
+  - name: application-data-passthrough
+    turns:
+      - input: {customer_id: demo, locale: zh-CN}
+        assertions:
+          - source: raw
+            type: regex
+            value: '"type"\s*:\s*"response\.output_data\.done"'
+          - source: raw
+            type: regex
+            value: '"customer_id"\s*:\s*"demo"'
   - name: streaming-echo-and-independent-turns
     turns:
       - input: adapter echo first

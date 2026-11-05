@@ -39,6 +39,23 @@ capacity, proactive admission, task cancellation, telemetry, and session cleanup
 `heard_text` updates are retained for known responses, including recent completed responses,
 without keeping an LLM prompt or model conversation history.
 
+Scheduled replies share a per-connection wire-generation gate: only one response
+may be open, while additional accepted inputs wait in the bounded queue without
+blocking control callbacks. A committed terminal send or winning inbound terminal
+event releases this gate independently of slow producer cleanup. Cleanup remains
+tracked and consumes task capacity until it finishes; self-cancel waits for its
+winning terminal acknowledgment before replacement output.
+Session cleanup retains an independent owner when a session-end/shutdown join
+is cancelled; repeated shutdown still joins outstanding finalization. End-call
+control callbacks retain cleanup before sending the terminal instruction, without
+waiting for producer finalization in serial receive dispatch.
+A producer's own cancellation is a response-scoped failure unless a protocol or
+session terminal has already won; its failure frame precedes the next response.
+Once a protocol/session terminal wins, new output, completion and failure sends are
+suppressed, even if the producer ignores cancellation. Cleanup failures remain local
+diagnostics. Already-in-flight transport frames can still race with that terminal;
+the Bridge's terminal arbitration handles those late frames.
+
 ## Prerequisites
 
 1. Python 3.13 and uv.
@@ -180,7 +197,7 @@ chunks exist, and cancellation/failure closes the source. No tests make cloud ca
 
 ```bash
 uv run --frozen python -m pytest -q
-ruff check .
+uv run --frozen python -m ruff check .
 ```
 
 The sample's build, validation, and test commands are also listed in `sample.yaml`.

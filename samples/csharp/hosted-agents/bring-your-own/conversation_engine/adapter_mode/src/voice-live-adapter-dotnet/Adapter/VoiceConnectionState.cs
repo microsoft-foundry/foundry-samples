@@ -55,9 +55,10 @@ internal sealed class VoiceConnectionState
     private Task _inputResolutionTail = Task.CompletedTask;
 
     internal CancellationTokenSource Lifetime { get; } = new();
+    internal SemaphoreSlim GenerationGate { get; } = new(1, 1);
 
     /// <summary>Reserve wire order in callback order, before scheduling response output.</summary>
-    internal Task EnqueueInputResolution(Func<Task> send)
+    internal Task EnqueueInputResolution(Func<Task> send, CancellationToken cancellationToken = default)
     {
         Task previous;
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -79,6 +80,9 @@ internal sealed class VoiceConnectionState
             try
             {
                 Lifetime.Token.ThrowIfCancellationRequested();
+                // CancelAsync propagates to linked tokens asynchronously. Check the
+                // operation's original token after its predecessor, before sending.
+                cancellationToken.ThrowIfCancellationRequested();
                 await send().ConfigureAwait(false);
             }
             finally

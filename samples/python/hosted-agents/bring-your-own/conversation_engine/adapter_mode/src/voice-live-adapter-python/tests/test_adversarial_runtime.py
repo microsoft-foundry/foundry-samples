@@ -228,6 +228,95 @@ async def test_customer_exception_content_is_not_logged(caplog):
         await runtime.close()
 
 
+@pytest.mark.parametrize("control", ["user.barge_in", "response.cancelled", "response.timeout"])
+@pytest.mark.parametrize("kind", ["token", "data"])
+async def test_blocked_output_keeps_backend_cleanup_in_tracked_response(control, kind):
+    cleanup_started = asyncio.Event()
+    release_cleanup = asyncio.Event()
+    body_closed = asyncio.Event()
+    cleanups = 0
+
+    async def background():
+        nonlocal cleanups
+        cleanups += 1
+        cleanup_started.set()
+        await release_cleanup.wait()
+
+    async def handler(_request):
+        async def chunks():
+            try:
+                fields = {"content": "first"} if kind == "token" else {"data": {"value": 1}}
+                yield "data: " + json.dumps({"type": kind, **fields}) + "\n\n"
+                await asyncio.Future()
+            finally:
+                body_closed.set()
+
+        return StreamingResponse(
+            chunks(), media_type="text/event-stream", background=BackgroundTask(background)
+        )
+
+    class BlockedOutputSocket(HostSocket):
+        def __init__(self):
+            super().__init__()
+            self.output_started = asyncio.Event()
+
+        async def send_text(self, text):
+            if json.loads(text)["type"] in {
+                "response.output_text.delta", "response.output_data.done"
+            }:
+                self.output_started.set()
+                await asyncio.Future()
+            await super().send_text(text)
+
+    socket = BlockedOutputSocket()
+    app = create_app(handler, configure_observability=None)
+    runtime = app.state.voice_runtime
+    enqueue_start(socket)
+    socket.enqueue(
+        "user.message", item_id="in_cleanup", content=[{"type": "input_text", "text": "test"}]
+    )
+    connection = asyncio.create_task(app._handle_voice_connection(socket))
+    closing = None
+    try:
+        await asyncio.wait_for(socket.output_started.wait(), 1)
+        state = runtime._store.active(Session._current(socket))
+        operation = next(iter(state.responses.values()))
+        fields = {"response_id": operation.response_id}
+        fields.update(
+            {"stage": "max_duration"} if control == "response.timeout" else {"heard_text": ""}
+        )
+        socket.enqueue(control, **fields)
+        await asyncio.wait_for(cleanup_started.wait(), 1)
+        assert body_closed.is_set()
+        assert not operation.task.done(), "backend cleanup escaped the tracked response task"
+        assert state.active_response_count == 1
+        assert state.input_responses["in_cleanup"] == operation.response_id
+
+        socket.enqueue("session.end", reason="test_complete")
+        # Shutdown must also wait for already-cancelled work, without cancelling cleanup again.
+        closing = asyncio.create_task(runtime.close())
+        await asyncio.sleep(0)
+        assert not closing.done()
+        assert not connection.done()
+        assert not operation.task.done()
+        release_cleanup.set()
+        await asyncio.wait_for(asyncio.gather(connection, closing), 1)
+        assert operation.task.done()
+        assert cleanups == 1
+        assert not state.responses
+        assert not state.input_responses
+        assert state.active_response_count == 0
+        assert not any(frame["type"] == "response.done" for frame in socket.frames)
+    finally:
+        release_cleanup.set()
+        if not connection.done():
+            socket.enqueue("session.end", reason="test_complete")
+        await asyncio.wait_for(connection, 1)
+        if closing is not None:
+            await asyncio.wait_for(closing, 1)
+        await runtime.close()
+
+
 async def test_sse_profile_handles_all_split_positions_and_random_partitions():
     text = " 你好 👋\tZ\n"
     token = json.dumps({"type": "token", "content": text}, ensure_ascii=False)

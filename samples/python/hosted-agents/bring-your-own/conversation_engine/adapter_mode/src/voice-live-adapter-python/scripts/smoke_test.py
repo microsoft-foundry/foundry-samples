@@ -26,7 +26,8 @@ UNEXPECTED_TERMINALS = {
 class ResponseValidator:
     """Validate one successful Bridge response sequence."""
 
-    def __init__(self) -> None:
+    def __init__(self, expected_data: dict[str, object] | None = None) -> None:
+        self.expected_data = expected_data
         self.stage = "created"
         self.response_id: str | None = None
         self.item_id: str | None = None
@@ -51,7 +52,21 @@ class ResponseValidator:
             self.stage = "output"
             return False
 
+        if response_type == "response.output_data.done":
+            self._match_id(response, "response_id", self.response_id)
+            self.item_id = self._required_id(response, "item_id")
+            if self.stage != "output" or self.expected_data is None:
+                raise RuntimeError("Unexpected application data")
+            if json.dumps(response.get("data"), sort_keys=True) != json.dumps(
+                self.expected_data, sort_keys=True
+            ):
+                raise RuntimeError("Application data was not returned verbatim")
+            self.stage = "done"
+            return False
+
         if response_type in {"response.output_text.delta", "response.output_text.done"}:
+            if self.expected_data is not None:
+                raise RuntimeError("Data-only output must not produce text")
             self._match_id(response, "response_id", self.response_id)
             item_id = self._required_id(response, "item_id")
             if self.item_id is None:
@@ -100,7 +115,7 @@ def timestamp() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
-async def run(uri: str, text: str) -> None:
+async def run(uri: str, text: str, data: dict[str, object] | None = None) -> None:
     async with websockets.connect(uri, open_timeout=30, close_timeout=10) as socket:
         await socket.send(
             json.dumps(
@@ -129,18 +144,21 @@ async def run(uri: str, text: str) -> None:
                     "id": "m_smoke_user",
                     "ts": timestamp(),
                     "item_id": "in_smoke_user",
-                    "content": [{"type": "input_text", "text": text}],
+                    "content": (
+                        [{"type": "input_data", "data": data}]
+                        if data is not None else [{"type": "input_text", "text": text}]
+                    ),
                 }
             )
         )
 
-        validator = ResponseValidator()
+        validator = ResponseValidator(data)
         while True:
             response = json.loads(await asyncio.wait_for(socket.recv(), timeout=60))
             if validator.consume(response):
                 break
 
-        if (
+        if data is None and (
             validator.completed_text != text
             or validator.streamed_text != text
             or validator.frames.count("response.output_text.delta")
@@ -149,7 +167,12 @@ async def run(uri: str, text: str) -> None:
             raise RuntimeError("Expected the input echoed verbatim in streaming chunks")
 
         print("frames=" + ",".join(validator.frames))
-        print("response=" + validator.completed_text)
+        print(
+            "response=" + (
+                json.dumps(data, ensure_ascii=False) if data is not None
+                else validator.completed_text
+            )
+        )
         await socket.send(
             json.dumps(
                 {
@@ -166,8 +189,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--uri", default="ws://127.0.0.1:8088/voice_conversation_engine")
     parser.add_argument("--text", default="Hello, Voice Live!")
+    parser.add_argument(
+        "--data", type=json.loads, default=argparse.SUPPRESS,
+        help="Pass a JSON object through without speech"
+    )
     args = parser.parse_args()
-    asyncio.run(run(args.uri, args.text))
+    if hasattr(args, "data") and not isinstance(args.data, dict):
+        parser.error("--data must be a JSON object")
+    asyncio.run(run(args.uri, args.text, getattr(args, "data", None)))
 
 
 if __name__ == "__main__":
