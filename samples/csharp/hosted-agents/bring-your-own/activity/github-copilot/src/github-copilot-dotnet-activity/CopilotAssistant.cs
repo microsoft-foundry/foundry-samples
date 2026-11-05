@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Azure.Core;
 using Azure.Identity;
@@ -38,7 +37,7 @@ public sealed class CopilotAssistant : IAssistant, IHostedService, IAsyncDisposa
     private readonly TaskStore _store;
     private readonly string _endpoint;
     private readonly string _model;
-    private readonly ConcurrentDictionary<string, SemaphoreSlim> _turnLocks = new();
+    private readonly SemaphoreSlim _turnLock = new(1, 1);
 
     public CopilotAssistant(IConfiguration configuration, TaskStore store)
     {
@@ -66,8 +65,7 @@ public sealed class CopilotAssistant : IAssistant, IHostedService, IAsyncDisposa
         string conversationId, string prompt, IList<Attachment> attachments,
         Action<string> onText, Action<string> onProgress, CancellationToken cancellationToken)
     {
-        var gate = _turnLocks.GetOrAdd(conversationId, _ => new SemaphoreSlim(1, 1));
-        await gate.WaitAsync(cancellationToken);
+        await _turnLock.WaitAsync(cancellationToken);
         try
         {
             var showTasks = false;
@@ -154,7 +152,7 @@ public sealed class CopilotAssistant : IAssistant, IHostedService, IAsyncDisposa
         }
         finally
         {
-            gate.Release();
+            _turnLock.Release();
         }
     }
 
@@ -174,9 +172,6 @@ public sealed class CopilotAssistant : IAssistant, IHostedService, IAsyncDisposa
     public async ValueTask DisposeAsync()
     {
         await _client.DisposeAsync();
-        foreach (var gate in _turnLocks.Values)
-        {
-            gate.Dispose();
-        }
+        _turnLock.Dispose();
     }
 }

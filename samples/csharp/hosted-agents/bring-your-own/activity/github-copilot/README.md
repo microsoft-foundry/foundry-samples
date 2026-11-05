@@ -3,8 +3,8 @@
 A **C# personal assistant** using the **GitHub Copilot SDK**, a Foundry-hosted
 model, and the **Activity protocol**. This is the .NET counterpart of the
 [Python GitHub Copilot sample](../../../../../python/hosted-agents/bring-your-own/activity/github-copilot).
-It uses the actual [GitHub Copilot .NET SDK](https://github.com/github/copilot-sdk/tree/main/dotnet),
-not a hand-written model/tool loop or an Agent Framework replacement.
+The [GitHub Copilot .NET SDK](https://github.com/github/copilot-sdk/tree/main/dotnet)
+runs the model and tool-calling loop.
 
 ## How it works
 
@@ -27,7 +27,7 @@ tracing, and channel authentication.
   one accumulated reply on other channels.
 - `add_task`, `list_tasks`, and `complete_task` tools. Tasks persist across
   process restarts when `$HOME` storage is retained. Task IDs and conversation
-  session IDs are stable; turns for the same model session are serialized.
+  session IDs are stable; model turns are serialized, as in the Python sample.
 - Interactive task cards in Teams; plain-text task lists on other channels.
 - Shared files are downloaded verbatim for the model's file tools. Bot
   Connector images become inline image attachments for a vision-capable model.
