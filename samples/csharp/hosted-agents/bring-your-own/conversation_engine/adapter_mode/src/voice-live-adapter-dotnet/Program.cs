@@ -7,7 +7,8 @@ using VoiceHostedAgent;
 VoiceServer.Run<VoiceAgent>(args, builder =>
 {
     // The HTTP-shaped business handler is called in process, never registered as an endpoint.
-    builder.Services.AddSingleton(new InvocationAdapter(new EchoHttpAgent()));
+    builder.Services.AddSingleton(services => new InvocationAdapter(
+        new EchoHttpAgent(), services.GetRequiredService<ILogger<InvocationAdapter>>()));
     builder.Services.AddOpenTelemetry()
         .WithTracing(tracing => tracing
             .AddSource(ResponseTelemetry.SourceName));

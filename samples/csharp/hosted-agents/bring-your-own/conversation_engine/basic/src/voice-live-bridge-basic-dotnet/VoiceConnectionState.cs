@@ -48,14 +48,16 @@ internal sealed class VoiceConnectionState
     private readonly HashSet<string> _activeResponseIds = new(StringComparer.Ordinal);
     private readonly HashSet<string> _terminalResponseIds = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _heardTextByResponse = new(StringComparer.Ordinal);
+    private readonly Queue<string> _playbackOrder = new();
     private ConnectionPhase _phase;
     private TaskCompletionSource? _terminationCompletion;
     private Task _inputResolutionTail = Task.CompletedTask;
 
     internal CancellationTokenSource Lifetime { get; } = new();
+    internal SemaphoreSlim GenerationGate { get; } = new(1, 1);
 
     /// <summary>Reserve wire order in callback order, before scheduling response output.</summary>
-    internal Task EnqueueInputResolution(Func<Task> send)
+    internal Task EnqueueInputResolution(Func<Task> send, CancellationToken cancellationToken = default)
     {
         Task previous;
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -72,11 +74,14 @@ internal sealed class VoiceConnectionState
 
         async Task SendInOrderAsync()
         {
+            await Task.Yield();
             // Even a cancelled entry must wait for its predecessor before releasing its successor.
             await previous.ConfigureAwait(false);
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Lifetime.Token.ThrowIfCancellationRequested();
+                if (!IsActive) { throw new OperationCanceledException(); }
                 await send().ConfigureAwait(false);
             }
             finally
@@ -165,12 +170,12 @@ internal sealed class VoiceConnectionState
         }
     }
 
-    internal bool TryReserveOperation(ResponseOperation operation)
+    internal bool TryReserveOperation(ResponseOperation operation, bool terminalOnly = false)
     {
         lock (_sync)
         {
             if (_phase != ConnectionPhase.Active ||
-                _activeResponseIds.Count >= MaximumActiveResponses ||
+                (!terminalOnly && _activeResponseIds.Count >= MaximumActiveResponses) ||
                 _terminalResponseIds.Count >= MaximumTerminalSends ||
                 _operations.ContainsKey(operation.ResponseId))
             {
@@ -178,8 +183,12 @@ internal sealed class VoiceConnectionState
             }
 
             _operations.Add(operation.ResponseId, operation);
-            TrackResponse(operation.ResponseId);
-            _activeResponseIds.Add(operation.ResponseId);
+            if (terminalOnly) { _terminalResponseIds.Add(operation.ResponseId); }
+            else
+            {
+                TrackResponse(operation.ResponseId);
+                _activeResponseIds.Add(operation.ResponseId);
+            }
             if (operation.InputItemId is not null)
             {
                 _inputResponses[operation.InputItemId] = operation.ResponseId;
@@ -258,10 +267,13 @@ internal sealed class VoiceConnectionState
 
     private void TrackResponse(string responseId)
     {
-        _heardTextByResponse.TryAdd(responseId, string.Empty);
-        while (_heardTextByResponse.Count > MaximumTrackedPlaybackResponses)
+        if (_heardTextByResponse.TryAdd(responseId, string.Empty))
         {
-            _heardTextByResponse.Remove(_heardTextByResponse.Keys.First());
+            _playbackOrder.Enqueue(responseId);
+        }
+        while (_playbackOrder.Count > MaximumTrackedPlaybackResponses)
+        {
+            _heardTextByResponse.Remove(_playbackOrder.Dequeue());
         }
     }
 
@@ -274,7 +286,17 @@ internal sealed class VoiceConnectionState
                 return;
             }
             TrackResponse(responseId);
-            _heardTextByResponse[responseId] = heardText[..Math.Min(heardText.Length, 8_000)];
+            var length = 0;
+            var characters = 0;
+            foreach (var rune in heardText.EnumerateRunes())
+            {
+                if (characters++ == 8_000)
+                {
+                    break;
+                }
+                length += rune.Utf16SequenceLength;
+            }
+            _heardTextByResponse[responseId] = heardText[..length];
         }
     }
 
@@ -297,6 +319,11 @@ internal sealed class VoiceConnectionState
             // Release active capacity, but retain input correlation until final cleanup:
             // Bridge arbitration can still report an item_ids timeout during response.done.
         }
+    }
+
+    internal bool TryGetOperation(string responseId, out ResponseOperation operation)
+    {
+        lock (_sync) { return _operations.TryGetValue(responseId, out operation!); }
     }
 
     internal bool TryRemoveOperation(string responseId, out ResponseOperation operation)
@@ -335,12 +362,9 @@ internal sealed class VoiceConnectionState
                 TaskCreationOptions.RunContinuationsAsynchronously);
             _phase = ConnectionPhase.Terminating;
             operations = _operations.Values.ToArray();
-            _operations.Clear();
-            _activeResponseIds.Clear();
-            _terminalResponseIds.Clear();
-            _inputResponses.Clear();
             _proactiveRequests.Clear();
             _heardTextByResponse.Clear();
+            _playbackOrder.Clear();
             completion = _terminationCompletion.Task;
             return true;
         }

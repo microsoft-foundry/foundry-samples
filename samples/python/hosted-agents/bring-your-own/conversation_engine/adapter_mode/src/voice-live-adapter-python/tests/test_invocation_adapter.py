@@ -137,6 +137,11 @@ async def test_first_chunk_precedes_later_work_and_close_disposes_the_source(kin
         "data: " + "x" * 65_537,
         event("token", content="x" * 8_001),
     ],
+    ids=[
+        "missing-done", "invalid-json", "truncated-event", "non-string-token", "empty-token",
+        "mismatched-done", "duplicate-done", "unknown-event", "non-object-data", "null-data",
+        "non-finite-data", "data-after-done", "long-unterminated-data", "oversized-token",
+    ],
 )
 async def test_invalid_or_incomplete_sse_is_not_success(body: str) -> None:
     closed = False
@@ -174,6 +179,51 @@ async def test_failed_http_response_runs_background_cleanup(status: int, media_t
     with pytest.raises(ValueError):
         _ = [chunk async for chunk in InvocationAdapter(handler).stream("input", "in_error")]
     assert cleaned
+
+
+@pytest.mark.parametrize("own_cancel", [False, True])
+@pytest.mark.parametrize("close_fails", [False, True])
+async def test_body_setup_failure_closes_original_body_and_background(own_cancel, close_fails):
+    calls = []
+
+    class Body:
+        def __aiter__(self):
+            if own_cancel:
+                raise asyncio.CancelledError("controlled body setup cancellation")
+            raise RuntimeError("controlled body setup failure")
+
+        async def aclose(self):
+            calls.append("body")
+            if close_fails:
+                raise ValueError("secondary close failure")
+
+    async def cleanup():
+        calls.append("background")
+
+    async def handler(_request):
+        return StreamingResponse(
+            Body(), media_type="text/event-stream", background=BackgroundTask(cleanup),
+        )
+
+    expected = asyncio.CancelledError if own_cancel else RuntimeError
+    with pytest.raises(expected, match="body setup"):
+        _ = [chunk async for chunk in InvocationAdapter(handler).stream("input", "in_setup")]
+    assert calls == ["body", "background"]
+    assert [
+        chunk async for chunk in InvocationAdapter(handle_invocation).stream("retry", "in_retry")
+    ]
+
+
+def test_malformed_sse_parameter_ids_are_short_and_explicit():
+    mark = next(
+        mark for mark in test_invalid_or_incomplete_sse_is_not_success.pytestmark
+        if mark.name == "parametrize"
+    )
+    cases = mark.args[1]
+    ids = mark.kwargs.get("ids")
+    assert ids is not None and len(ids) == len(cases)
+    assert len(set(ids)) == len(ids)
+    assert all(len(value) < 80 for value in ids)
 
 
 async def test_completion_waits_for_handler_finalization_and_background_work() -> None:

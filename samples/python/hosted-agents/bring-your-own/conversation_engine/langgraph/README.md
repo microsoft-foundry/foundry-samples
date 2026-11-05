@@ -39,6 +39,45 @@ capacity, proactive admission, task cancellation, telemetry, and session cleanup
 `heard_text` updates are retained for known responses, including recent completed responses,
 without keeping an LLM prompt or model conversation history.
 
+## Cancellation and cleanup contract
+
+Text output is limited to 512 KiB of UTF-8 across the whole response and
+4,096 yielded chunks (including empty chunks). Budgets are checked before
+appending or sending the offending chunk; text-item boundaries do not reset them.
+Empty text chunks are ignored. A stream with no nonempty text fails
+rather than sending a successful empty response. Whitespace-only text is preserved.
+These checks reuse the normal generation-error and cleanup paths; they add no tasks.
+
+Each connection opens at most one wire generation at a time. Input decisions
+remain in receive order; up to eight resource-owning responses can be active or
+queued, with eight additional bounded decline/cancellation operations. Excess
+backlog ends the session rather than silently dropping an unresolved input.
+
+Barge-in, cancellation, timeout or session termination stops further output for
+that response. A cleanup exception after that decision is a local diagnostic,
+not another response terminal. A producer's own cancellation without a protocol
+stop is a generation failure. Already-started transport writes cannot be retracted;
+Voice Live owns arbitration of frames already in flight.
+
+Stopping generation and releasing resource ownership are separate: cleanup stays
+tracked and occupies capacity until it settles. Session-end/disconnect callbacks
+signal cancellation without joining producers in receive dispatch; host shutdown
+(or .NET handler-scope disposal) joins the retained work. Cancelling a Python
+shutdown join does not cancel the retained cleanup, and a later `close()` rejoins it.
+
+Sources must cooperate with cancellation, bound upstream I/O and close their
+nested resources. Ordinary asynchronous `finally`, `aclose()`/`DisposeAsync()`
+and response background cleanup are supported and awaited before success.
+They are **not guaranteed cancellation-proof**: in particular, cancellation can
+interrupt an async finalizer that the source has already entered naturally.
+Resource owners must make critical finalization cancellation-safe themselves.
+An accepted source remains the cleanup target if its `__aiter__()` fails; successful
+setup transfers closure to the returned iterator. The runtime attempts closure
+and does not issue repeated cancellation
+while its explicit Python close is draining, but cannot restart an already-aborted
+finalizer or guarantee finite shutdown for non-cooperative I/O. There is no
+producer-pump task, forced thread termination or business-state rollback.
+
 ## Prerequisites
 
 1. Python 3.13 and uv.
@@ -77,6 +116,9 @@ Voice wrapper. Local WebSocket tests do not establish deployed routing or audio-
 ## Option 1: Azure Developer CLI
 
 Initialize this sample from the public manifest:
+
+Use a new empty directory containing no `azure.yaml`; do not run initialization
+inside the checked-out sample directory.
 
 ```bash
 mkdir voice-live-bridge-langgraph-python
@@ -117,7 +159,8 @@ Use `azd deploy` for this existing-project flow; `azd provision` applies the new
 The Foundry Toolkit Agent Inspector does not generate Voice Live Bridge WebSocket events. This
 sample therefore uses the protocol-aware smoke client instead of the standard Inspector flow.
 
-From the sample source directory:
+From `src/voice-live-bridge-langgraph-python` inside the initialized project
+(or inside this sample's checkout for local-only testing):
 
 ```bash
 uv sync --frozen --python 3.13
@@ -180,7 +223,7 @@ chunks exist, and cancellation/failure closes the source. No tests make cloud ca
 
 ```bash
 uv run --frozen python -m pytest -q
-ruff check .
+uv run --frozen python -m ruff check .
 ```
 
 The sample's build, validation, and test commands are also listed in `sample.yaml`.

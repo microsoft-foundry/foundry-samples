@@ -1,5 +1,5 @@
 name: Voice Live Bridge LangGraph Python
-description: An explicit StateGraph hosted text agent implementing Voice Live Bridge Protocol 1.0.
+description: A model-free fixed-story streaming agent using Voice Live Bridge Protocol 1.0; the LangGraph name is retained for compatibility.
 
 build: >-
   cd src/voice-live-bridge-langgraph-python &&

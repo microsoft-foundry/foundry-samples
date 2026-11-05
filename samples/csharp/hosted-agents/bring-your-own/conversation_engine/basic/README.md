@@ -26,12 +26,13 @@ and proactive-response admission. This hosted agent receives text and control ev
 
 `OnUserMessageAsync` validates the input, defines the story, and passes an asynchronous word stream to
 `SendEcho`. There is no command parser, model call, or prompt; the input text does not change the story.
+Text input is limited to 8,000 Unicode scalar values, not UTF-16 code units, matching Python.
 
 `SendEcho` accepts `IAsyncEnumerable<string>`, schedules cancellable work, and returns immediately.
-The coordinator uses `await foreach` with cancellation and sends each chunk as it arrives, without
+The coordinator advances the async enumerator with cancellation and sends each chunk as it arrives, without
 pre-buffering. Replace the local `StreamStory` iterator in `OnUserMessageAsync` with your own
-asynchronous source; keep its `[EnumeratorCancellation]` token. Iterator cleanup runs even when
-generation is cancelled or a send fails.
+asynchronous source; keep its `[EnumeratorCancellation]` token. Iterator closure is attempted even when
+generation is cancelled or a send fails, under the cleanup contract below.
 The response task opens a response, sends thirty word deltas, and completes the item and response.
 The user-message callback
 returns promptly, leaving the SDK receive loop free to dispatch interruption, cancellation,
@@ -53,6 +54,43 @@ fully represented. `VOICE_SAMPLE_REJECT_START=true` also exercises startup rejec
 
 Bridge Protocol `1.0` is the application contract; the manifest's `voice_conversation_engine` `1.0.0` selects
 the independently versioned Hosted Agent ingress.
+
+## Cancellation and cleanup contract
+
+Text output is limited to 512 KiB of UTF-8 across the whole response and
+4,096 yielded chunks (including empty chunks). Budgets are checked before
+appending or sending the offending chunk; text-item boundaries do not reset them.
+Empty text chunks are ignored. A stream with no nonempty text fails
+rather than sending a successful empty response. Whitespace-only text is preserved.
+These checks reuse the normal generation-error and cleanup paths; they add no tasks.
+
+Each connection opens at most one wire generation at a time. Input decisions
+remain in receive order; up to eight resource-owning responses can be active or
+queued, with eight additional bounded decline/cancellation operations. Excess
+backlog ends the session rather than silently dropping an unresolved input.
+
+Barge-in, cancellation, timeout or session termination stops further output for
+that response. A cleanup exception after that decision is a local diagnostic,
+not another response terminal. A producer's own cancellation without a protocol
+stop is a generation failure. Already-started transport writes cannot be retracted;
+Voice Live owns arbitration of frames already in flight.
+
+Stopping generation and releasing resource ownership are separate: cleanup stays
+tracked and occupies capacity until it settles. Session-end/disconnect callbacks
+signal cancellation without joining producers in receive dispatch; host shutdown
+(or .NET handler-scope disposal) joins the retained work. Cancelling a Python
+shutdown join does not cancel the retained cleanup, and a later `close()` rejoins it.
+
+Sources must cooperate with cancellation, bound upstream I/O and close their
+nested resources. Ordinary asynchronous `finally`, `aclose()`/`DisposeAsync()`
+and response background cleanup are supported and awaited before success.
+They are **not guaranteed cancellation-proof**: in particular, cancellation can
+interrupt an async finalizer that the source has already entered naturally.
+Resource owners must make critical finalization cancellation-safe themselves.
+The runtime attempts iterator closure and does not issue repeated cancellation
+while its explicit Python close is draining, but cannot restart an already-aborted
+finalizer or guarantee finite shutdown for non-cooperative I/O. There is no
+producer-pump task, forced thread termination or business-state rollback.
 
 ## Prerequisites
 
@@ -94,6 +132,9 @@ After deployment, verify readiness, spoken output, and `user.barge_in` interrupt
 Voice wrapper. Local WebSocket tests do not establish deployed routing or audio-path readiness.
 
 ## Option 1: Azure Developer CLI
+
+Use a new empty directory containing no `azure.yaml`; do not run initialization
+inside the checked-out sample directory.
 
 Initialize this sample from the public manifest in a new directory:
 

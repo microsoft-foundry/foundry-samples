@@ -152,8 +152,6 @@ async def run(uri: str, text: str) -> None:
         ):
             raise RuntimeError("Expected the thirty-word story streamed in thirty word deltas")
 
-        print("frames=" + ",".join(validator.frames))
-        print("response=" + validator.completed_text)
         await socket.send(
             json.dumps(
                 {
@@ -164,6 +162,10 @@ async def run(uri: str, text: str) -> None:
                 }
             )
         )
+        # Reporting must not prevent protocol teardown or require a UTF-8 console.
+        print("frames=" + ",".join(validator.frames))
+        report = validator.completed_text
+        print("response=" + report.encode("ascii", "backslashreplace").decode("ascii"))
 
 
 def main() -> None:

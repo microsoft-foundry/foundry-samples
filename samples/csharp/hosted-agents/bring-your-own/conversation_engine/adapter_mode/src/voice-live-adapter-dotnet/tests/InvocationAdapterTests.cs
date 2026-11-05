@@ -25,6 +25,46 @@ public class InvocationAdapterTests
     }
 
     [Test]
+    public async Task ThrowingCancellationCallback_CannotSkipProducerDrain()
+    {
+        var closing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finished = false;
+        var handler = new CallbackHandler(async (_, response, _, token) =>
+        {
+            using var registration = token.Register(() =>
+                throw new InvalidOperationException("controlled callback failure"));
+            response.ContentType = "text/event-stream";
+            try
+            {
+                await Write(response, "token", "first", token);
+                await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, token);
+            }
+            finally
+            {
+                closing.TrySetResult();
+                await release.Task;
+                finished = true;
+            }
+        });
+        var iterator = new InvocationAdapter(handler)
+            .Stream(new CapturingVoiceSession(), "in_test", "input").GetAsyncEnumerator();
+        Assert.That(await iterator.MoveNextAsync().AsTask().WaitAsync(Timeout), Is.True);
+        var disposal = iterator.DisposeAsync().AsTask();
+        try
+        {
+            await closing.Task.WaitAsync(Timeout);
+            Assert.That(disposal.IsCompleted, Is.False);
+            Assert.That(finished, Is.False);
+        }
+        finally { release.TrySetResult(); }
+        await disposal.WaitAsync(Timeout);
+        Assert.That(finished, Is.True);
+        // A later handler still runs normally after the failed cancellation notification.
+        Assert.That(await Collect(new InvocationAdapter(new EchoHttpAgent()), "retry"), Is.EqualTo("retry"));
+    }
+
+    [Test]
     public async Task FirstChunk_IsAvailableBeforeTheHandlerFinishes()
     {
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

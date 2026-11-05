@@ -166,13 +166,6 @@ async def run(uri: str, text: str, data: dict[str, object] | None = None) -> Non
         ):
             raise RuntimeError("Expected the input echoed verbatim in streaming chunks")
 
-        print("frames=" + ",".join(validator.frames))
-        print(
-            "response=" + (
-                json.dumps(data, ensure_ascii=False) if data is not None
-                else validator.completed_text
-            )
-        )
         await socket.send(
             json.dumps(
                 {
@@ -183,6 +176,12 @@ async def run(uri: str, text: str, data: dict[str, object] | None = None) -> Non
                 }
             )
         )
+        # Reporting must not prevent protocol teardown or require a UTF-8 console.
+        print("frames=" + ",".join(validator.frames))
+        report = (
+            json.dumps(data, ensure_ascii=True) if data is not None else validator.completed_text
+        )
+        print("response=" + report.encode("ascii", "backslashreplace").decode("ascii"))
 
 
 def main() -> None:

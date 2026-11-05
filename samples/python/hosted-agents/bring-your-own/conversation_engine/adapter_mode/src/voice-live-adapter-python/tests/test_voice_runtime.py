@@ -440,7 +440,7 @@ async def test_terminating_state_cannot_send_reserved_proactive_admission() -> N
 
 
 @pytest.mark.asyncio
-async def test_response_releases_capacity_before_response_done_is_observable() -> None:
+async def test_response_retains_capacity_until_response_done_send_returns() -> None:
     state = active_state()
     session = RecordingSession(state)
     coordinator = ResponseCoordinator()
@@ -457,7 +457,8 @@ async def test_response_releases_capacity_before_response_done_is_observable() -
     assert operation.task is not None
     await operation.task
 
-    assert session.capacity_at_done == 0
+    assert session.capacity_at_done == 1
+    assert state.active_response_count == 0
 
 
 def test_third_no_input_cancels_active_work_before_end_call() -> None:

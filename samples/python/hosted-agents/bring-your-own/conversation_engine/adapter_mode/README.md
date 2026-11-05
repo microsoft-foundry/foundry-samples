@@ -61,13 +61,64 @@ correlation, bounded capacity, asynchronous scheduling, interruption, cancellati
 timeout handling, heard-text bookkeeping, telemetry and cleanup. The adapter
 reads the original `StreamingResponse.body_iterator` directly and closes it on
 cancellation or send failure; response background cleanup finishes before success.
+Body-iterator setup is inside this cleanup boundary: a setup failure still attempts
+body closure and response background cleanup while preserving the original failure.
 
-SSE is parsed incrementally with bounded frames and output; split UTF-8/CRLF and
-multiline data fields are supported. `done.full_text` must match accumulated tokens.
+SSE is parsed incrementally, independently of handler write boundaries. Valid UTF-8,
+one optional leading BOM, LF/CRLF/CR line endings and multiline `data:` are supported.
+Content-Type uses the exact `text/event-stream` token, case-insensitively; parameters
+are allowed. Comments and unknown SSE fields are ignored. Parsing yields control
+even for already-ready comment-only or empty chunks. EOF does not supply a missing
+event delimiter: truncated data events fail, while a trailing comment is allowed.
+
+Each event is limited to 512 KiB of UTF-8, counting line endings as LF and excluding
+the optional stream BOM. This separate framing budget accommodates JSON escaping
+and event envelopes; it is not a limit on a handler's write size. Input and total
+text output are limited to 8,000 Unicode scalar values. Application data is limited
+to 65,536 aggregate bytes of compact UTF-8 JSON (without ASCII escaping or optional
+spaces); the SSE envelope is not part of that data budget. Non-finite JSON numbers
+are rejected. `done.full_text` must match accumulated tokens.
 The adapter still drains the handler after `done`: later errors or final-save
 failures cannot become a successful `response.done`. Malformed/truncated SSE,
 HTTP errors and missing/duplicate completion fail rather than silently succeeding.
 Text items are completed before the next data item; response completion waits for handler finalization.
+
+## Cancellation and cleanup contract
+
+An invocation with neither nonempty text nor an application JSON item fails rather
+than sending a successful empty response. Whitespace-only text and JSON-only output
+remain valid. The 8,000-character text budget does not impose a new 4,096-event SSE
+limit; valid token coalescing/fragmentation remains independent of handler writes.
+
+Each connection opens at most one wire generation at a time. Input decisions
+remain in receive order; up to eight resource-owning responses can be active or
+queued, with eight additional bounded decline/cancellation operations. Excess
+backlog ends the session rather than silently dropping an unresolved input.
+
+Barge-in, cancellation, timeout or session termination stops further output for
+that response. A cleanup exception after that decision is a local diagnostic,
+not another response terminal. A producer's own cancellation without a protocol
+stop is a generation failure. Already-started transport writes cannot be retracted;
+Voice Live owns arbitration of frames already in flight.
+
+Stopping generation and releasing resource ownership are separate: cleanup stays
+tracked and occupies capacity until it settles. Session-end/disconnect callbacks
+signal cancellation without joining producers in receive dispatch; host shutdown
+(or .NET handler-scope disposal) joins the retained work. Cancelling a Python
+shutdown join does not cancel the retained cleanup, and a later `close()` rejoins it.
+
+Sources must cooperate with cancellation, bound upstream I/O and close their
+nested resources. Ordinary asynchronous `finally`, `aclose()`/`DisposeAsync()`
+and response background cleanup are supported and awaited before success.
+They are **not guaranteed cancellation-proof**: in particular, cancellation can
+interrupt an async finalizer that the source has already entered naturally.
+Resource owners must make critical finalization cancellation-safe themselves.
+An accepted source remains the cleanup target if its `__aiter__()` fails; successful
+setup transfers closure to the returned iterator. The runtime attempts closure
+and does not issue repeated cancellation
+while its explicit Python close is draining, but cannot restart an already-aborted
+finalizer or guarantee finite shutdown for non-cooperative I/O. There is no
+producer-pump task, forced thread termination or business-state rollback.
 
 ## Prerequisites
 
@@ -86,7 +137,13 @@ regional speech capacity. No Bridge metadata or external CE Connection is needed
 
 Initialize from the public sample after it is merged and synchronized:
 
+Use a new empty directory containing no `azure.yaml`; do not run initialization
+inside the checked-out sample directory. Run the subsequent `azd` commands from
+that initialized project directory.
+
 ```bash
+mkdir voice-live-adapter-python
+cd voice-live-adapter-python
 azd ext install microsoft.foundry
 azd auth login
 az login
@@ -193,7 +250,10 @@ This adapter supports the illustrated token/data/done SSE profile, not arbitrary
 HTTP middleware, HTTP LROs or automatic business-state recovery.
 
 The handler must cooperate with cancellation and release its nested generators,
-model/tool requests and resources in its own finalization. Cancelling output
+model/tool requests and resources in its own finalization. The adapter does not
+shield arbitrary asynchronous producer finalizers from cancellation; resource-owning
+replacements must make their cleanup cancellation-safe and bound their upstream I/O.
+Cancelling output
 does not undo a business side effect. Echo has no business history; a stateful
 replacement still owns its persistence and any reconciliation of unheard text.
 The adapter's `heard_text` record is not an automatic rollback of that history.

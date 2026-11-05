@@ -1,5 +1,5 @@
 name: Voice Live Bridge LangChain Python
-description: A tool-using LangChain hosted text agent implementing Voice Live Bridge Protocol 1.0.
+description: A model-free fixed-story streaming agent using Voice Live Bridge Protocol 1.0; the LangChain name is retained for compatibility.
 
 build: >-
   cd src/voice-live-bridge-langchain-python &&

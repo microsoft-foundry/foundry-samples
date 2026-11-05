@@ -342,52 +342,49 @@ public class VoiceAgentTests
     }
 
     [Test]
-    public async Task NinthActiveResponse_IsDeclinedAtCapacity()
+    public async Task CapacityIncludesQueuedResponses_AndDeclinesStayInInputOrder()
     {
         var agent = CreateAgent();
         var session = new BlockingOutputVoiceSession();
-
         for (var index = 0; index < 9; index++)
         {
-            await agent.UserMessageAsync(session, UserMessage($"request {index}"));
+            await agent.UserMessageAsync(session, UserMessage($"request {index}", $"in_queue_{index}"));
         }
-        await WaitUntilAsync(() => session.Messages.OfType<VoiceResponseCreatedMessage>().Count() == 8);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(session.Messages.OfType<VoiceResponseCreatedMessage>().Count(), Is.EqualTo(8));
-            Assert.That(
-                session.Messages.OfType<VoiceResponseNoneMessage>().Single().Reason,
-                Is.EqualTo("capacity_exceeded"));
-        });
-        await agent.SessionEndAsync(
-            session,
-            new VoiceSessionEndEvent("m_end", DateTimeOffset.UtcNow, "test_complete"));
+        await session.OutputStarted.Task.WaitAsync(TestTimeout);
+        Assert.That(session.Messages.OfType<VoiceResponseCreatedMessage>().Count(), Is.EqualTo(1));
+        Assert.That(session.Messages.OfType<VoiceResponseNoneMessage>(), Is.Empty);
+        var responseId = session.Messages.OfType<VoiceResponseCreatedMessage>().Single().ResponseId;
+        session.BlockOutput = false;
+        await agent.ResponseTimeoutAsync(session,
+            new VoiceResponseTimeoutEvent("m_cancel", DateTimeOffset.UtcNow, "first_output",
+                responseId, null));
+        await WaitUntilAsync(() => session.Messages.OfType<VoiceResponseNoneMessage>().Any() &&
+            session.Messages.OfType<VoiceResponseDoneMessage>().Count() == 7);
+        Assert.That(ResolutionInputs(session), Is.EqualTo(
+            Enumerable.Range(0, 9).Select(index => $"in_queue_{index}")));
+        Assert.That(session.Messages.OfType<VoiceResponseNoneMessage>().Single().Reason,
+            Is.EqualTo("capacity_exceeded"));
+        await agent.DisposeAsync();
     }
 
     [Test]
-    public async Task NinthResponse_IsDeclinedWhileEightResponseDoneSendsAreBlocked()
+    public async Task BlockedDone_RetainsGenerationAndCapacityUntilSendCompletes()
     {
         var agent = CreateAgent();
         var session = new BlockingResponseDoneVoiceSession();
-
-        for (var index = 0; index < VoiceConnectionState.MaximumTerminalSends; index++)
+        for (var index = 0; index < 9; index++)
         {
             await agent.UserMessageAsync(session, UserMessage("hello"));
         }
-        await WaitUntilAsync(
-            () => session.Messages.OfType<VoiceResponseOutputTextDoneMessage>().Count() ==
-                VoiceConnectionState.MaximumTerminalSends);
-
-        await agent.UserMessageAsync(session, UserMessage("hello"));
-
-        Assert.That(
-            session.Messages.OfType<VoiceResponseNoneMessage>().Single().Reason,
-            Is.EqualTo("capacity_exceeded"));
+        await session.ResponseDoneSendStarted.Task.WaitAsync(TestTimeout);
+        Assert.That(session.Messages.OfType<VoiceResponseCreatedMessage>().Count(), Is.EqualTo(1));
+        Assert.That(session.Messages.OfType<VoiceResponseNoneMessage>(), Is.Empty);
         session.ReleaseResponseDoneSend.TrySetResult();
-        await WaitUntilAsync(
-            () => session.Messages.OfType<VoiceResponseDoneMessage>().Count() ==
-                VoiceConnectionState.MaximumTerminalSends);
+        await WaitUntilAsync(() => session.Messages.OfType<VoiceResponseDoneMessage>().Count() == 8 &&
+            session.Messages.OfType<VoiceResponseNoneMessage>().Any());
+        Assert.That(session.Messages.OfType<VoiceResponseNoneMessage>().Single().Reason,
+            Is.EqualTo("capacity_exceeded"));
+        await agent.DisposeAsync();
     }
 
     [Test]
@@ -395,20 +392,24 @@ public class VoiceAgentTests
     {
         var agent = CreateAgent();
         var session = new CapturingVoiceSession();
-
-        for (var index = 0; index <= VoiceConnectionState.MaximumTrackedInputItems; index++)
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        for (var index = 0; index < VoiceConnectionState.MaximumTrackedInputItems; index++)
         {
-            await agent.UserMessageAsync(
-                session,
-                UserMessage("echo", $"in_limit_{index}"));
+            await agent.UserMessageAsync(session, UserMessage("echo", $"in_limit_{index}"));
+            // Drain each turn so this tests the lifetime input cap, not queue overload.
+            while (!session.Messages.OfType<VoiceResponseDoneMessage>().Any())
+            {
+                timeout.Token.ThrowIfCancellationRequested();
+                await Task.Yield();
+            }
+            session.ClearMessages();
         }
-
+        await agent.UserMessageAsync(session, UserMessage("echo", "in_over_limit"));
+        await WaitUntilAsync(() => session.Messages.OfType<VoiceEndCallMessage>().Any());
         var end = session.Messages.OfType<VoiceEndCallMessage>().Single();
-        Assert.Multiple(() =>
-        {
-            Assert.That(end.Reason, Is.EqualTo("session_input_limit"));
-            Assert.That(end.Mode, Is.EqualTo(VoiceEndCallMode.Drain));
-        });
+        Assert.That(end.Reason, Is.EqualTo("session_input_limit"));
+        Assert.That(end.Mode, Is.EqualTo(VoiceEndCallMode.Drain));
+        await agent.DisposeAsync();
     }
 
     [Test]
@@ -428,6 +429,7 @@ public class VoiceAgentTests
 
         await agent.UserMessageAsync(session, message);
 
+        await WaitUntilAsync(() => session.Messages.OfType<VoiceResponseNoneMessage>().Any());
         Assert.Multiple(() =>
         {
             Assert.That(
@@ -476,10 +478,12 @@ public class VoiceAgentTests
             VoiceEndCallMode.Immediate,
             CancellationToken.None);
 
+        await WaitUntilAsync(() => session.Messages.OfType<VoiceEndCallMessage>().Any());
         Assert.Multiple(() =>
         {
+            Assert.That(first.IsCompleted, Is.False);
             Assert.That(second.IsCompleted, Is.False);
-            Assert.That(session.Messages.OfType<VoiceEndCallMessage>(), Is.Empty);
+            Assert.That(session.Messages.OfType<VoiceEndCallMessage>().Count(), Is.EqualTo(1));
         });
         releaseCancellation.TrySetResult();
         await Task.WhenAll(first, second).WaitAsync(TestTimeout);
@@ -956,6 +960,7 @@ public class VoiceAgentTests
 
         await agent.UserMessageAsync(session, UserMessage(new string('x', 8_001)));
 
+        await WaitUntilAsync(() => session.Messages.OfType<VoiceResponseNoneMessage>().Any());
         Assert.Multiple(() =>
         {
             Assert.That(session.Messages.OfType<VoiceResponseNoneMessage>().Count(), Is.EqualTo(1));
@@ -1267,6 +1272,50 @@ public class VoiceAgentTests
     {
         await Task.Yield();
         yield return text;
+    }
+
+    [TestCase(8_000)]
+    [TestCase(8_001)]
+    public async Task InputBudget_CountsUnicodeScalarsAndAllowsFollowingTurn(int count)
+    {
+        var agent = CreateAgent();
+        var session = new CapturingVoiceSession();
+        var text = string.Concat(Enumerable.Repeat("👋", count));
+        await agent.UserMessageAsync(session, UserMessage(text, "in_unicode"));
+        await WaitUntilAsync(() => session.Messages.Any(message =>
+            message is VoiceResponseDoneMessage or VoiceResponseNoneMessage or VoiceErrorMessage));
+        if (count == 8_000)
+        {
+            Assert.That(session.Messages.OfType<VoiceResponseDoneMessage>().Count(), Is.EqualTo(1));
+            Assert.That(session.Messages.OfType<VoiceErrorMessage>(), Is.Empty);
+        }
+        else
+        {
+            Assert.That(session.Messages.OfType<VoiceResponseNoneMessage>().Single().Reason,
+                Is.EqualTo("input_too_large"));
+            Assert.That(session.Messages.OfType<VoiceResponseCreatedMessage>(), Is.Empty);
+        }
+        session.ClearMessages();
+        await agent.UserMessageAsync(session, UserMessage("ok", "in_followup"));
+        await WaitUntilAsync(() => session.Messages.OfType<VoiceResponseDoneMessage>().Any());
+        Assert.That(session.Messages.OfType<VoiceErrorMessage>(), Is.Empty);
+        await agent.SessionEndAsync(session,
+            new VoiceSessionEndEvent("m_end", DateTimeOffset.UtcNow, "test_complete"));
+    }
+
+    [TestCase(8_000)]
+    [TestCase(8_001)]
+    public void HeardTextBudget_MatchesAcceptedUnicodeScalars(int count)
+    {
+        var state = new VoiceConnectionState();
+        state.TryBeginStart();
+        state.Activate();
+        using var operation = new ResponseOperation("r_unicode", "in_unicode");
+        Assert.That(state.TryReserveOperation(operation), Is.True);
+        state.RecordHeardText("r_unicode", string.Concat(Enumerable.Repeat("👋", count)));
+        Assert.That(state.TryGetHeardText("r_unicode", out var heard), Is.True);
+        Assert.That(heard, Is.EqualTo(string.Concat(Enumerable.Repeat("👋", 8_000))));
+        Assert.That(state.TryRemoveOperation("r_unicode", out _), Is.True);
     }
 
     private static TestableVoiceAgent CreateAgent() =>

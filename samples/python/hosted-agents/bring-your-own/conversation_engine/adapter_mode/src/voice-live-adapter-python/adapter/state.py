@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+from collections.abc import AsyncIterable
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from enum import Enum
@@ -87,6 +88,15 @@ class ResponseOperation:
     turn: ApplicationTurn
     response_started: bool
     task: asyncio.Task[None] | None = None
+    output_iterator: AsyncIterable[Any] | None = None
+    previous_resolution: asyncio.Future[None] | None = None
+    resolution_done: asyncio.Future[None] | None = None
+    running: bool = False
+    closing: bool = False
+    finalizing: bool = False
+    cancellation_requested: bool = False
+    terminal_sent: bool = False
+    generation_acquired: bool = False
     terminal_event: asyncio.Event | None = None
     output_item_count: int = 0
     capacity_released: bool = False
@@ -97,6 +107,22 @@ class ResponseOperation:
         """Keep the first application-known terminal outcome."""
         if self.outcome is None:
             self.outcome = outcome
+
+    def release_generation(self) -> None:
+        if self.generation_acquired:
+            self.generation_acquired = False
+            self.state.generation_gate.release()
+
+    def request_stop(self, outcome: OperationOutcome) -> None:
+        if self.terminal_sent or self.cancellation_requested:
+            return
+        self.cancellation_requested = True
+        self.select_outcome(outcome)
+        self.release_generation()
+        if self.terminal_event is not None:
+            self.terminal_event.set()
+        if self.running and not self.closing and not self.finalizing and self.task is not None:
+            self.task.cancel()
 
     def complete(self, fallback: OperationOutcome) -> None:
         """Complete application-owned response telemetry exactly once."""
@@ -118,6 +144,8 @@ class SessionState:
     proactive_requests: dict[str, ProactiveRequest] = field(default_factory=dict)
     seen_inputs: set[bytes] = field(default_factory=set)
     phase: SessionPhase = SessionPhase.AWAITING_START
+    generation_gate: asyncio.Lock = field(default_factory=asyncio.Lock)
+    input_resolution_tail: asyncio.Future[None] | None = None
 
     def track_response(self, response_id: str) -> None:
         """Retain bounded playback state after response.done for late interruption events."""

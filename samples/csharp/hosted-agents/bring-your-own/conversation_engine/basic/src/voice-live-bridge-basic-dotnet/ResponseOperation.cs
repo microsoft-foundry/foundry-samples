@@ -9,16 +9,18 @@ internal sealed class ResponseOperation : IDisposable
 {
     private readonly object _sync = new();
     private Task? _work;
+    private Task? _notification;
+    private SemaphoreSlim? _generation;
     private int _disposed;
+    private bool _cancellationRequested;
+    private bool _finished;
     private readonly Activity? _activity;
     private readonly Activity? _parentActivity;
     private readonly long? _userMessageReceivedTimestamp;
     private ResponseOutcome? _outcome;
     private bool _telemetryCompleted;
 
-    internal ResponseOperation(
-        string responseId,
-        string? inputItemId,
+    internal ResponseOperation(string responseId, string? inputItemId,
         long? userMessageReceivedTimestamp = null)
     {
         ResponseId = responseId;
@@ -27,34 +29,31 @@ internal sealed class ResponseOperation : IDisposable
         _parentActivity = Activity.Current;
         _userMessageReceivedTimestamp = userMessageReceivedTimestamp;
         _activity = inputItemId is not null && userMessageReceivedTimestamp.HasValue
-            ? ResponseTelemetry.Start(responseId, inputItemId)
-            : null;
+            ? ResponseTelemetry.Start(responseId, inputItemId) : null;
     }
 
     internal string ResponseId { get; }
-
     internal string? InputItemId { get; }
-
+    internal bool ResponseStarted { get; set; }
     internal CancellationTokenSource Cancellation { get; }
-
+    internal bool IsCancellationRequested { get { lock (_sync) { return _cancellationRequested; } } }
     internal Task? Work
     {
-        get => Volatile.Read(ref _work);
-        set => Volatile.Write(ref _work, value);
+        get { lock (_sync) { return _work; } }
+        set { lock (_sync) { _work = value; } }
     }
 
     internal bool TryStart(Func<Task> work)
     {
         lock (_sync)
         {
-            if (_disposed != 0)
+            if (_disposed != 0 || _cancellationRequested)
             {
                 return false;
             }
-
             try
             {
-                Work = work();
+                _work = work();
                 return true;
             }
             finally
@@ -67,21 +66,88 @@ internal sealed class ResponseOperation : IDisposable
         }
     }
 
-    internal void SelectOutcome(ResponseOutcome outcome)
+    internal bool TryRequestCancellation(ResponseOutcome outcome)
     {
         lock (_sync)
         {
+            if (_finished || _disposed != 0 || _cancellationRequested)
+            {
+                return false;
+            }
+            _cancellationRequested = true;
             _outcome ??= outcome;
+        }
+        ReleaseGeneration();
+        return true;
+    }
+
+    internal Task NotifyCancellationAsync()
+    {
+        lock (_sync)
+        {
+            // CancelAsync queues callbacks; retain that original task, including its faults.
+            return _notification ??= Cancellation.CancelAsync();
         }
     }
 
-    internal void RecordCompleted() => CompleteTelemetry(ResponseOutcome.Response);
-
-    internal void RecordFailure(Exception exception)
+    internal bool TryOwnGeneration(SemaphoreSlim gate)
     {
-        ResponseTelemetry.RecordErrorType(_activity, exception);
-        CompleteTelemetry(ResponseOutcome.Error);
+        lock (_sync)
+        {
+            if (_cancellationRequested || _disposed != 0)
+            {
+                return false;
+            }
+            _generation = gate;
+            return true;
+        }
     }
+
+    internal void ReleaseGeneration()
+    {
+        SemaphoreSlim? gate;
+        lock (_sync)
+        {
+            gate = _generation;
+            _generation = null;
+        }
+        gate?.Release();
+    }
+
+    internal void SelectOutcome(ResponseOutcome outcome)
+    {
+        lock (_sync) { _outcome ??= outcome; }
+    }
+
+    internal void RecordCompleted() => Commit(ResponseOutcome.Response);
+
+    internal void Commit(ResponseOutcome outcome)
+    {
+        lock (_sync)
+        {
+            if (!_cancellationRequested)
+            {
+                _outcome ??= outcome;
+                _finished = true;
+            }
+        }
+    }
+
+    internal bool TryFinish()
+    {
+        lock (_sync)
+        {
+            if (_cancellationRequested)
+            {
+                return false; // The cancellation owner joins notification and work before disposal.
+            }
+            _finished = true;
+            return true;
+        }
+    }
+
+    internal void RecordFailure(Exception exception) =>
+        ResponseTelemetry.RecordErrorType(_activity, exception);
 
     public void Dispose()
     {
@@ -91,22 +157,19 @@ internal sealed class ResponseOperation : IDisposable
             {
                 return;
             }
-
-            if (_activity is not null && Activity.Current == _activity)
+            try
             {
-                Activity.Current = _parentActivity;
+                if (_activity is not null && Activity.Current == _activity)
+                {
+                    Activity.Current = _parentActivity;
+                }
+                CompleteTelemetryCore(ResponseOutcome.Abandoned);
             }
-            CompleteTelemetryCore(ResponseOutcome.Abandoned);
-            _activity?.Dispose();
-            Cancellation.Dispose();
-        }
-    }
-
-    private void CompleteTelemetry(ResponseOutcome fallback)
-    {
-        lock (_sync)
-        {
-            CompleteTelemetryCore(fallback);
+            finally
+            {
+                try { _activity?.Dispose(); }
+                finally { Cancellation.Dispose(); }
+            }
         }
     }
 
@@ -117,11 +180,8 @@ internal sealed class ResponseOperation : IDisposable
         {
             return;
         }
-
         _telemetryCompleted = true;
-        ResponseTelemetry.RecordOutcome(
-            _activity,
-            Stopwatch.GetElapsedTime(_userMessageReceivedTimestamp.Value),
-            _outcome.Value);
+        ResponseTelemetry.RecordOutcome(_activity,
+            Stopwatch.GetElapsedTime(_userMessageReceivedTimestamp.Value), _outcome.Value);
     }
 }

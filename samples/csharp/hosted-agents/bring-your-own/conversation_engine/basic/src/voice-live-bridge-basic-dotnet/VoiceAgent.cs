@@ -3,16 +3,19 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text;
 using Azure.AI.AgentServer.Invocations.Voice;
 
 namespace VoiceHostedAgent;
 
 /// <summary>Voice Bridge Protocol 1.0 sample that streams a short children's story.</summary>
-public class VoiceAgent : VoiceHandler
+public class VoiceAgent : VoiceHandler, IAsyncDisposable
 {
     private const int MaximumInputCharacters = 8_000;
 
     private readonly ConditionalWeakTable<VoiceSession, VoiceConnectionState> _connections = new();
+    private readonly object _connectionSync = new();
+    private bool _disposed;
     private readonly VoiceResponseCoordinator _responses;
     private readonly ILogger<VoiceAgent> _logger;
 
@@ -27,7 +30,12 @@ public class VoiceAgent : VoiceHandler
         VoiceSessionStartEvent start,
         CancellationToken cancellationToken)
     {
-        var state = _connections.GetValue(session, static _ => new VoiceConnectionState());
+        VoiceConnectionState state;
+        lock (_connectionSync)
+        {
+            if (_disposed) { return; }
+            state = _connections.GetValue(session, static _ => new VoiceConnectionState());
+        }
         if (!state.TryBeginStart())
         {
             _logger.LogWarning("Ignored duplicate or late session.start");
@@ -87,7 +95,7 @@ public class VoiceAgent : VoiceHandler
 
         var userMessageReceivedTimestamp = Stopwatch.GetTimestamp();
         var text = string.Concat(message.Content.Select(part => part.Text));
-        if (text.Length == 0 || text.Length > MaximumInputCharacters)
+        if (text.Length == 0 || text.EnumerateRunes().Count() > MaximumInputCharacters)
         {
             _responses.Observe(_responses.SendNoneAsync(session, state, message.ItemId,
                 text.Length == 0 ? "empty_input" : "input_too_large"));
@@ -131,11 +139,9 @@ public class VoiceAgent : VoiceHandler
 
         if (noInput.Count >= 3)
         {
-            return _responses.TerminateAndEndCallAsync(
-                session,
-                state,
-                VoiceEndCallMode.Drain,
-                cancellationToken);
+            _responses.Observe(_responses.TerminateAndEndCallAsync(
+                session, state, VoiceEndCallMode.Drain, cancellationToken));
+            return Task.CompletedTask;
         }
 
         _responses.StartResponse(
@@ -233,15 +239,16 @@ public class VoiceAgent : VoiceHandler
         return Task.CompletedTask;
     }
 
-    protected override async Task OnSessionEndAsync(
+    protected override Task OnSessionEndAsync(
         VoiceSession session,
         VoiceSessionEndEvent end,
         CancellationToken cancellationToken)
     {
         if (_connections.TryGetValue(session, out var state))
         {
-            await _responses.TerminateSessionAsync(state, ResponseOutcome.EndCall);
+            _responses.Observe(_responses.TerminateSessionAsync(state, ResponseOutcome.EndCall));
         }
+        return Task.CompletedTask;
     }
 
     protected override void OnConnectionTerminating(VoiceSession session)
@@ -268,7 +275,16 @@ public class VoiceAgent : VoiceHandler
         out VoiceConnectionState state,
         out string? rejectionReason)
     {
-        state = _connections.GetValue(session, static _ => new VoiceConnectionState());
+        lock (_connectionSync)
+        {
+            if (_disposed)
+            {
+                state = new VoiceConnectionState();
+                rejectionReason = null;
+                return false;
+            }
+            state = _connections.GetValue(session, static _ => new VoiceConnectionState());
+        }
         switch (state.TryTrackInput(inputItemId))
         {
             case InputAdmission.Accepted:
@@ -288,21 +304,32 @@ public class VoiceAgent : VoiceHandler
         }
     }
 
-    private Task TryDeclineInputAsync(
-        VoiceSession session,
-        VoiceConnectionState state,
-        string inputItemId,
-        string? reason,
-        CancellationToken cancellationToken) =>
-        reason switch
+    public async ValueTask DisposeAsync()
+    {
+        VoiceConnectionState[] states;
+        lock (_connectionSync)
         {
-            null => Task.CompletedTask,
-            "session_input_limit" => _responses.TerminateAndEndCallAsync(
-                session,
-                state,
-                VoiceEndCallMode.Drain,
-                cancellationToken,
-                reason),
-            _ => _responses.SendNoneAsync(session, state, inputItemId, reason),
-        };
+            _disposed = true;
+            states = _connections.Select(pair => pair.Value).ToArray();
+        }
+        var draining = states.Select(state =>
+            _responses.TerminateSessionAsync(state, ResponseOutcome.Cancelled)).ToArray();
+        await _responses.StopAsync();
+        await Task.WhenAll(draining);
+        await _responses.DrainAsync();
+    }
+
+    private Task TryDeclineInputAsync(
+        VoiceSession session, VoiceConnectionState state, string inputItemId,
+        string? reason, CancellationToken cancellationToken)
+    {
+        if (reason is not null)
+        {
+            _responses.Observe(reason == "session_input_limit"
+                ? _responses.TerminateAndEndCallAsync(session, state, VoiceEndCallMode.Drain,
+                    cancellationToken, reason)
+                : _responses.SendNoneAsync(session, state, inputItemId, reason));
+        }
+        return Task.CompletedTask;
+    }
 }

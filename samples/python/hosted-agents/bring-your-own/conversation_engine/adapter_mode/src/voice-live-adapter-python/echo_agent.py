@@ -22,14 +22,19 @@ async def handle_invocation(request: Request) -> StreamingResponse:
         if isinstance(text, dict):
             yield (
                 "data: "
-                + json.dumps({"type": "data", "data": text}, ensure_ascii=False)
+                + json.dumps({"type": "data", "data": text}, ensure_ascii=False,
+                             separators=(",", ":"))
                 + "\n\n"
             )
             yield 'data: {"type":"done","full_text":""}\n\n'
             return
         for match in re.finditer(r"\s*\S+|\s+$", text):
             await asyncio.sleep(0)
-            yield "data: " + json.dumps({"type": "token", "content": match[0]}) + "\n\n"
-        yield "data: " + json.dumps({"type": "done", "full_text": text}) + "\n\n"
+            yield "data: " + json.dumps(
+                {"type": "token", "content": match[0]}, ensure_ascii=False
+            ) + "\n\n"
+        yield "data: " + json.dumps(
+            {"type": "done", "full_text": text}, ensure_ascii=False
+        ) + "\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
