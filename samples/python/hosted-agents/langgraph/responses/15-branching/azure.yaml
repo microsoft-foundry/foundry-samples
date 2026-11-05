@@ -1,4 +1,4 @@
-name: langchain-azure-branching-responses
+name: langgraph-branching
 
 requiredVersions:
   azd: ">=1.27.1"
