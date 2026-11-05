@@ -11,14 +11,35 @@ booking engine or guaranteed live-price search**.
 
 ## How it works
 
-```text
-User --A2A--> Travel Planner (Copilot SDK + saved-trip tools)
-                  |-- discover configured Flight/Hotel Agent Cards
-                  |-- card-derived tool --A2A--> Flight Agent --Copilot MCP--+
-                  `-- card-derived tool --A2A--> Hotel Agent  --Copilot MCP--+
-                                                                          |
-                                                Foundry Toolbox web_search
-User <-- cited research + saved plan ID/status + actual specialist Task IDs
+### Component block diagram
+
+```mermaid
+flowchart LR
+    U["User / azd"] <-->|A2A| P["Travel Planner<br/>Copilot SDK"]
+    P -->|Discover Agent Cards| C["Configured Flight / Hotel endpoints"]
+    P <-->|Direct A2A| F["Flight Agent<br/>Copilot SDK"]
+    P <-->|Direct A2A| H["Hotel Agent<br/>Copilot SDK"]
+    F <-->|MCP| T["Foundry Toolbox<br/>web_search"]
+    H <-->|MCP| T
+    T <-->|Search| W["Public web"]
+    P <-->|Versioned tools| S[("FoundryStateStore<br/>user-isolated plans")]
+```
+
+### Request flow
+
+```mermaid
+flowchart TD
+    A["Receive request; discover specialist Cards"] --> B{"New trip missing required details?"}
+    B -->|Yes| Q["Ask for missing details<br/>No specialist calls or new plan"]
+    B -->|No| D["Create draft, or read/update existing plan"]
+    D --> R{"Research needed?"}
+    R -->|New or changed requirements| X["Copilot calls both specialists over A2A"]
+    X --> Y["Each specialist searches through Toolbox<br/>At most two search attempts per invocation"]
+    Y --> Z["Combine cited evidence; retain uncertainties"]
+    Z --> V["Save version-matched unverified research"]
+    R -->|Read or metadata only| M["Read or update metadata<br/>No specialist searches"]
+    V --> O["Return answer, verified Task IDs<br/>and compact storage receipts"]
+    M --> O
 ```
 
 The planner discovers Cards before its model loop. Copilot selects specialists
@@ -83,6 +104,9 @@ updates preserve requirements, revision and recommendation without repricing.
 
 Follow the shared [Python startup configuration](../../../README.md#python-startup-configuration).
 Each runtime has its own pinned `pyproject.toml` and `uv.lock`; no Docker is needed.
+All three runtimes pin the November 5, 2026 public PyPI beta releases:
+`azure-ai-agentserver-a2a==1.0.0b1` and
+`azure-ai-agentserver-core==2.3.1b1`. No development-feed configuration is needed.
 
 ## Prerequisites
 
@@ -91,8 +115,8 @@ Each runtime has its own pinned `pyproject.toml` and `uv.lock`; no Docker is nee
   explicitly for all three agents. Model calls and web searches incur charges.
 - Native A2A enablement for your subscription/project.
 - Python **3.11+** for source work; direct hosted deployment uses **Python 3.13**.
-- Project deployment access, and an authorized owner to grant the new runtime
-  identities project-scoped **Foundry Agent Consumer** access.
+- Project deployment access, and an authorized owner to grant the planner's
+  instance identity project-scoped **Foundry Agent Consumer** access.
 - A web-search-only toolbox with the tool named **`web_search`**, reachable
   through a same-project HTTPS MCP endpoint. No separate Bing resource, API key
   or project connection is required for basic Web Search.
@@ -115,8 +139,29 @@ azd auth login
 az login
 ```
 
-If installed, use `azd extension update` with the same extension/version instead.
-Set **`AZD_ALPHA_ENABLE_AGENTS_A2A=true`** in your terminal environment.
+If installed, update the extension instead:
+
+```text
+azd extension update azure.ai.agents --version 1.0.0-beta.23 --source azd
+```
+
+Enable native A2A in the **same terminal** used for the rest of the commands.
+If the prompt starts with `PS`, use PowerShell:
+
+```powershell
+$env:AZD_ALPHA_ENABLE_AGENTS_A2A = "true"
+$env:AZD_ALPHA_ENABLE_AGENTS_A2A
+```
+
+For Command Prompt (`cmd.exe`) instead:
+
+```cmd
+set "AZD_ALPHA_ENABLE_AGENTS_A2A=true"
+echo %AZD_ALPHA_ENABLE_AGENTS_A2A%
+```
+
+The check should print `true`. Repeat the appropriate block in every new
+terminal. `set` in PowerShell does not set this environment variable.
 
 ### 1. Initialize in an empty folder
 
@@ -131,19 +176,15 @@ Keep the `flights`, `hotels`, `planner` service keys and source paths. Commands
 below use the default names `travel-web-flights`, `travel-web-hotels` and
 `travel-web-planner`; substitute your actual names when invoking.
 
-For an existing project, skip provisioning. Confirm the declared model already
-exists: this azd version can adopt a project without creating its model.
+If the project does not have the declared model, run:
 
 ```text
-az cognitiveservices account deployment show --name "<FOUNDRY-ACCOUNT>" --resource-group "<RESOURCE-GROUP>" --deployment-name gpt-5.4-mini --subscription "<SUBSCRIPTION-ID>" --output json
+azd provision
 ```
 
-If absent, an authorized owner with regional quota can create it:
-
-```text
-az cognitiveservices account deployment create --name "<FOUNDRY-ACCOUNT>" --resource-group "<RESOURCE-GROUP>" --deployment-name gpt-5.4-mini --model-name gpt-5.4-mini --model-version 2026-03-17 --model-format OpenAI --sku-name GlobalStandard --sku-capacity 100 --subscription "<SUBSCRIPTION-ID>"
-```
-
+Skip provisioning if the model already exists. Provisioning needs permissions
+and regional quota; the tested existing-project flow can be a no-op. If the
+missing model is not created, ask the project owner to resolve provisioning.
 Do not overwrite or resize shared deployments. If choosing a different model,
 update both its declaration and all three agent model environment values.
 
@@ -175,7 +216,7 @@ Use `TOOLBOX_ENDPOINT`, not a custom `FOUNDRY_` variable. The endpoint must be
 in the same project and include `?api-version=v1`. Both specialists consume it;
 the planner does not.
 
-### 3. Deploy specialists and grant runtime access
+### 3. Deploy Flight and Hotel
 
 Run separately:
 
@@ -186,19 +227,11 @@ azd ai agent show flights --output json
 azd ai agent show hotels --output json
 ```
 
-Confirm both are active. Copy each **`agent_endpoints.a2a`** and
-**`instance_identity.principal_id`**, not its blueprint identity.
-
-For each specialist, an authorized owner should check existing access and grant
-**Foundry Agent Consumer** at project scope only if needed:
-
-```text
-az role assignment list --assignee "<INSTANCE-PRINCIPAL-ID>" --scope "<PROJECT-ARM-ID>" --include-inherited --output table
-az role assignment create --assignee-object-id "<INSTANCE-PRINCIPAL-ID>" --assignee-principal-type ServicePrincipal --role eed3b665-ab3a-47b6-8f48-c9382fb1dad6 --scope "<PROJECT-ARM-ID>"
-```
-
-This is project-wide runtime access; review it with the owner and allow RBAC
-propagation. The specialists use their own managed identities for Toolbox access.
+Confirm both are active and copy each **`agent_endpoints.a2a`**.
+Do not add specialist Consumer grants as a routine setup step: a clean hosted
+run succeeded with never-granted specialist identities and only the planner
+granted access. They authenticate Toolbox requests and forward platform caller
+context when supplied. Investigate actual authorization failures if they occur.
 
 ### 4. Configure and deploy the planner
 
@@ -211,8 +244,28 @@ azd deploy planner --no-prompt
 azd ai agent show planner --output json
 ```
 
-Use the same role check/grant commands for the **planner's new instance identity**
-so it can invoke both specialists. Do not copy an identity from another deployment.
+### Planner runtime access - after deployment
+
+In the planner's `show` output, copy **`instance_identity.principal_id`**.
+This identifies the running planner, not its blueprint or the signed-in user.
+To print only that value in PowerShell:
+
+```powershell
+(azd ai agent show planner --output json | ConvertFrom-Json).instance_identity.principal_id
+```
+
+If access is not already configured, an authorized owner grants the planner
+**Foundry Agent Consumer** on the project:
+
+```text
+az role assignment create --assignee-object-id "<PLANNER-INSTANCE-PRINCIPAL-ID>" --assignee-principal-type ServicePrincipal --role "Foundry Agent Consumer" --scope "<PROJECT-ARM-ID>"
+```
+
+Use the same project ARM ID passed to init, not the HTTPS endpoint. This is a
+project-wide runtime grant: review it with the owner and allow propagation.
+It lets the planner discover protected specialist Cards and invoke their agents.
+No role-only change requires redeployment. If you change a specialist endpoint,
+set its environment value, redeploy the planner and invoke its newly reported version.
 
 ### 5. Research and save a trip
 
@@ -229,6 +282,13 @@ actual specialist Task IDs and a saved `plan-...` ID with status **`unverified`*
 No exact total or fully eligible itinerary is guaranteed. Specialist `web-search`
 receipts must contain successful searches and source URLs; HTTP 200 alone is not
 evidence of success.
+
+`--version 1` selects deployed agent code; it does not create a version.
+`--new-session` starts a fresh hosted session so saved-trip checks exercise
+storage rather than session reuse. It is not required for every normal
+invocation, but is intentional in this walkthrough. Neither flag creates a
+new saved plan by itself; that depends on the request. There is no
+`--new-version` flag in these commands.
 
 ### 6. Read or revise the saved research
 
@@ -252,6 +312,28 @@ of creating duplicates:
 azd ai agent invoke travel-web-planner -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Read plan <PLAN-ID>. Preserve requirements and metadata, complete its pending research using both specialists, then save cited research as unverified. Do not create another plan."
 ```
 
+## Inspect saved data directly with azd
+
+These are read-only commands; they do not invoke the model or specialists:
+
+```text
+azd ai agent state-stores show travel-web-research --agent-name planner --output json
+azd ai agent state-stores items list --store travel-web-research --agent-name planner --limit 20 --output json
+azd ai agent state-stores items show <PLAN-ID> --store travel-web-research --agent-name planner --output json
+```
+
+Listing returns keys and metadata, not record values. `items show` returns the
+full value, history and ETag. If listing returns `has_more: true`, pass its
+`last_id` unchanged as `--after` on the next list call.
+
+Direct listing and item reads succeeded in our existing project with the
+signed-in test user, even though installed extension beta.23 help says isolated
+items cannot be read by azd. This is an observed result, not a guarantee of
+access for every user/project. If rejected, use the planner's read/list tools
+with the same user; do not disable isolation, share call IDs or add broad roles.
+Do not use CLI item replacement/deletion to bypass the planner's revision,
+validation and recommendation-refresh safeguards.
+
 ## Verification and limitations
 
 The hosted implementation was exercised against the declared model: both A2A
@@ -268,9 +350,8 @@ A2A flow rather than an unverified F5/Inspector workflow.
 
 The [shared cloud contract](../../../../../../.azure-pipelines/hosted-agent-tests/python/bring-your-own/a2a/travel-planner-web-search/test-spec.yml)
 records intended behavior. The shared cloud runner currently lacks native A2A
-transport support. Preview AgentServer packages also use the Azure SDK public
-feed rather than PyPI, so the existing repository contract/dependency-policy
-limitations remain; no skiplist or policy bypass is added.
+transport support. The package manifests and locks use public PyPI beta SDKs.
+The earlier hosted-run evidence predates this dependency update.
 
 ## Troubleshooting
 

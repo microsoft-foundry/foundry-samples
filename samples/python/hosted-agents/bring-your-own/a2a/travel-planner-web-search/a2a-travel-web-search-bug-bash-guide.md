@@ -12,13 +12,35 @@ Run commands individually from your initialized project folder.
 
 ## Architecture in plain terms
 
-```text
-You --> Travel Planner
-           |-- Agent Cards: learn what Flight and Hotel can do
-           |-- direct A2A --> Flight --> Copilot --> Toolbox web_search
-           |-- direct A2A --> Hotel  --> Copilot --> Toolbox web_search
-           `-- FoundryStateStore: save requirements, citations and history
-You <-- combined research, source links, Plan ID and specialist Task IDs
+### Component block diagram
+
+```mermaid
+flowchart LR
+    U["User / azd"] <-->|A2A| P["Travel Planner<br/>Copilot SDK"]
+    P -->|Discover Agent Cards| C["Configured Flight / Hotel endpoints"]
+    P <-->|Direct A2A| F["Flight Agent<br/>Copilot SDK"]
+    P <-->|Direct A2A| H["Hotel Agent<br/>Copilot SDK"]
+    F <-->|MCP| T["Foundry Toolbox<br/>web_search"]
+    H <-->|MCP| T
+    T <-->|Search| W["Public web"]
+    P <-->|Versioned tools| S[("FoundryStateStore<br/>user-isolated plans")]
+```
+
+### Request flow
+
+```mermaid
+flowchart TD
+    A["Receive request; discover specialist Cards"] --> B{"New trip missing required details?"}
+    B -->|Yes| Q["Ask for missing details<br/>No specialist calls or new plan"]
+    B -->|No| D["Create draft, or read/update existing plan"]
+    D --> R{"Research needed?"}
+    R -->|New or changed requirements| X["Copilot calls both specialists over A2A"]
+    X --> Y["Each specialist searches through Toolbox<br/>At most two search attempts per invocation"]
+    Y --> Z["Combine cited evidence; retain uncertainties"]
+    Z --> V["Save version-matched unverified research"]
+    R -->|Read or metadata only| M["Read or update metadata<br/>No specialist searches"]
+    V --> O["Return answer, verified Task IDs<br/>and compact storage receipts"]
+    M --> O
 ```
 
 Each agent has its own Copilot SDK model/tool loop. The planner chooses which
@@ -207,20 +229,26 @@ The planner's managed identity needs access to Flight/Hotel's protected A2A
 endpoints and Cards. Keep this permission even when testing specialist access.
 If already configured, skip the grant. Otherwise, give the owner the **planner's**
 `instance_identity.principal_id` from its `show` output.
-The owner checks existing access and grants **Foundry Agent Consumer** at project
-scope only when needed:
+An authorized owner grants **Foundry Agent Consumer** to that planner identity
+at project scope only when access is not already configured:
 
 ```text
-az role assignment list --assignee "<INSTANCE-PRINCIPAL-ID>" --scope "<PROJECT-ARM-ID>" --include-inherited --output table
-az role assignment create --assignee-object-id "<INSTANCE-PRINCIPAL-ID>" --assignee-principal-type ServicePrincipal --role eed3b665-ab3a-47b6-8f48-c9382fb1dad6 --scope "<PROJECT-ARM-ID>"
+az role assignment create --assignee-object-id "<PLANNER-INSTANCE-PRINCIPAL-ID>" --assignee-principal-type ServicePrincipal --role "Foundry Agent Consumer" --scope "<PROJECT-ARM-ID>"
 ```
 
-**Filled example - our planner identity.** This grant already exists; check first,
+PowerShell can print the planner identity directly:
+
+```powershell
+(azd ai agent show planner --output json | ConvertFrom-Json).instance_identity.principal_id
+```
+
+Use the project ARM ID passed during init, not the HTTPS project URL.
+
+**Filled example - our planner identity.** This grant already exists;
 do not grant again or reuse this identity for your agents.
 
 ```text
-az role assignment list --assignee "9a5b7213-6f77-4fd1-b678-2d209d966dfc" --scope "/subscriptions/47f1c914-e299-4953-a99d-3e34644cfe1c/resourceGroups/rg-e4ag828a-dev/providers/Microsoft.CognitiveServices/accounts/cog-6v7yi2yjkzt7g/projects/e4ag828a-dev" --include-inherited --output table
-az role assignment create --assignee-object-id "9a5b7213-6f77-4fd1-b678-2d209d966dfc" --assignee-principal-type ServicePrincipal --role eed3b665-ab3a-47b6-8f48-c9382fb1dad6 --scope "/subscriptions/47f1c914-e299-4953-a99d-3e34644cfe1c/resourceGroups/rg-e4ag828a-dev/providers/Microsoft.CognitiveServices/accounts/cog-6v7yi2yjkzt7g/projects/e4ag828a-dev"
+az role assignment create --assignee-object-id "9a5b7213-6f77-4fd1-b678-2d209d966dfc" --assignee-principal-type ServicePrincipal --role "Foundry Agent Consumer" --scope "/subscriptions/47f1c914-e299-4953-a99d-3e34644cfe1c/resourceGroups/rg-e4ag828a-dev/providers/Microsoft.CognitiveServices/accounts/cog-6v7yi2yjkzt7g/projects/e4ag828a-dev"
 ```
 
 Review this project-wide grant with the owner, use instance identities rather
@@ -230,7 +258,9 @@ than blueprints, and allow RBAC propagation before testing.
 ### Clean first-run check
 
 1. Keep the **planner's** runtime grant.
-2. No need to assign any other roles anywhere
+2. Do not assign extra Consumer roles to Flight/Hotel for this test. A clean run
+   succeeded with brand-new, never-granted specialist identities. Existing user
+   deployment access and telemetry-viewing access are separate prerequisites.
 3. Run Section 5 with `--new-session`, then inspect actual successful specialist
    Tasks, `web-search` receipts and the saved `unverified` result.
 4. If it fails, save the error, agent identities, Task/Trace IDs and any saved
@@ -241,6 +271,12 @@ than blueprints, and allow RBAC propagation before testing.
 
 Commands assume a fresh planner **version 1**. Confirm and use your actual
 deployed version if different. 
+
+**What the flags mean:** `--version 1` selects deployed agent code; it does not
+create a new version. `--new-session` starts a fresh hosted session so these
+tests verify saved storage across sessions. It is optional for normal use but
+intentional in this bug bash. Neither flag creates a new saved plan; the request
+determines that. These commands do not contain a `--new-version` flag.
 
 ```text
 azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --new-session --input-file trip-request.json --output default
@@ -393,7 +429,40 @@ azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1
 specialists succeed. If the refreshed tools fail, report failure and pending state.
 Do not automatically increase shared model capacity or bypass version conflicts.
 
-## 8. Inspect evidence and report bugs
+## 8. Inspect saved data directly with azd
+
+These read-only commands do not call the model or specialists.
+
+### Show store settings and list saved plan keys
+
+```text
+azd ai agent state-stores show travel-web-research --agent-name planner --output json
+azd ai agent state-stores items list --store travel-web-research --agent-name planner --limit 20 --output json
+```
+
+### Read a full saved record, including history
+
+```text
+azd ai agent state-stores items show <PLAN-ID> --store travel-web-research --agent-name planner --output json
+```
+
+**Filled example - an existing plan owned by our test user:**
+
+```text
+azd -C C:\a2a\travel-nov4-3 ai agent state-stores items show plan-cc42f6164b7a4ecb8a51cfdbe598adbf --store travel-web-research --agent-name planner --output json
+```
+
+Use your own Plan ID and initialized folder. Listing returns keys/metadata with
+`value: null`; use `items show` for the actual value and ETag. If `has_more` is
+true, pass the returned `last_id` unchanged as `--after` on the next list call.
+
+These reads succeeded in our project, despite extension beta.23 help saying
+user-isolated items cannot be read by azd. Access may differ by user/project.
+If denied, use the planner's read/list tools with the same signed-in user; do not
+disable isolation or pass someone else's call ID. Do not replace/delete items
+directly to bypass plan versions, history and research-refresh safeguards.
+
+## 9. Inspect evidence and report bugs
 
 - Choose `--output raw` **before** a test when the complete A2A envelope is needed.
   Planner artifacts are compact in both output modes; raw does not restore full
