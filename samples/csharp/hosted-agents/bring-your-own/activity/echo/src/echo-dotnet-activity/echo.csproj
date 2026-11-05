@@ -7,6 +7,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Azure.AI.AgentServer.Activity" Version="1.0.0-alpha.20261102.1" />
+    <PackageReference Include="Azure.AI.AgentServer.Activity" Version="1.0.0-beta.1" />
   </ItemGroup>
 </Project>

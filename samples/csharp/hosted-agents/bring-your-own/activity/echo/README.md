@@ -19,9 +19,9 @@ ActivityServer.Run<EchoAgent>(args);
 Microsoft 365 channel delivery. The agent owns message and welcome handlers.
 The host uses the simple agent-instance identity model, not digital-worker auth.
 
-The package is pinned to `1.0.0-alpha.20261102.1` on the **public Azure SDK
-development feed** in [NuGet.Config](src/echo-dotnet-activity/NuGet.Config).
-It is a prerelease development build, not a GA release. Restore needs internet
+The package is pinned to **`Azure.AI.AgentServer.Activity` `1.0.0-beta.1`**
+from **NuGet.org**, configured in [NuGet.Config](src/echo-dotnet-activity/NuGet.Config).
+Its Core dependency is installed automatically. This is a beta, not a GA release. Restore needs internet
 access but no private feed credentials, local packages, or SDK source checkout.
 
 ## Prerequisites
@@ -115,7 +115,7 @@ See the [shared test instructions](../tests/README.md) for coverage boundaries.
 ## Troubleshooting
 
 - **Restore cannot find the Activity package:** preserve the source-level
-  `NuGet.Config` when copying the sample; the alpha package is not on NuGet.org.
+  `NuGet.Config` when copying the sample and check access to NuGet.org.
 - **202 but no response in Teams:** check the agent logs and Bot setup.
   Foundry supplies the instance identity used for outbound authentication;
   do not copy production identity settings into anonymous local testing.

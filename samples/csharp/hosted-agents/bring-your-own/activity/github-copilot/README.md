@@ -39,9 +39,10 @@ Each turn resumes the same Copilot session with a fresh Azure token. The
 Copilot client starts and stops with the application host. No GitHub PAT or
 Copilot subscription is needed for this **bring-your-own Foundry model** path.
 
-The Activity package is pinned to `1.0.0-alpha.20261102.1` on the **public
-Azure SDK development feed** in [NuGet.Config](src/github-copilot-dotnet-activity/NuGet.Config).
-It is not a GA release. `GitHub.Copilot.SDK` 1.0.28 downloads and verifies
+The Activity package is pinned to **`Azure.AI.AgentServer.Activity` `1.0.0-beta.1`**
+from **NuGet.org**, configured in [NuGet.Config](src/github-copilot-dotnet-activity/NuGet.Config).
+Its Core dependency is installed automatically. This is a beta, not a GA release.
+`GitHub.Copilot.SDK` 1.0.28 downloads and verifies
 its matching CLI runtime during build, including the Linux runtime on publish.
 No local NuGet binaries or SDK checkout are required.
 
