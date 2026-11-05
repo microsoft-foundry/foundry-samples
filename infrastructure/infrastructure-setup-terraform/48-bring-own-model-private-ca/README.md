@@ -104,9 +104,9 @@ Requirements:
 - **Store it as a Key Vault secret**, not a certificate object. The resolver
   reads the secret; a certificate object returns a PKCS#12 bundle.
 - **Grant the Foundry account identity `Key Vault Secrets User`.**
-- **Trust loads on a capability-host lifecycle event.** The capability host is
-  created only after the account identity can read the secret, and Terraform
-  recreates it whenever the registered trust sources change.
+- **Wait for the account update to succeed.** Foundry propagates trust updates
+  automatically to project capability hosts. Verify the stored references and
+  test inference after the update.
 
 The sample generates the PKI with the `tls` provider and packages the PFX with
 the community `chilicat/pkcs12` provider for convenience, so **private keys are
@@ -168,14 +168,16 @@ connected model `gateway/<model>` (for example `gateway/gpt-5.1`).
 - **Gateway leaf, same CA:** the leaf is re-issued when it nears expiry
   (`early_renewal_hours`) and imported as a new Key Vault certificate version.
   Terraform tags Application Gateway with that version so it serves the new
-  leaf immediately instead of waiting for its periodic Key Vault refresh. No
-  Foundry change or capability-host recreate is required.
+  leaf immediately instead of waiting for its periodic Key Vault refresh. The
+  registered CA remains unchanged.
 - **New or additional root CA:** updating the root creates a new secret
-  version. Terraform updates `trustedCertificateSources` and recreates the
-  capability host so the data proxy reloads trust. For zero downtime, first
-  register the new CA alongside the old one (add a second
+  version. Terraform updates `trustedCertificateSources`; after the account
+  update succeeds, Foundry propagates trust automatically. Verify the stored
+  references and test inference. To avoid a gap in trust, first register the new
+  CA alongside the old one (add a second
   `certificateBundleReferences` entry to `local.trusted_certificate_sources`),
-  then switch the gateway to a leaf issued by the new CA.
+  wait for that update to succeed and verify propagation before switching the
+  gateway to a leaf issued by the new CA.
 
 ## Troubleshooting
 
@@ -184,7 +186,7 @@ connected model `gateway/<model>` (for example `gateway/gpt-5.1`).
 | Is the **root CA**, not the leaf, registered? | Point `trustedCertificateSources` at the CA PEM secret |
 | Is it a Key Vault **secret** with `application/x-pem-file`? | Re-upload as a secret |
 | Does the account identity have **Key Vault Secrets User**? | Grant it, wait for propagation |
-| Was the capability host recreated after the trust change? | `terraform apply -replace='azapi_resource.project_capability_host'` |
+| Did the account trust update succeed? | Inspect the account operation error on failure. A partial failure can leave projects on old trust; an identical retry can be a no-op. Fix the cause and change the configuration or pinned version, or contact support. |
 | Does the gateway serve the **full chain** (leaf + CA)? | Rebuild the PFX with the CA chain |
 | Does the leaf SAN match the connection hostname? | Re-issue the leaf with the correct SAN |
 | Does `gateway.<zone>` resolve from the **spoke**? | Link the gateway zone to the spoke VNet |

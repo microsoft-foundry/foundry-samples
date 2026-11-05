@@ -13,8 +13,8 @@
 //                      with certificate-not-trusted.
 //   * true  (VERIFY) = root CA public PEM is registered (as a Key Vault
 //                      SECRET) in account.properties.trustedCertificateSources.
-//                      Recreate the capability host so the data proxy is
-//                      redeployed with the resolved trust bundle.
+//                      After the account update succeeds, trust propagates
+//                      automatically to project capability hosts.
 //
 // Deploy at resource-group scope:
 //   az group create -n rg-byomca -l eastus2
@@ -86,7 +86,7 @@ param gatewayCaSecretVersion string = ''
 
 @description('''Two-phase test switch.
 false (default) = REPRO: root CA NOT registered on the account; inference is expected to FAIL at the data proxy with certificate-not-trusted.
-true = VERIFY: root CA (public PEM) registered in account.trustedCertificateSources; recreate the capability host, then inference is expected to SUCCEED.''')
+true = VERIFY: root CA (public PEM) registered in account.trustedCertificateSources; wait for the account update to succeed and trust to propagate, then inference is expected to SUCCEED.''')
 param enablePrivateCaTrust bool = false
 
 // ----------------------------------------------------------------------------
@@ -977,4 +977,4 @@ output keyVaultName string = keyVault.name
 output gatewayCaSecretName string = gatewayCaSecretName
 output gatewayCaSecretVersion string = gatewayCaSecretVersion
 output privateCaTrustEnabled bool = enablePrivateCaTrust
-output testPhaseHint string = enablePrivateCaTrust ? 'VERIFY phase: trustedCertificateSources is registered. Recreate the capability host so the data proxy picks up the trust bundle, then re-run inference (expect success).' : 'REPRO phase: trustedCertificateSources is NOT registered. Run inference through the connected model (expect certificate-not-trusted at the data proxy).'
+output testPhaseHint string = enablePrivateCaTrust ? 'VERIFY phase: trustedCertificateSources is registered. After the account update succeeds and trust propagates automatically, verify the stored references and re-run inference (expect success).' : 'REPRO phase: trustedCertificateSources is NOT registered. Run inference through the connected model (expect certificate-not-trusted at the data proxy).'

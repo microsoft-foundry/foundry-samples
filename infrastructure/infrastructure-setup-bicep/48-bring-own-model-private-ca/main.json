@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "9236340571392768514"
+      "templateHash": "7721655988910758978"
     }
   },
   "parameters": {
@@ -140,7 +140,7 @@
       "type": "bool",
       "defaultValue": false,
       "metadata": {
-        "description": "Two-phase test switch.\nfalse (default) = REPRO: root CA NOT registered on the account; inference is expected to FAIL at the data proxy with certificate-not-trusted.\ntrue = VERIFY: root CA (public PEM) registered in account.trustedCertificateSources; recreate the capability host, then inference is expected to SUCCEED."
+        "description": "Two-phase test switch.\nfalse (default) = REPRO: root CA NOT registered on the account; inference is expected to FAIL at the data proxy with certificate-not-trusted.\ntrue = VERIFY: root CA (public PEM) registered in account.trustedCertificateSources; wait for the account update to succeed and trust to propagate, then inference is expected to SUCCEED."
       }
     }
   },
@@ -1066,7 +1066,7 @@
     },
     "testPhaseHint": {
       "type": "string",
-      "value": "[if(parameters('enablePrivateCaTrust'), 'VERIFY phase: trustedCertificateSources is registered. Recreate the capability host so the data proxy picks up the trust bundle, then re-run inference (expect success).', 'REPRO phase: trustedCertificateSources is NOT registered. Run inference through the connected model (expect certificate-not-trusted at the data proxy).')]"
+      "value": "[if(parameters('enablePrivateCaTrust'), 'VERIFY phase: trustedCertificateSources is registered. After the account update succeeds and trust propagates automatically, verify the stored references and re-run inference (expect success).', 'REPRO phase: trustedCertificateSources is NOT registered. Run inference through the connected model (expect certificate-not-trusted at the data proxy).')]"
     }
   }
 }

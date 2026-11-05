@@ -6,8 +6,8 @@
 # calls the hub gateway over peering and validates its private-CA certificate.
 #
 # properties.trustedCertificateSources registers the private root CA from the
-# start. The trust bundle is loaded into the data proxy when the capability
-# host is created (project.tf), after the account identity can read the secret.
+# start. After account trust updates succeed, Foundry propagates trust
+# automatically to project capability hosts.
 # ============================================================================
 
 locals {

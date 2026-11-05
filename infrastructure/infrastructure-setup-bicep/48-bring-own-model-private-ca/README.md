@@ -50,9 +50,9 @@ Foundry project ──connected model──▶ single-tenant data proxy ──TL
 - **Foundry agent account** — VNet-injected (`networkInjections` → delegated
   agent subnet). Injection is what provisions the data proxy inside your VNet.
 - **Capability host** — project-level cap host (backed by BYO Storage / Cosmos /
-  AI Search). Creating it provisions the data proxy. The current preview applies
-  private-CA changes when the data proxy is deployed, so the capability host
-  must be recreated after changing the account trust configuration.
+  AI Search). Creating it provisions the data proxy. After an account trust
+  update succeeds, Foundry propagates the trust configuration automatically to
+  project capability hosts.
 - **nginx gateway (Azure Container Instances)** — a single `nginx` container with
   a **private IP** in a delegated subnet. It terminates TLS with the self-signed
   cert on `gateway.byomca.internal` and reverse-proxies `/inference/…` to the
@@ -75,7 +75,6 @@ Foundry project ──connected model──▶ single-tenant data proxy ──TL
 |------|---------|
 | `bootstrap-cert.ps1` | **Pre-step.** Builds a small PKI with openssl — a self-signed **root CA** plus a **gateway leaf** signed by it — writes the leaf fullchain + key to `.gateway\` for nginx, and uploads the **root CA public PEM** to Key Vault as a **secret** (the trust anchor). Run this first. |
 | `deploy.ps1` | Deploy wrapper. Reads `.gateway\` and passes the cert/key as secure params. `-Verify` flips to the trust-registered phase. |
-| `recreate-capability-host.ps1` | VERIFY post-step. Recreates the capability host with its existing BYO connection assignments so the data proxy receives the updated trust bundle. |
 | `roll-gateway-cert.ps1` | Optional negative test. Replaces only the gateway certificate with one signed by an unregistered CA, then restores the original certificate. |
 | `main.bicep` | Everything else, at resource-group scope. |
 | `main.bicepparam` | Parameter values (edit `location`, custom domain, etc.). |
@@ -136,16 +135,10 @@ call fails with a TLS / certificate-not-trusted error.
   -Location canadacentral -CosmosLocation eastus2 -KeyVaultName byomca-kv-01 -Verify
 ```
 
-The account update pins the Key Vault secret version and Foundry propagates the
-configuration, but the current Data Proxy preview reads the bundle during
-capability-host deployment. Recreate the host while preserving its BYO
-connections:
-
-```powershell
-.\recreate-capability-host.ps1 -Subscription <sub-id> `
-  -ResourceGroup rg-byomca -AccountName <agent-account-name> `
-  -ProjectName <project-name> -Force
-```
+Wait for the deployment and account update to succeed. The update pins the Key
+Vault secret version, and Foundry propagates the trust configuration
+automatically to project capability hosts. Inspect the stored references using
+the account query below before testing inference.
 
 Re-run the same inference. **Expected: success** — the gateway leaf now chains
 to a trusted root CA, so the handshake validates and gpt-4o-mini responds.
@@ -216,7 +209,8 @@ short-circuits and the private bundle is never exercised.
 - **Pinned version.** Rotating the Key Vault secret does not update trust by
   itself. Upload the replacement bundle, then update
   `gatewayCaSecretVersion` (or rerun `deploy.ps1 -Verify`) so the account points
-  to the new version, and recreate the capability host.
+  to the new version. Wait for the account update to succeed, verify the stored
+  references, and test inference.
 - **Region.** Cosmos capacity is a per-subscription/region gate;
   `cosmosLocation` lets you place Cosmos in a different region (for example,
   `eastus2`) from the rest of the stack. Azure AI Search capacity can also vary
@@ -240,10 +234,14 @@ short-circuits and the private bundle is never exercised.
   Build and lint still succeed, but the compiler cannot validate that account's
   property schema. Validate the preview contract with a live deployment in a
   subscription where the preview API is enabled.
-- **Preview onboarding.** The Cognitive Services RP gates account
-  `trustedCertificateSources` configuration by subscription allow-list. An
-  `InvalidResourceProperties` response stating that trusted certificates are
-  gated means the subscription must be onboarded before this sample can run.
+- **Feature availability.** Account CA trust is public preview in all Azure
+  public cloud regions without subscription allowlisting for this feature.
+  Other networking, model availability, quota, and preview API requirements
+  still apply.
+- **Update failures.** Inspect the account operation's error before retrying.
+  A partial failure can leave the account on the new configuration while some
+  projects retain old trust. An identical resubmission can be a no-op; fix the
+  cause and change the configuration or pinned version, or contact support.
 
 ## Cleanup
 

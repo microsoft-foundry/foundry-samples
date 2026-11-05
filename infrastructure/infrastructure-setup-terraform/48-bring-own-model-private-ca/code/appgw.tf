@@ -53,7 +53,7 @@ resource "azurerm_application_gateway" "gateway" {
 
   # Application Gateway otherwise polls Key Vault for new certificate versions
   # only every few hours. Tagging the version forces an update on rotation so
-  # the new leaf is served before the capability host reloads trust.
+  # the new leaf is served promptly after a gateway certificate rotation.
   tags = merge(local.common_tags, {
     gatewayCertificateVersion = azurerm_key_vault_certificate.gateway.version
   })

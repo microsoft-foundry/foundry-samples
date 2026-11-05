@@ -48,6 +48,8 @@ param(
   # token's 'oid' claim (no Microsoft Graph call, so conditional-access policies
   # that block Graph do not matter).
   [string]$PrincipalObjectId = '',
+  [ValidateSet('User', 'ServicePrincipal')]
+  [string]$PrincipalType = 'User',
   # Where the base64 PEM material is written for deploy.ps1 to pick up.
   # Leave empty to default to '.gateway' next to this script.
   [string]$OutDir = ''
@@ -74,6 +76,7 @@ $env:MSYS_NO_PATHCONV = '1'
 Write-Host "Using openssl: $openssl"
 
 az account set --subscription $Subscription
+if ($LASTEXITCODE -ne 0) { throw "Could not select subscription '$Subscription'." }
 
 function Get-OidFromArmToken {
   $tok = az account get-access-token --query accessToken -o tsv
@@ -152,10 +155,11 @@ Write-Host "==> Granting 'Key Vault Secrets Officer' on the vault (no Graph look
 $eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
 az role assignment create `
   --assignee-object-id $PrincipalObjectId `
-  --assignee-principal-type User `
+  --assignee-principal-type $PrincipalType `
   --role "Key Vault Secrets Officer" `
   --scope $kvId | Out-Null
 $ErrorActionPreference = $eap
+if ($LASTEXITCODE -ne 0) { throw "Could not grant Key Vault Secrets Officer to the bootstrap principal." }
 
 Write-Host "==> Waiting 30s for RBAC to propagate ..."
 Start-Sleep -Seconds 30

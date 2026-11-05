@@ -8,8 +8,8 @@
   REPRO (default):  self-signed cert is NOT trusted -> inference expected to FAIL
                     at the single-tenant data proxy (certificate-not-trusted).
   VERIFY (-Verify): registers the pinned CA bundle in
-                    account.trustedCertificateSources. Recreate the capability host
-                    so the data proxy receives it; inference should then succeed.
+                    account.trustedCertificateSources. After the account update
+                    succeeds, trust propagates automatically; test inference.
 
 .EXAMPLE
   # Phase 1 - REPRO

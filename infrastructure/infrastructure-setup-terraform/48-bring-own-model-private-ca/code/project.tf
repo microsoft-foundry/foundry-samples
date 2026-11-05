@@ -152,14 +152,8 @@ resource "time_sleep" "wait_rbac" {
 # stands up the data proxy). For an injected account you must NOT create a
 # manual account-level cap host.
 #
-# The data proxy loads the trusted-certificate bundle on a capability-host
-# lifecycle event, so the cap host is created only after the account identity
-# can read the root CA secret, and is recreated whenever the registered trust
-# bundle changes (for example a root CA rotation).
-resource "terraform_data" "trusted_certificate_sources" {
-  input = local.trusted_certificate_sources
-}
-
+# Create the host after the account identity can read the root CA secret.
+# Subsequent account trust updates propagate automatically.
 resource "azapi_resource" "project_capability_host" {
   type                      = "Microsoft.CognitiveServices/accounts/projects/capabilityHosts@2026-05-15-preview"
   name                      = "agents"
@@ -184,13 +178,9 @@ resource "azapi_resource" "project_capability_host" {
     azurerm_private_endpoint.search,
     time_sleep.wait_rbac,
     time_sleep.wait_foundry_kv_rbac,
-    # The gateway must serve the current certificate before trust reloads.
+    # The gateway must be available before the host's initial deployment.
     azurerm_application_gateway.gateway,
   ]
-
-  lifecycle {
-    replace_triggered_by = [terraform_data.trusted_certificate_sources]
-  }
 }
 
 # ---- Data-plane role assignments (after the cap host exists) ----
