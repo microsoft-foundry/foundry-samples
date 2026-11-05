@@ -4,6 +4,11 @@ Connections enable your AI applications to access tools and objects managed else
 
 This folder provides a set of examples for the most common connection categories.
 
+For a gateway requiring both project identity and a secret subscription-key
+header, see [`apim-secret-headers`](./apim-secret-headers/). It creates an
+`ApiManagement` model connection and a `CustomKeys` companion without exposing
+the header value in model metadata.
+
 ## BYOM golden-path variants (non-VNet)
 
 For the end-to-end **bring-your-own-model** golden path, these connections map to the
