@@ -135,11 +135,12 @@ def pairs(messages: Sequence[ModelMessage]) -> list[tuple[str, str]]:
     return [(message.role, message.content) for message in messages]
 
 
-def test_streams_model_output_and_commits_history() -> None:
+@pytest.mark.parametrize("route", ["/voice_conversation_engine", "/invocations_ws"])
+def test_streams_model_output_and_commits_history(route: str) -> None:
     model = FakeModel([["Hello", " there"], ["Second"]])
     app = create_app(model, configure_observability=None)
 
-    with TestClient(app) as client, client.websocket_connect("/invocations_ws") as ws:
+    with TestClient(app) as client, client.websocket_connect(route) as ws:
         assert start(ws)["type"] == "session.ready"
         send_user(ws, "in_1", "First question")
         first = receive_until(ws, "response.done")
@@ -167,7 +168,7 @@ def test_protocol_mismatch_is_rejected() -> None:
     model = FakeModel([])
     app = create_app(model, configure_observability=None)
 
-    with TestClient(app) as client, client.websocket_connect("/invocations_ws") as ws:
+    with TestClient(app) as client, client.websocket_connect("/voice_conversation_engine") as ws:
         rejected = start(ws, protocol="2.0")
         assert rejected["type"] == "session.rejected"
         assert rejected["code"] == "protocol_mismatch"
@@ -180,7 +181,7 @@ def test_input_before_session_start_is_ignored() -> None:
     model = FakeModel([])
     app = create_app(model, configure_observability=None)
 
-    with TestClient(app) as client, client.websocket_connect("/invocations_ws") as ws:
+    with TestClient(app) as client, client.websocket_connect("/voice_conversation_engine") as ws:
         send_user(ws, "in_before_start", "must not run")
 
     assert model.requests == []
@@ -190,7 +191,7 @@ def test_proactive_waits_for_acceptance() -> None:
     model = FakeModel([["Proactive answer"]])
     app = create_app(model, configure_observability=None)
 
-    with TestClient(app) as client, client.websocket_connect("/invocations_ws") as ws:
+    with TestClient(app) as client, client.websocket_connect("/voice_conversation_engine") as ws:
         assert start(ws)["type"] == "session.ready"
         send_user(ws, "in_proactive", "/proactive Check in")
         assert ws.receive_json()["type"] == "response.none"
@@ -210,14 +211,14 @@ def test_barge_in_cancels_and_reconciles_heard_text() -> None:
     model = FakeModel([blocked, ["next"]])
     app = create_app(model, configure_observability=None)
 
-    with TestClient(app) as client, client.websocket_connect("/invocations_ws") as ws:
+    with TestClient(app) as client, client.websocket_connect("/voice_conversation_engine") as ws:
         assert start(ws)["type"] == "session.ready"
         send_user(ws, "in_1", "Tell me a story")
         created = receive_type(ws, "response.created")
         receive_type(ws, "response.output_text.delta")
         ws.send_json(
             frame(
-                "barge_in",
+                "user.barge_in",
                 response_id=created["response_id"],
                 heard_text="The part heard.",
             )
@@ -237,7 +238,7 @@ def test_barge_in_cancels_and_reconciles_heard_text() -> None:
 def test_no_input_reminder_and_end_call() -> None:
     app = create_app(FakeModel([]), configure_observability=None)
 
-    with TestClient(app) as client, client.websocket_connect("/invocations_ws") as ws:
+    with TestClient(app) as client, client.websocket_connect("/voice_conversation_engine") as ws:
         assert start(ws)["type"] == "session.ready"
         ws.send_json(frame("user.no_input", item_id="in_idle_1", count=1))
         reminder = receive_until(ws, "response.done")
@@ -263,7 +264,7 @@ def test_input_after_session_end_is_ignored() -> None:
     model = FakeModel([])
     app = create_app(model, configure_observability=None)
 
-    with TestClient(app) as client, client.websocket_connect("/invocations_ws") as ws:
+    with TestClient(app) as client, client.websocket_connect("/voice_conversation_engine") as ws:
         assert start(ws)["type"] == "session.ready"
         ws.send_json(frame("session.end", reason="caller_hangup"))
         send_user(ws, "in_after_end", "must not run")
@@ -348,7 +349,7 @@ def test_end_commands_cancel_active_work_before_end_call(command: str, mode: str
     blocked = BlockingScript("partial")
     app = create_app(FakeModel([blocked]), configure_observability=None)
 
-    with TestClient(app) as client, client.websocket_connect("/invocations_ws") as ws:
+    with TestClient(app) as client, client.websocket_connect("/voice_conversation_engine") as ws:
         assert start(ws)["type"] == "session.ready"
         send_user(ws, "in_blocked", "Start work")
         receive_type(ws, "response.output_text.delta")
@@ -362,7 +363,7 @@ def test_third_no_input_cancels_active_work_before_end_call() -> None:
     blocked = BlockingScript("partial")
     app = create_app(FakeModel([blocked]), configure_observability=None)
 
-    with TestClient(app) as client, client.websocket_connect("/invocations_ws") as ws:
+    with TestClient(app) as client, client.websocket_connect("/voice_conversation_engine") as ws:
         assert start(ws)["type"] == "session.ready"
         send_user(ws, "in_blocked", "Start work")
         receive_type(ws, "response.output_text.delta")

@@ -23,13 +23,11 @@ services:
   voice-live-bridge-langgraph-python:
     host: azure.ai.agent
     metadata:
-      voiceLiveCompatible: "true"
-      bridgeProtocolVersion: "1.0"
       tags:
         - AI Agent Hosting
         - Voice Live Bridge
         - WebSocket Protocol
-        - invocations_ws
+        - voice_conversation_engine
         - Bring Your Own
         - Python
         - LangGraph
@@ -45,7 +43,7 @@ services:
     displayName: Voice Live Bridge — LangGraph Python
     description: A LangGraph hosted text agent that implements Voice Live Bridge Protocol 1.0, routes model and tool nodes through an explicit StateGraph, and streams text from a Foundry model through the Responses API.
     protocols:
-      - protocol: invocations_ws
+      - protocol: voice_conversation_engine
         version: 1.0.0
     env:
       PYTHONNOUSERSITE: "1"

@@ -62,7 +62,7 @@ class InputOrigin(Enum):
 
 
 class ApplicationTurn:
-    """Minimal application-owned turn bookkeeping for AgentServer 1.1.0."""
+    """Minimal application-owned turn bookkeeping for Bridge Protocol 1.0."""
 
     def __init__(self) -> None:
         self.is_completed = False

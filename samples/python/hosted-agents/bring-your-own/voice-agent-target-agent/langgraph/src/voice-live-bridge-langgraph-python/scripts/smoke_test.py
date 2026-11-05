@@ -149,7 +149,7 @@ async def run(uri: str, text: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--uri", default="ws://127.0.0.1:8088/invocations_ws")
+    parser.add_argument("--uri", default="ws://127.0.0.1:8088/voice_conversation_engine")
     parser.add_argument("--text", default="/help")
     args = parser.parse_args()
     asyncio.run(run(args.uri, args.text))

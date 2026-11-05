@@ -1,8 +1,8 @@
-# Coding Agent Instructions — Voice Live Bridge LangGraph Python
+# Coding Agent Instructions — Voice Conversation Engine LangGraph Python
 
-This is a Microsoft Foundry hosted text agent that implements Voice Live Bridge Protocol `1.0`
-over `invocations_ws`. Voice Live owns the audio pipeline; this sample handles only typed text and
-control events.
+This is a Microsoft Foundry hosted conversation engine that implements Voice Live Bridge Protocol
+`1.0` over `voice_conversation_engine`. Voice Live owns the audio pipeline; this sample handles
+only typed text and control events. Preserve the existing repository paths and resource identifiers.
 
 ## Deployment mode
 
@@ -49,11 +49,17 @@ Voice Live Bridge WebSocket events; use `scripts/smoke_test.py` for the local pr
 
 ## Protocol constraints
 
-- Keep `bridgeProtocolVersion: "1.0"`, `voiceLiveCompatible: "true"`, and `invocations_ws` aligned.
+- Declare `voice_conversation_engine:1.0.0` and use `/voice_conversation_engine`; neither legacy
+  Bridge metadata key is required. Keep the message handshake at Bridge Protocol `1.0`.
+- Use `UserBargeIn` / `on_user_barge_in` for `user.barge_in`, preserving heard-text reconciliation.
+- Preserve the original model/tool backend and lifecycle; this is a protocol adaptation, not a
+  replacement runtime. The SDK's independent `/invocations_ws` route remains available.
+- Confirm matching Hosted ingress and Voice Live support before deployment; local tests alone
+  do not prove cloud or managed-audio readiness.
 - The application explicitly sends `session.ready` or `session.rejected` and owns response IDs,
   background tasks, cancellation, and conversation state.
-- Protocol `1.0` supports text input only. Do not add DTMF, image input, history mutation, or
-  hosted-agent handoff under this version.
+- Keep this sample text-only. Protocol `1.0` does not include DTMF, image input, app-driven
+  history mutation, or hosted-agent handoff.
 
 ## Microsoft Foundry Skill
 

@@ -8,13 +8,13 @@ Third-party samples contained in this folder are subject to their own designated
 Microsoft has no responsibility to you or others with respect to any of these samples or any resulting output.
 <!-- End standard disclaimer -->
 
-# Voice Live Bridge hosted-agent samples
+# Voice Conversation Engine hosted-agent samples
 
 ## What these samples demonstrate
 
-These samples show how to give a **hosted text agent** a managed voice experience without adding
-audio-processing code to the agent. The agents implement Voice Live Bridge Protocol `1.0` on the
-existing `invocations_ws` transport by using the typed AgentServer Voice API.
+These samples implement a **hosted conversation engine** for Voice Live without adding
+audio-processing code. They implement Voice Live Bridge Protocol `1.0` on the
+dedicated `voice_conversation_engine` endpoint by using the typed AgentServer Voice API.
 
 [Microsoft Foundry Voice Live](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live)
 owns the real-time audio pipeline: speech recognition, turn detection, speech synthesis, playback,
@@ -25,13 +25,16 @@ model through the Responses API, and streams response text back to Voice Live fo
 
 | Language | Sample | Description |
 | --- | --- | --- |
-| Python | [Voice Live Bridge — Basic Python](basic/) | A framework-free Python hosted agent using `azure-ai-agentserver-invocations`. |
-| Python | [Voice Live Bridge — LangChain Python](langchain/) | A tool-using LangChain hosted agent backed by the Foundry Responses API. |
-| Python | [Voice Live Bridge — LangGraph Python](langgraph/) | An explicit StateGraph hosted agent with model and tool nodes backed by the Foundry Responses API. |
-| C# | [Voice Live Bridge — Basic .NET](../../../../csharp/hosted-agents/bring-your-own/voice-agent-target-agent/basic/) | The equivalent framework-free hosted agent using the AgentServer Invocations SDK for .NET. |
+| Python | [Voice Conversation Engine — Basic Python](basic/) | A framework-free Python conversation engine using `azure-ai-agentserver-invocations`. |
+| Python | [Voice Conversation Engine — LangChain Python](langchain/) | A tool-using LangChain conversation engine backed by the Foundry Responses API. |
+| Python | [Voice Conversation Engine — LangGraph Python](langgraph/) | An explicit StateGraph conversation engine with model and tool nodes backed by the Foundry Responses API. |
 
-All implementations demonstrate the same Bridge Protocol behavior so you can start with the
-language that matches your application.
+All three samples demonstrate the same Bridge Protocol behavior while preserving their original
+model and tool implementations.
+
+The existing `voice-agent-target-agent` directory and `voice-live-bridge-*` project/resource
+identifiers are retained for path and deployment compatibility. The supported Hosted protocol
+is selected by `voice_conversation_engine:1.0.0`, not by those historical names.
 
 ## How it works
 
@@ -39,15 +42,15 @@ language that matches your application.
 Caller audio
     → Foundry voice agent
     → Voice Live (STT, VAD, TTS, and barge-in)
-    → Bridge Protocol 1.0 over invocations_ws
-    → hosted text agent
+    → Bridge Protocol 1.0 over voice_conversation_engine
+    → hosted conversation engine
     → Foundry model Responses API
 ```
 
-The caller connects to a Foundry **voice agent**, not directly to the hosted text agent. The voice
-agent targets a deployed hosted agent in the same Foundry project. Voice Live opens the
-`invocations_ws` agent leg and exchanges typed Bridge messages with the target agent while the
-caller sends and receives audio through the normal voice WebSocket.
+The caller connects to a Foundry **voice agent**, not directly to the hosted conversation engine.
+The voice agent references the deployed conversation engine in the same Foundry project. Voice Live
+opens the `voice_conversation_engine` agent leg and exchanges typed Bridge messages with the engine
+while the caller sends and receives audio through the normal voice WebSocket.
 
 After the WebSocket upgrade, the basic flow is:
 
@@ -58,7 +61,7 @@ After the WebSocket upgrade, the basic flow is:
    `response.output_text.delta` events, completes the output item, and sends `response.done`.
 5. Voice Live synthesizes the streamed text and sends audio to the caller.
 
-Bridge Protocol `1.0` is an **application protocol layered on `invocations_ws`**; it is not an audio
+Bridge Protocol `1.0` is an **application protocol layered on `voice_conversation_engine`**; it is not an audio
 protocol and is versioned independently from the Hosted Agent WebSocket ingress.
 
 ## Protocol capabilities
@@ -77,21 +80,26 @@ The samples demonstrate the Protocol `1.0` customer surface:
 Protocol `1.0` does not include DTMF, image input, app-driven history mutation, or hosted-agent
 handoff. Voice Live, rather than the hosted agent, remains responsible for all audio handling.
 
-## Required hosted-agent configuration
+## Required conversation-engine configuration
 
-Each target hosted agent opts into the typed bridge with these declarations in `azure.yaml`:
+Each hosted conversation engine declares this protocol in `azure.yaml`:
 
 ```yaml
-metadata:
-  voiceLiveCompatible: "true"
-  bridgeProtocolVersion: "1.0"
 protocols:
-  - protocol: invocations_ws
+  - protocol: voice_conversation_engine
     version: 1.0.0
 ```
 
-The `bridgeProtocolVersion` value selects the Bridge application contract. The `invocations_ws`
-version selects the Hosted Agent ingress contract; the two version numbers are unrelated.
+The Hosted protocol version `1.0.0` selects Bridge message version `1.0`; the two version numbers
+are independent. Neither `voiceLiveCompatible` nor `bridgeProtocolVersion` metadata is required.
+The Voice wrapper's `conversationEngine` reference is unchanged and requires the new protocol
+declaration. Caller interruption uses `user.barge_in` / `on_user_barge_in`.
+
+The typed SDK also retains its independent `/invocations_ws` route for compatibility; the samples
+declare only the dedicated CE protocol. Deployment requires matching Hosted Agent ingress and
+Voice Live support for `voice_conversation_engine:1.0.0`, not just the published SDK. Confirm that
+platform rollout before deploying. Local fake-model tests and protocol smoke tests do not validate
+cloud routing, model access, or managed voice/audio readiness.
 
 ## Run a sample
 
@@ -111,22 +119,22 @@ Standard request/response tools such as `azd ai agent invoke` and the Foundry To
 Inspector do not generate Voice Live Bridge WebSocket events. Use the protocol-aware smoke client
 included with the selected sample for local testing.
 
-## Give the hosted agent a voice
+## Connect the conversation engine to Voice Live
 
-The sample `azure.yaml` already declares a managed Voice wrapper agent that targets this hosted
-agent. `azd deploy` deploys both the hosted target and the Voice wrapper; no manual JSON wrapper
-creation is required for the main azd flow.
+The sample `azure.yaml` already declares a managed Voice wrapper agent whose `conversationEngine`
+references this hosted conversation engine. `azd deploy` deploys both agents; no manual JSON
+wrapper creation is required for the main azd flow.
 
 The caller connects to the Voice wrapper's Voice WebSocket endpoint and never sends Bridge messages
-directly to the hosted text agent. Conversation logic, model calls, tools, and response generation
-belong to the target hosted agent. Voice configuration and the managed audio experience belong to
-the Voice wrapper and Voice Live.
+directly to the hosted conversation engine. Conversation logic, model calls, tools, and response
+generation belong to the conversation engine. Voice configuration and the managed audio experience
+belong to the Voice wrapper and Voice Live.
 
 ## Next steps
 
-- [Voice Live Bridge — Basic Python](basic/)
-- [Voice Live Bridge — LangChain Python](langchain/)
-- [Voice Live Bridge — LangGraph Python](langgraph/)
+- [Voice Conversation Engine — Basic Python](basic/)
+- [Voice Conversation Engine — LangChain Python](langchain/)
+- [Voice Conversation Engine — LangGraph Python](langgraph/)
 - [Microsoft Foundry hosted agents overview](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents)
 - [Deploy a hosted agent](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/deploy-hosted-agent)
 - [AgentServer Invocations SDK for Python](https://pypi.org/project/azure-ai-agentserver-invocations/)

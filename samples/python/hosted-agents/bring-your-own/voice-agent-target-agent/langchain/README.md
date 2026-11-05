@@ -8,19 +8,19 @@ Third-party samples contained in this folder are subject to their own designated
 Microsoft has no responsibility to you or others with respect to any of these samples or any resulting output.
 <!-- End standard disclaimer -->
 
-# Voice Live Bridge — LangChain Python
+# Voice Conversation Engine — LangChain Python
 
 ## What this sample demonstrates
 
-This sample gives a hosted text agent a managed voice experience without adding audio code to the
-agent. It implements Voice Live Bridge Protocol `1.0` with typed callbacks from
-`azure-ai-agentserver-invocations==1.1.0`. A LangChain agent calls a Microsoft Foundry model
+This sample implements a hosted conversation engine for Voice Live without adding audio code.
+It uses Voice Live Bridge Protocol `1.0` with typed callbacks from
+`azure-ai-agentserver-invocations==1.3.0b1`. A LangChain agent calls a Microsoft Foundry model
 through the Responses API, can invoke a local UTC-time tool, and streams only assistant text back
 to Voice Live.
 
 Voice Live owns audio input, speech recognition, turn detection, synthesis, playback interruption,
-and proactive-response admission. This hosted agent receives text and control events on
-`/invocations_ws`.
+and proactive-response admission. This hosted conversation engine receives text and control events on
+`/voice_conversation_engine`.
 
 ## How it works
 
@@ -28,8 +28,8 @@ and proactive-response admission. This hosted agent receives text and control ev
 Caller audio
     → Foundry voice agent
     → Voice Live (STT, VAD, TTS, barge-in)
-    → Bridge Protocol 1.0 over invocations_ws
-    → this LangChain hosted text agent and tools
+    → Bridge Protocol 1.0 over voice_conversation_engine
+    → this LangChain hosted conversation engine and tools
     → Foundry model Responses API
 ```
 
@@ -48,9 +48,24 @@ history mutation, or hosted-agent handoff.
 1. Python 3.13 or later.
 2. [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
    installed and available on `PATH`.
-3. Azure Developer CLI (`azd`) 1.27.1 or later with the Foundry extension.
+3. Azure Developer CLI (`azd`) and Foundry extension versions meeting `azure.yaml`'s
+   `requiredVersions`, with support for `voice_conversation_engine:1.0.0`.
 4. Azure CLI authentication for local model access.
 5. A Foundry project and model deployment, or permission for `azd provision` to create them.
+6. For deployment, a target environment whose Hosted Agent ingress and Voice Live support
+   `voice_conversation_engine:1.0.0`. Installing the SDK does not enable service-side support;
+   confirm the matching platform rollout before deploying. Local fake-model tests and protocol
+   smoke tests do not validate managed voice or audio readiness.
+
+The manifest declares only `voice_conversation_engine:1.0.0`; it does not require legacy
+`voiceLiveCompatible` or `bridgeProtocolVersion` metadata. The `session.start` handshake remains
+Bridge Protocol `1.0`, independently of the Hosted protocol version. The Voice wrapper's
+`conversationEngine` configuration is unchanged. Caller interruption uses the `user.barge_in`
+event and the SDK's `on_user_barge_in` callback.
+
+The original repository directory (`voice-agent-target-agent`) and project/resource identifiers
+(`voice-live-bridge-*`) are retained for path and deployment compatibility; they do not select
+the legacy protocol.
 
 Install and authenticate the tools:
 
@@ -135,7 +150,8 @@ uv run --no-sync python main.py
 ```
 
 The server listens on `PORT` or port `8088` and exposes `GET /readiness` and the
-`/invocations_ws` WebSocket route.
+`/voice_conversation_engine` WebSocket route. The SDK also retains its independent
+`/invocations_ws` compatibility route; this sample does not declare that legacy Hosted protocol.
 
 ## Local protocol smoke test
 
@@ -154,16 +170,16 @@ response.output_text.done
 response.done
 ```
 
-## Give the hosted agent a voice
+## Connect the conversation engine to Voice Live
 
-The sample `azure.yaml` already declares a managed Voice wrapper agent that targets this hosted
-agent. `azd deploy` deploys both the hosted target and the Voice wrapper; no manual JSON wrapper
-creation is required for the main azd flow.
+The sample `azure.yaml` already declares a managed Voice wrapper agent whose `conversationEngine`
+references this hosted conversation engine. `azd deploy` deploys both agents; no manual JSON
+wrapper creation is required for the main azd flow.
 
 The caller connects to the Voice wrapper's Voice WebSocket endpoint and never sends Bridge messages
-directly to the hosted text agent. Conversation logic, model calls, tools, and response generation
-belong to the target hosted agent. Voice configuration and the managed audio experience belong to
-the Voice wrapper and Voice Live.
+directly to the hosted conversation engine. Conversation logic, model calls, tools, and response
+generation belong to the conversation engine. Voice configuration and the managed audio experience
+belong to the Voice wrapper and Voice Live.
 
 ## Sample commands
 
@@ -214,7 +230,8 @@ bash .github/scripts/validate-sample.sh \
 ## Troubleshooting
 
 - If the server rejects `session.start` with `protocol_mismatch`, ensure the event declares Bridge
-  Protocol `1.0`. This is separate from the `invocations_ws` transport version in `azure.yaml`.
+  Protocol `1.0`. This is separate from the `voice_conversation_engine:1.0.0` declaration in
+  `azure.yaml`.
 - If model calls fail locally, verify `FOUNDRY_PROJECT_ENDPOINT`,
   `AZURE_AI_MODEL_DEPLOYMENT_NAME`, and the active Azure CLI identity.
 - If the smoke test cannot connect, start `uv run --no-sync python main.py` first and verify that port `8088` is
