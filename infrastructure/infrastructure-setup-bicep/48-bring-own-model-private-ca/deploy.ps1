@@ -54,6 +54,9 @@ foreach ($f in @($certB64, $keyB64, $verFile)) {
 $cert = (Get-Content -Raw $certB64).Trim()
 $key  = (Get-Content -Raw $keyB64).Trim()
 $ver  = (Get-Content -Raw $verFile).Trim()
+# Older bootstrap output has no secretname.txt; fall back to the template default.
+$secretNameFile = Join-Path $CertDir 'secretname.txt'
+$caSecretName = if (Test-Path $secretNameFile) { (Get-Content -Raw $secretNameFile).Trim() } else { 'trustedca-root-pem' }
 
 if (-not $DeploymentName) { $DeploymentName = $(if ($Verify) { 'byomca-verify' } else { 'byomca-repro' }) }
 
@@ -69,6 +72,7 @@ $args = @(
   '-p', "foundryModelName=$ModelName",
   '-p', "foundryModelVersion=$ModelVersion",
   '-p', "keyVaultName=$KeyVaultName",
+  '-p', "gatewayCaSecretName=$caSecretName",
   '-p', "gatewayCertPemB64=$cert",
   '-p', "gatewayKeyPemB64=$key",
   '-n', $DeploymentName
@@ -83,3 +87,4 @@ if ($Verify) {
 
 Write-Host "==> az $($args -join ' ' -replace [regex]::Escape($cert),'<cert-b64>' -replace [regex]::Escape($key),'<key-b64>')"
 az @args
+if ($LASTEXITCODE -ne 0) { throw "az deployment group create failed (exit code $LASTEXITCODE)." }

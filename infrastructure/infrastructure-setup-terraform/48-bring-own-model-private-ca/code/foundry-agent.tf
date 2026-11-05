@@ -59,7 +59,8 @@ resource "azapi_resource" "foundry_agent_account" {
 
   response_export_values = ["identity.principalId"]
 
-  depends_on = [azurerm_subnet.agent]
+  # Destroy order is the reverse: account delete -> cooldown -> purge -> subnet.
+  depends_on = [azurerm_subnet.agent, time_sleep.purge_cooldown]
 }
 
 # Private endpoint for the injected account.
@@ -86,17 +87,18 @@ resource "azurerm_private_endpoint" "foundry_agent" {
 # ---- Destroy-time purge so the delegated agent subnet can be removed ----
 # Injection creates a serviceAssociationLink on snet-agent; purging the
 # soft-deleted account clears it so the subnet destroy does not hit
-# InUseSubnetCannotBeDeleted.
-resource "time_sleep" "purge_cooldown" {
-  destroy_duration = "900s"
-  depends_on       = [azurerm_subnet.agent]
-}
-
+# InUseSubnetCannotBeDeleted. Creation order is subnet -> purge -> cooldown ->
+# account, so destroy runs account delete -> cooldown -> purge -> subnet delete.
 resource "azapi_resource_action" "purge_foundry_agent_account" {
   method      = "DELETE"
   type        = "Microsoft.CognitiveServices/locations/resourceGroups/deletedAccounts@2021-04-30"
   resource_id = "/subscriptions/${var.subscription_id}/providers/Microsoft.CognitiveServices/locations/${var.location}/resourceGroups/${local.rg_name}/deletedAccounts/${local.foundry_agent_account_name}"
   when        = "destroy"
 
-  depends_on = [time_sleep.purge_cooldown]
+  depends_on = [azurerm_subnet.agent]
+}
+
+resource "time_sleep" "purge_cooldown" {
+  destroy_duration = "900s"
+  depends_on       = [azapi_resource_action.purge_foundry_agent_account]
 }

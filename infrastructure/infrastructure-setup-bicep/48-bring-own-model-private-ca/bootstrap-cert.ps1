@@ -190,6 +190,7 @@ $keyB64  = [Convert]::ToBase64String([IO.File]::ReadAllBytes($leafKey))
 Set-Content -Path (Join-Path $OutDir 'cert.b64') -Value $certB64 -NoNewline
 Set-Content -Path (Join-Path $OutDir 'key.b64')  -Value $keyB64  -NoNewline
 Set-Content -Path (Join-Path $OutDir 'certversion.txt') -Value $version -NoNewline
+Set-Content -Path (Join-Path $OutDir 'secretname.txt') -Value $SecretName -NoNewline
 
 # Clean up private-key-bearing artifacts (secrets); keep public certs + chain.
 Remove-Item $caKey, $leafCsr, $leafExt -ErrorAction SilentlyContinue

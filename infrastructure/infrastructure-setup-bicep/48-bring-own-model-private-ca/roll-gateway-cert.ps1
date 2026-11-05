@@ -57,6 +57,7 @@ if (-not $scriptDir) { $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.P
 if (-not $scriptDir) { $scriptDir = (Get-Location).Path }
 
 az account set --subscription $Subscription
+if ($LASTEXITCODE -ne 0) { throw "Could not select subscription '$Subscription'." }
 
 # ---- 1. Obtain the leaf cert + key to serve (base64 PEM) ---------------------
 if ($Mode -eq 'Restore') {
@@ -134,6 +135,10 @@ http {
       proxy_pass https://$ModelHost/openai/;
       proxy_set_header Host $ModelHost;
       proxy_ssl_server_name on;
+      proxy_ssl_name $ModelHost;
+      proxy_ssl_verify on;
+      proxy_ssl_verify_depth 3;
+      proxy_ssl_trusted_certificate /etc/pki/tls/certs/ca-bundle.crt;
     }
     location / { return 200 'gateway-ok'; }
   }
@@ -198,21 +203,27 @@ Write-Host "==> Wrote $yamlPath"
 # ---- 4. Delete + recreate the ACI (secret volumes are immutable) ------------
 Write-Host "==> Deleting existing container group '$AciName' ..."
 az container delete --resource-group $ResourceGroup --name $AciName --yes | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "az container delete failed for '$AciName'." }
 
 Write-Host "==> Recreating container group '$AciName' from YAML ..."
 az container create --resource-group $ResourceGroup --file $yamlPath | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "az container create failed for '$AciName'; DNS was not changed." }
 
 # ---- 5. Re-point the private-DNS A record at the (possibly new) IP -----------
 $newIp = az container show --resource-group $ResourceGroup --name $AciName --query "ipAddress.ip" -o tsv
+if ($LASTEXITCODE -ne 0 -or -not $newIp) { throw "Could not read the private IP of '$AciName'; DNS was not changed." }
+$newIp = $newIp.Trim()
 Write-Host "==> New gateway private IP: $newIp"
 
 $curIp = az network private-dns record-set a show --resource-group $ResourceGroup --zone-name $DnsZone --name $DnsRecord --query "aRecords[0].ipv4Address" -o tsv 2>$null
 if ($curIp -and $curIp -ne $newIp) {
   Write-Host "==> Updating A record $DnsRecord.$DnsZone : $curIp -> $newIp"
   az network private-dns record-set a remove-record --resource-group $ResourceGroup --zone-name $DnsZone --record-set-name $DnsRecord --ipv4-address $curIp | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Could not remove the old A record $curIp." }
 }
 if ($curIp -ne $newIp) {
   az network private-dns record-set a add-record --resource-group $ResourceGroup --zone-name $DnsZone --record-set-name $DnsRecord --ipv4-address $newIp | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Could not add the A record $newIp." }
 }
 Write-Host "==> A record $DnsRecord.$DnsZone -> $newIp"
 
