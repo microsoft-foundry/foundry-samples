@@ -274,7 +274,7 @@ The included request uses public criteria: one traveler, SFO-SEA, January 10-13,
 Convention Center Summit landmark for hotel-distance research.
 
 ```text
-azd ai agent invoke travel-web-planner -p a2a --a2a-version 1.0 --version 1 --new-session --input-file trip-request.json --output default
+azd ai agent invoke travel-web-planner -p a2a --a2a-version 1.0 --version 1 --input-file trip-request.json --output default
 ```
 
 Use the version reported by your deployment if it differs. Expect source links,
@@ -284,24 +284,24 @@ receipts must contain successful searches and source URLs; HTTP 200 alone is not
 evidence of success.
 
 `--version 1` selects deployed agent code; it does not create a version.
-`--new-session` starts a fresh hosted session so saved-trip checks exercise
-storage rather than session reuse. It is not required for every normal
-invocation, but is intentional in this walkthrough. Neither flag creates a
-new saved plan by itself; that depends on the request. There is no
+Commands reuse the CLI's agent session by default. To test storage across fresh
+hosted sessions separately, you can optionally add `--new-session`.
+Neither selecting a version nor reusing a session creates a new saved plan by
+itself; that depends on the request. There is no
 `--new-version` flag in these commands.
 
 ### 6. Read or revise the saved research
 
-Use your own plan ID and the same signed-in user. Start a fresh session:
+Use your own plan ID and the same signed-in user:
 
 ```text
-azd ai agent invoke travel-web-planner -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Show saved plan <PLAN-ID>, requirements, version and cited recommendation. Do not change or reprice it and do not call specialists."
+azd ai agent invoke travel-web-planner -p a2a --a2a-version 1.0 --version 1 --output default "Show saved plan <PLAN-ID>, requirements, version and cited recommendation. Do not change or reprice it and do not call specialists."
 ```
 
 Metadata-only edits must preserve the recommendation and make no specialist calls:
 
 ```text
-azd ai agent invoke travel-web-planner -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Read plan <PLAN-ID>. Update only metadata cost_center to CC-99. Preserve requirements and recommendation. Save without calling specialists."
+azd ai agent invoke travel-web-planner -p a2a --a2a-version 1.0 --version 1 --output default "Read plan <PLAN-ID>. Update only metadata cost_center to CC-99. Preserve requirements and recommendation. Save without calling specialists."
 ```
 
 A failed response can happen **after a draft/write succeeds**. Read the reported
@@ -309,7 +309,7 @@ plan, or list saved IDs, before retrying. Resume an existing pending draft inste
 of creating duplicates:
 
 ```text
-azd ai agent invoke travel-web-planner -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Read plan <PLAN-ID>. Preserve requirements and metadata, complete its pending research using both specialists, then save cited research as unverified. Do not create another plan."
+azd ai agent invoke travel-web-planner -p a2a --a2a-version 1.0 --version 1 --output default "Read plan <PLAN-ID>. Preserve requirements and metadata, complete its pending research using both specialists, then save cited research as unverified. Do not create another plan."
 ```
 
 ## Inspect saved data directly with azd

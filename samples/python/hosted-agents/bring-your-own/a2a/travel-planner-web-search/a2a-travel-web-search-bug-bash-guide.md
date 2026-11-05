@@ -3,7 +3,7 @@
 Today we will build and deploy a travel planner that collaborates with Flight
 and Hotel agents over A2A. The specialists will search the web through a Foundry
 Toolbox and return research with source links. We will save a trip, retrieve it
-in a fresh session, change its dates, edit metadata and inspect its history.
+later, change its dates, edit metadata and inspect its history.
 Along the way, we will check that the agents actually called their tools and
 clearly marked any unverified prices or availability. No bookings will be made.
 
@@ -261,7 +261,7 @@ than blueprints, and allow RBAC propagation before testing.
 2. Do not assign extra Consumer roles to Flight/Hotel for this test. A clean run
    succeeded with brand-new, never-granted specialist identities. Existing user
    deployment access and telemetry-viewing access are separate prerequisites.
-3. Run Section 5 with `--new-session`, then inspect actual successful specialist
+3. Run Section 5, then inspect actual successful specialist
    Tasks, `web-search` receipts and the saved `unverified` result.
 4. If it fails, save the error, agent identities, Task/Trace IDs and any saved
    Plan ID before changing permissions. Separate Card-discovery failures from
@@ -273,19 +273,19 @@ Commands assume a fresh planner **version 1**. Confirm and use your actual
 deployed version if different. 
 
 **What the flags mean:** `--version 1` selects deployed agent code; it does not
-create a new version. `--new-session` starts a fresh hosted session so these
-tests verify saved storage across sessions. It is optional for normal use but
-intentional in this bug bash. Neither flag creates a new saved plan; the request
-determines that. These commands do not contain a `--new-version` flag.
+create a new version. Commands reuse the CLI's agent session by default.
+Creating a saved plan is controlled by the request, not by session reuse.
+To test storage across fresh hosted sessions separately, you can optionally add
+`--new-session`. These commands do not contain a `--new-version` flag.
 
 ```text
-azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --new-session --input-file trip-request.json --output default
+azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --input-file trip-request.json --output default
 ```
 
 **Filled example - our planner v1** (run where `trip-request.json` is available):
 
 ```text
-azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1 --new-session --input-file trip-request.json --output default
+azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1 --input-file trip-request.json --output default
 ```
 
 The request is one traveler, SFO-SEA, January 10-13 2027, a $1,200 total budget,
@@ -326,20 +326,20 @@ set "PLAN_ID=PASTE_YOUR_NEW_PLAN_ID_HERE"
 In Command Prompt, use `%PLAN_ID%` inside the prompts instead. Do not mix the
 variable syntaxes. Changing the current folder does not change your shell.
 
-## 6. Saved-trip checks in fresh sessions
+## 6. Saved-trip checks
 
 Use the same signed-in user and substitute your own Plan ID.
 
 ### Read without changes
 
 ```text
-azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Show saved plan <PLAN-ID>, including requirements, metadata, version and cited recommendation. Do not change or reprice it and do not call specialists."
+azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --output default "Show saved plan <PLAN-ID>, including requirements, metadata, version and cited recommendation. Do not change or reprice it and do not call specialists."
 ```
 
 **Filled example:**
 
 ```text
-azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Show saved plan plan-5b753f084fe2439f963eb1c1ef77ab9f, including requirements, metadata, version and cited recommendation. Do not change or reprice it and do not call specialists."
+azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1 --output default "Show saved plan plan-5b753f084fe2439f963eb1c1ef77ab9f, including requirements, metadata, version and cited recommendation. Do not change or reprice it and do not call specialists."
 ```
 
 **Check:** same record/version/recommendation, no specialist calls or writes.
@@ -347,13 +347,13 @@ azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1
 ### Change dates and refresh both specialists
 
 ```text
-azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Read plan <PLAN-ID>. Change departure to 2027-01-11, return to 2027-01-14 and arrival deadline to 2027-01-12T09:00:00-08:00. Preserve other requirements and metadata. Save changes, consult both specialists with the revised public requirements and save cited research as unverified."
+azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --output default "Read plan <PLAN-ID>. Change departure to 2027-01-11, return to 2027-01-14 and arrival deadline to 2027-01-12T09:00:00-08:00. Preserve other requirements and metadata. Save changes, consult both specialists with the revised public requirements and save cited research as unverified."
 ```
 
 **Filled example:**
 
 ```text
-azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Read plan plan-5b753f084fe2439f963eb1c1ef77ab9f. Change departure to 2027-01-11, return to 2027-01-14 and arrival deadline to 2027-01-12T09:00:00-08:00. Preserve other requirements and metadata. Save changes, consult both specialists with the revised public requirements and save cited research as unverified."
+azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1 --output default "Read plan plan-5b753f084fe2439f963eb1c1ef77ab9f. Change departure to 2027-01-11, return to 2027-01-14 and arrival deadline to 2027-01-12T09:00:00-08:00. Preserve other requirements and metadata. Save changes, consult both specialists with the revised public requirements and save cited research as unverified."
 ```
 
 **Check:** higher requirements revision, fresh Task IDs and searches, new dates in
@@ -363,13 +363,13 @@ The completed result is still `unverified`; a failed refresh stays `needs_replan
 ### Change metadata only
 
 ```text
-azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Read plan <PLAN-ID>. Update only metadata: purpose business, cost_center CC-99, preferences seat aisle and meal vegetarian. Preserve requirements and recommendation. Save without calling specialists or web search."
+azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --output default "Read plan <PLAN-ID>. Update only metadata: purpose business, cost_center CC-99, preferences seat aisle and meal vegetarian. Preserve requirements and recommendation. Save without calling specialists or web search."
 ```
 
 **Filled example:**
 
 ```text
-azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Read plan plan-5b753f084fe2439f963eb1c1ef77ab9f. Update only metadata: purpose business, cost_center CC-99, preferences seat aisle and meal vegetarian. Preserve requirements and recommendation. Save without calling specialists or web search."
+azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1 --output default "Read plan plan-5b753f084fe2439f963eb1c1ef77ab9f. Update only metadata: purpose business, cost_center CC-99, preferences seat aisle and meal vegetarian. Preserve requirements and recommendation. Save without calling specialists or web search."
 ```
 
 **Check:** record version/metadata change, but requirements revision, recommendation
@@ -379,13 +379,13 @@ GETs may still occur.
 ### History and listing
 
 ```text
-azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Show full history for plan <PLAN-ID>, then list my saved plan IDs. Do not modify or reprice any plan and do not call specialists."
+azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --output default "Show full history for plan <PLAN-ID>, then list my saved plan IDs. Do not modify or reprice any plan and do not call specialists."
 ```
 
 **Filled example:**
 
 ```text
-azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Show full history for plan plan-5b753f084fe2439f963eb1c1ef77ab9f, then list my saved plan IDs. Do not modify or reprice any plan and do not call specialists."
+azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1 --output default "Show full history for plan plan-5b753f084fe2439f963eb1c1ef77ab9f, then list my saved plan IDs. Do not modify or reprice any plan and do not call specialists."
 ```
 
 **Check:** creation, old/new research and date/metadata changes remain in history.
@@ -397,13 +397,13 @@ Listing includes your Plan ID; record version stays unchanged.
 ### Clarification, not invented requirements
 
 ```text
-azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Research a trip from SFO to SEA with refundable flights and hotel."
+azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --output default "Research a trip from SFO to SEA with refundable flights and hotel."
 ```
 
 **Filled example:**
 
 ```text
-azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Research a trip from SFO to SEA with refundable flights and hotel."
+azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1 --output default "Research a trip from SFO to SEA with refundable flights and hotel."
 ```
 
 **Check:** asks for missing dates, travelers, budget, arrival deadline and public
@@ -416,13 +416,13 @@ Plan ID, ask the planner to list your saved IDs without modifying anything.
 Once you identify the pending draft, resume it:
 
 ```text
-azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Read plan <PLAN-ID>. Do not create another plan or change requirements or metadata. Complete pending research by consulting Flight and Hotel once each with the full public requirements, at most two searches each. Save cited research as unverified with the current version."
+azd ai agent invoke <PLANNER-AGENT-NAME> -p a2a --a2a-version 1.0 --version 1 --output default "Read plan <PLAN-ID>. Do not create another plan or change requirements or metadata. Complete pending research by consulting Flight and Hotel once each with the full public requirements, at most two searches each. Save cited research as unverified with the current version."
 ```
 
 **Filled example - syntax only; use your own pending plan:**
 
 ```text
-azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1 --new-session --output default "Read plan plan-5b753f084fe2439f963eb1c1ef77ab9f. Do not create another plan or change requirements or metadata. Complete pending research by consulting Flight and Hotel once each with the full public requirements, at most two searches each. Save cited research as unverified with the current version."
+azd ai agent invoke travel-planner-web-nov4 -p a2a --a2a-version 1.0 --version 1 --output default "Read plan plan-5b753f084fe2439f963eb1c1ef77ab9f. Do not create another plan or change requirements or metadata. Complete pending research by consulting Flight and Hotel once each with the full public requirements, at most two searches each. Save cited research as unverified with the current version."
 ```
 
 **Check:** same Plan ID, no duplicate; completed research saved only after both
