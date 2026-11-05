@@ -12,6 +12,33 @@ if [ "$#" -ne 1 ]; then
   exit 2
 fi
 
+# AzureCLI task retries must recover pre-script authentication failures without
+# replaying a deployment, invocation, or partially completed cleanup.
+if [ -n "${ADO_TASK_RETRY_STATE_DIR:-}" ]; then
+  if ! [[ "$1" =~ ^[a-z]+(-[a-z]+)*$ ]]; then
+    echo "Invalid action: $1" >&2
+    exit 2
+  fi
+  mkdir -p "$ADO_TASK_RETRY_STATE_DIR"
+  state_file="$ADO_TASK_RETRY_STATE_DIR/$1"
+  if [ -f "$state_file.exit" ]; then
+    read -r status < "$state_file.exit"
+    echo "Phase '$1' already ran; preserving exit code $status without replay."
+    exit "$status"
+  fi
+  if [ -f "$state_file.started" ]; then
+    echo "##vso[task.logissue type=error]Phase '$1' was interrupted; refusing to replay it."
+    exit 1
+  fi
+  touch "$state_file.started"
+  set +e
+  env -u ADO_TASK_RETRY_STATE_DIR bash "$0" "$1"
+  status=$?
+  set -e
+  printf '%s\n' "$status" > "$state_file.exit"
+  exit "$status"
+fi
+
 case "$1" in
   ado-tls)
     echo "##[section]Wait for Azure DevOps TLS"
@@ -28,10 +55,9 @@ max_attempts="${ADO_TLS_MAX_ATTEMPTS:-5}"
 initial_delay="${ADO_TLS_INITIAL_DELAY_SECONDS:-10}"
 max_delay="${ADO_TLS_MAX_DELAY_SECONDS:-60}"
 jitter="${ADO_TLS_RETRY_JITTER_SECONDS:-5}"
-for setting in max_attempts initial_delay max_delay jitter; do
-  value="${!setting}"
+for value in "$max_attempts" "$initial_delay" "$max_delay" "$jitter"; do
   if ! [[ "$value" =~ ^[0-9]+$ ]]; then
-    echo "##vso[task.logissue type=error]$setting must be a non-negative integer, got '$value'."
+    echo "##vso[task.logissue type=error]ADO TLS retry settings must be non-negative integers, got '$value'."
     exit 2
   fi
 done
