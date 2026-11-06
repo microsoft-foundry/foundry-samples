@@ -35,6 +35,15 @@ class HelperTests(unittest.TestCase):
         for harness_type in ("github_copilot_preview", "microsoft_copilot_preview"):
             document["services"]["agent"]["harness"] = {"type": harness_type}
             self.assertEqual(helpers.validate_manifest(document, "agent"), "project")
+        document["services"]["agent"].pop("toolbox")
+        document["services"]["agent"].update(
+            toolboxes=["toolbox"],
+            tools=[
+                {"type": "microsoft_copilot_toolset_preview", "defaultConfig": {"enabled": False}},
+                {"type": "mcp", "server_label": "toolbox", "require_approval": "never"},
+            ],
+        )
+        self.assertEqual(helpers.validate_manifest(document, "agent"), "project")
         for bad_harness in ("", {"type": ""}, {"type": "bad name"}, {"type": "ok", "extra": True}):
             document["services"]["agent"]["harness"] = bad_harness
             with self.assertRaisesRegex(helpers.LifecycleError, "managed harness.type must be a nonempty identifier"):
@@ -43,6 +52,19 @@ class HelperTests(unittest.TestCase):
         document["services"]["toolbox"]["tools"] = [{"type": "mcp"}]
         with self.assertRaisesRegex(helpers.LifecycleError, "only web_search"):
             helpers.validate_manifest(document, "agent")
+        skill_doc = {"services": {
+            "project": {"host": "azure.ai.project"},
+            "travel-guide": {"host": "azure.ai.skill", "uses": ["project"], "archive": "./skills/travel-guide"},
+            "agent": {
+                "host": "azure.ai.agent", "kind": "prompt", "project": ".",
+                "uses": ["project", "travel-guide"], "harness": {"type": "microsoft_copilot_preview"},
+                "skills": ["travel-guide"], "tools": [{"type": "web_search"}],
+            },
+        }}
+        self.assertEqual(helpers.validate_manifest(skill_doc, "agent"), "project")
+        skill_doc["services"]["travel-guide"]["archive"] = "../outside"
+        with self.assertRaisesRegex(helpers.LifecycleError, "skill archive"):
+            helpers.validate_manifest(skill_doc, "agent")
 
     def test_absence_requires_exact_owned_target(self):
         name = "ci-prompt-owned"
@@ -56,12 +78,15 @@ class HelperTests(unittest.TestCase):
         self.assertFalse(helpers.agent_absent(message, 1, "ci-prompt-other", endpoint))
         self.assertFalse(helpers.agent_absent(message.replace("404: 404", "403: 403"), 1, name, endpoint))
 
-    def test_toolbox_endpoint_and_absence_are_pinned(self):
+    def test_toolbox_skill_and_connection_absence_are_pinned(self):
+        nonce = "a" * 32
         context = {
-            "execution_profile": "managed", "agent_name": "ci-prompt-owned",
-            "toolbox_name": "ci-e2e-tb-owned", "project_endpoint": "https://project.invalid/api/projects/project",
+            "execution_profile": "managed", "agent_name": "ci-prompt-" + nonce,
+            "toolbox_name": "ci-e2e-tb-" + nonce, "skill_name": "ci-e2e-sk-" + nonce,
+            "project_endpoint": "https://project.invalid/api/projects/project",
         }
-        endpoint = context["project_endpoint"] + "/toolboxes/ci-e2e-tb-owned/versions/3/mcp?api-version=v1"
+        endpoint = context["project_endpoint"] + f"/toolboxes/{context['toolbox_name']}/versions/3/mcp?api-version=v1"
+        context["connection_name"] = helpers.toolbox_connection_name(context["toolbox_name"], "3", endpoint)
         metadata = {
             "toolbox": {"name": context["toolbox_name"]},
             "version": {"name": context["toolbox_name"], "version": "3", "tools": [{"type": "web_search"}]},
@@ -70,7 +95,7 @@ class HelperTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "metadata.json"
             path.write_text(json.dumps(metadata), encoding="utf-8")
-            helpers.verify_toolbox(path, context, endpoint)
+            self.assertEqual(helpers.verify_toolbox(path, context, endpoint), "3")
             with self.assertRaisesRegex(helpers.LifecycleError, "MCP endpoint"):
                 helpers.verify_toolbox(path, context, endpoint.replace("versions/3", "versions/4"))
             path.write_text(json.dumps({"toolboxes": [{"name": context["toolbox_name"].upper()}]}), encoding="utf-8")
@@ -78,6 +103,14 @@ class HelperTests(unittest.TestCase):
             path.write_text('{"toolboxes": [{}]}', encoding="utf-8")
             with self.assertRaisesRegex(helpers.LifecycleError, "nonempty toolbox names"):
                 helpers.toolbox_absent(path, context)
+            path.write_text(json.dumps({"name": context["skill_name"], "default_version": "1", "latest_version": "1"}), encoding="utf-8")
+            self.assertEqual(helpers.verify_skill(path, context, "1"), "1")
+            with self.assertRaisesRegex(helpers.LifecycleError, "skill show returned"):
+                helpers.verify_skill(path, context, "2")
+            path.write_text(json.dumps([{"name": context["skill_name"].upper()}]), encoding="utf-8")
+            self.assertFalse(helpers.skill_absent(path, context))
+            path.write_text(json.dumps([{"name": context["connection_name"].upper()}]), encoding="utf-8")
+            self.assertFalse(helpers.connection_absent(path, context))
 
 
 if __name__ == "__main__":

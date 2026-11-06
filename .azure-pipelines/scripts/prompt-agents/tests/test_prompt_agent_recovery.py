@@ -19,6 +19,8 @@ ENDPOINT = "https://test.invalid/api/projects/test"
 MODEL = "borrowed-model"
 NAME = "ci-prompt-" + "a" * 32
 TOOLBOX = "ci-e2e-tb-" + "a" * 32
+SKILL = "ci-e2e-sk-" + "a" * 32
+CONN = "ci-e2e-tb-aaaaaaaaaa-12345678-mcp"
 SERVICE = "chat-agent"
 
 FAKE_CLI = r'''
@@ -35,6 +37,7 @@ path.write_text(json.dumps(state), encoding="utf-8")
 assert argv[:2] == ["azd", "-C"], argv
 assert Path(argv[2]) == Path(state["project"]), argv
 assert (Path(argv[2]) / ".azure" / state["name"] / ".env").is_file()
+assert os.environ.get("AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS") == "true"
 expected = {"FOUNDRY_PROJECT_ENDPOINT": state["endpoint"],
             "AZURE_AI_PROJECT_ENDPOINT": state["endpoint"],
             "AZURE_AI_PROJECT_ID": state["project_id"],
@@ -68,6 +71,22 @@ else:
         assert args == ["ai", "toolbox", "delete", state["toolbox"], "--project-endpoint", state["endpoint"],
                         "--force", "--no-prompt", "--output", "json"], args
         state["toolbox_deleted"] = True
+    elif args[:3] == ["ai", "skill", "list"]:
+        assert args == ["ai", "skill", "list", "--project-endpoint", state["endpoint"], "--output", "json", "--no-prompt"], args
+        names = ["unowned-skill"] + ([] if state["skill_deleted"] else [state["skill"]])
+        print(json.dumps([{"name": name} for name in names]))
+    elif args[:3] == ["ai", "skill", "delete"]:
+        assert args == ["ai", "skill", "delete", state["skill"], "--project-endpoint", state["endpoint"],
+                        "--force", "--no-prompt", "--output", "json"], args
+        state["skill_deleted"] = True
+    elif args[:3] == ["ai", "connection", "list"]:
+        assert args == ["ai", "connection", "list", "--project-endpoint", state["endpoint"], "--output", "json", "--no-prompt"], args
+        names = ["unowned-conn"] + ([] if state["connection_deleted"] else [state["connection"]])
+        print(json.dumps([{"name": name} for name in names]))
+    elif args[:3] == ["ai", "connection", "delete"]:
+        assert args == ["ai", "connection", "delete", state["connection"], "--project-endpoint", state["endpoint"],
+                        "--force", "--no-prompt"], args
+        state["connection_deleted"] = True
     else:
         raise AssertionError(args)
 path.write_text(json.dumps(state), encoding="utf-8")
@@ -138,8 +157,10 @@ class RecoveryTests(unittest.TestCase):
             (self.artifacts / "ownership.json").write_text(json.dumps(self.ownership), encoding="utf-8")
         (self.artifacts / "context.json").write_text(json.dumps(self.context), encoding="utf-8")
         self.state_path.write_text(json.dumps({"project": str(self.project), "project_id": PROJECT_ID,
-            "endpoint": ENDPOINT, "name": NAME, "toolbox": TOOLBOX, "commands": [], "pinned": {},
-            "agent_deleted": False, "toolbox_deleted": False, "auth_failure": auth_failure}), encoding="utf-8")
+            "endpoint": ENDPOINT, "name": NAME, "toolbox": TOOLBOX, "skill": SKILL, "connection": CONN,
+            "commands": [], "pinned": {},
+            "agent_deleted": False, "toolbox_deleted": False, "skill_deleted": False,
+            "connection_deleted": False, "auth_failure": auth_failure}), encoding="utf-8")
         env = {**os.environ, "PATH": str(self.bin) + os.pathsep + self.tool_path,
                "PYTHON": Path(sys.executable).as_posix(), "PYTHONUTF8": "1", "PYTHONDONTWRITEBYTECODE": "1",
                "RECOVERY_TEST_STATE": self.state_path.as_posix(), "TEST_BIN": self.bin.as_posix(),
@@ -173,17 +194,41 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(self.read_json("recovery-result.json")["cleanup_status"], "complete")
 
     def test_pending_resources_clean_in_order_without_upgrading_result(self):
+        self.ownership.update(connection_name=CONN, connection_deployment_attempted=True)
+        self.context["connection_name"] = CONN
         (self.artifacts / "result.json").write_text('{"status":"failed","evaluation_exit_code":1}', encoding="utf-8")
         before = (self.project / "azure.yaml").read_bytes()
         self.run_recovery()
         operations = [cmd[3:6] for cmd in self.state["commands"] if cmd[3] == "ai"]
         self.assertEqual(operations, [["ai", "agent", "show"], ["ai", "agent", "delete"],
-                                      ["ai", "agent", "show"], ["ai", "toolbox", "list"],
-                                      ["ai", "toolbox", "delete"], ["ai", "toolbox", "list"]])
-        self.assertEqual(self.read_json("ownership.json")["cleanup"], {NAME: "absent", TOOLBOX: "absent"})
+                                      ["ai", "agent", "show"], ["ai", "connection", "list"],
+                                      ["ai", "connection", "delete"], ["ai", "connection", "list"],
+                                      ["ai", "toolbox", "list"], ["ai", "toolbox", "delete"],
+                                      ["ai", "toolbox", "list"]])
+        self.assertEqual(self.read_json("ownership.json")["cleanup"], {NAME: "absent", CONN: "absent", TOOLBOX: "absent"})
         self.assertEqual(self.read_json("result.json")["status"], "failed")
         self.assertEqual(self.read_json("result.json")["evaluation_exit_code"], 1)
         self.assertEqual((self.project / "azure.yaml").read_bytes(), before)
+
+    def test_pending_skill_cleans_in_order(self):
+        manifest = {"name": "recovery-skill", "services": {
+            "project": {"host": "azure.ai.project"},
+            SKILL: {"host": "azure.ai.skill", "uses": ["project"], "archive": f"./skills/{SKILL}"},
+            SERVICE: {"host": "azure.ai.agent", "kind": "prompt", "project": ".",
+                      "name": NAME, "model": MODEL, "uses": ["project", SKILL],
+                      "harness": {"type": "microsoft_copilot_preview"}, "skills": [SKILL]},
+        }}
+        for parent in (self.project, self.artifacts):
+            (parent / "azure.yaml").write_text(yaml.safe_dump(manifest), encoding="utf-8", newline="\n")
+        self.ownership.update(toolbox_name="", toolbox_deployment_attempted=False,
+                              skill_name=SKILL, skill_deployment_attempted=True)
+        self.context.update(toolbox_name="", skill_name=SKILL)
+        self.run_recovery()
+        operations = [cmd[3:6] for cmd in self.state["commands"] if cmd[3] == "ai"]
+        self.assertEqual(operations, [["ai", "agent", "show"], ["ai", "agent", "delete"],
+                                      ["ai", "agent", "show"], ["ai", "skill", "list"],
+                                      ["ai", "skill", "delete"], ["ai", "skill", "list"]])
+        self.assertEqual(self.read_json("ownership.json")["cleanup"], {NAME: "absent", SKILL: "absent"})
 
     def test_agent_auth_error_still_cleans_toolbox_and_fails_result(self):
         (self.artifacts / "result.json").write_text('{"status":"passed"}', encoding="utf-8")

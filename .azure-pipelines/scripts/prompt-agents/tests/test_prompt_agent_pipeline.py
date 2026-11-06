@@ -124,7 +124,7 @@ class PipelineTests(unittest.TestCase):
         cleanup_timeout = int(re.search(r"local cleanup_timeout=(\d+)", runner)[1])
         self.assertGreater(
             self.job["cancelTimeoutInMinutes"] * 60,
-            600 + 10 + 9 * (cleanup_timeout + 10) + 20 +
+            600 + 10 + 14 * (cleanup_timeout + 10) + 25 +
             (self.recovery["timeoutInMinutes"] + 30) * 60,
         )
 

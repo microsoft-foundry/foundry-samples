@@ -92,8 +92,9 @@ SDK invocation. Bash owns command sequencing, timeouts, and EXIT-trap cleanup.
 evidence, and exact-target absence parsing; the shared Python evaluator is reused.
 The runner supports string inputs and assistant-text assertions for plain prompt
 agents and managed-harness prompt agents (any valid `harness.type` identifier). Managed manifests must declare
-one project, one agent, and one toolbox containing only built-in
-`web_search`. Skills, connections, additional dependencies, and lifecycle hooks
+one project, one agent, and either one toolbox containing only built-in
+`web_search` or one file-backed `azure.ai.skill` service under `./skills/<skill-name>`.
+Connections, additional dependencies, and lifecycle hooks
 are rejected before deployment. This is capability validation, not a sample-name
 allowlist.
 
@@ -142,9 +143,10 @@ bash .azure-pipelines/scripts/prompt-agents/run-prompt-agent.sh \
 The adapter verifies the endpoint against the ARM project, adopts a temporary
 manifest with a unique agent name, replaces the literal model with the selected
 existing deployment, and removes model provisioning declarations. Managed runs
-also give the toolbox a unique name and update both `uses` and `toolbox.name`.
-The runner deploys the owned toolbox before the agent and verifies that the
-agent's MCP attachment matches its versioned endpoint. It never calls
+also give the owned toolbox or skill a unique name and update `uses`,
+`toolboxes`/`toolbox`, `skills`, MCP `server_label`, and `./skills/<name>` archive
+references. The runner deploys the owned toolbox or skill before the agent and verifies that the
+agent's attachment matches its versioned resource. It never calls
 `provision`, `up`, or `down`. The original sample is unchanged. The artifacts
 directory must be new and outside the sample.
 
@@ -172,9 +174,9 @@ HTTP 404 counts as absent; auth/network/configuration errors fail verification.
 This check parses azd's error text and must be revalidated when CLI formatting
 changes. Cleanup failures fail the run even if behavior assertions pass.
 Logging failures do not prevent an agent deletion attempt.
-For managed runs, toolbox deletion is attempted after agent cleanup even if
-agent cleanup fails. A successful project-scoped `azd ai toolbox list` must omit
-the owned name before or after its deployment; malformed/failed list responses
+For managed runs, owned toolbox, skill, and toolbox-MCP connection deletion are attempted after agent cleanup even if
+agent cleanup fails. Successful project-scoped `azd ai toolbox list`, `azd ai skill list`, and `azd ai connection list` calls must omit
+the owned names before or after deployment; malformed/failed list responses
 cannot confirm absence. This relies on the CLI's list pagination and visibility.
 Only resources recorded as deployment-attempted are deleted. The in-process
 cleanup uses short per-command timeouts to leave cancellation time for the

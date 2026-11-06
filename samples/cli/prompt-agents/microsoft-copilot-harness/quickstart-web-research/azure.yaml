@@ -5,6 +5,7 @@ requiredVersions:
   extensions:
     azure.ai.agents: '>=1.0.0-beta.21'
     azure.ai.projects: '>=1.0.0-beta.14'
+    azure.ai.skills: '>=1.0.0-beta.8'
 
 name: quickstart-web-research
 

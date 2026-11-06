@@ -24,9 +24,11 @@ SERVICE = "chat-agent"
 
 # State is outside the disposable azd workspace so cleanup remains observable.
 FAKE_CLI = r'''
+import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import sys
 import time
@@ -47,11 +49,23 @@ def absent():
     return (f'failed to get prompt agent "{name}": GET {config["endpoint"]}/agents/{name}?api-version=v1\n'
             'RESPONSE 404: 404 Not Found\n')
 
+def conn_name(tb_name, version, endpoint):
+    digest = hashlib.sha256(endpoint.encode("utf-8")).hexdigest()[:8]
+    prefix = re.sub(r"[^A-Za-z0-9_-]", "-", f"{tb_name}-v{version}").lstrip("-_")[:20]
+    return f"{prefix}-{digest}-mcp"
+
 save()
 stdout, stderr, code = "", "", 0
 is_toolbox = argv[1:3] == ["ai", "toolbox"]
+is_skill = argv[1:3] == ["ai", "skill"]
+is_connection = argv[1:3] == ["ai", "connection"]
 operation = argv[3] if argv[1:2] == ["ai"] else argv[1]
-failure = "toolbox_" + operation if is_toolbox else operation
+failure = (
+    "toolbox_" + operation if is_toolbox
+    else "skill_" + operation if is_skill
+    else "connection_" + operation if is_connection
+    else operation
+)
 if argv[0] == "az":
     assert argv == ["az", "resource", "show", "--ids", config["project_id"],
                     "--query", 'properties.endpoints."AI Foundry API"', "-o", "tsv"], argv
@@ -63,6 +77,7 @@ elif operation == "extension":
     assert argv == ["azd", "extension", "list", "--installed", "--output", "json"], argv
     stdout = '[{"id":"microsoft.foundry"}]\n'
 elif operation == "init":
+    assert os.environ.get("AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS") == "true"
     source = Path(argv[argv.index("-m") + 1])
     assert source == Path.cwd().parent / "input/azure.yaml", argv
     assert not list(Path.cwd().iterdir())
@@ -71,13 +86,20 @@ elif operation == "init":
                     "--project-id", config["project_id"], "--model-deployment", config["model"],
                     "--agent-name", state["name"], "--src", ".", "--no-prompt",
                     "--environment", state["name"]], argv
-    shutil.copyfile(source, "azure.yaml")
+    shutil.copytree(source.parent, ".", dirs_exist_ok=True)
     document = yaml.safe_load(Path("azure.yaml").read_text(encoding="utf-8"))
-    if config["managed"]:
-        state["toolbox"] = document["services"][config["service"]]["toolbox"]["name"]
+    if config["managed"] == "toolbox":
+        agent_svc = document["services"][config["service"]]
+        tb_ref = agent_svc["toolboxes"][0] if "toolboxes" in agent_svc else agent_svc["toolbox"]
+        state["toolbox"] = tb_ref["name"] if isinstance(tb_ref, dict) else tb_ref
         assert state["toolbox"] == "ci-e2e-tb-" + state["name"].removeprefix("ci-prompt-")
         state["toolbox_endpoint"] = (config["endpoint"] + "/toolboxes/" + state["toolbox"]
                                      + "/versions/3/mcp?api-version=v1")
+        state["connection"] = conn_name(state["toolbox"], "3", state["toolbox_endpoint"])
+    elif config["managed"] == "skill":
+        skills = [k for k, v in document["services"].items() if v.get("host") == "azure.ai.skill"]
+        state["skill"] = skills[0]
+        assert state["skill"] == "ci-e2e-sk-" + state["name"].removeprefix("ci-prompt-")
     environment = Path(".azure") / state["name"]
     environment.mkdir(parents=True)
     (environment / ".env").write_text("", encoding="utf-8")
@@ -86,9 +108,16 @@ elif operation == "init":
         Path("azure.yaml").write_text(yaml.safe_dump(document), encoding="utf-8")
 elif operation == "env":
     if argv[2] == "get-value":
-        assert argv == ["azd", "env", "get-value", "TOOLBOX_" + state["toolbox"].replace("-", "_").upper() + "_MCP_ENDPOINT"]
-        assert state["toolbox_deployed"] and not state["deployed"]
-        stdout = config.get("toolbox_endpoint", state["toolbox_endpoint"]) + "\n"
+        if config["managed"] == "toolbox":
+            assert argv == ["azd", "env", "get-value", "TOOLBOX_" + state["toolbox"].replace("-", "_").upper() + "_MCP_ENDPOINT"]
+            assert state["toolbox_deployed"] and not state["deployed"]
+            stdout = config.get("toolbox_endpoint", state["toolbox_endpoint"]) + "\n"
+        elif config["managed"] == "skill":
+            assert argv == ["azd", "env", "get-value", "SKILL_" + state["skill"].replace("-", "_").upper() + "_VERSION"]
+            assert state["skill_deployed"] and not state["deployed"]
+            stdout = config.get("skill_version", "1") + "\n"
+        else:
+            raise AssertionError(argv)
     else:
         assert argv[1:3] == ["env", "set"] and len(argv) == 5, argv
         state["environment"][argv[3]] = argv[4]
@@ -119,26 +148,80 @@ elif is_toolbox:
         assert state["toolbox_deployed"]
         assert not state["deployed"] or state["deleted"]
         state["toolbox_deleted"] = True
+elif is_skill:
+    expected = ["azd", "ai", "skill", operation]
+    if operation != "list":
+        expected.append(state["skill"])
+    expected += ["--project-endpoint", config["endpoint"]]
+    expected += (["--force", "--no-prompt", "--output", "json"] if operation == "delete"
+                 else ["--output", "json", "--no-prompt"])
+    assert argv == expected, argv
+    if operation == "list":
+        mode = config.get("skill_cleanup" if state["skill_deleted"] else "skill_preflight", "absent")
+        names = ["unowned-skill"]
+        if mode == "collision" or state["skill_deployed"] and not state["skill_deleted"]:
+            names.append(state["skill"].upper())
+        stdout = json.dumps([{"name": name} for name in names])
+        if mode == "auth":
+            code, stderr = 1, "403 Forbidden listing skills\n"
+        elif mode == "malformed":
+            stdout = '[{}]'
+    elif operation == "show":
+        assert state["skill_deployed"] and not state["deployed"]
+        stdout = json.dumps({"name": state["skill"], "default_version": "1", "latest_version": "1"})
+    elif operation == "delete":
+        assert state["skill_deployed"]
+        assert not state["deployed"] or state["deleted"]
+        state["skill_deleted"] = True
+elif is_connection:
+    if operation == "list":
+        assert argv == ["azd", "ai", "connection", "list", "--project-endpoint", config["endpoint"], "--output", "json", "--no-prompt"], argv
+        names = ["unowned-conn"]
+        if state["deployed"] and not state["connection_deleted"]:
+            names.append(state["connection"].upper())
+        stdout = json.dumps([{"name": name} for name in names])
+    elif operation == "delete":
+        assert argv == ["azd", "ai", "connection", "delete", state["connection"], "--project-endpoint", config["endpoint"], "--force", "--no-prompt"], argv
+        assert state["deployed"] and state["deleted"]
+        state["connection_deleted"] = True
+    else:
+        raise AssertionError(argv)
 elif operation == "deploy":
     assert state["environment"]["AGENT_CHAT_AGENT_NAME"] == state["name"]
-    target = state["toolbox"] if config["managed"] and argv[2] == state["toolbox"] else config["service"]
+    if config["managed"] == "toolbox" and argv[2] == state["toolbox"]:
+        target = state["toolbox"]
+    elif config["managed"] == "skill" and argv[2] == state["skill"]:
+        target = state["skill"]
+    else:
+        target = config["service"]
     assert argv == ["azd", "deploy", target, "--no-prompt", "--timeout", "20"], argv
     if target == config["service"]:
-        assert not config["managed"] or state["toolbox_deployed"]
+        assert not config["managed"] or state["toolbox_deployed"] or state["skill_deployed"]
         state["deployed"] = True
-    else:
+    elif config["managed"] == "toolbox":
         state["toolbox_deployed"] = True
         failure = "toolbox_deploy"
+    else:
+        state["skill_deployed"] = True
+        failure = "skill_deploy"
 elif operation == "show":
     assert argv == ["azd", "ai", "agent", "show", config["service"], "--output", "json", "--no-prompt"], argv
     mode = config.get("cleanup" if state["deleted"] else "preflight", "absent")
     if state["deployed"] and not state["deleted"] or mode == "collision":
         definition = {"kind": "prompt", "model": config["model"]}
-        if config["managed"]:
-            definition.update(harness={"type": "github_copilot_preview"}, tools=[{
-                "type": "mcp", "server_label": state["toolbox"],
-                "server_url": state["toolbox_endpoint"], "require_approval": "never"}])
-            definition["tools"][0].update(config.get("mcp_changes", {}))
+        if config["managed"] == "toolbox":
+            definition.update(harness={"type": "microsoft_copilot_preview"}, tools=[
+                {"type": "microsoft_copilot_toolset_preview", "default_config": {"enabled": False}},
+                {"type": "mcp", "server_label": state["toolbox"],
+                 "server_url": state["toolbox_endpoint"], "project_connection_id": state["connection"],
+                 "require_approval": "never"},
+            ])
+            definition["tools"][1].update(config.get("mcp_changes", {}))
+        elif config["managed"] == "skill":
+            definition.update(harness={"type": "microsoft_copilot_preview"}, skills=[{
+                "type": "skill_reference", "name": state["skill"], "version": "1",
+            }], tools=[{"type": "web_search"}])
+            definition["skills"][0].update(config.get("skill_changes", {}))
         definition.update(config.get("definition_changes", {}))
         metadata = {"name": state["name"], "versions": {"latest": {"version": "7", "definition": definition}}}
         metadata.update(config.get("metadata_changes", {}))
@@ -234,18 +317,41 @@ class PromptShellTests(unittest.TestCase):
         agent = {"host": "azure.ai.agent", "kind": "prompt", "name": "source-agent",
                  "model": "source-model", "project": ".", "uses": ["project"]}
         services = {"project": {"host": "azure.ai.project", "deployments": [{"name": "source-model"}]}}
-        if managed:
-            agent.update(harness={"type": "github_copilot_preview"}, uses=["project", "sample-toolbox"],
-                         toolbox={"name": "sample-toolbox"})
+        mode = "toolbox" if managed is True else managed
+        if mode == "toolbox":
+            agent.update(
+                harness={"type": "microsoft_copilot_preview"},
+                uses=["project", "sample-toolbox"],
+                toolboxes=["sample-toolbox"],
+                tools=[
+                    {"type": "microsoft_copilot_toolset_preview", "defaultConfig": {"enabled": False}},
+                    {"type": "mcp", "server_label": "sample-toolbox", "require_approval": "never"},
+                ],
+            )
             services["sample-toolbox"] = {"host": "azure.ai.toolbox", "uses": ["project"],
                                           "tools": [{"type": "web_search"}]}
+        elif mode == "skill":
+            skill_dir = self.sample / "skills/sample-skill"
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "SKILL.md").write_text(
+                "---\nname: sample-skill\ndescription: Sample skill\n---\n# Instructions\nFollow steps.\n",
+                encoding="utf-8",
+            )
+            agent.update(
+                harness={"type": "microsoft_copilot_preview"},
+                uses=["project", "sample-skill"],
+                skills=["sample-skill"],
+                tools=[{"type": "web_search"}],
+            )
+            services["sample-skill"] = {"host": "azure.ai.skill", "uses": ["project"],
+                                        "archive": "./skills/sample-skill"}
         services[SERVICE] = agent
         self.document = {"name": "basic", "services": services}
         self.contract = {"version": 1, "sample": {"owner": "tester", "experiences": ["azd"]},
                          "tests": [{"name": "answer", "turns": [{"input": "Say hello", "assertions": [
                              {"source": "assistant_text", "type": "equals", "value": "Hello"}]}]}]}
         self.config = {"endpoint": ENDPOINT, "project_id": PROJECT_ID, "model": MODEL,
-                       "service": SERVICE, "managed": managed}
+                       "service": SERVICE, "managed": mode}
 
     def read_json(self, name):
         return json.loads((self.artifacts / name).read_text(encoding="utf-8"))
@@ -258,7 +364,9 @@ class PromptShellTests(unittest.TestCase):
         self.fixture.write_text(yaml.safe_dump(self.contract), encoding="utf-8")
         self.state_path.write_text(json.dumps({"config": self.config, "commands": [], "workspaces": [],
             "environment": {}, "inputs": [], "deployed": False, "deleted": False,
-            "toolbox_deployed": False, "toolbox_deleted": False}), encoding="utf-8")
+            "toolbox_deployed": False, "toolbox_deleted": False,
+            "skill_deployed": False, "skill_deleted": False,
+            "connection_deleted": False}), encoding="utf-8")
         before = {p.relative_to(self.sample): p.read_bytes() for p in self.sample.rglob("*") if p.is_file()}
         env = {**os.environ, "PATH": str(self.bin) + os.pathsep + self.tool_path,
                "PYTHON": Path(sys.executable).as_posix(), "PYTHONUTF8": "1",
@@ -298,12 +406,23 @@ class PromptShellTests(unittest.TestCase):
     def assert_cleaned(self):
         ownership = self.read_json("ownership.json")
         expected = {self.state["name"]: "absent"}
-        if self.config["managed"]:
+        if self.config["managed"] == "toolbox":
             expected[self.state["toolbox"]] = "absent"
+            expected[self.state["connection"]] = "absent"
             self.assertTrue(self.state["toolbox_deleted"])
+            self.assertTrue(self.state["connection_deleted"])
             self.assertEqual(len(self.operations("delete", "toolbox")), 1)
+            self.assertEqual(len(self.operations("delete", "connection")), 1)
             self.assertLess(self.commands.index(self.operations("delete")[0]),
+                            self.commands.index(self.operations("delete", "connection")[0]))
+            self.assertLess(self.commands.index(self.operations("delete", "connection")[0]),
                             self.commands.index(self.operations("delete", "toolbox")[0]))
+        elif self.config["managed"] == "skill":
+            expected[self.state["skill"]] = "absent"
+            self.assertTrue(self.state["skill_deleted"])
+            self.assertEqual(len(self.operations("delete", "skill")), 1)
+            self.assertLess(self.commands.index(self.operations("delete")[0]),
+                            self.commands.index(self.operations("delete", "skill")[0]))
         self.assertEqual(ownership["cleanup"], expected)
         self.assertEqual(self.result["cleanup"], expected)
         self.assertEqual(len(self.operations("delete")), 1)
@@ -313,8 +432,16 @@ class PromptShellTests(unittest.TestCase):
         ownership = self.read_json("ownership.json")
         self.assertFalse(ownership["deployment_attempted"])
         self.assertFalse(ownership["toolbox_deployment_attempted"])
+        self.assertFalse(ownership["skill_deployment_attempted"])
+        self.assertFalse(ownership["connection_deployment_attempted"])
         self.assertEqual(ownership["cleanup"], {})
-        self.assertEqual(self.operations("delete") + self.operations("delete", "toolbox"), [])
+        self.assertEqual(
+            self.operations("delete")
+            + self.operations("delete", "toolbox")
+            + self.operations("delete", "skill")
+            + self.operations("delete", "connection"),
+            [],
+        )
 
     def test_success_adopts_manifest_records_evidence_and_cleans(self):
         self.document["services"][SERVICE]["tools"] = [{"type": "mcp", "server_label": "public",
@@ -450,6 +577,36 @@ class PromptShellTests(unittest.TestCase):
         self.configure(managed=True)
         self.config["mcp_changes"] = {"server_url": "https://other.invalid/mcp"}
         self.assertIn("MCP endpoint", self.run_agent(passed=False).stderr)
+        self.assertEqual(self.operations("invoke"), [])
+        self.assert_cleaned()
+
+    def test_managed_skill_success_orders_and_cleans_both_resources(self):
+        self.configure(managed="skill")
+        self.run_agent()
+        self.assert_cleaned()
+        skill = self.state["skill"]
+        adopted = yaml.safe_load((self.artifacts / "azure.yaml").read_text(encoding="utf-8"))
+        self.assertEqual(list(adopted["services"]), ["project", skill, SERVICE])
+        self.assertEqual(adopted["services"][SERVICE]["uses"], ["project", skill])
+        self.assertEqual(adopted["services"][skill]["archive"], f"./skills/{skill}")
+        self.assertEqual(self.read_json("skill.json")["default_version"], "1")
+        self.assertEqual(self.read_json("context.json")["execution_profile"], "managed")
+        self.assertLess(self.commands.index(["azd", "deploy", skill, "--no-prompt", "--timeout", "20"]),
+                        self.commands.index(["azd", "deploy", SERVICE, "--no-prompt", "--timeout", "20"]))
+
+    def test_managed_skill_deploy_failure_cleans_only_skill(self):
+        self.configure(managed="skill")
+        self.config["fail_operation"] = "skill_deploy"
+        self.run_agent(passed=False)
+        self.assertFalse(self.state["deployed"])
+        self.assertEqual(self.operations("delete"), [])
+        self.assertTrue(self.state["skill_deleted"])
+        self.assertEqual(self.result["cleanup"], {self.state["skill"]: "absent"})
+
+    def test_managed_wrong_skill_attachment_cleans_without_invoking(self):
+        self.configure(managed="skill")
+        self.config["skill_changes"] = {"version": "99"}
+        self.assertIn("owned skill and version", self.run_agent(passed=False).stderr)
         self.assertEqual(self.operations("invoke"), [])
         self.assert_cleaned()
 

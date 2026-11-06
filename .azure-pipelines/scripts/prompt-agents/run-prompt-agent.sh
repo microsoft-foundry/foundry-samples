@@ -55,6 +55,7 @@ prepare=(prepare --repo "$(native_path "$repo")" --sample "$sample" --project-id
   --project-endpoint "$project_endpoint" --model-deployment "$model"
   --artifacts "$(native_path "$artifacts")" --work "$(native_path "$work")")
 [ -z "$spec" ] || prepare+=(--spec "$(native_path "$spec")")
+export AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS=true
 "$python" "$helper" "${prepare[@]}"
 context=$(native_path "$artifacts/context.json")
 name=$(jq -r .agent_name "$context")
@@ -62,10 +63,16 @@ service=$(jq -r .agent_service "$context")
 env_key=$(jq -r .service_env_key "$context")
 account=$(jq -r .account_name "$context")
 toolbox=$(jq -r .toolbox_name "$context")
+skill=$(jq -r .skill_name "$context")
+connection=
 deployed=false
 toolbox_deployed=false
+skill_deployed=false
+connection_deployed=false
 cleanup_status=not_needed
 toolbox_cleanup_status=not_needed
+skill_cleanup_status=not_needed
+connection_cleanup_status=not_needed
 cleanup_failed=false
 command_index=0
 last_code=0
@@ -73,11 +80,18 @@ last_stdout= last_stderr=
 
 save_ownership() {
   jq --argjson attempted "$deployed" --arg status "$cleanup_status" --arg name "$name" \
-    --argjson toolbox_attempted "$toolbox_deployed" --arg toolbox "$toolbox" --arg toolbox_status "$toolbox_cleanup_status" '
+    --argjson toolbox_attempted "$toolbox_deployed" --arg toolbox "$toolbox" --arg toolbox_status "$toolbox_cleanup_status" \
+    --argjson skill_attempted "$skill_deployed" --arg skill "$skill" --arg skill_status "$skill_cleanup_status" \
+    --argjson connection_attempted "$connection_deployed" --arg connection "$connection" --arg connection_status "$connection_cleanup_status" '
     .deployment_attempted = $attempted |
     .toolbox_deployment_attempted = $toolbox_attempted |
+    .skill_deployment_attempted = $skill_attempted |
+    .connection_name = $connection |
+    .connection_deployment_attempted = $connection_attempted |
     .cleanup = ((if $attempted then {($name): $status} else {} end) +
-      (if $toolbox_attempted then {($toolbox): $toolbox_status} else {} end))
+      (if $toolbox_attempted then {($toolbox): $toolbox_status} else {} end) +
+      (if $skill_attempted then {($skill): $skill_status} else {} end) +
+      (if $connection_attempted and ($connection | length) > 0 then {($connection): $connection_status} else {} end))
   ' "$(native_path "$artifacts/ownership.json")" > "$work/ownership.json" &&
     cp "$work/ownership.json" "$artifacts/ownership.json"
 }
@@ -131,7 +145,7 @@ finish() {
   trap - EXIT INT TERM
   set +e
   # Leave time for the separately authenticated recovery and infra teardown tasks.
-  local cleanup_timeout=10
+  local cleanup_timeout=20
   if [ "$deployed" = true ]; then
     cleanup_status=unverified
     if run_command "$cleanup_timeout" cleanup azd env set "AGENT_${env_key}_NAME" "$name" && [ "$last_code" -eq 0 ]; then
@@ -149,6 +163,22 @@ finish() {
       cleanup_failed=true
     fi
     [ "$cleanup_status" = absent ] || cleanup_failed=true
+    if [ "$connection_deployed" = true ] && [ -n "$connection" ]; then
+      connection_cleanup_status=unverified
+      run_command "$cleanup_timeout" cleanup azd ai connection delete "$connection" \
+        --project-endpoint "$project_endpoint" --force --no-prompt
+      [ "$last_code" -eq 0 ] || cleanup_failed=true
+      for attempt in 1 2 3; do
+        if ! run_command "$cleanup_timeout" cleanup azd ai connection list \
+          --project-endpoint "$project_endpoint" --output json --no-prompt; then break; fi
+        [ "$last_code" -eq 0 ] || break
+        if "$python" "$helper" connection-absent --metadata "$(native_path "$last_stdout")" --context "$context"; then
+          connection_cleanup_status=absent; break
+        fi
+        [ "$attempt" -eq 3 ] || sleep 5
+      done
+      [ "$connection_cleanup_status" = absent ] || cleanup_failed=true
+    fi
   fi
   if [ "$toolbox_deployed" = true ]; then
     toolbox_cleanup_status=unverified
@@ -165,6 +195,22 @@ finish() {
       [ "$attempt" -eq 3 ] || sleep 5
     done
     [ "$toolbox_cleanup_status" = absent ] || cleanup_failed=true
+  fi
+  if [ "$skill_deployed" = true ]; then
+    skill_cleanup_status=unverified
+    run_command "$cleanup_timeout" cleanup azd ai skill delete "$skill" \
+      --project-endpoint "$project_endpoint" --force --no-prompt --output json
+    [ "$last_code" -eq 0 ] || cleanup_failed=true
+    for attempt in 1 2 3; do
+      if ! run_command "$cleanup_timeout" cleanup azd ai skill list \
+        --project-endpoint "$project_endpoint" --output json --no-prompt; then break; fi
+      [ "$last_code" -eq 0 ] || break
+      if "$python" "$helper" skill-absent --metadata "$(native_path "$last_stdout")" --context "$context"; then
+        skill_cleanup_status=absent; break
+      fi
+      [ "$attempt" -eq 3 ] || sleep 5
+    done
+    [ "$skill_cleanup_status" = absent ] || cleanup_failed=true
   fi
   save_ownership || cleanup_failed=true
   "$python" "$evaluator" evaluate --plan "$(native_path "$artifacts/plan.json")" \
@@ -223,9 +269,29 @@ if [ -n "$toolbox" ]; then
   toolbox_endpoint=$(tr -d '\r\n' < "$last_stdout")
   run_command "$command_timeout" checked azd ai toolbox show "$toolbox" --project-endpoint "$project_endpoint" --output json --no-prompt
   cp "$last_stdout" "$artifacts/toolbox.json"
-  "$python" "$helper" verify-toolbox --metadata "$(native_path "$artifacts/toolbox.json")" --context "$context" --endpoint "$toolbox_endpoint"
+  connection=$("$python" "$helper" verify-toolbox --metadata "$(native_path "$artifacts/toolbox.json")" --context "$context" --endpoint "$toolbox_endpoint" | tr -d '\r\n')
+  jq --arg conn "$connection" '.connection_name = $conn' "$context" > "$work/context.json" &&
+    cp "$work/context.json" "$artifacts/context.json"
   verify_options=(--toolbox-metadata "$(native_path "$artifacts/toolbox.json")")
 fi
+if [ -n "$skill" ]; then
+  run_command "$command_timeout" checked azd ai skill list --project-endpoint "$project_endpoint" --output json --no-prompt
+  "$python" "$helper" skill-absent --metadata "$(native_path "$last_stdout")" --context "$context" || {
+    echo "cannot confirm generated skill name is unused; refusing deployment" >&2; exit 1;
+  }
+  skill_deployed=true
+  save_ownership
+  run_command "$command_timeout" checked azd deploy "$skill" --no-prompt --timeout "$command_timeout"
+  skill_env_key=${skill//-/_}
+  skill_env_key=${skill_env_key^^}
+  run_command "$command_timeout" checked azd env get-value "SKILL_${skill_env_key}_VERSION"
+  skill_version=$(tr -d '\r\n' < "$last_stdout")
+  run_command "$command_timeout" checked azd ai skill show "$skill" --project-endpoint "$project_endpoint" --output json --no-prompt
+  cp "$last_stdout" "$artifacts/skill.json"
+  "$python" "$helper" verify-skill --metadata "$(native_path "$artifacts/skill.json")" --context "$context" --version "$skill_version"
+  verify_options=(--skill-metadata "$(native_path "$artifacts/skill.json")")
+fi
+if [ -n "$connection" ]; then connection_deployed=true; fi
 deployed=true
 save_ownership
 run_command "$command_timeout" checked azd deploy "$service" --no-prompt --timeout "$command_timeout"
