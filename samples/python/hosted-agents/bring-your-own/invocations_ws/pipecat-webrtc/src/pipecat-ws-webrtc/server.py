@@ -280,7 +280,7 @@ async def signaling_ws(ws: WebSocket):
 
 def main() -> None:
     host = os.environ.get("SERVER_HOST", "0.0.0.0")
-    port = int(os.environ.get("SERVER_PORT", "8089"))
+    port = int(os.environ.get("PORT", os.environ.get("SERVER_PORT", "8089")))
     uvicorn.run(app, host=host, port=port)
 
 

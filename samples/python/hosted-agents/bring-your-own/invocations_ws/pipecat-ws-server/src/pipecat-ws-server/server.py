@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 
 import uvicorn
 from dotenv import load_dotenv
@@ -56,7 +57,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 async def main():
-    config = uvicorn.Config(app, host="0.0.0.0", port=8088)
+    port = int(os.environ.get("PORT", "8088"))
+    config = uvicorn.Config(app, host="0.0.0.0", port=port)
     server = uvicorn.Server(config)
     await server.serve()
 
