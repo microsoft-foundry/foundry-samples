@@ -9,19 +9,6 @@ services:
   ai-project:
     host: azure.ai.project
     endpoint: ${FOUNDRY_PROJECT_ENDPOINT}
-  application-insights:
-    host: azure.ai.connection
-    uses:
-      - ai-project
-    category: AppInsights
-    target: ${APPLICATIONINSIGHTS_RESOURCE_ID}
-    authType: ApiKey
-    credentials:
-      key: ${APPLICATIONINSIGHTS_CONNECTION_STRING}
-    metadata:
-      ApiType: Azure
-      ResourceId: ${APPLICATIONINSIGHTS_RESOURCE_ID}
-      ApplicationInsightsConnectionString: ${APPLICATIONINSIGHTS_CONNECTION_STRING}
   agent-framework-agent-basic-responses-byoaks:
     host: azure.ai.agent
     metadata:
@@ -38,7 +25,6 @@ services:
       remoteBuild: true
     uses:
       - ai-project
-      - application-insights
     kind: hosted
     name: agent-framework-agent-basic-responses-byoaks
     description: A basic Agent Framework Responses agent hosted on a customer-managed AKS cluster.
@@ -48,7 +34,6 @@ services:
     env:
       PYTHONNOUSERSITE: "1"
       AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
-      ENABLE_INSTRUMENTATION: "true"
     container:
       resources:
         cpu: '0.5'

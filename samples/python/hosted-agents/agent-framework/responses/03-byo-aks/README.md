@@ -10,7 +10,7 @@ cd foundry-samples/samples/python/hosted-agents/agent-framework/responses/03-byo
 This sample runs a basic Microsoft Agent Framework agent on a
 customer-managed Azure Kubernetes Service (AKS) cluster through Microsoft
 Foundry hosted agents. It uses the Responses protocol, an existing Foundry
-project and model deployment, and an existing Application Insights resource.
+project, and an existing model deployment.
 
 > [!IMPORTANT]
 > This is a brownfield sample. The existing project's parent Foundry account
@@ -18,8 +18,8 @@ project and model deployment, and an existing Application Insights resource.
 > `properties.agentHostingConfigurations`. The included provisioning scripts
 > only create or reuse an AKS cluster and its `sandbox` KataVmIsolation node
 > pool. They do **not** complete Foundry BYO-AKS onboarding, create identities,
-> storage, a subnet, or Application Insights, or register the cluster as a
-> Foundry hosting configuration.
+> storage, or a subnet, or register the cluster as a Foundry hosting
+> configuration.
 
 ## How it works
 
@@ -27,11 +27,10 @@ The agent uses `FoundryChatClient` with `DefaultAzureCredential` and is served
 by `ResponsesHostServer`. Foundry manages response history, so the Agent
 Framework agent sets `store` to `false`.
 
-The `azure.yaml` manifest targets an existing Foundry project endpoint,
-configures its Application Insights connection, and deploys the container
-through a remote build with 0.5 CPU and 1 GiB memory. The parent Foundry
-account's existing hosting configuration determines that the hosted agent runs
-on customer-managed AKS.
+The `azure.yaml` manifest targets an existing Foundry project endpoint and
+deploys the container through a remote build with 0.5 CPU and 1 GiB memory.
+The parent Foundry account's existing hosting configuration determines that
+the hosted agent runs on customer-managed AKS.
 
 ## Prerequisites
 
@@ -55,8 +54,6 @@ The following deployment values must already exist:
 | --- | --- |
 | `FOUNDRY_PROJECT_ENDPOINT` | Endpoint of the existing Foundry project |
 | `AZURE_AI_MODEL_DEPLOYMENT_NAME` | Name of a compatible model deployment that already exists in the project |
-| `APPLICATIONINSIGHTS_RESOURCE_ID` | Resource ID of the existing Application Insights resource connected to the Foundry project |
-| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Connection string for that Application Insights resource |
 | `FOUNDRY_ACCOUNT_RESOURCE_ID` | Resource ID of the parent Foundry account; used only for preflight verification and documentation |
 
 The parent account's `properties.agentHostingConfigurations[]` must contain an
@@ -71,9 +68,8 @@ entry with:
 
 The hosting management identity must also appear in the account's
 `identity.userAssignedIdentities`. The AKS cluster, subnet, identities, storage
-account, Application Insights resource, networking, workload identity
-federation, and RBAC assignments must otherwise be prepared before using this
-sample.
+account, networking, workload identity federation, and RBAC assignments must
+otherwise be prepared before using this sample.
 
 ## Optional: Create the AKS cluster and sandbox pool
 
@@ -129,23 +125,21 @@ install or update `aks-preview`, and then rerun the script.
 
 > [!WARNING]
 > These scripts only create or reuse AKS and the `sandbox` KataVmIsolation node
-> pool. They don't create identities, storage, a subnet, Application Insights,
-> or Foundry registration. They also don't attach a separately managed subnet,
-> create ACR resources, enable Azure Policy, or configure an ACR image-admission
-> policy. Existing clusters and pools are reused without being updated or fully
+> pool. They don't create identities, storage, a subnet, or Foundry
+> registration. They also don't attach a separately managed subnet, create ACR
+> resources, enable Azure Policy, or configure an ACR image-admission policy.
+> Existing clusters and pools are reused without being updated or fully
 > validated.
 
 ## Configure and provision
 
-Create an `azd` environment and set the existing project, model, monitoring,
-and account values:
+Create an `azd` environment and set the existing project, model, and account
+values:
 
 ```bash
 azd env new
 azd env set FOUNDRY_PROJECT_ENDPOINT "<foundry-project-endpoint>"
 azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME "<existing-model-deployment-name>"
-azd env set APPLICATIONINSIGHTS_RESOURCE_ID "<application-insights-resource-id>"
-azd env set APPLICATIONINSIGHTS_CONNECTION_STRING "<application-insights-connection-string>"
 azd env set FOUNDRY_ACCOUNT_RESOURCE_ID "<foundry-account-resource-id>"
 ```
 
@@ -174,9 +168,8 @@ az resource show `
 The command must return a `ManagedCluster` entry with the required fields
 listed above. Don't continue if the result is `null` or empty.
 
-Target the existing project and provision or configure only the supported
-sample-owned services declared by the manifest, including the Application
-Insights connection:
+Target the existing project and provision the supported sample-owned services
+declared by the manifest:
 
 ```bash
 azd provision
@@ -238,13 +231,6 @@ Reply briefly and include the exact marker BYO-AKS-OK.
 
 The response should include `BYO-AKS-OK`.
 
-## Instrumentation
-
-The hosted agent uses the `application-insights` connection declared in the
-manifest and sets `ENABLE_INSTRUMENTATION` to `true`. After local or deployed
-invocations, use the Foundry **Logs** view or the connected Application
-Insights resource to inspect logs, traces, and request telemetry.
-
 ## Troubleshooting
 
 - **Preflight returns `null` or an empty array:** complete Foundry BYO-AKS
@@ -256,8 +242,6 @@ Insights resource to inspect logs, traces, and request telemetry.
   networking, workload identity federation, and RBAC assignments.
 - **Authentication fails locally:** run `az login` and confirm your identity has
   access to the existing Foundry project and model deployment.
-- **No telemetry appears:** verify the Application Insights resource ID and
-  connection string refer to the same existing resource.
 
 ## Next steps
 
