@@ -4,7 +4,6 @@ sample:
   owner: hkunkanoor
   experiences: [azd]
 
-# Native A2A needs a transport-specific runner, not a Responses/Invocations plan.
 tests:
   - name: deterministic-echo
     turns:

@@ -360,8 +360,11 @@ is not claimed to work**. This README therefore documents the hosted, deploy-fir
 A2A flow rather than an unverified F5/Inspector workflow.
 
 The [shared cloud contract](../../../../../../.azure-pipelines/hosted-agent-tests/python/bring-your-own/a2a/travel-planner-web-search/test-spec.yml)
-records intended behavior. The shared cloud runner currently lacks native A2A
-transport support. The package manifests and locks use public PyPI beta SDKs.
+uses the shared runner's native A2A 1.0 transport and selects the planner while
+retaining both specialists and a cell-owned web-search toolbox. Offline runner
+tests validate protocol handling and evidence collection; a successful contract
+policy check is not a new hosted end-to-end run.
+The package manifests and locks use public PyPI beta SDKs.
 The earlier hosted-run evidence predates this dependency update.
 
 ## Troubleshooting

@@ -13,8 +13,8 @@ native A2A SDK, with no model, Copilot session or Toolbox.
 
 Keep the public PyPI manifests and genuine generated locks consistent. Follow
 the shared Python hosted-agent dependency policy and cloud behavior-contract
-requirements. The shared cloud runner does not support native A2A yet; never
-mislabel the protocol or add a skiplist entry to bypass that limitation.
+requirements. Use the shared cloud runner's native A2A 1.0 Task/artifact
+validation; never mislabel the protocol or add a skiplist entry to bypass it.
 
 Keep Echo deterministic. Return actual completed A2A Tasks and artifact text.
 Use standard logging for runtime diagnostics, not credentials or caller headers.

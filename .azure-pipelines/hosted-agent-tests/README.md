@@ -114,12 +114,19 @@ also checks the published fixtures, including orphan detection. See the
 
 ## Supported protocols
 
-The runner supports `responses` and `invocations`. Other protocols require dedicated
-harnesses:
+The runner supports `responses`, `invocations`, and native A2A 1.0 (`a2a`).
+For A2A, it sends blocking JSON-RPC `SendMessage` requests through `azd` with
+`--a2a-version 1.0` and the cell's explicit session. It checks JSON-RPC request
+IDs, rejects protocol errors and non-completed Tasks even when HTTP and CLI
+exit status indicate success, and captures artifact text as `assistant_text`.
+The JSON-RPC body is retained as `raw`, alongside request and HTTP-header evidence.
+A2A turns create independent Tasks in the same hosted session; Responses
+`previous_turn` and MCP approval continuation are not supported.
+
+Other protocols still require dedicated harnesses:
 
 - `invocations_ws` uses sample-defined, full-duplex WebSocket frames.
 - `activity` requires Bot/Teams setup and sends replies asynchronously.
-- A2A requires agent-card discovery and JSON-RPC/task handling.
 - Voice Live uses a separate real-time audio service.
 
 They remain unsupported until CI has transport-specific clients and evidence
@@ -138,7 +145,7 @@ python3 .github/scripts/hosted_agent_test_spec.py validate \
 
 python3 .github/scripts/hosted_agent_test_spec.py plan \
   --spec .azure-pipelines/hosted-agent-tests/<language>/<complete-sample-path>/test-spec.yml \
-  --protocol <responses|invocations> \
+  --protocol <responses|invocations|a2a> \
   --output /tmp/hosted-agent-test-plan.json
 ```
 
@@ -189,10 +196,21 @@ tests:
 | Scope | Field | Contract |
 |---|---|---|
 | document | `version` | Required integer; must be `1` (Boolean `true` is not accepted). |
-| document | `sample` | Required mapping; only `owner` and `experiences` are allowed. |
+| document | `sample` | Required mapping; `owner` and `experiences`, plus optional native-A2A deployment settings below. |
 | document | `tests` | Required non-empty sequence. |
 | sample | `owner` | Required non-empty Microsoft alias. Must start with an ASCII letter and then contain only letters, digits, `.`, `_`, or `-`; `@microsoft.com` is forbidden. |
 | sample | `experiences` | Required non-empty unique sequence containing `azd`, `vscode`, or both. This is registration metadata and does not alter the cloud matrix. |
+| sample | `service` | A2A only. Manifest service key to invoke; required for multi-agent projects, auto-selected for a single agent. |
+| sample | `endpoints` | A2A only. Mapping of environment-variable names to specialist service keys. Replaces matching `${VARIABLE}` agent env values with cell-owned A2A endpoint URLs and adds deployment dependency edges. |
+| sample | `toolbox` | A2A only. Relative JSON toolbox-definition path inside the sample. Adds a cell-owned toolbox for `${TOOLBOX_ENDPOINT}` consumers, using the existing isolation, verification and cleanup lifecycle. |
+
+For example, the travel fixture selects `service: planner`, binds
+`FLIGHT_AGENT_ENDPOINT: flights` and `HOTEL_AGENT_ENDPOINT: hotels` under
+`endpoints`, and sets `toolbox: toolbox.json`. CI retains all three source
+projects and uniquely renames every agent; it does not collapse specialists into
+the planner. The selected CI project must support native A2A and have the
+sample's declared model deployment. Offline harness tests do not establish that
+these cloud prerequisites are available.
 | test | `name` | Required non-empty string, unique within the file. |
 | test | `when` | Optional mapping. `toolbox_label` is its only supported field. |
 | test | `turns` | Required non-empty sequence. |

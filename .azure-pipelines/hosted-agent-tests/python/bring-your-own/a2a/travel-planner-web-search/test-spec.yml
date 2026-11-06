@@ -3,8 +3,12 @@ version: 1
 sample:
   owner: hkunkanoor
   experiences: [azd]
+  service: planner
+  endpoints:
+    FLIGHT_AGENT_ENDPOINT: flights
+    HOTEL_AGENT_ENDPOINT: hotels
+  toolbox: toolbox.json
 
-# Native A2A needs a transport-specific runner; do not plan this as Responses.
 # Web contents vary. Assert saved research/citations, not live fares or hotel names.
 tests:
   - name: cited-unverified-trip-research

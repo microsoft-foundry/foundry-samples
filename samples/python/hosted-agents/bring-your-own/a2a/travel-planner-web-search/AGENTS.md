@@ -55,8 +55,9 @@ with actual tooling when inputs change, and never fabricate a lock or hide
 preview-feed policy failures.
 
 Use the shared cloud E2E fixture for intended behavior, not a dedicated workflow.
-Native A2A is not supported by the shared cloud runner yet: do not advertise a
-Responses/Invocations runtime or add a skiplist entry to bypass that limitation.
+Use the shared runner's native A2A 1.0 transport and the fixture's planner,
+specialist-endpoint and cell-owned toolbox settings. Do not advertise a
+Responses/Invocations runtime or add a skiplist entry to bypass validation.
 Do not commit generated `.azure`, `.vscode`, logs, tokens or local test records.
 
 ## Microsoft Foundry Skill

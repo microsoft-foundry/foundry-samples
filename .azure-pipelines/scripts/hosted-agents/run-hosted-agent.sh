@@ -7,6 +7,26 @@
 # FD 3 carries shell source without consuming the commands' standard input.
 set -euo pipefail
 
+if [ "${PROTOCOL:-}" = "a2a" ]; then
+  export AZD_ALPHA_ENABLE_AGENTS_A2A=true
+  azd() {
+    if [ "${1:-} ${2:-}" = "ai agent" ]; then
+      case "${3:-}" in
+        show|monitor)
+          command azd "$@" "$FOUNDRY_AGENT_NAME"
+          return
+          ;;
+        sessions|files)
+          command azd "$@" --agent-name "$FOUNDRY_AGENT_NAME"
+          return
+          ;;
+      esac
+    fi
+    command azd "$@"
+  }
+  export -f azd
+fi
+
 if [ "$#" -ne 1 ]; then
   echo "Usage: $0 <action>" >&2
   exit 2
@@ -561,6 +581,7 @@ fi
 # only scaffold the manifest; when the scaffolded service
 # directory has no source files, copy them from the sample's
 # src/<agent>/ directory in the repo.
+if [ "$PROTOCOL" != "a2a" ]; then
 SERVICE_SRC="src/$SAMPLE_NAME"
 if [ ! -d "$SERVICE_SRC" ] && [ -d "$SAMPLE_NAME" ]; then
   SERVICE_SRC="$SAMPLE_NAME"
@@ -583,6 +604,18 @@ else
   echo "Scaffolded service already has source — skipping source copy"
 fi
 echo "Contents of $SERVICE_SRC:" && ls -la "$SERVICE_SRC"
+fi
+
+if [ "$PROTOCOL" = "a2a" ]; then
+  # Native collaboration keeps every service and source project intact.
+  mkdir -p src
+  cp -a "$REPO_ROOT/$SAMPLE_PATH/src/." src/
+  fixture_relative=$(python3 "$REPO_ROOT/.github/scripts/hosted_agent_fixture.py" \
+    fixture-dir --sample-dir "$SAMPLE_PATH")
+  python3 "$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/prepare_hosted_agent_a2a.py" \
+    azure.yaml "$REPO_ROOT/$fixture_relative/test-spec.yml" \
+    "$REPO_ROOT/$SAMPLE_PATH" "$AGENT_NAME"
+fi
 
 # Rename the agent so each matrix job deploys to a UNIQUE
 # Foundry agent. Without this, the bare sample name is used and:
@@ -600,12 +633,16 @@ if [ -f azure.yaml ]; then
   # rawtext.log in time for azd's log streamer, then azd falls
   # back to a local publish path without a local package
   # artifact. CI agents have Docker, so build/push locally.
-  AGENT_NAME="$AGENT_NAME" yq -i '
+  if [ "$PROTOCOL" != "a2a" ]; then
+    AGENT_NAME="$AGENT_NAME" yq -i '
     .name = strenv(AGENT_NAME) |
     (.services[] | select(.host == "azure.ai.agent") | .name) = strenv(AGENT_NAME) |
     (.. | select(has("remoteBuild")) | .remoteBuild) = false |
     .services = (.services | to_entries | map(select(.value.host == "azure.ai.agent").key = strenv(AGENT_NAME)) | from_entries)
   ' azure.yaml
+  else
+    yq -i '(.. | select(has("remoteBuild")) | .remoteBuild) = false' azure.yaml
+  fi
   if [ "$(AGENT_NAME="$AGENT_NAME" yq '.services | has(strenv(AGENT_NAME))' azure.yaml)" != "true" ]; then
     echo "##vso[task.logissue type=error]Failed to update azure.yaml agent service key to $AGENT_NAME"
     exit 1
@@ -1390,18 +1427,22 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
     approval_events='[]'
     approval_pending_count=0
     approval_auto=false
-    if [ "$PROTOCOL" = "responses" ]; then
+    if [ "$PROTOCOL" = "responses" ] || [ "$PROTOCOL" = "a2a" ]; then
       result_file="/tmp/invoke-result-${turn}.json"
       rm -f "$result_file"
+      helper="$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/invoke_hosted_agent_responses.py"
+      if [ "$PROTOCOL" = "a2a" ]; then
+        helper="$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/invoke_hosted_agent_a2a.py"
+      fi
       AGENT_RESPONSES_URL="$AGENT_RESPONSES_URL" \
       AAD_TOKEN="$AAD_TOKEN" \
       DEPLOYED_AGENT_VERSION="$DEPLOYED_AGENT_VERSION" \
       CI_AGENT_SESSION_ID="$CI_AGENT_SESSION_ID" \
-        python3 "$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/invoke_hosted_agent_responses.py" \
+        python3 "$helper" \
           "$turn" "$TURN_FILE" "$TURN_RECORD_FILE" "$EVIDENCE_DIR" "$request_attempt"
       if [ ! -s "$result_file" ] || ! jq -e 'type == "object"' "$result_file" >/dev/null; then
         approval_terminal_error=true
-        approval_error="Responses helper did not produce a valid result"
+        approval_error="$PROTOCOL helper did not produce a valid result"
         turn_exit=1
         http_code=""
         echo "##vso[task.logissue type=error]$approval_error"
@@ -1431,7 +1472,7 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
       break
     fi
     quota_error_files=(/tmp/invoke-out-${turn}.txt)
-    if [ "$PROTOCOL" = "responses" ]; then
+    if [ "$PROTOCOL" = "responses" ] || [ "$PROTOCOL" = "a2a" ]; then
       quota_error_files+=(/tmp/invoke-headers-${turn}.txt /tmp/invoke-raw-${turn}.json)
     fi
     if [ $turn_exit -ne 0 ] && hosted_agent_is_session_quota_error "${quota_error_files[@]}"; then
@@ -1533,8 +1574,12 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
 
   # Persist only the final retry attempt as assertion evidence.
   cp "/tmp/invoke-out-${turn}.txt" "$EVIDENCE_DIR/turn-$turn-invoke.txt"
-  if [ "$PROTOCOL" = "responses" ]; then
-    cp "$EVIDENCE_DIR/turn-$turn-attempt-$request_attempt-approval-step-0-request.json" \
+  if [ "$PROTOCOL" = "responses" ] || [ "$PROTOCOL" = "a2a" ]; then
+    request_evidence="$EVIDENCE_DIR/turn-$turn-attempt-$request_attempt-approval-step-0-request.json"
+    if [ "$PROTOCOL" = "a2a" ]; then
+      request_evidence="$EVIDENCE_DIR/turn-$turn-attempt-$request_attempt-a2a-request.json"
+    fi
+    cp "$request_evidence" \
       "$EVIDENCE_DIR/turn-$turn-request.json"
     cp "/tmp/invoke-headers-${turn}.txt" "$EVIDENCE_DIR/turn-$turn-headers.txt"
     cp "/tmp/invoke-raw-${turn}.json" "$EVIDENCE_DIR/turn-$turn-raw.txt"
