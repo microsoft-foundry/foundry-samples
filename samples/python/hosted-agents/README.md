@@ -220,7 +220,6 @@ Already built an agent with CrewAI or your own code? The protocol SDKs (`azure-a
 
 | Sample | What it shows |
 | --- | --- |
-| **[Copilot Travel Planner](bring-your-own/a2a/travel-planner/)** | Three Copilot SDK agents collaborating directly over A2A with synthetic inventory and versioned saved trips. |
 | **[Copilot Travel Planner with Web Search](bring-your-own/a2a/travel-planner-web-search/)** | Direct A2A travel research with bounded Toolbox web search inside the specialists, citations and saved unverified results. |
 
 ### Invocations protocol

@@ -1,7 +1,7 @@
 # Coding Agent Instructions - A2A travel research with web search
 
-Three independently packaged Copilot SDK agents use native A2A 1.0. Keep this
-sample separate from the synthetic travel sample. Direct code deployment uses
+Three independently packaged Copilot SDK agents use native A2A 1.0.
+Direct code deployment uses
 Python 3.13 through `codeConfiguration`; no Dockerfile is needed.
 
 ## Key files

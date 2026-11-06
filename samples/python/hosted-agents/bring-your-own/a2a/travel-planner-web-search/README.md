@@ -5,9 +5,7 @@ flights and hotels using **Foundry Toolbox web search**, instead of embedded
 inventory. The planner saves cited research, requirements, metadata and history
 in user-isolated **FoundryStateStore**.
 
-For fixed synthetic inventory and repeatable price expectations, use the separate
-[travel-planner sample](../travel-planner/). This variant is research, **not a
-booking engine or guaranteed live-price search**.
+This sample is research, **not a booking engine or guaranteed live-price search**.
 
 ## How it works
 
@@ -383,6 +381,5 @@ azd ai agent delete travel-web-hotels
 Do not run `azd down` against a shared project or delete a shared model, toolbox
 or state store. Review toolbox/role cleanup with the owner.
 
-- [Synthetic travel collaboration](../travel-planner/)
 - [Toolbox documentation](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/toolbox)
 - [Hosted agents overview](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agents)
