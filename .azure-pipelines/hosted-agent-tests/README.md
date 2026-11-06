@@ -147,6 +147,32 @@ as rejecting MCP approval policies for Invocations. The PR policy applies both
 checks to new sample contracts. Cloud runners must validate and plan the contracts
 they consume before executing their turns.
 
+### Local sample lifecycle regression checks
+
+Runtime lifecycle checks live in the separate `runtime-tests` directory, outside
+the lightweight `tests/test_*.py` policy discovery path. They exercise the actual
+sample graph and local Responses HTTP host. Run them from the repository root:
+
+```bash
+python -m pip install "uv==0.11.7"
+python .azure-pipelines/scripts/hosted-agents/run_runtime_tests.py
+```
+
+This standard-library `unittest` check sends revision feedback through the rich
+`function_call_output` resume channel, approves the revised draft, then submits
+a new task in the same conversation. It asserts the exact model inputs: the
+revision includes its draft and feedback, while the new task includes neither.
+The model is scripted and the graph checkpointer is in-memory; no Azure
+credentials or model calls are required. No test rewrites or matches the sample's
+source implementation. Mutation checks are development evidence only.
+
+The entrypoint first runs `uv sync --frozen --python 3.13` against the sample's
+committed runtime project, then executes runtime test discovery in that isolated
+environment. Dependency or test failures propagate; missing dependencies are not
+skipped. GitHub scripts self-test runs it in a dedicated credential-free job,
+and ADO runs it in a separate step after lightweight policy tests. These are
+local runtime regressions, not cloud or UI acceptance.
+
 ## Complete document shape
 
 ```yaml

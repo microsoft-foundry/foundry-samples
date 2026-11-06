@@ -1,0 +1,32 @@
+version: 1
+
+sample:
+  owner: jiahuigu
+  experiences: [azd, vscode]
+
+tests:
+  - name: approved-tasks-use-latest-user-message
+    turns:
+      - input: Draft a one-sentence launch email containing the exact marker SEATTLE-LAUNCH-071. Do not include any other city or event marker.
+        approvals:
+          mcp:
+            - server_label: langgraph
+              name: __hosted_agent_adapter_interrupt__
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: SEATTLE-LAUNCH-071
+      - input: This is a new task. Draft a one-sentence invitation containing the exact marker PARIS-EVENT-072. Do not mention the previous task or its marker.
+        approvals:
+          mcp:
+            - server_label: langgraph
+              name: __hosted_agent_adapter_interrupt__
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: PARIS-EVENT-072
+          - source: assistant_text
+            type: contains
+            value: SEATTLE-LAUNCH-071
+            min_matches: 0
+            max_matches: 0
