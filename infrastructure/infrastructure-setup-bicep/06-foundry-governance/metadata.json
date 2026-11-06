@@ -1,0 +1,9 @@
+{
+  "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
+  "type": "QuickStart",
+  "itemDisplayName": "Govern Microsoft Foundry agents, models and tools with Azure Policy",
+  "description": "Assigns Microsoft Foundry built-in Azure Policy controls for agent kinds, hosted-agent container images, model deployments, agent and toolbox tools, and agent prompt content filtering at subscription or resource group scope.",
+  "summary": "Foundry governance as code: built-in Azure Policy assignments for agents, models, tools and agent safety.",
+  "githubUsername": "microsoft-foundry",
+  "dateUpdated": "2026-11-06"
+}
