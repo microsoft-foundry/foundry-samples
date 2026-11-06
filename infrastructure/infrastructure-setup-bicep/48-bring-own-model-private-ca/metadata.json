@@ -1,0 +1,8 @@
+{
+  "type": "Microsoft.Template",
+  "sample": "48-bring-own-model-private-ca",
+  "title": "BYOM private-CA gateway TLS-trust test bed (Bicep)",
+  "description": "Reproduce and then fix a Foundry connected-model TLS 'certificate not trusted' error when the model is fronted by an nginx gateway serving a private-CA certificate on an internal-only custom domain. The two-phase test configures an account-level, pinned Key Vault certificate bundle through trustedCertificateSources.",
+  "scenario": "byom-private-ca",
+  "language": "bicep"
+}
