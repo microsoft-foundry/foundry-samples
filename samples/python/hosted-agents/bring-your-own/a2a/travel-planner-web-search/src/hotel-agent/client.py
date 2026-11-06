@@ -41,7 +41,9 @@ def validate_toolbox_endpoint(endpoint: str, project: str) -> None:
         or not target.path.endswith("/mcp")
         or target.query != "api-version=v1"
     ):
-        raise ValueError("TOOLBOX_ENDPOINT must be an HTTPS MCP endpoint in this project")
+        raise ValueError(
+            "TOOLBOX_ENDPOINT must be an HTTPS MCP endpoint in this project"
+        )
 
 
 async def ask(instructions: str, message: str) -> tuple[str, list[dict]]:
@@ -72,7 +74,10 @@ async def ask(instructions: str, message: str) -> tuple[str, list[dict]]:
 
     def observe(event: SessionEvent) -> None:
         data = event.data
-        if isinstance(data, ToolExecutionStartData) and data.mcp_tool_name == "web_search":
+        if (
+            isinstance(data, ToolExecutionStartData)
+            and data.mcp_tool_name == "web_search"
+        ):
             calls[data.tool_call_id] = {
                 "tool": "web_search",
                 "tool_call_id": data.tool_call_id,
@@ -107,7 +112,9 @@ async def ask(instructions: str, message: str) -> tuple[str, list[dict]]:
                     client_id=os.environ["FOUNDRY_AGENT_INSTANCE_CLIENT_ID"]
                 )
             )
-        toolbox_token = await toolbox_credential.get_token("https://ai.azure.com/.default")
+        toolbox_token = await toolbox_credential.get_token(
+            "https://ai.azure.com/.default"
+        )
         toolbox_headers = dict(headers)
         toolbox_headers["Authorization"] = f"Bearer {toolbox_token.token}"
         client = CopilotClient()
@@ -145,9 +152,9 @@ async def ask(instructions: str, message: str) -> tuple[str, list[dict]]:
             )
             try:
                 reply = await session.send_and_wait(message, timeout=180)
-                if not calls or not all(call["success"] for call in calls.values()):
+                if not any(call["success"] for call in calls.values()):
                     raise RuntimeError(
-                        "Web research requires successful web_search calls with source URLs"
+                        "Web research requires at least one successful web_search call with source URLs"
                     )
                 if reply is None or not reply.data.content:
                     raise RuntimeError("Copilot SDK returned no answer")

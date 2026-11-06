@@ -53,7 +53,9 @@ timeout. Coding, filesystem and shell tools are not enabled.
 
 The `web-search` specialist artifact records actual search call IDs, success
 and returned source URLs. Model-only success is rejected if no successful search
-with source URLs occurred. The planner returns compact `specialist-calls`
+with source URLs occurred. One usable search is sufficient even if the other
+attempt fails or returns no source URLs; both attempts remain in the artifact.
+The planner returns compact `specialist-calls`
 receipts containing tool, agent and Task ID, plus `trip-state` receipts containing
 operation names and plan ID/version/revision/status/history-count summaries.
 It does not repeat full specialist answers, requirements, metadata, recommendation
@@ -97,7 +99,11 @@ Records are user-isolated with **30-day default retention**.
 
 Version/ETag conditions protect writes. Requirement changes, including the public
 office landmark, mark recommendations `needs_replan`; both specialists must
-complete fresh calls before a version-matched result is saved. Metadata-only
+start and complete fresh calls for that plan ID and version before a
+version-matched result is saved. The binding is captured before delegation,
+so late completions from an older version cannot clear `needs_replan`.
+This binding stays inside the planner; it is not sent to specialists.
+Metadata-only
 updates preserve requirements, revision and recommendation without repricing.
 
 Follow the shared [Python startup configuration](../../../README.md#python-startup-configuration).
@@ -105,6 +111,13 @@ Each runtime has its own pinned `pyproject.toml` and `uv.lock`; no Docker is nee
 All three runtimes pin the November 5, 2026 public PyPI beta releases:
 `azure-ai-agentserver-a2a==1.0.0b1` and
 `azure-ai-agentserver-core==2.3.1b1`. No development-feed configuration is needed.
+
+Run the offline research regressions from this sample directory using the
+planner's pinned runtime dependencies:
+
+```bash
+uv run --frozen --project src/travel-agent python -m unittest discover -s tests -v
+```
 
 ## Prerequisites
 

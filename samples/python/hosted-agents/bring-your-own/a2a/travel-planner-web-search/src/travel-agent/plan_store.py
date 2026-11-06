@@ -172,6 +172,7 @@ def build_tools(
     *,
     call_id: str | None,
     specialist_tools: set[str],
+    research_context: dict[str, str],
 ) -> list[Tool]:
     request_context = context.get_current()
     request_span = trace.get_current_span(request_context).get_span_context()
@@ -226,6 +227,9 @@ def build_tools(
         ):
             checkpoints[record["plan_id"]] = (record["version"], len(calls))
         active_plan = record["plan_id"]
+        research_context.update(
+            plan_id=record["plan_id"], plan_version=str(record["version"])
+        )
         operations.append(
             {"action": action, "plan": copy.deepcopy(record), "etag": etag}
         )
@@ -355,10 +359,15 @@ def build_tools(
             raise ValueError(
                 "Read or update this plan version before consulting specialists"
             )
-        fresh = calls[checkpoint[1] :]
+        fresh = [
+            entry
+            for entry in calls[checkpoint[1] :]
+            if entry.get("plan_id") == params.plan_id
+            and entry.get("plan_version") == str(params.expected_version)
+        ]
         if not specialist_tools <= {entry["tool"] for entry in fresh}:
             raise ValueError(
-                "Both specialists must complete after reading this plan version"
+                "Both specialists must start and complete for this plan version"
             )
         latest = {
             entry["tool"]: entry for entry in fresh if entry["tool"] in specialist_tools

@@ -33,6 +33,7 @@ async def ask(instructions: str, message: str) -> tuple[str, dict]:
         raise PermissionError("Hosted trip storage requires trusted caller context")
     headers = caller.platform_headers()
     calls: list[dict[str, str]] = []
+    research_context: dict[str, str] = {}
     failures: list[str] = []
     operations = []
     async with (
@@ -52,7 +53,7 @@ async def ask(instructions: str, message: str) -> tuple[str, dict]:
             await connect(os.environ[setting], stack, direct_credential, headers)
             for setting in ("FLIGHT_AGENT_ENDPOINT", "HOTEL_AGENT_ENDPOINT")
         ]
-        tools = build_tools(agents, calls, failures)
+        tools = build_tools(agents, calls, failures, research_context=research_context)
         store = await FoundryStateStore.get_or_create(
             os.environ.get("TRAVEL_PLAN_STORE_NAME", "travel-web-research"),
             credential=credential,
@@ -71,6 +72,7 @@ async def ask(instructions: str, message: str) -> tuple[str, dict]:
             failures,
             call_id=caller.call_id,
             specialist_tools={tool.name for tool in tools},
+            research_context=research_context,
         )
         propagate.inject(headers)
         token = await credential.get_token("https://ai.azure.com/.default")
