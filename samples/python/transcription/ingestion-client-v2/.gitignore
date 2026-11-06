@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.python_packages/
+
+# Azure Functions
+local.settings.json
+bin/
+obj/
+
+# azd
+.azure/
+
+# Bicep build output (keep hand-authored JSON, ignore compiled ARM)
+infra/*.json
+!infra/main.parameters.json
+!infra/dashboard.workbook.json

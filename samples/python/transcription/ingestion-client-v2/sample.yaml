@@ -1,0 +1,4 @@
+name: Ingestion Client v2
+description: Event-driven Azure Speech transcription pipeline using fast, batch and LLM Speech, deployed with Azure Developer CLI.
+build: "python -m pip install -r src/requirements.txt"
+validate: "python -m compileall -q src"

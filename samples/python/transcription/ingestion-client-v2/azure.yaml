@@ -1,0 +1,33 @@
+name: ingestion-client-v2
+metadata:
+  template: ingestion-client-v2@1.0.0
+services:
+  functions:
+    project: ./src
+    language: python
+    host: function
+hooks:
+  postprovision:
+    windows:
+      shell: pwsh
+      continueOnError: true
+      run: |
+        foreach ($e in 'fast', 'llm', 'batch') {
+          for ($i = 0; $i -lt 5; $i++) {
+            az storage blob upload --account-name $env:INPUT_STORAGE_ACCOUNT --auth-mode login -c config -n "$e.json" -f "config/$e.json" --overwrite --only-show-errors
+            if ($LASTEXITCODE -eq 0) { Write-Host "seeded $e.json"; break }
+            Start-Sleep 10
+          }
+        }
+    posix:
+      shell: sh
+      continueOnError: true
+      run: |
+        for e in fast llm batch; do
+          for i in 1 2 3 4 5; do
+            if az storage blob upload --account-name "$INPUT_STORAGE_ACCOUNT" --auth-mode login -c config -n "$e.json" -f "config/$e.json" --overwrite --only-show-errors; then
+              echo "seeded $e.json"; break
+            fi
+            sleep 10
+          done
+        done
