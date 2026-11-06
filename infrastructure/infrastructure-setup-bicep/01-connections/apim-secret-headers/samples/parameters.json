@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "accountName": { "value": "<existing-foundry-account>" },
+    "projectName": { "value": "<existing-project>" },
+    "targetUrl": {
+      "value": "https://<gateway>.azure-api.net/v1/openai-gpt-4-1-mini/openai"
+    },
+    "audience": { "value": "api://<gateway-application-id>" },
+    "modelDeploymentName": { "value": "gpt-4.1-mini" },
+    "modelName": { "value": "gpt-4.1-mini" },
+    "modelVersion": { "value": "2025-04-14" },
+    "connectionName": { "value": "apim-private-header" },
+    "subscriptionKey": {
+      "reference": {
+        "keyVault": {
+          "id": "/subscriptions/<subscription>/resourceGroups/<resource-group>/providers/Microsoft.KeyVault/vaults/<vault>"
+        },
+        "secretName": "<gateway-subscription-key-secret>"
+      }
+    }
+  }
+}
