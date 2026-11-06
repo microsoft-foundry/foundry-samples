@@ -17,9 +17,10 @@ server.
 
 ## Prerequisites
 
-- Azure Developer CLI (`azd`) 1.36.0 or later.
-- The Microsoft Foundry `azd` extension pack. The sample pins `azure.ai.agents` 1.0.0-beta.21
-  and `azure.ai.projects` 1.0.0-beta.14.
+- Azure Developer CLI (`azd`) 1.37.0 or later.
+- The Microsoft Foundry `azd` extension pack. The manifest requires `azure.ai.agents`
+  1.0.0-beta.22 or later, `azure.ai.projects` 1.0.0-beta.15 or later, and `azure.ai.skills`
+  1.0.0-beta.9 or later; these are minimum versions, not exact pins.
 - Azure CLI authenticated to the target tenant.
 - `sqlcmd` for the post-provision database permission grant.
 - Permission to create Microsoft Foundry, Azure SQL, and Connector Namespace resources and to set a
@@ -51,13 +52,21 @@ For repository setup, RPM-based Linux distributions, and direct downloads, see
 
 ## Deploy
 
-From this folder:
+From this folder, install or update the extensions and enable the harness preview in your
+current Bash shell:
 
 ```bash
+azd extension install microsoft.foundry
+azd extension update microsoft.foundry
+export AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS=true
 azd auth login
 azd env new adventureworks-sql-dev --location canadacentral
 azd up
 ```
+
+For PowerShell, replace the `export` line with
+`$env:AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS = "true"`.
+Set this variable again in each new shell or CI job; `azd env set` doesn't enable the preview.
 
 Canada Central is the Foundry and Azure SQL default. Replace `canadacentral` with another supported
 Foundry and SQL region when needed. The Connector Namespace defaults separately to West Central US

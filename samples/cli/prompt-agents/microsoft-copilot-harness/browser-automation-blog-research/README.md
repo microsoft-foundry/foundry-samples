@@ -144,9 +144,10 @@ The Toolbox namespaces the inner BAT operations as `browser___<operation>`. The 
 
 ## Prerequisites
 
-- Azure Developer CLI 1.36.0 or later
-- The Microsoft Foundry azd extension pack. The sample pins `azure.ai.agents` 1.0.0-beta.21
-  and `azure.ai.projects` 1.0.0-beta.14.
+- Azure Developer CLI 1.37.0 or later
+- The Microsoft Foundry azd extension pack. The manifest requires `azure.ai.agents`
+  1.0.0-beta.22 or later and `azure.ai.projects` 1.0.0-beta.15 or later; these are minimum
+  versions, not exact pins.
 - Azure CLI authenticated to the target tenant
 - A subscription enabled for the `microsoft_copilot_preview` Prompt Agent harness
 - Permission to create Foundry and Playwright workspace resources and
@@ -166,15 +167,23 @@ subscription.
 
 ## Deploy
 
-From this folder:
+From this folder, install or update the extensions and enable the harness preview in your
+current Bash shell:
 
 ```bash
+azd extension install microsoft.foundry
+azd extension update microsoft.foundry
+export AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS=true
 azd auth login
 azd env new browser-automation-blog-dev \
   --subscription <subscription-id> \
   --location canadacentral
 azd up --no-prompt
 ```
+
+For PowerShell, replace the `export` line with
+`$env:AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS = "true"`.
+Set this variable again in each new shell or CI job; `azd env set` doesn't enable the preview.
 
 To override the Playwright workspace region, run
 `azd env set PLAYWRIGHT_LOCATION <supported-region>` before `azd up`. To override the Foundry region,
