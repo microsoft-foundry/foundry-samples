@@ -6,7 +6,7 @@ authors = [{ name = "Microsoft", email = "support@microsoft.com" }]
 requires-python = ">=3.11"
 dependencies = [
     "azure-ai-agentserver-activity==1.0.0b3",
-    "azure-ai-agentserver-core==2.2.0b1",
+    "azure-ai-agentserver-core==2.3.0b2",
     "microsoft-agents-hosting-core",
     "microsoft-agents-activity",
     "aiohttp>=3.10",

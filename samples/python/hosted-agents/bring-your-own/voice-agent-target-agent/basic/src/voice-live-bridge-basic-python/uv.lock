@@ -148,7 +148,7 @@ wheels = [
 
 [[package]]
 name = "azure-ai-agentserver-core"
-version = "2.1.0"
+version = "2.3.0b2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -161,23 +161,24 @@ dependencies = [
     { name = "opentelemetry-sdk" },
     { name = "starlette" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e3/8d/cd4e4231b35cb966def75ed9e63d16704423d07b29e6ca9474921caf5751/azure_ai_agentserver_core-2.1.0.tar.gz", hash = "sha256:b4d6422357a03baa2c74e86fe121473aed99669a3f5f5f4904812c213038eb0f", size = 381781, upload-time = "2026-08-27T07:48:36Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/95/f9/5a28099787dba9140bbf2d31324171d23b6a4ed7cdd0a63af6c0ce34ed8f/azure_ai_agentserver_core-2.3.0b2.tar.gz", hash = "sha256:2cb04f717de58946b7ba08afee3d3c5c196c16b88dca32056ec941b4195784c9", size = 431302, upload-time = "2026-10-27T07:28:56.375Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/54/5a/c369f89bdd1b64cdc17f70043ac060c6021a689c9696baf0a670a689443c/azure_ai_agentserver_core-2.1.0-py3-none-any.whl", hash = "sha256:d70291f79e9676d62462b0ba7e8755fd129260c28f41a91158fe590bf9a2c975", size = 209663, upload-time = "2026-08-26T07:53:09Z" },
+    { url = "https://files.pythonhosted.org/packages/68/4f/d813b962a92614853ddcde709db6f5d558a75e2e7de9d6846668b5a986ea/azure_ai_agentserver_core-2.3.0b2-py3-none-any.whl", hash = "sha256:e28592d98b8b18914d4065c64cbb8bbcc080b45af52aa48ad1f6cb2ce836021d", size = 224586, upload-time = "2026-10-27T07:28:58.055Z" },
 ]
 
 [[package]]
 name = "azure-ai-agentserver-invocations"
-version = "1.1.0"
+version = "1.3.0b1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "azure-ai-agentserver-core" },
     { name = "azure-core" },
+    { name = "opentelemetry-api" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ea/fc/e419daf6e426dbfd85697f933f7fe5e7de6ee7f894b760a2b237d0768ef8/azure_ai_agentserver_invocations-1.1.0.tar.gz", hash = "sha256:598ad66779283d3b397b3c882075b8c1a32f745e517340e67e47f428646df3ed", size = 150610, upload-time = "2026-08-27T08:23:51Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/f3/47da7e95ef260bf998e0c7fb029e4afd13c497819524704e7911289ca688/azure_ai_agentserver_invocations-1.3.0b1.tar.gz", hash = "sha256:ec31c444aff3e3b54e05a58020dff5b5c5609e8e1c9c662a02dcc32d5c40ee2b", size = 225164, upload-time = "2026-10-27T12:15:20.478Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d5/ed/dd64f3e6a74d400ca3b7721485eb15d7388bb216c58a31984ee1f3740a42/azure_ai_agentserver_invocations-1.1.0-py3-none-any.whl", hash = "sha256:99b5a848647075396b872f7e7e1285d4565ea1cdded160fef4c668dfd4bf0c7d", size = 48170, upload-time = "2026-08-26T07:53:18Z" },
+    { url = "https://files.pythonhosted.org/packages/83/2e/46cfc0da972107fa955bbf25c5e74c899683216c25c013b72790e7e5f550/azure_ai_agentserver_invocations-1.3.0b1-py3-none-any.whl", hash = "sha256:86355f6cd10f5cf3949e9df3cf8c6bdfac5a2193aca3a2c28156b5e5ff09d295", size = 62558, upload-time = "2026-10-27T12:15:22.076Z" },
 ]
 
 [[package]]
@@ -1719,8 +1720,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "azure-ai-agentserver-core", specifier = "==2.1.0" },
-    { name = "azure-ai-agentserver-invocations", specifier = "==1.1.0" },
+    { name = "azure-ai-agentserver-core", specifier = "==2.3.0b2" },
+    { name = "azure-ai-agentserver-invocations", specifier = "==1.3.0b1" },
     { name = "azure-identity", specifier = "==1.25.1" },
     { name = "openai", specifier = "==3.1.0" },
     { name = "opentelemetry-api", specifier = "==1.43.0" },
