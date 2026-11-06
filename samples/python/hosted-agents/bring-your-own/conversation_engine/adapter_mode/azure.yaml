@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.32.0'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.13'
+name: voice-live-adapter-python
+services:
+  ai-project:
+    host: azure.ai.project
+  voice-live-adapter-python:
+    host: azure.ai.agent
+    metadata:
+      tags:
+        - AI Agent Hosting
+        - Voice Live Bridge
+        - WebSocket Protocol
+        - voice_conversation_engine
+        - Bring Your Own
+        - Python
+    project: src/voice-live-adapter-python
+    language: python
+    env:
+      PYTHONNOUSERSITE: "1"
+    codeConfiguration:
+      runtime: python_3_13
+      entryPoint: main.py
+    uses:
+      - ai-project
+    kind: hosted
+    name: voice-live-adapter-python
+    displayName: Voice Live — Adapter Mode Python
+    description: A CE-only agent adapting an in-process streaming HTTP Echo handler.
+    protocols:
+      - protocol: voice_conversation_engine
+        version: 1.0.0
+    container:
+      resources:
+        cpu: '1'
+        memory: 2Gi
+  voice-live-adapter-python-voice:
+    host: azure.ai.agent
+    kind: voice
+    name: voice-live-adapter-python-voice
+    uses:
+      - ai-project
+      - voice-live-adapter-python
+    conversationEngine:
+      type: hosted_agent
+      name: voice-live-adapter-python
+    store: false
+    audio:
+      input:
+        format:
+          type: audio/pcm
+          rate: 24000
+        turnDetection:
+          type: server_vad
+          threshold: 0.5
+          prefixPaddingMs: 300
+          silenceDurationMs: 500
+        transcription:
+          model: azure-speech
+      output:
+        format:
+          type: audio/pcm
+          rate: 24000
+        voice:
+          type: azure-standard
+          name: en-US-AvaNeural
+    outputModalities:
+      - audio
+    greeting:
+      type: template
+      text: Hello! How can I help you today?
+infra:
+  provider: microsoft.foundry
