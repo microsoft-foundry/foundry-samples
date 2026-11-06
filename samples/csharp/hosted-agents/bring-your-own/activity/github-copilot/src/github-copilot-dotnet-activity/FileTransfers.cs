@@ -63,12 +63,16 @@ public sealed class FileTransfers(HttpClient http, TaskStore store)
             {
                 var directory = Path.Combine(store.Workspace(conversationId), "shared");
                 Directory.CreateDirectory(directory);
-                name = Regex.Replace(name, @"[^A-Za-z0-9._-]", "_");
                 if (string.IsNullOrEmpty(name) || name is "." or "..")
                 {
                     name = "attachment";
                 }
-                var path = Path.Combine(directory, $"{Guid.NewGuid():N}-{name}");
+                var extension = Path.GetExtension(name);
+                if (extension.Length > 16 || !Regex.IsMatch(extension, @"^\.[A-Za-z0-9]+$"))
+                {
+                    extension = "";
+                }
+                var path = Path.Combine(directory, $"{Guid.NewGuid():N}{extension}");
                 await File.WriteAllBytesAsync(path, data, cancellationToken);
                 result.Add(new AttachmentFile { Path = path, DisplayName = name });
             }

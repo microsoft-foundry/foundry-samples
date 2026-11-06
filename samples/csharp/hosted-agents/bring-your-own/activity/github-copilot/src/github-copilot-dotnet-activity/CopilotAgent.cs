@@ -183,10 +183,33 @@ public sealed class CopilotAgent : AgentApplication
                 _store.Add(conversationId, title);
                 break;
             case "complete_task":
-                _store.Complete(conversationId, data.GetProperty("taskId").GetString() ?? "");
-                break;
             case "delete_task":
-                _store.Delete(conversationId, data.GetProperty("taskId").GetString() ?? "");
+                try
+                {
+                    var taskId = data.GetProperty("taskId").GetString() ?? "";
+                    if (verb == "complete_task")
+                    {
+                        _store.Complete(conversationId, taskId);
+                    }
+                    else
+                    {
+                        _store.Delete(conversationId, taskId);
+                    }
+                }
+                catch (ArgumentException exception) when (exception.ParamName == "taskId")
+                {
+                    await InvokeResponseAsync(context, 200, new
+                    {
+                        statusCode = 400,
+                        type = "application/vnd.microsoft.error",
+                        value = new
+                        {
+                            code = "BadRequest",
+                            message = "This task is no longer available. Select Refresh to update the task board."
+                        }
+                    }, cancellationToken);
+                    return;
+                }
                 break;
             case "refresh_tasks":
                 break;

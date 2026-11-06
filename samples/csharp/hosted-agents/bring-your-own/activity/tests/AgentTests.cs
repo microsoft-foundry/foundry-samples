@@ -157,6 +157,34 @@ public sealed class AgentTests
         await AssertInvalidCardTaskAsync(new { });
     }
 
+    [TestCase("complete_task")]
+    [TestCase("delete_task")]
+    public async Task StaleTaskCardReturnsActionableErrorWithoutChangingTasks(string verb)
+    {
+        const string conversationId = "stale-card";
+        var existing = _store.Add(conversationId, "Keep this task");
+        var deleted = _store.Add(conversationId, "Deleted task");
+        _store.Delete(conversationId, deleted.Id);
+        await using var host = CopilotHost(new StubAssistant());
+        await host.CreateTestFlow().Send(new Activity
+        {
+            Type = ActivityTypes.Invoke, Name = "adaptiveCard/action",
+            Conversation = new ConversationAccount { Id = conversationId },
+            Value = new { action = new { verb, data = new { taskId = deleted.Id } } }
+        }).AssertReply(activity =>
+        {
+            Assert.That(activity.Type, Is.EqualTo(ActivityTypes.InvokeResponse));
+            var response = JsonSerializer.SerializeToElement(activity.Value);
+            Assert.That(response.GetProperty("Status").GetInt32(), Is.EqualTo(200));
+            var body = response.GetProperty("Body");
+            Assert.That(body.GetProperty("statusCode").GetInt32(), Is.EqualTo(400));
+            Assert.That(body.GetProperty("value").GetProperty("message").GetString(),
+                Is.EqualTo("This task is no longer available. Select Refresh to update the task board."));
+        }).StartTestAsync();
+        Assert.That(_store.List(conversationId), Is.EqualTo(new[] { existing }));
+        Assert.That(host.Adapter.GetNextReply(), Is.Null);
+    }
+
     private async Task AssertInvalidCardTaskAsync(object data)
     {
         const string conversationId = "card-validation";

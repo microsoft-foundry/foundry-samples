@@ -102,6 +102,34 @@ public sealed class FileTransferTests
         Assert.ThrowsAsync<InvalidDataException>(() => files.DownloadAsync(context, "one", CancellationToken.None));
     }
 
+    [TestCase(240, ".txt")]
+    [TestCase(240, "")]
+    [TestCase(1, ".abcdefghijklmnopqrstuvwxyz")]
+    public async Task LongSharedFilenamesUseBoundedDiskNamesAndPreserveDisplayNames(int stemLength, string extension)
+    {
+        var name = new string('a', stemLength) + extension;
+        using var http = new HttpClient(new RecordingHandler("file bytes"u8.ToArray()));
+        var files = new FileTransfers(http, _store);
+        using var context = new TurnContext(new TestAdapter(), new Activity
+        {
+            Attachments = [new Attachment
+            {
+                Name = name,
+                ContentType = "application/vnd.microsoft.teams.file.download.info",
+                Content = new { downloadUrl = "https://tenant.sharepoint.com/file" }
+            }]
+        });
+        var attachments = await files.DownloadAsync(context, "one", CancellationToken.None);
+        var file = (GitHub.Copilot.AttachmentFile)attachments.Single();
+        Assert.That(file.DisplayName, Is.EqualTo(name));
+        Assert.That(Path.GetFileName(file.Path).Length, Is.LessThanOrEqualTo(48));
+        Assert.That(await File.ReadAllTextAsync(file.Path), Is.EqualTo("file bytes"));
+        if (extension.Length <= 16)
+        {
+            Assert.That(Path.GetExtension(file.Path), Is.EqualTo(extension));
+        }
+    }
+
     [Test]
     public async Task ConsentUploadUsesStoredBytesAndReturnsFileInfoCard()
     {

@@ -97,10 +97,10 @@ public sealed class CopilotAssistant : IAssistant, IHostedService, IAsyncDisposa
             var workspace = _store.Workspace(conversationId);
             var instructions = $"{Instructions}\nYour conversation working directory is: {workspace}\n"
                 + "Use this exact absolute directory for file operations; do not guess a home or working directory.";
-            var sessions = await _client.ListSessionsAsync(cancellationToken: cancellationToken);
+            var metadata = await _client.GetSessionMetadataAsync(sessionId, cancellationToken);
 
             // Reattach on each turn so a durable conversation never retains an expired bearer token.
-            await using var session = sessions.Any(session => session.SessionId == sessionId)
+            await using var session = metadata is not null
                 ? await _client.ResumeSessionAsync(sessionId, new ResumeSessionConfig
                 {
                     Model = _model, Provider = provider, Tools = tools, Streaming = true,

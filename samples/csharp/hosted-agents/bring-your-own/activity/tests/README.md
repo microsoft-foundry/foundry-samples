@@ -13,6 +13,8 @@ fallback, user-facing errors, persistence/isolation, file URL/path/size checks,
 mocked download/consent upload, and readiness/202/session headers.
 Card validation tests verify that empty or missing titles return an actionable
 BadRequest without changing tasks or triggering the generic error reply.
+Stale Done/Delete actions return an actionable card error, and shared files use
+bounded disk filenames while preserving their display names.
 Streaming tests verify that only root-agent text deltas are forwarded; subagent
 and empty deltas do not suppress the final-response fallback.
 The Echo HTTP round-trip test starts real Kestrel hosts for the agent and a
