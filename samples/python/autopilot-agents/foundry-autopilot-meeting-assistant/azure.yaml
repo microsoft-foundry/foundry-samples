@@ -1,0 +1,93 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.14'
+name: autopilot-meeting-assistant
+hooks:
+  preprovision:
+    shell: pwsh
+    run: ./scripts/validate-model-configuration.ps1
+  postdeploy:
+    shell: pwsh
+    interactive: true
+    run: ./scripts/configure-agent-resource-access.ps1 -ServiceName autopilot-meeting-assistant
+services:
+  ai-project:
+    host: azure.ai.project
+  autopilot-meeting-assistant:
+    host: azure.ai.agent
+    metadata:
+      tags:
+        - AI Agent Hosting
+        - Activity Protocol
+        - Bring Your Own
+        - Python
+    project: src/foundry_m365_autopilot
+    language: python
+    uses:
+      - ai-project
+    kind: hosted
+    name: autopilot-meeting-assistant
+    displayName: Foundry Autopilot Meeting Assistant
+    description: >
+      A Microsoft 365 Digital Worker Meeting Assistant that lets the current
+      Manager configure meeting-chat delegation for their own meetings.
+    protocols:
+      - protocol: activity
+        version: 2.0.0
+    agentEndpoint:
+      protocols:
+        - activity
+      authorizationSchemes:
+        # M365 Digital Workers are tenant-scoped. Keep this explicit because
+        # omitting the scheme lets the service fall back to BotServiceRbac.
+        - type: BotServiceTenant
+
+    environmentVariables:
+      # Values are resolved from the active azd environment during deploy and
+      # become definition.environment_variables in the hosted-agent request.
+      - name: CONNECTIONS__SERVICE_CONNECTION__SETTINGS__AUTHORITY
+        value: https://login.microsoftonline.com/${AZURE_TENANT_ID}
+      - name: CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID
+        value: ${AZURE_TENANT_ID}
+      - name: AzureOpenAIResponsesEndpoint
+        value: ${azureOpenAIResponsesEndpoint}
+      - name: ModelDeployment
+        value: ${modelDeploymentName}
+      - name: MEETING_DELEGATE_STORAGE_ACCOUNT_URL
+        value: ${meetingDelegateStorageAccountUrl}
+      - name: MEETING_DELEGATE_STORAGE_CONTAINER
+        value: ${meetingDelegateStorageContainer}
+    activity:
+      digitalWorkerType: m365
+      publish:
+        publishScope: tenant
+        canRespondWithoutMention: true
+        appVersion: 1.0.1
+        agentDisplayName: Foundry Autopilot Meeting Assistant
+        shortDescription: Microsoft 365 Digital Worker Meeting Assistant
+        fullDescription: A Foundry hosted Digital Worker that demonstrates Manager-owned Teams meeting chat delegation with Activity Protocol context and Teams/Calendar MCP boundaries.
+        developerName: Azure Developer
+        developerWebsiteUrl: https://azure.microsoft.com
+        privacyUrl: https://privacy.microsoft.com
+        termsOfUseUrl: https://www.microsoft.com/legal/terms-of-use
+        optionalPermissionScopes:
+          - resourceAppId: 00000003-0000-0000-c000-000000000000
+            scopes:
+              - User.Read
+              - User.Read.All
+              - OnlineMeetings.Read
+          - resourceAppId: ea9ffc3e-8a23-4a7d-836d-234d7c7565c1
+            scopes:
+              - McpServers.Teams.All
+              - McpServers.Calendar.All
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1.0Gi
+    docker:
+      path: foundry-infra/Dockerfile
+      remoteBuild: true
+infra:
+  provider: microsoft.foundry
