@@ -1,0 +1,12 @@
+{
+  "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
+  "type": "QuickStart",
+  "itemDisplayName": "AI Gateway tier (preview) TC01: end to end in Bicep",
+  "description": "End-to-end TC01 happy path for the Azure API Management AI Gateway tier (preview), all in Bicep. main.bicep creates a Microsoft Foundry account, project, and gpt-5.4 model, then the AI Gateway (Microsoft.ApiManagement/service, AIGateway SKU, 2025-09-01-preview) with a Foundry model provider that imports the model over managed identity (keyless), a token-limit policy, a runtime key, and the Foundry User role assignment for the gateway's managed identity. Then test through the gateway with the included Python script. Release-gated preview: deploys where the AIGateway SKU is enabled (East US 2, Sweden Central). Pattern from Azure-Samples/simple-foundry-hosted-agent-python-aigateway.",
+  "summary": "One-deployment AI Gateway tier TC01. Bicep = Foundry account + project + gpt-5.4 model + AIGateway service + Foundry model provider (managed identity) + token-limit policy + runtime key + Foundry User role. Script = OpenAI-compatible chat completion through the gateway.",
+  "githubUsername": "mohammadsheraj",
+  "dateUpdated": "2026-08-21",
+  "environments": [
+    "AzureCloud"
+  ]
+}
