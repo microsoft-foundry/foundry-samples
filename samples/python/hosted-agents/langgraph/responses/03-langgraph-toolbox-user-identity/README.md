@@ -39,6 +39,10 @@ collide with shared toolboxes in the Foundry project.
 6. If a connection requires consent, the tool error handler recognizes MCP
    error `-32006` and returns the validated consent URL to the caller.
 
+When a code interpreter is available in the configured toolbox, the agent is
+instructed to use it for calculations and answer from its result rather than
+performing arithmetic itself.
+
 ## Prerequisites
 
 - Python 3.13+
