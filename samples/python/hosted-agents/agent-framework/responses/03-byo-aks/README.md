@@ -53,6 +53,7 @@ The following deployment values must already exist:
 | Value | Existing resource or setting |
 | --- | --- |
 | `FOUNDRY_PROJECT_ENDPOINT` | Endpoint of the existing Foundry project |
+| `AZURE_AI_PROJECT_ID` | ARM resource ID of the existing Foundry project |
 | `AZURE_AI_MODEL_DEPLOYMENT_NAME` | Name of a compatible model deployment that already exists in the project |
 | `FOUNDRY_ACCOUNT_RESOURCE_ID` | Resource ID of the parent Foundry account; used only for preflight verification and documentation |
 
@@ -139,6 +140,7 @@ values:
 ```bash
 azd env new
 azd env set FOUNDRY_PROJECT_ENDPOINT "<foundry-project-endpoint>"
+azd env set AZURE_AI_PROJECT_ID "<foundry-project-resource-id>"
 azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME "<existing-model-deployment-name>"
 azd env set FOUNDRY_ACCOUNT_RESOURCE_ID "<foundry-account-resource-id>"
 ```

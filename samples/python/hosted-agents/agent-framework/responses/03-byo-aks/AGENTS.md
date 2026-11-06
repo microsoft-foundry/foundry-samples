@@ -44,6 +44,7 @@ management identity must be assigned in the account's
 ```bash
 azd env new
 azd env set FOUNDRY_PROJECT_ENDPOINT "<project-endpoint>"
+azd env set AZURE_AI_PROJECT_ID "<project-resource-id>"
 azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME "<existing-model-deployment-name>"
 azd env set FOUNDRY_ACCOUNT_RESOURCE_ID "<account-resource-id>"
 FOUNDRY_ACCOUNT_RESOURCE_ID="$(azd env get-value FOUNDRY_ACCOUNT_RESOURCE_ID)"
