@@ -1,0 +1,14 @@
+version: 1
+
+sample:
+  owner: seanli1988
+  experiences: [azd]
+
+tests:
+  - name: byo-aks-response
+    turns:
+      - input: Reply briefly and include the exact marker BYO-AKS-OK.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: BYO-AKS-OK
