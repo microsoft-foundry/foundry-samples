@@ -4,8 +4,8 @@ A minimal **native A2A 1.0 Echo agent**. Send `hello`; receive a completed Task
 with artifact text **`Echo: hello`**.
 
 No LLM, Copilot SDK, model deployment, Toolbox or application state-store code is
-needed. This is the smallest starting point before the multi-agent Travel or
-stateful Support Case samples.
+needed. For multi-agent collaboration, see the
+[travel planner with web search](../travel-planner-web-search/).
 
 ## How it works
 

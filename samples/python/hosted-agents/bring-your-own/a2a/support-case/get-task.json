@@ -1,8 +1,0 @@
-{
-  "jsonrpc": "2.0",
-  "id": "support-get-task-1",
-  "method": "GetTask",
-  "params": {
-    "id": "<A2A-TASK-ID>"
-  }
-}
