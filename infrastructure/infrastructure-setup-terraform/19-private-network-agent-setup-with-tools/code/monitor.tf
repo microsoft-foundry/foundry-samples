@@ -4,14 +4,18 @@
 ## running in the VNet can export OpenTelemetry traces to Application Insights over the
 ## private network instead of having the spans dropped.
 
-## Create the Log Analytics workspace that backs Application Insights
+## Create the Log Analytics workspace that backs Application Insights. Public ingestion is
+## disabled on the workspace as well, since disabling it on Application Insights alone does
+## not close the workspace's own ingestion endpoint.
 ##
 resource "azurerm_log_analytics_workspace" "loganalytics" {
-  name                = "loganalytics-tracing-${random_string.unique.result}"
-  location            = var.location
-  resource_group_name = local.rg_name
-  sku                 = "PerGB2018"
-  retention_in_days   = 30
+  name                       = "loganalytics-tracing-${random_string.unique.result}"
+  location                   = var.location
+  resource_group_name        = local.rg_name
+  sku                        = "PerGB2018"
+  retention_in_days          = 30
+  internet_ingestion_enabled = false
+  internet_query_enabled     = true
 }
 
 ## Create the workspace-based Application Insights. Public ingestion is disabled; traces
@@ -88,6 +92,18 @@ resource "azurerm_private_dns_zone_virtual_network_link" "plz_monitor_link" {
   private_dns_zone_name = azurerm_private_dns_zone.plz_monitor[0].name
   virtual_network_id    = local.vnet_id
   registration_enabled  = false
+
+  # Wait for every link created in main.tf so VNet updates are not concurrent
+  depends_on = [
+    azurerm_private_dns_zone_virtual_network_link.plz_cosmos_db_link,
+    azurerm_private_dns_zone_virtual_network_link.plz_ai_search_link,
+    azurerm_private_dns_zone_virtual_network_link.plz_storage_blob_link,
+    azurerm_private_dns_zone_virtual_network_link.plz_cognitive_services_link,
+    azurerm_private_dns_zone_virtual_network_link.plz_ai_services_link,
+    azurerm_private_dns_zone_virtual_network_link.plz_openai_link,
+    azurerm_private_dns_zone_virtual_network_link.plz_fabric_link,
+    azurerm_private_dns_zone_virtual_network_link.plz_acr_link
+  ]
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "plz_oms_link" {
@@ -130,7 +146,9 @@ resource "azurerm_private_endpoint" "pe_ampls" {
     azurerm_monitor_private_link_scoped_service.ampls_app_insights,
     azurerm_monitor_private_link_scoped_service.ampls_loganalytics,
     azurerm_private_dns_zone_virtual_network_link.plz_agentsvc_link,
-    azurerm_private_endpoint.pe_ai_foundry
+    azurerm_private_endpoint.pe_ai_foundry,
+    azurerm_private_endpoint.pe_fabric,
+    azurerm_private_endpoint.pe_acr
   ]
 
   name                = "ampls-tracing-${random_string.unique.result}-private-endpoint"
