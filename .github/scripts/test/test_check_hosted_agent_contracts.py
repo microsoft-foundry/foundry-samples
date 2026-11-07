@@ -128,6 +128,26 @@ class ContractCoverageTests(unittest.TestCase):
         spec.write_text(CONTRACT, encoding="utf-8")
         self.assertEqual(module.check_new_samples(self.repo, [SAMPLE]), [])
 
+    def test_native_a2a_contract_is_validated_not_skipped(self):
+        manifest = self.repo / SAMPLE / "azure.yaml"
+        manifest.write_text(MANIFEST.replace("protocol: responses", "protocol: a2a"), encoding="utf-8")
+        self.assertEqual(module._selected_protocol(manifest), "a2a")
+        self.assertIn("--protocol a2a", module.check_new_samples(self.repo, [SAMPLE])[0])
+        spec = self.fixture_spec()
+        spec.parent.mkdir(parents=True)
+        spec.write_text(CONTRACT, encoding="utf-8")
+        self.assertEqual(module.check_new_samples(self.repo, [SAMPLE]), [])
+        spec.write_text("version: 1\n", encoding="utf-8")
+        self.assertIn("Invalid hosted-agent behavior contract", module.check_new_samples(self.repo, [SAMPLE])[0])
+
+    def test_native_a2a_does_not_silently_run_older_wire_versions(self):
+        manifest = self.repo / SAMPLE / "azure.yaml"
+        manifest.write_text(
+            MANIFEST.replace("protocol: responses", "protocol: a2a").replace("1.0.0", "0.3.0"),
+            encoding="utf-8",
+        )
+        self.assertIn("require protocol version 1.0", module.check_new_samples(self.repo, [SAMPLE])[0])
+
     def test_contract_schema_errors_fail(self):
         spec = self.fixture_spec()
         spec.parent.mkdir(parents=True)

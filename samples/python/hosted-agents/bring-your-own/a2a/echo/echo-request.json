@@ -1,0 +1,19 @@
+{
+  "jsonrpc": "2.0",
+  "id": "echo-1",
+  "method": "SendMessage",
+  "params": {
+    "message": {
+      "messageId": "echo-message-1",
+      "role": "ROLE_USER",
+      "parts": [
+        {
+          "text": "hello"
+        }
+      ]
+    },
+    "configuration": {
+      "returnImmediately": false
+    }
+  }
+}
