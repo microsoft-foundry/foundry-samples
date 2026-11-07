@@ -1,0 +1,13 @@
+version: 1
+sample:
+  owner: hkunkanoor
+  experiences: [azd, vscode]
+tests:
+  - name: persist-task-across-turns
+    turns:
+      - input: "Add a task titled activity-sample-check."
+      - input: "Show my tasks. Include the exact task titles in your reply as plain text."
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: activity-sample-check
