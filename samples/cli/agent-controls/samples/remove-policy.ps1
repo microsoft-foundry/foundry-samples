@@ -18,7 +18,8 @@ if (-not $policyAccount.Equals($regoAccount, [StringComparison]::OrdinalIgnoreCa
 function Remove-AgentControlResource {
     param([Parameter(Mandatory)][string]$ResourceId)
 
-    $current = Invoke-AgentControlArm -Method GET -ResourceId $ResourceId
+    $current = Invoke-AgentControlArm -Method GET -ResourceId $ResourceId -AcceptNotFound
+    if ($current.StatusCode -eq 404) { return }
     if (-not $current.ETag) { throw "No ETag returned for $ResourceId." }
     $deleted = Invoke-AgentControlArm -Method DELETE -ResourceId $ResourceId `
         -Headers @{ 'If-Match' = $current.ETag }
