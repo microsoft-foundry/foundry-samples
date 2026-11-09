@@ -19,9 +19,10 @@ come from the declared Foundry `web_search` tool rather than the harness-native 
 
 ## Prerequisites
 
-- Azure Developer CLI (`azd`) 1.36.0 or later.
-- The Microsoft Foundry `azd` extension pack. The sample pins `azure.ai.agents` 1.0.0-beta.21
-  and `azure.ai.projects` 1.0.0-beta.14.
+- Azure Developer CLI (`azd`) 1.37.0 or later.
+- The Microsoft Foundry `azd` extension pack. The manifest requires `azure.ai.agents`
+  1.0.0-beta.22 or later and `azure.ai.projects` 1.0.0-beta.15 or later; these are minimum
+  versions, not exact pins.
 - An Azure subscription where you can create Microsoft Foundry resources.
 - The commercial requirements for the Work IQ connections. Connector-backed Microsoft 365 tools
   can require a Microsoft 365 Copilot license for each calling user.
@@ -29,7 +30,7 @@ come from the declared Foundry `web_search` tool rather than the harness-native 
   User** for the developer, Agent runtime identity, and user identities involved in OAuth.
 - Microsoft 365 Mail and Work IQ access for each calling user.
 - Tenant consent for the Work IQ User and Mail permissions required by your organization.
-- The Microsoft Foundry `azd` extension pack. The sample pins `azure.ai.routines` 1.0.0-beta.10,
+- The `azure.ai.routines` extension 1.0.0-beta.10 or later,
   which includes creator dispatch identity.
 
 Work IQ calls run with the signed-in user's identity. Application-only authentication is not
@@ -45,13 +46,21 @@ outside Azure compliance and geographic boundaries. Review the linked terms befo
 
 ## Deploy
 
-From this folder:
+From this folder, install or update the extensions and enable the harness preview in your
+current Bash shell:
 
 ```bash
+azd extension install microsoft.foundry
+azd extension update microsoft.foundry
+export AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS=true
 azd auth login
 azd env new web-research-email-digest-dev --location canadacentral
 azd up
 ```
+
+For PowerShell, replace the `export` line with
+`$env:AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS = "true"`.
+Set this variable again in each new shell or CI job; `azd env set` doesn't enable the preview.
 
 Canada Central is the sample default. Replace `canadacentral` with another supported Foundry region
 when needed. `azd up` prompts for the target subscription when it isn't already configured. It
@@ -87,7 +96,7 @@ An exact address in the user prompt takes precedence. Otherwise, the agent calls
 `GetMyDetails` tool once and sends to the signed-in user's primary email address. It stops without
 sending when the profile result does not contain one unambiguous address.
 
-The pinned `azure.ai.agents` version includes the Copilot harness Conversation fix used by
+The required `azure.ai.agents` minimum includes the Copilot harness Conversation fix used by
 `azd ai agent invoke` and the camelCase harness-toolset authoring contract.
 
 The model deployment uses capacity 50 because a Work IQ turn can require several model/tool
