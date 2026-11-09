@@ -1,0 +1,13 @@
+[project]
+name = "langgraph-branching"
+version = "0.1.0"
+description = "Responses API branching, rewind, and regeneration hosted on Microsoft Foundry."
+requires-python = ">=3.13"
+dependencies = [
+    "langchain-azure-ai[hosting,opentelemetry]==1.3.0",
+    "langchain==1.4.8",
+    "langchain-openai==1.7.3",
+    "httpx==0.28.1",
+    "python-dotenv==1.2.4",
+    "opentelemetry-exporter-otlp-proto-http==1.45.2",
+]

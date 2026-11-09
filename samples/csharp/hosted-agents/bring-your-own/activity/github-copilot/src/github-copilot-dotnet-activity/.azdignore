@@ -1,0 +1,7 @@
+bin/
+obj/
+.env
+.env.*
+.azure/
+appPackage/
+TEAMS_APP_SETUP.md
