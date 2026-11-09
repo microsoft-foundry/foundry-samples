@@ -164,3 +164,4 @@
 
 # Python hosted-agents declarative customer support (issue #799)
 /samples/python/hosted-agents/agent-framework/responses/09-declarative-customer-support/ @TaoChenOSU @alliscode @lindazqli
+/samples/cli/agent-controls/ @microsoft-foundry/agent-controls
