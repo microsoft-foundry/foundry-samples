@@ -25,6 +25,23 @@ def _run(arguments: Sequence[str]) -> subprocess.CompletedProcess[str]:
     )
 
 
+def response_body(body: str) -> str:
+    body = body.lstrip()
+    _, end = json.JSONDecoder().raw_decode(body)
+    footer = body[end:].strip()
+    if footer:
+        notice = (
+            r"(?:WARNING: A new version of extension '[^\r\n]+' is available: [^\r\n]+\r?\n"
+            r"(?:[ \t]+(?:\u2022[ \t]+)?To update(?: all)?: azd extension update[^\r\n]*(?:\r?\n|$))+"
+            r"\s*)*"
+            r"(?:Update available: [^\r\n]+\r?\nTo update, run [^\r\n]+)?"
+        )
+        if not re.fullmatch(notice, footer):
+            raise ValueError("Unexpected output after the A2A JSON-RPC response")
+        print("Separated azd update notice from A2A JSON-RPC evidence", file=sys.stderr)
+    return body[:end]
+
+
 def task_text(body: str, request_id: str) -> str:
     response = json.loads(body)
     if not isinstance(response, dict) or response.get("jsonrpc") != "2.0":
@@ -157,6 +174,7 @@ def invoke_turn(
         elif http_code and http_code not in {"200", "201"}:
             error = f"A2A invoke failed with HTTP {http_code}"
         else:
+            body = response_body(body)
             text = task_text(body, request_id)
             exit_code = 0
     except (ValueError, OSError, subprocess.TimeoutExpired) as exc:

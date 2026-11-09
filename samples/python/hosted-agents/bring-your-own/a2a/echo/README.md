@@ -90,6 +90,21 @@ execution resumes or that cross-user isolation has been independently verified.
 Inspect the JSON-RPC body, not only HTTP 200: an `error` is not a successful echo.
 `--version 1` is the deployed agent version; `--a2a-version 1.0` is the protocol.
 
+### Hosted beta verification
+
+A fresh direct-code deployment with A2A `1.0.0b1` and Core `2.3.1b1` passed
+native `SendMessage`: a completed Task containing exactly `Echo: hello`.
+`GetTask` with the same caller/session returned the identical stored Task,
+including artifacts, history and status. The response's `X-Platform-Server`
+header confirmed both beta SDK versions. This does not establish restart
+recovery or cross-user isolation.
+
+For JSON-RPC `-32603` or a downstream service 400, inspect the deployed version,
+the raw response's SDK header and session console logs; deployment success
+alone does not prove invocation works. Older copies of this sample used alpha
+SDKs: update both `pyproject.toml` and `uv.lock`, redeploy, and invoke the new
+version in a fresh session. Echo requires neither a model nor a Toolbox.
+
 ## Optional local run
 
 From [src/echo-a2a](src/echo-a2a), terminal 1:

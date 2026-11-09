@@ -126,6 +126,27 @@ class A2AInvocationTests(unittest.TestCase):
         self.assertIn("Specialist failed", outcome["approval_error"])
         self.assertEqual(text, "")
 
+    def test_known_azd_update_footer_is_not_part_of_the_server_json(self):
+        footer = (
+            "WARNING: A new version of extension 'Foundry agents (Beta)' is available: "
+            "1.0.0-beta.23 -> 1.0.0\n"
+            "  \u2022 To update: azd extension update azure.ai.agents\n"
+            "  \u2022 To update all: azd extension update --all\n"
+        )
+        outcome, text, raw = self.run_turn(
+            lambda response: json.dumps(response) + footer
+        )
+        self.assertEqual(outcome["turn_exit"], 0)
+        self.assertEqual(text, "Echo: hello")
+        self.assertNotIn("WARNING", raw)
+
+    def test_unrecognized_trailing_output_is_rejected(self):
+        outcome, text, _ = self.run_turn(
+            lambda response: json.dumps(response) + "unexpected error output"
+        )
+        self.assertEqual(outcome["turn_exit"], 1)
+        self.assertEqual(text, "")
+
     def test_failed_pending_and_input_required_tasks_are_rejected(self):
         for state in (
             "TASK_STATE_FAILED",
