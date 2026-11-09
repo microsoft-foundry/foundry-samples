@@ -1,5 +1,0 @@
-.azure/
-.runs/
-**/bin/
-**/obj/
-.env

@@ -3,8 +3,6 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [string] $SdkRoot,
-    [Parameter(Mandatory)]
     [string] $ProjectResourceId,
     [Parameter(Mandatory)]
     [string] $DeploymentDirectory,
@@ -13,11 +11,6 @@ param(
 
 $ErrorActionPreference = "Stop"
 $source = Split-Path $PSScriptRoot -Parent
-$sdk = (Resolve-Path -LiteralPath $SdkRoot).Path
-$sdkProject = Join-Path $sdk "sdk\agentserver\Azure.AI.AgentServer.A2A\src\Azure.AI.AgentServer.A2A.csproj"
-if (-not (Test-Path -LiteralPath $sdkProject)) {
-    throw "SdkRoot must contain the unpublished Azure.AI.AgentServer.A2A project."
-}
 
 $destination = [IO.Path]::GetFullPath($DeploymentDirectory)
 $sourcePrefix = $source.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
@@ -28,11 +21,9 @@ if ($destination.Equals($source, [StringComparison]::OrdinalIgnoreCase) -or
 
 $projectDirectory = Join-Path $destination "echo-a2a-dotnet"
 if (Test-Path -LiteralPath $projectDirectory) {
-    throw "The deployment copy already exists. To redeploy it, set AGENTSERVER_DOTNET_SDK_ROOT, enter '$projectDirectory', and run 'azd deploy echo-a2a-dotnet --no-prompt'."
+    throw "The deployment copy already exists. To redeploy it, enter '$projectDirectory' and run 'azd deploy echo-a2a-dotnet --no-prompt'."
 }
 
-$previousSdkRoot = $env:AGENTSERVER_DOTNET_SDK_ROOT
-$env:AGENTSERVER_DOTNET_SDK_ROOT = $sdk
 New-Item -ItemType Directory -Path $destination -Force | Out-Null
 Push-Location $destination
 try {
@@ -51,5 +42,4 @@ try {
 }
 finally {
     Pop-Location
-    $env:AGENTSERVER_DOTNET_SDK_ROOT = $previousSdkRoot
 }

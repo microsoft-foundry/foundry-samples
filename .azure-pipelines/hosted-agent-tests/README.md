@@ -114,7 +114,10 @@ also checks the published fixtures, including orphan detection. See the
 
 ## Supported protocols
 
-The runner supports `responses` and `invocations`. Other protocols require dedicated
+The runner supports `responses` and `invocations`. Contract validation/planning also accepts native
+`a2a` 1.0.0; execution still needs a transport-specific runner such as the
+native helper proposed in foundry-samples PR #1144 or the sample's .NET clients.
+Other protocols require dedicated
 harnesses:
 
 - `invocations_ws` uses sample-defined, full-duplex WebSocket frames.
@@ -138,7 +141,7 @@ python3 .github/scripts/hosted_agent_test_spec.py validate \
 
 python3 .github/scripts/hosted_agent_test_spec.py plan \
   --spec .azure-pipelines/hosted-agent-tests/<language>/<complete-sample-path>/test-spec.yml \
-  --protocol <responses|invocations> \
+  --protocol <responses|invocations|a2a> \
   --output /tmp/hosted-agent-test-plan.json
 ```
 

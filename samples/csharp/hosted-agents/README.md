@@ -178,7 +178,8 @@ Already built an agent with your own .NET code? The protocol SDKs (`Azure.AI.Age
 
 | Sample | What it shows |
 |--------|--------------|
-| **[Echo and explicit streaming](bring-your-own/a2a/echo/)** | Deterministic native A2A Tasks/artifacts and measured incremental SSE. Development sample built directly against the unpublished .NET Agent Server A2A source; no SDK package publication or LLM is required. |
+| **[Echo and explicit streaming](bring-your-own/a2a/echo/)** | Deterministic completed A2A Tasks, GetTask and measured incremental SSE using published AgentServer alpha packages; no model or Toolbox. |
+| **[Travel planner with web search](bring-your-own/a2a/travel-planner-web-search/)** | Copilot SDK planner discovers native Flight/Hotel agents and saves cited, unverified research with user isolation and plan-version protection. |
 
 **Which approach?** Use the protocol SDKs (`Azure.AI.AgentServer.Responses` / `Azure.AI.AgentServer.Invocations`) — they work with any framework and keep you aligned with the platform contract. The **Core adapter** (`Azure.AI.AgentServer.Core`) is available when you need lower-level control without protocol abstractions. The Custom HTTP sample exists as a reference for what the contract looks like under the hood with no SDK at all.
 

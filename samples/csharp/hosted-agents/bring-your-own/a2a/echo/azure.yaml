@@ -26,7 +26,7 @@ services:
     kind: hosted
     name: echo-a2a-dotnet
     displayName: Echo (.NET, A2A)
-    description: Deterministic native A2A v1 Echo with explicit incremental artifact streaming. Uses the locally built Agent Server A2A library; no model is required.
+    description: Deterministic native A2A v1 Echo with incremental artifact streaming using published AgentServer alpha packages; no model is required.
     protocols:
       - protocol: a2a
         version: 1.0.0

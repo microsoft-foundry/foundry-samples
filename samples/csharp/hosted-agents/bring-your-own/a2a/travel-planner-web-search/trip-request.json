@@ -1,0 +1,17 @@
+{
+  "jsonrpc": "2.0",
+  "id": "travel-1",
+  "method": "SendMessage",
+  "params": {
+    "message": {
+      "role": "user",
+      "messageId": "travel-message-1",
+      "parts": [
+        {
+          "text": "Research a refundable trip from Seattle to London, departing 2027-03-15 and returning 2027-03-19, one traveler, arrive by 2027-03-16T09:00:00+00:00, public office landmark King's Cross station, hotel within 2 km, total budget USD 3500. Save the cited recommendation as unverified; no booking."
+        }
+      ]
+    },
+    "configuration": { "returnImmediately": false }
+  }
+}

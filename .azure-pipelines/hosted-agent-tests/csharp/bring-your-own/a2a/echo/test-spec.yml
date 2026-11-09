@@ -2,8 +2,7 @@ version: 1
 sample:
   owner: hkunkanoor
   experiences: [azd]
-# The shared runner cannot plan A2A yet. The sample's .NET client is the
-# executable A2A/SSE contract; do not plan this as Responses or Invocations.
+# Plan as native A2A; the dedicated .NET client validates Task/artifact output.
 tests:
   - name: deterministic-echo
     turns:
