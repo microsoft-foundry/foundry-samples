@@ -186,7 +186,9 @@ azd ai agent invoke --local "What tools do you have?"
 
 #### Prepare remote dependencies
 
-Complete the external-dependency preparation, initialization, provisioning, managed-identity authorization, and deployment in [Option 1](#option-1-azure-developer-cli-azd) first. For F5 or standalone Python, set `TOOLBOX_ENDPOINT` in `.env` to the versioned endpoint available via `azd env get-value TOOLBOX_AGENT_TOOLS_MCP_ENDPOINT` from the initialized project directory. The VS Code deploy wizard deploys the agent only; use `azd deploy --all` when changing the toolbox or its connections.
+Complete the external-dependency preparation, initialization, provisioning, managed-identity authorization, and deployment in [Option 1](#option-1-azure-developer-cli-azd) first. For VS Code deployment, F5, or standalone Python, set `TOOLBOX_AGENT_TOOLS_MCP_ENDPOINT` in the source directory's `.env` to the versioned endpoint returned by `azd env get-value TOOLBOX_AGENT_TOOLS_MCP_ENDPOINT` from the initialized project directory.
+
+Keep `TOOLBOX_ENDPOINT=${TOOLBOX_AGENT_TOOLS_MCP_ENDPOINT}` unchanged. The deploy wizard resolves the manifest's deployment input from `.env`, while Python dotenv expands the alias for local execution. Hosted deployments inject the runtime `TOOLBOX_ENDPOINT` directly. The VS Code deploy wizard deploys the agent only; use `azd deploy --all` when changing the toolbox or its connections.
 
 #### Run and debug the agent
 
@@ -200,7 +202,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 
 #### Deploy to Foundry
 
-1. Open the Command Palette (`Ctrl+Shift+P`) and run **Foundry Toolkit: Deploy Hosted Agent**. The extension opens a **Deploy Hosted Agent** wizard and reads `agent.yaml` to auto-populate settings.
+1. Open the Command Palette (`Ctrl+Shift+P`) and run **Foundry Toolkit: Deploy Hosted Agent**. The extension opens a **Deploy Hosted Agent** wizard and reads `azure.yaml` to auto-populate settings.
 2. If prompted, complete **Foundry Project Setup** to select subscription and project.
 3. On the **Basics** tab, choose deployment method (**Code** or **Container**) and confirm the agent name.
 4. On **Review + Deploy**, confirm runtime details, pick **CPU and Memory** size, and click **Deploy**.
