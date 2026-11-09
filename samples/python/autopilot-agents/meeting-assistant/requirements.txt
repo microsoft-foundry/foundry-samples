@@ -7,7 +7,7 @@ anyio==4.14.2
 asgiref==3.12.1
 attrs==26.1.0
 azure-ai-agentserver-activity==1.0.0b4
-azure-ai-agentserver-core==2.2.0b1
+azure-ai-agentserver-core==2.3.0b2
 azure-ai-projects==2.5.0
 azure-core==1.41.0
 azure-core-tracing-opentelemetry==1.0.0b13

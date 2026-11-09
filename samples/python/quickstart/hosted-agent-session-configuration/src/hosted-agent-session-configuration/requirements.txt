@@ -1,4 +1,4 @@
-azure-ai-agentserver-responses==2.0.0
+azure-ai-agentserver-responses==2.4.0b2
 azure-ai-projects==2.0.1
 azure-identity==1.25.3
 # httpx is imported by azure-ai-projects but is not pulled in transitively by openai>=3, so pin it explicitly.

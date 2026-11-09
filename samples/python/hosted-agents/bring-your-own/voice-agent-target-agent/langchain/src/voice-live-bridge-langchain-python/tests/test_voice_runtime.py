@@ -217,7 +217,7 @@ def test_barge_in_cancels_and_reconciles_heard_text() -> None:
         receive_type(ws, "response.output_text.delta")
         ws.send_json(
             frame(
-                "barge_in",
+                "user.barge_in",
                 response_id=created["response_id"],
                 heard_text="The part heard.",
             )

@@ -10,7 +10,6 @@ import time
 from typing import Any
 
 from azure.ai.agentserver.invocations.voice import (
-    BargeIn,
     EndCallMode,
     InputTextPart,
     ResponseAccepted,
@@ -23,6 +22,7 @@ from azure.ai.agentserver.invocations.voice import (
     SessionReady,
     SessionRejected,
     SessionStart,
+    UserBargeIn,
     UserMessage,
     UserNoInput,
     UserSpeechStarted,
@@ -78,8 +78,8 @@ class VoiceRuntime:
         async def user_speech_started(session: Session, event: UserSpeechStarted) -> None:
             await self.on_user_speech_started(session, event)
 
-        @app.on_barge_in
-        async def barge_in(session: Session, event: BargeIn) -> None:
+        @app.on_user_barge_in
+        async def barge_in(session: Session, event: UserBargeIn) -> None:
             await self.on_barge_in(session, event)
 
         @app.on_response_accepted
@@ -283,7 +283,7 @@ class VoiceRuntime:
         if self._state_for(session) is not None:
             logger.debug("Caller speech started")
 
-    async def on_barge_in(self, session: Session, event: BargeIn) -> None:
+    async def on_barge_in(self, session: Session, event: UserBargeIn) -> None:
         state = self._state_for(session)
         if state is not None:
             self._coordinator.barge_in(state, event.response_id, event.heard_text)

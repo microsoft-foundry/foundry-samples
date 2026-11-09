@@ -4,9 +4,9 @@ version = "0.1.0"
 description = "A Microsoft Foundry hosted agent for VoiceLive scenarios."
 requires-python = ">=3.12"
 dependencies = [
-    "azure-ai-agentserver-invocations==1.1.0",
+    "azure-ai-agentserver-invocations==1.3.0b1",
     # Keep the 1.0 Invocations SDK on its compatible Core 2.x line.
-    "azure-ai-agentserver-core==2.1.0",
+    "azure-ai-agentserver-core==2.3.0b2",
     "azure-ai-projects==2.0.1",
     "azure-identity==1.25.3",
     "debugpy",
