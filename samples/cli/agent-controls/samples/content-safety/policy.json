@@ -1,0 +1,36 @@
+{
+  "properties": {
+    "format": "ACS",
+    "acs": {
+      "agent_control_specification_version": "0.4.0-alpha.1",
+      "metadata": { "name": "content-safety" },
+      "policies": {
+        "content-safety": { "type": "rego", "query": "data.content_safety.verdict" }
+      },
+      "annotators": {
+        "safety": {
+          "type": "classifier",
+          "classifier": "content_safety",
+          "categories": ["Hate", "SelfHarm", "Sexual", "Violence", "PromptInjection"]
+        }
+      },
+      "intervention_points": {
+        "input": {
+          "policy_target": "$snap.input",
+          "policy_target_kind": "user_input",
+          "policy": { "id": "content-safety" },
+          "annotations": { "safety": { "from": "$snap.input.content" } }
+        },
+        "output": {
+          "policy_target": "$snap.output",
+          "policy_target_kind": "assistant_output",
+          "policy": { "id": "content-safety" },
+          "annotations": { "safety": { "from": "$snap.output.content" } }
+        }
+      }
+    },
+    "acsRegos": [
+      { "regoName": "content-safety" }
+    ]
+  }
+}

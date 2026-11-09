@@ -1,0 +1,30 @@
+{
+  "properties": {
+    "format": "ACS",
+    "acs": {
+      "agent_control_specification_version": "0.4.0-alpha.1",
+      "metadata": { "name": "data-protection" },
+      "policies": {
+        "data-protection": { "type": "rego", "query": "data.data_protection.verdict" }
+      },
+      "annotators": {
+        "privacy": {
+          "type": "classifier",
+          "classifier": "content_safety",
+          "categories": ["PersonallyIdentifiableInformation"]
+        }
+      },
+      "intervention_points": {
+        "output": {
+          "policy_target": "$snap.output",
+          "policy_target_kind": "assistant_output",
+          "policy": { "id": "data-protection" },
+          "annotations": { "privacy": { "from": "$snap.output.content" } }
+        }
+      }
+    },
+    "acsRegos": [
+      { "regoName": "data-protection" }
+    ]
+  }
+}

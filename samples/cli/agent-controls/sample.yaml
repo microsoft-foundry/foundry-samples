@@ -1,0 +1,4 @@
+name: Agent Controls samples
+description: Preview Microsoft Foundry Agent Controls policy templates, management scripts, and a Node.js evaluation client.
+build: "npm --prefix samples ci"
+test: "npm --prefix samples test"
