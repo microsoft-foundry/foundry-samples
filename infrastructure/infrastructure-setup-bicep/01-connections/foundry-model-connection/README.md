@@ -137,6 +137,16 @@ Agent calls consume model quota and can incur charges.
 - A discovery timeout is separate from authentication. This template does not
   fix or extend the model gateway's discovery timeout.
 
+## CI deployment fixture
+
+The root `main.bicepparam` selects `tests/deploy.bicep` for the repository's
+ephemeral deployment check. It provisions disposable source/target accounts
+and a source project, then invokes the **actual** `main.bicep`, including its
+project-identity role assignment. No model deployment or inference quota is
+required: the fixture verifies ARM resources and RBAC, not inference or model
+discovery. The pipeline owns resource-group cleanup. For an existing project,
+deploy `main.bicep` with your own parameters as described above, not the fixture.
+
 ## Cleanup
 
 Delete the sample agent versions, agent, and conversation created by the script

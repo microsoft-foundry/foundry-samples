@@ -105,6 +105,16 @@ If authentication fails, check **both** the gateway's Entra policy/audience and
 its subscription-key requirement. A correct PMI token does not substitute for
 a required key, and a correct key does not substitute for a valid identity.
 
+## CI deployment fixture
+
+The root `main.bicepparam` selects `tests/deploy.bicep` for the repository's
+ephemeral deployment check. It creates a disposable account and project, then
+deploys the **actual** `main.bicep` with a non-secret fixture key and a reserved
+`.invalid` gateway hostname. It verifies ARM creation of the two connections,
+not APIM authentication or inference; no real gateway or model is deployed.
+The pipeline owns resource-group cleanup. Do not use this parameter file for
+an existing project: follow the deployment instructions above instead.
+
 ## Updates and cleanup
 
 The companion name is deterministic for the project and parent name. Redeploying
