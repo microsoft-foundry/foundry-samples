@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "GitHub Copilot Activity agent",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/bin/Debug/net10.0/github-copilot.dll",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        "PORT": "8088",
+        "FOUNDRY_PROJECT_ENDPOINT": "${env:FOUNDRY_PROJECT_ENDPOINT}",
+        "AZURE_AI_MODEL_DEPLOYMENT_NAME": "${env:AZURE_AI_MODEL_DEPLOYMENT_NAME}"
+      }
+    }
+  ]
+}
