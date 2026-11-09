@@ -3,7 +3,7 @@
 This project was built with the microsoft-foundry skill. Before working on or answering questions about foundry agents, read the microsoft-foundry skill first.
 
 This uses the author's approved published AgentServer A2A alpha
-`1.0.0-alpha.20261029.4`. Keep the package pinned and do not use SDK source references.
+`1.0.0-alpha.20261109.2`. Keep the package pinned and do not use SDK source references.
 
 Preserve deterministic Echo, native A2A Task/artifact shapes, and normal requests
 without artificial delay. Paced streaming is opt-in through message metadata.

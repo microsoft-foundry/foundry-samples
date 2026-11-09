@@ -5,6 +5,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Azure.AI.AgentServer.A2A" Version="1.0.0-alpha.20261029.4" />
+    <PackageReference Include="Azure.AI.AgentServer.A2A" Version="1.0.0-alpha.20261109.2" />
   </ItemGroup>
 </Project>

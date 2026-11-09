@@ -1,7 +1,7 @@
 # .NET native A2A travel web-search sample
 
 Read the microsoft-foundry skill before Foundry work.
-Use published AgentServer A2A alpha `1.0.0-alpha.20261029.4`; no SDK source references.
+Use published AgentServer A2A alpha `1.0.0-alpha.20261109.2`; no SDK source references.
 The shared application runs as three separately deployed agents, selected by AGENT_ROLE.
 Keep card-discovered native A2A delegation; never replace it with Toolbox A2A or direct model HTTP.
 Copilot owns the model/tool loop. Only bounded Toolbox web_search is exposed to specialists.

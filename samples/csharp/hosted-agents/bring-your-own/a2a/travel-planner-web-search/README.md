@@ -17,9 +17,9 @@ The .NET counterpart to [samples PR #1144](https://github.com/microsoft-foundry/
   refundable booking, reservation or payment.
 
 Both public .NET A2A samples pin published AgentServer alpha
-**`1.0.0-alpha.20261029.4`**. The sample-local [NuGet.Config](NuGet.Config)
+**`1.0.0-alpha.20261109.2`**. The sample-local [NuGet.Config](NuGet.Config)
 uses the public Azure SDK development feed. No SDK source checkout is required.
-The alpha predates later SDK fixes and is not a stable release.
+The alpha includes SDK fixes through commit `c07c20bf0` and is not a stable release.
 The runtime source folder also includes the feed configuration for independent
 restoration after template initialization copies the application.
 

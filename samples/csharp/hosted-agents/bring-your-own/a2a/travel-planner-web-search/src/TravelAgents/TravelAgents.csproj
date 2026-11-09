@@ -6,7 +6,7 @@
     <RuntimeIdentifier Condition="'$(Configuration)' == 'Release' and '$(RuntimeIdentifier)' == ''">linux-x64</RuntimeIdentifier>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Azure.AI.AgentServer.A2A" Version="1.0.0-alpha.20261029.4" />
+    <PackageReference Include="Azure.AI.AgentServer.A2A" Version="1.0.0-alpha.20261109.2" />
     <PackageReference Include="GitHub.Copilot.SDK" Version="1.0.29" />
   </ItemGroup>
 </Project>

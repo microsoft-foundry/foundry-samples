@@ -3,7 +3,7 @@
 ## What this sample demonstrates
 
 A deterministic native A2A 1.0 agent using published
-`Azure.AI.AgentServer.A2A` **`1.0.0-alpha.20261029.4`**:
+`Azure.AI.AgentServer.A2A` **`1.0.0-alpha.20261109.2`**:
 
 - `SendMessage` returns a completed Task containing exactly `Echo: <input>`.
 - `SendStreamingMessage` emits incremental updates to one artifact.
@@ -12,8 +12,8 @@ A deterministic native A2A 1.0 agent using published
 
 No model, Toolbox, SDK checkout or global NuGet configuration is required.
 The sample-local [NuGet.Config](NuGet.Config) selects the public Azure SDK
-development feed. This alpha was built from SDK commit `6679d88e2`; later PR
-fixes are not included. It is not a stable SDK release.
+development feed. This alpha was built from SDK commit `c07c20bf0` and includes
+the fixes through that commit. It is not a stable SDK release.
 The runtime source folder also carries that feed configuration, so an azd
 copy of only the application can restore independently.
 
