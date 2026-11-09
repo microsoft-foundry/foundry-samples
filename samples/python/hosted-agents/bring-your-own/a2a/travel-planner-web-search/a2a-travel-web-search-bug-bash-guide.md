@@ -68,6 +68,12 @@ already saved, and **not a shared fresh-test fixture**.
 
 ## 1. Check tools, enable A2A and sign in
 
+Use azd **1.37.2+**. For the GitHub template flow, install GitHub CLI and run
+`gh auth login` followed by `gh auth status` before init. The tested extension
+can request GitHub login for public templates despite `--no-prompt`; for
+unattended use, download/clone the sample first and initialize from its local
+manifest instead.
+
 ### Choose the command for your terminal
 
 If your prompt starts with **`PS`**, use **PowerShell**:
@@ -192,6 +198,12 @@ It must belong to your project, end in `/mcp?api-version=v1`, and expose
 `TOOLBOX_ENDPOINT`; the planner does not.
 
 ## 4. Deploy and grant runtime access
+
+Before invoking the planner, complete its Foundry Agent Consumer project grant
+and allow propagation. Protected Card 404s can be wrong endpoints or masked
+authorization failures. Negative auth decisions were observed cached for five
+minutes; after probing too early, wait for propagation/cache expiry before
+retrying. This does not require extra routine grants to specialist identities.
 
 Deploy Flight and Hotel first:
 
@@ -490,18 +502,28 @@ directly to bypass plan versions, history and research-refresh safeguards.
 Delete only agents you created, after saving evidence:
 
 ```text
-azd ai agent delete <YOUR-PLANNER-NAME>
-azd ai agent delete <YOUR-FLIGHT-NAME>
-azd ai agent delete <YOUR-HOTEL-NAME>
+azd ai agent delete planner --force
+azd ai agent delete flights --force
+azd ai agent delete hotels --force
 ```
 
 **Filled example - disposable names, not our reference deployment:**
 
 ```text
-azd ai agent delete travel-web-planner-youralias-01
-azd ai agent delete travel-web-flights-youralias-01
-azd ai agent delete travel-web-hotels-youralias-01
+azd ai agent delete planner --force
+azd ai agent delete flights --force
+azd ai agent delete hotels --force
 ```
+
+Run these from your initialized project and verify the service keys resolve to
+your own agents first. `--force` terminates active sessions and deletes all
+versions; do not delete shared agents.
+
+Failed research returns `TASK_STATE_FAILED`, an actual Task ID and partial
+receipts, not a completed recommendation. Inspect named raw artifacts when CLI
+default output concatenates them. A direct-code ACR warning does not require
+creating an ACR, and stale datastore help is not proof that caller-isolated
+access is universally unavailable.
 
 Do not run `azd down` on a shared project or delete shared models, toolboxes,
 state stores or role assignments. Coordinate any toolbox/access cleanup with the owner.

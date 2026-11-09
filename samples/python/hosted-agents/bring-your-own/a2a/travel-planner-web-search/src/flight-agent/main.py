@@ -55,12 +55,16 @@ class FlightExecutor(AgentExecutor):
         updater = TaskUpdater(event_queue, task.id, task.context_id)
         await updater.start_work()
         try:
-            answer, searches = await ask(INSTRUCTIONS, get_message_text(context.message))
+            answer, searches = await ask(
+                INSTRUCTIONS, get_message_text(context.message)
+            )
             await updater.add_artifact(
                 parts=[new_text_part(answer, media_type="text/plain")]
             )
             await updater.add_artifact(
-                parts=[new_text_part(json.dumps(searches), media_type="application/json")],
+                parts=[
+                    new_text_part(json.dumps(searches), media_type="application/json")
+                ],
                 name="web-search",
             )
             await updater.complete()
@@ -76,7 +80,6 @@ class FlightExecutor(AgentExecutor):
                     role=Role.ROLE_AGENT,
                 )
             )
-            raise
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         await TaskUpdater(event_queue, context.task_id, context.context_id).cancel()
@@ -87,7 +90,7 @@ if __name__ == "__main__":
     config = AgentConfig.from_env()
     card = AgentCard(
         name="Flight Agent",
-        description="Copilot SDK flight research specialist using cited Toolbox web search; fares and availability may remain unverified.",
+        description="Copilot SDK Flight Agent researches public flights through Toolbox web search, returning citations and unverified fare and refundability warnings.",
         version="1.0.0",
         capabilities=AgentCapabilities(),
         default_input_modes=["text/plain"],
@@ -103,8 +106,8 @@ if __name__ == "__main__":
             AgentSkill(
                 id="flights",
                 name="Flight Agent",
-                description="Research public flight options for complete trip requirements; return source URLs, uncertainties and any date-specific fare evidence.",
-                tags=["travel", "flights"],
+                description="Send route, travel dates, arrival deadline, traveler count, budget and refundability for cited flight research, not a guaranteed live quote.",
+                tags=["web-travel-research", "flights"],
             )
         ],
     )

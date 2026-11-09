@@ -43,6 +43,11 @@ is required.
 
 ## Deploy and invoke
 
+For GitHub templates, install GitHub CLI and run `gh auth login` followed by
+`gh auth status` first. The tested extension can start GitHub login for public
+templates despite `--no-prompt`. For unattended execution, download/clone the
+sample and use its local manifest instead.
+
 From a new empty deployment folder:
 
 ```powershell
@@ -134,8 +139,11 @@ in-memory Tasks.
 Delete only your uniquely named deployed agent:
 
 ```powershell
-azd ai agent delete a2a-echo-youralias-01
+azd ai agent delete echo --force
 ```
+
+Run from the initialized project and verify that service `echo` points to your
+agent. `--force` terminates active sessions and deletes all agent versions.
 
 Do not delete a shared project/model or run `azd down` against one.
 There are no sample test files or test client.

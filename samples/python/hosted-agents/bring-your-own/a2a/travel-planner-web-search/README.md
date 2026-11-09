@@ -108,6 +108,11 @@ All three runtimes pin the November 5, 2026 public PyPI beta releases:
 
 ## Prerequisites
 
+For GitHub templates, install GitHub CLI, run `gh auth login` and verify with
+`gh auth status` before init. The tested extension can request authentication
+for public templates even with `--no-prompt`. For unattended use, download/clone
+the public sample first and initialize from its local manifest.
+
 - An existing Foundry project and a deployed **GPT-5.4-mini** model. The manifest
   declares version `2026-03-17`, Global Standard capacity `100` and selects it
   explicitly for all three agents. Model calls and web searches incur charges.
@@ -261,6 +266,11 @@ az role assignment create --assignee-object-id "<PLANNER-INSTANCE-PRINCIPAL-ID>"
 
 Use the same project ARM ID passed to init, not the HTTPS endpoint. This is a
 project-wide runtime grant: review it with the owner and allow propagation.
+Do not invoke before this grant. Card 404s can indicate an incorrect endpoint
+or masked authorization failure. Negative authorization checks were observed
+cached for five minutes during the bug bash; after an early failed probe, allow
+propagation/cache expiry before retrying. This is not a universal TTL guarantee.
+No additional routine specialist-identity grants are required in the tested setup.
 It lets the planner discover protected specialist Cards and invoke their agents.
 No role-only change requires redeployment. If you change a specialist endpoint,
 set its environment value, redeploy the planner and invoke its newly reported version.
@@ -353,6 +363,17 @@ The earlier hosted-run evidence predates this dependency update.
 
 ## Troubleshooting
 
+- **Failed research:** inspect `TASK_STATE_FAILED`, its message and Task ID.
+  Partial `trip-state` and successful `specialist-calls` receipts are retained;
+  `specialist-failures` separately records failed attempts. A successful retry
+  clears only its matching outstanding failure. Never treat a failed Task as a
+  completed recommendation; read the saved pending plan before refreshing.
+- **CLI output:** default mode can concatenate artifacts without labels; inspect
+  raw artifact names instead. Datastore help may be stale. Direct code deploy can
+  emit an irrelevant ACR warning; do not create an ACR to silence it. Verify the
+  installed extension version after an update error, since Windows file-lock
+  cleanup failures can be mislabeled as network errors.
+
 - **Toolbox 401/403 or protected Card 404:** check the relevant instance identity's
   project runtime role, token scope `https://ai.azure.com/.default` and RBAC
   propagation. Never forward the incoming Authorization header.
@@ -373,10 +394,13 @@ The earlier hosted-run evidence predates this dependency update.
 After saving results, delete only your own agents:
 
 ```text
-azd ai agent delete travel-web-planner
-azd ai agent delete travel-web-flights
-azd ai agent delete travel-web-hotels
+azd ai agent delete planner --force
+azd ai agent delete flights --force
+azd ai agent delete hotels --force
 ```
+
+Run from your initialized project after checking that these service keys map to
+your own agents. `--force` terminates active sessions and deletes every version.
 
 Do not run `azd down` against a shared project or delete a shared model, toolbox
 or state store. Review toolbox/role cleanup with the owner.

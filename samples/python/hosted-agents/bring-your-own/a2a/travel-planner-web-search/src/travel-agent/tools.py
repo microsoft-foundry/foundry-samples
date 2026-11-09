@@ -18,6 +18,9 @@ def build_tools(
     agents: list[tuple[AgentCard, Client]],
     calls: list[dict[str, str]],
     failures: list[str],
+    *,
+    research_context: dict[str, str],
+    failed_calls: list[dict[str, str]] | None = None,
 ) -> list[Tool]:
     request_context = context.get_current()
     request_span = trace.get_current_span(request_context).get_span_context()
@@ -26,6 +29,11 @@ def build_tools(
         async def handler(invocation: ToolInvocation) -> ToolResult:
             started = perf_counter()
             try:
+                binding = dict(research_context)
+                if not binding:
+                    raise ValueError(
+                        "Read or create a plan before consulting specialists"
+                    )
                 arguments = invocation.arguments
                 if isinstance(arguments, str):
                     arguments = json.loads(arguments)
@@ -53,9 +61,11 @@ def build_tools(
                         card.name,
                         name,
                         invocation.tool_call_id,
-                        "missing_context"
-                        if not callback_span.is_valid
-                        else "different_trace",
+                        (
+                            "missing_context"
+                            if not callback_span.is_valid
+                            else "different_trace"
+                        ),
                         request_span.trace_id,
                         callback_span.trace_id,
                     )
@@ -96,7 +106,8 @@ def build_tools(
                             f"{card.name} returned no Task ID or answer artifact"
                         )
                     result = {"agent": card.name, "task_id": task.id, "answer": answer}
-                    calls.append({"tool": name, **result})
+                    calls.append({"tool": name, **result, **binding})
+                    failures[:] = [failure for failure in failures if failure != name]
                     logger.info(
                         "A2A_DELEGATION_COMPLETED agent=%s task_id=%s state=COMPLETED "
                         "tool_call_id=%s elapsed_ms=%.1f trace_id=%032x",
@@ -114,6 +125,16 @@ def build_tools(
                     context.detach(token)
             except Exception as error:
                 failures.append(name)
+                if failed_calls is not None:
+                    failed_calls.append(
+                        {
+                            "tool": name,
+                            "agent": card.name,
+                            "tool_call_id": invocation.tool_call_id,
+                            "status": "failed",
+                            "error_type": type(error).__name__,
+                        }
+                    )
                 logger.error(
                     "A2A_DELEGATION_FAILED agent=%s method=SendMessage tool_call_id=%s "
                     "error_type=%s elapsed_ms=%.1f trace_id=%032x",
