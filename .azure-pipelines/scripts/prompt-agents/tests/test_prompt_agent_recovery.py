@@ -1,5 +1,6 @@
 """Exercise the real recovery shell with isolated azd/git stubs, never Azure."""
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -19,8 +20,9 @@ ENDPOINT = "https://test.invalid/api/projects/test"
 MODEL = "borrowed-model"
 NAME = "ci-prompt-" + "a" * 32
 TOOLBOX = "ci-e2e-tb-" + "a" * 32
+TOOLBOX_ENDPOINT = f"{ENDPOINT}/toolboxes/{TOOLBOX}/versions/3/mcp?api-version=v1"
 SKILL = "ci-e2e-sk-" + "a" * 32
-CONN = "ci-e2e-tb-aaaaaaaaaa-12345678-mcp"
+CONN = f"ci-e2e-tb-aaaaaaaaaa-{hashlib.sha256(TOOLBOX_ENDPOINT.encode('utf-8')).hexdigest()[:8]}-mcp"
 SERVICE = "chat-agent"
 
 FAKE_CLI = r'''
@@ -81,8 +83,19 @@ else:
         state["skill_deleted"] = True
     elif args[:3] == ["ai", "connection", "list"]:
         assert args == ["ai", "connection", "list", "--project-endpoint", state["endpoint"], "--output", "json", "--no-prompt"], args
-        names = ["unowned-conn"] + ([] if state["connection_deleted"] else [state["connection"]])
-        print(json.dumps([{"name": name} for name in names]))
+        if state["connection_deleted"] and state.get("connection_null"):
+            print("null")
+        else:
+            names = ["unowned-conn"] + ([] if state["connection_deleted"] else [state["connection"]])
+            print(json.dumps([{"name": name} for name in names]))
+    elif args[:3] == ["ai", "connection", "show"]:
+        assert args == ["ai", "connection", "show", state["connection"], "--project-endpoint", state["endpoint"],
+                        "--output", "json", "--no-prompt"], args
+        print(json.dumps({
+            "name": state["connection"], "target": state["toolbox_endpoint"],
+            "kind": "RemoteTool", "authType": "UserEntraToken",
+            **state.get("connection_changes", {}),
+        }))
     elif args[:3] == ["ai", "connection", "delete"]:
         assert args == ["ai", "connection", "delete", state["connection"], "--project-endpoint", state["endpoint"],
                         "--force", "--no-prompt"], args
@@ -152,15 +165,17 @@ class RecoveryTests(unittest.TestCase):
     def read_json(self, name):
         return json.loads((self.artifacts / name).read_text(encoding="utf-8"))
 
-    def run_recovery(self, *, code=0, ledger=True, auth_failure=False):
+    def run_recovery(self, *, code=0, ledger=True, auth_failure=False, connection_null=False, connection_changes=None):
         if ledger:
             (self.artifacts / "ownership.json").write_text(json.dumps(self.ownership), encoding="utf-8")
         (self.artifacts / "context.json").write_text(json.dumps(self.context), encoding="utf-8")
         self.state_path.write_text(json.dumps({"project": str(self.project), "project_id": PROJECT_ID,
-            "endpoint": ENDPOINT, "name": NAME, "toolbox": TOOLBOX, "skill": SKILL, "connection": CONN,
+            "endpoint": ENDPOINT, "name": NAME, "toolbox": TOOLBOX, "toolbox_endpoint": TOOLBOX_ENDPOINT,
+            "skill": SKILL, "connection": CONN,
             "commands": [], "pinned": {},
             "agent_deleted": False, "toolbox_deleted": False, "skill_deleted": False,
-            "connection_deleted": False, "auth_failure": auth_failure}), encoding="utf-8")
+            "connection_deleted": False, "auth_failure": auth_failure,
+            "connection_null": connection_null, "connection_changes": connection_changes or {}}), encoding="utf-8")
         env = {**os.environ, "PATH": str(self.bin) + os.pathsep + self.tool_path,
                "PYTHON": Path(sys.executable).as_posix(), "PYTHONUTF8": "1", "PYTHONDONTWRITEBYTECODE": "1",
                "RECOVERY_TEST_STATE": self.state_path.as_posix(), "TEST_BIN": self.bin.as_posix(),
@@ -194,21 +209,49 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(self.read_json("recovery-result.json")["cleanup_status"], "complete")
 
     def test_pending_resources_clean_in_order_without_upgrading_result(self):
-        self.ownership.update(connection_name=CONN, connection_deployment_attempted=True)
-        self.context["connection_name"] = CONN
+        self.ownership.update(toolbox_endpoint=TOOLBOX_ENDPOINT, connection_name=CONN, connection_deployment_attempted=True)
+        self.context.update(toolbox_endpoint=TOOLBOX_ENDPOINT, connection_name=CONN)
         (self.artifacts / "result.json").write_text('{"status":"failed","evaluation_exit_code":1}', encoding="utf-8")
         before = (self.project / "azure.yaml").read_bytes()
-        self.run_recovery()
+        self.run_recovery(connection_null=True)
         operations = [cmd[3:6] for cmd in self.state["commands"] if cmd[3] == "ai"]
         self.assertEqual(operations, [["ai", "agent", "show"], ["ai", "agent", "delete"],
                                       ["ai", "agent", "show"], ["ai", "connection", "list"],
-                                      ["ai", "connection", "delete"], ["ai", "connection", "list"],
+                                      ["ai", "connection", "show"], ["ai", "connection", "delete"],
+                                      ["ai", "connection", "list"],
                                       ["ai", "toolbox", "list"], ["ai", "toolbox", "delete"],
                                       ["ai", "toolbox", "list"]])
         self.assertEqual(self.read_json("ownership.json")["cleanup"], {NAME: "absent", CONN: "absent", TOOLBOX: "absent"})
         self.assertEqual(self.read_json("result.json")["status"], "failed")
         self.assertEqual(self.read_json("result.json")["evaluation_exit_code"], 1)
         self.assertEqual((self.project / "azure.yaml").read_bytes(), before)
+
+    def test_unowned_connection_digest_or_target_refuses_deletion(self):
+        self.ownership.update(
+            deployment_attempted=False, toolbox_endpoint="", connection_name="",
+            connection_deployment_attempted=False, cleanup={TOOLBOX: "unverified"},
+        )
+        self.context.update(toolbox_endpoint="", connection_name="")
+        self.run_recovery()
+        self.assertEqual(
+            [cmd[3:6] for cmd in self.state["commands"] if cmd[3] == "ai"],
+            [["ai", "toolbox", "list"], ["ai", "toolbox", "delete"], ["ai", "toolbox", "list"]],
+        )
+        self.assertEqual(self.read_json("ownership.json")["cleanup"], {TOOLBOX: "absent"})
+        bad_conn = "ci-e2e-tb-aaaaaaaaaa-00000000-mcp"
+        self.ownership.update(
+            deployment_attempted=True, toolbox_endpoint=TOOLBOX_ENDPOINT,
+            connection_name=bad_conn, connection_deployment_attempted=True, cleanup={},
+        )
+        self.context.update(toolbox_endpoint=TOOLBOX_ENDPOINT, connection_name=bad_conn)
+        self.run_recovery(code=1)
+        self.assertEqual(self.state["commands"], [])
+        self.assertFalse(self.read_json("recovery-result.json")["ownership_validated"])
+        self.ownership.update(connection_name=CONN)
+        self.context.update(connection_name=CONN)
+        self.run_recovery(code=1, connection_changes={"target": "https://other.invalid/mcp"})
+        self.assertFalse(self.state["connection_deleted"])
+        self.assertEqual(self.read_json("ownership.json")["cleanup"], {NAME: "absent", CONN: "unverified", TOOLBOX: "absent"})
 
     def test_pending_skill_cleans_in_order(self):
         manifest = {"name": "recovery-skill", "services": {

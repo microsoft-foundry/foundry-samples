@@ -176,10 +176,20 @@ elif is_skill:
 elif is_connection:
     if operation == "list":
         assert argv == ["azd", "ai", "connection", "list", "--project-endpoint", config["endpoint"], "--output", "json", "--no-prompt"], argv
+        mode = config.get("connection_cleanup" if state["connection_deleted"] else "connection_preflight", "absent")
         names = ["unowned-conn"]
-        if state["deployed"] and not state["connection_deleted"]:
+        if mode == "collision" or state["deployed"] and not state["connection_deleted"]:
             names.append(state["connection"].upper())
-        stdout = json.dumps([{"name": name} for name in names])
+        stdout = "null\n" if mode == "null" else json.dumps([{"name": name} for name in names])
+    elif operation == "show":
+        assert argv == ["azd", "ai", "connection", "show", state["connection"], "--project-endpoint", config["endpoint"], "--output", "json", "--no-prompt"], argv
+        assert state["deployed"]
+        conn_doc = {
+            "name": state["connection"], "target": state["toolbox_endpoint"],
+            "kind": "RemoteTool", "authType": "UserEntraToken",
+        }
+        conn_doc.update(config.get("connection_changes", {}))
+        stdout = json.dumps(conn_doc)
     elif operation == "delete":
         assert argv == ["azd", "ai", "connection", "delete", state["connection"], "--project-endpoint", config["endpoint"], "--force", "--no-prompt"], argv
         assert state["deployed"] and state["deleted"]
@@ -566,17 +576,36 @@ class PromptShellTests(unittest.TestCase):
 
     def test_managed_toolbox_deploy_failure_cleans_only_toolbox(self):
         self.configure(managed=True)
-        self.config["fail_operation"] = "toolbox_deploy"
+        self.config["fail_operation"] = "toolbox_show"
         self.run_agent(passed=False)
         self.assertFalse(self.state["deployed"])
         self.assertEqual(self.operations("delete"), [])
         self.assertTrue(self.state["toolbox_deleted"])
         self.assertEqual(self.result["cleanup"], {self.state["toolbox"]: "absent"})
+        for doc in (self.read_json("ownership.json"), self.read_json("context.json")):
+            self.assertEqual(doc["toolbox_endpoint"], "")
+            self.assertEqual(doc["connection_name"], "")
+        self.assertFalse(self.read_json("ownership.json")["connection_deployment_attempted"])
+
+    def test_managed_connection_preflight_collision_cleans_only_toolbox(self):
+        self.configure(managed=True)
+        self.config["connection_preflight"] = "collision"
+        self.assertIn("connection name is unused", self.run_agent(passed=False).stderr)
+        self.assertFalse(self.state["deployed"])
+        self.assertEqual(self.operations("delete"), [])
+        self.assertEqual(self.operations("delete", "connection"), [])
+        self.assertTrue(self.state["toolbox_deleted"])
+        self.assertEqual(self.result["cleanup"], {self.state["toolbox"]: "absent"})
+        for doc in (self.read_json("ownership.json"), self.read_json("context.json")):
+            self.assertEqual(doc["toolbox_endpoint"], "")
+            self.assertEqual(doc["connection_name"], "")
+        self.assertFalse(self.read_json("ownership.json")["connection_deployment_attempted"])
 
     def test_managed_wrong_attachment_cleans_without_invoking(self):
         self.configure(managed=True)
-        self.config["mcp_changes"] = {"server_url": "https://other.invalid/mcp"}
-        self.assertIn("MCP endpoint", self.run_agent(passed=False).stderr)
+        self.config["connection_changes"] = {"target": "https://other.invalid/mcp"}
+        self.config["connection_cleanup"] = "null"
+        self.assertIn("connection show returned", self.run_agent(passed=False).stderr)
         self.assertEqual(self.operations("invoke"), [])
         self.assert_cleaned()
 

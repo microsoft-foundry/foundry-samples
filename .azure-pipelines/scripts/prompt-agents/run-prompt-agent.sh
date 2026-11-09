@@ -64,6 +64,7 @@ env_key=$(jq -r .service_env_key "$context")
 account=$(jq -r .account_name "$context")
 toolbox=$(jq -r .toolbox_name "$context")
 skill=$(jq -r .skill_name "$context")
+toolbox_endpoint=
 connection=
 deployed=false
 toolbox_deployed=false
@@ -80,11 +81,12 @@ last_stdout= last_stderr=
 
 save_ownership() {
   jq --argjson attempted "$deployed" --arg status "$cleanup_status" --arg name "$name" \
-    --argjson toolbox_attempted "$toolbox_deployed" --arg toolbox "$toolbox" --arg toolbox_status "$toolbox_cleanup_status" \
+    --argjson toolbox_attempted "$toolbox_deployed" --arg toolbox "$toolbox" --arg toolbox_endpoint "$toolbox_endpoint" --arg toolbox_status "$toolbox_cleanup_status" \
     --argjson skill_attempted "$skill_deployed" --arg skill "$skill" --arg skill_status "$skill_cleanup_status" \
     --argjson connection_attempted "$connection_deployed" --arg connection "$connection" --arg connection_status "$connection_cleanup_status" '
     .deployment_attempted = $attempted |
     .toolbox_deployment_attempted = $toolbox_attempted |
+    .toolbox_endpoint = $toolbox_endpoint |
     .skill_deployment_attempted = $skill_attempted |
     .connection_name = $connection |
     .connection_deployment_attempted = $connection_attempted |
@@ -266,13 +268,19 @@ if [ -n "$toolbox" ]; then
   toolbox_env_key=${toolbox//-/_}
   toolbox_env_key=${toolbox_env_key^^}
   run_command "$command_timeout" checked azd env get-value "TOOLBOX_${toolbox_env_key}_MCP_ENDPOINT"
-  toolbox_endpoint=$(tr -d '\r\n' < "$last_stdout")
+  candidate_endpoint=$(tr -d '\r\n' < "$last_stdout")
   run_command "$command_timeout" checked azd ai toolbox show "$toolbox" --project-endpoint "$project_endpoint" --output json --no-prompt
   cp "$last_stdout" "$artifacts/toolbox.json"
-  connection=$("$python" "$helper" verify-toolbox --metadata "$(native_path "$artifacts/toolbox.json")" --context "$context" --endpoint "$toolbox_endpoint" | tr -d '\r\n')
-  jq --arg conn "$connection" '.connection_name = $conn' "$context" > "$work/context.json" &&
-    cp "$work/context.json" "$artifacts/context.json"
-  verify_options=(--toolbox-metadata "$(native_path "$artifacts/toolbox.json")")
+  candidate_connection=$("$python" "$helper" verify-toolbox --metadata "$(native_path "$artifacts/toolbox.json")" --context "$context" --endpoint "$candidate_endpoint" | tr -d '\r\n')
+  jq --arg conn "$candidate_connection" --arg ep "$candidate_endpoint" '.connection_name = $conn | .toolbox_endpoint = $ep' "$context" > "$work/context.json"
+  run_command "$command_timeout" checked azd ai connection list --project-endpoint "$project_endpoint" --output json --no-prompt
+  "$python" "$helper" connection-absent --metadata "$(native_path "$last_stdout")" --context "$(native_path "$work/context.json")" || {
+    echo "cannot confirm generated connection name is unused; refusing deployment" >&2; exit 1;
+  }
+  cp "$work/context.json" "$artifacts/context.json"
+  toolbox_endpoint=$candidate_endpoint
+  connection=$candidate_connection
+  verify_options=(--toolbox-metadata "$(native_path "$artifacts/toolbox.json")" --connection-metadata "$(native_path "$artifacts/connection.json")")
 fi
 if [ -n "$skill" ]; then
   run_command "$command_timeout" checked azd ai skill list --project-endpoint "$project_endpoint" --output json --no-prompt
@@ -295,6 +303,10 @@ if [ -n "$connection" ]; then connection_deployed=true; fi
 deployed=true
 save_ownership
 run_command "$command_timeout" checked azd deploy "$service" --no-prompt --timeout "$command_timeout"
+if [ -n "$connection" ]; then
+  run_command "$command_timeout" checked azd ai connection show "$connection" --project-endpoint "$project_endpoint" --output json --no-prompt
+  cp "$last_stdout" "$artifacts/connection.json"
+fi
 run_command "$command_timeout" checked azd ai agent show "$service" --output json --no-prompt
 cp "$last_stdout" "$artifacts/agent.json"
 "$python" "$helper" verify-deployed --metadata "$(native_path "$artifacts/agent.json")" --context "$context" --model-deployment "$model" "${verify_options[@]}"

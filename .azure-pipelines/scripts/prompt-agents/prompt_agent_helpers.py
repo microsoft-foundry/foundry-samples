@@ -7,6 +7,7 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -67,6 +68,36 @@ def toolbox_connection_name(toolbox_name: str, version: str, endpoint: str) -> s
     digest = hashlib.sha256(endpoint.encode("utf-8")).hexdigest()[:8]
     prefix = re.sub(r"[^A-Za-z0-9_-]", "-", f"{toolbox_name}-v{version}").lstrip("-_")[:20]
     return f"{prefix}-{digest}-mcp"
+
+
+def _validate_project_endpoint(context: dict) -> str:
+    project_endpoint = context.get("project_endpoint")
+    if not isinstance(project_endpoint, str):
+        raise LifecycleError("context must contain the project endpoint")
+    project = urlsplit(project_endpoint)
+    if (project.scheme != "https" or not project.hostname or project.query or project.fragment
+            or project.username is not None or any(c.isspace() for c in project_endpoint)):
+        raise LifecycleError("context project endpoint must be an HTTPS URL without credentials/query/fragment")
+    return project_endpoint.rstrip("/")
+
+
+def _expected_connection_name(context: dict) -> tuple[str, str]:
+    name = owned_toolbox_name(context)
+    project_endpoint = _validate_project_endpoint(context)
+    toolbox_endpoint = context.get("toolbox_endpoint")
+    connection_name = context.get("connection_name")
+    prefix = project_endpoint + "/toolboxes/" + quote(name, safe="") + "/versions/"
+    suffix = "/mcp?api-version=v1"
+    if (not isinstance(toolbox_endpoint, str) or not toolbox_endpoint.startswith(prefix)
+            or not toolbox_endpoint.endswith(suffix)):
+        raise LifecycleError("context must contain the owned toolbox MCP endpoint")
+    version = toolbox_endpoint[len(prefix):-len(suffix)]
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", version):
+        raise LifecycleError("context toolbox endpoint must contain a valid toolbox version")
+    expected = toolbox_connection_name(name, version, toolbox_endpoint)
+    if not isinstance(connection_name, str) or connection_name != expected:
+        raise LifecycleError("context must identify the owned toolbox connection")
+    return expected, toolbox_endpoint
 
 
 def _extract_skill_frontmatter(content: str) -> tuple[str, str]:
@@ -202,17 +233,27 @@ def validate_manifest(document: dict, service_key: str) -> str:
     return projects[0]
 
 
-def _rewrite_skill_bundle(source_dir: Path, original_skill: str, owned_skill: str) -> None:
-    skills_dir = source_dir / "skills"
+def _validate_source_skill_bundle(sample_dir: Path, original_skill: str) -> tuple[dict, str]:
+    if sample_dir.is_symlink() or not sample_dir.is_dir():
+        raise LifecycleError("sample directory must be a real directory")
+    skills_dir = sample_dir / "skills"
+    if skills_dir.is_symlink() or not skills_dir.is_dir():
+        raise LifecycleError("skill archive directory is missing or is a symlink")
+    skills_root = skills_dir.resolve()
+    for root, dirs, files in os.walk(skills_dir, followlinks=False):
+        root_path = Path(root)
+        for item in (*dirs, *files):
+            entry = root_path / item
+            if entry.is_symlink() or not (entry.is_file() or entry.is_dir()):
+                raise LifecycleError("skill bundle cannot contain symlinks or special files")
+            if not entry.resolve().is_relative_to(skills_root):
+                raise LifecycleError("skill bundle entry resolves outside skills directory")
     original_dir = skills_dir / original_skill
-    owned_dir = skills_dir / owned_skill
-    if not original_dir.is_dir() or owned_dir.exists():
-        raise LifecycleError("skill archive directory is missing or conflicts with owned skill directory")
     entries = [entry for entry in skills_dir.iterdir() if not entry.name.startswith(".")]
-    if entries != [original_dir]:
+    if entries != [original_dir] or not original_dir.is_dir() or original_dir.is_symlink():
         raise LifecycleError("skills directory must contain only the declared skill bundle")
     skill_md = original_dir / "SKILL.md"
-    if not skill_md.is_file() or skill_md.is_symlink():
+    if skill_md.is_symlink() or not skill_md.is_file():
         raise LifecycleError("skill archive directory must contain a regular SKILL.md file")
     front, body = _extract_skill_frontmatter(skill_md.read_text(encoding="utf-8"))
     if not body.strip():
@@ -222,6 +263,17 @@ def _rewrite_skill_bundle(source_dir: Path, original_skill: str, owned_skill: st
         raise LifecycleError("SKILL.md front matter must declare a nonempty description")
     if metadata.get("name", original_skill) != original_skill:
         raise LifecycleError("SKILL.md front matter name must match the skill service key")
+    return metadata, body
+
+
+def _rewrite_skill_bundle(source_dir: Path, original_skill: str, owned_skill: str) -> None:
+    metadata, body = _validate_source_skill_bundle(source_dir, original_skill)
+    skills_dir = source_dir / "skills"
+    original_dir = skills_dir / original_skill
+    owned_dir = skills_dir / owned_skill
+    if owned_dir.exists() or owned_dir.is_symlink():
+        raise LifecycleError("skill archive directory is missing or conflicts with owned skill directory")
+    skill_md = original_dir / "SKILL.md"
     metadata["name"] = owned_skill
     skill_md.write_text(
         "---\n" + yaml.safe_dump(metadata, sort_keys=False).strip() + "\n---\n" + body,
@@ -267,6 +319,7 @@ def prepare_manifest(repo: Path, sample: Path, model: str, name: str) -> tuple[d
                     tool["server_label"] = toolbox_name
         else:
             original_skill = skills[0]
+            _validate_source_skill_bundle(sample, original_skill)
             skill_name = owned_skill_name({
                 "execution_profile": "managed", "agent_name": name,
                 "skill_name": "ci-e2e-sk-" + name.removeprefix("ci-prompt-"),
@@ -348,7 +401,7 @@ def prepare(args) -> None:
     source = work / "input"
     if source.exists() or artifacts.is_relative_to(source):
         raise LifecycleError("work/input must be new and separate from artifacts")
-    shutil.copytree(sample, source, ignore=shutil.ignore_patterns(
+    shutil.copytree(sample, source, symlinks=True, ignore=shutil.ignore_patterns(
         ".azure", ".env", ".env.*", ".git", ".venv", "__pycache__",
     ))
     if skill_name:
@@ -365,13 +418,14 @@ def prepare(args) -> None:
         "account_name": args.project_id.split("/")[-3],
         "execution_profile": profile,
         "toolbox_name": toolbox_name,
+        "toolbox_endpoint": "",
         "skill_name": skill_name,
         "connection_name": "",
         "project_endpoint": args.project_endpoint,
     })
     write_json(artifacts / "ownership.json", {
         "agent_name": name, "agent_service": service_key,
-        "toolbox_name": toolbox_name, "toolbox_deployment_attempted": False,
+        "toolbox_name": toolbox_name, "toolbox_endpoint": "", "toolbox_deployment_attempted": False,
         "skill_name": skill_name, "skill_deployment_attempted": False,
         "connection_name": "", "connection_deployment_attempted": False,
         "project_id": args.project_id, "project_endpoint": args.project_endpoint,
@@ -395,27 +449,69 @@ def verify_adopted(manifest: Path, context: dict, model_deployment: str) -> None
     if not isinstance(document, dict):
         raise LifecycleError("adopted manifest must be a mapping")
     validate_manifest(document, context["agent_service"])
-    agent = document["services"][context["agent_service"]]
+    services = document["services"]
+    agent = services[context["agent_service"]]
     profile = execution_profile(agent)
     if profile != context.get("execution_profile", "prompt"):
         raise LifecycleError("init changed the requested execution profile")
+    has_toolbox = bool(context.get("toolbox_name"))
+    has_skill = bool(context.get("skill_name"))
     if profile == "managed":
-        if context.get("toolbox_name"):
+        if has_toolbox == has_skill:
+            raise LifecycleError("managed context must identify an owned toolbox or skill")
+        if has_toolbox:
+            if context.get("skill_name", "") != "":
+                raise LifecycleError("managed toolbox context cannot declare a skill")
             expected_tb = owned_toolbox_name(context)
-            if "toolbox" in agent and agent["toolbox"] != {"name": expected_tb}:
-                raise LifecycleError("init changed the owned toolbox reference")
-            if "toolboxes" in agent and agent["toolboxes"] not in ([expected_tb], [{"name": expected_tb}]):
-                raise LifecycleError("init changed the owned toolboxes reference")
-        elif context.get("skill_name"):
+            if (expected_tb not in services
+                    or services[expected_tb].get("host") != "azure.ai.toolbox"
+                    or "skills" in agent
+                    or any(svc.get("host") == "azure.ai.skill" for svc in services.values())):
+                raise LifecycleError("init changed the owned toolbox service")
+            try:
+                _validate_agent_toolboxes(agent, expected_tb)
+            except LifecycleError as exc:
+                raise LifecycleError("init changed the owned toolbox reference") from exc
+            if context.get("connection_name") or context.get("toolbox_endpoint"):
+                _expected_connection_name(context)
+        else:
+            if (context.get("toolbox_name", "") != ""
+                    or context.get("connection_name", "") != ""
+                    or context.get("toolbox_endpoint", "") != ""):
+                raise LifecycleError("managed skill context cannot declare a toolbox or connection")
             expected_sk = owned_skill_name(context)
-            if expected_sk not in document["services"] or document["services"][expected_sk].get("archive") != f"./skills/{expected_sk}":
+            if (expected_sk not in services
+                    or services[expected_sk].get("host") != "azure.ai.skill"
+                    or services[expected_sk].get("archive") != f"./skills/{expected_sk}"
+                    or "toolbox" in agent or "toolboxes" in agent
+                    or any(svc.get("host") == "azure.ai.toolbox" for svc in services.values())):
                 raise LifecycleError("init changed the owned skill service")
             if "skills" in agent and agent["skills"] not in ([expected_sk], [{"name": expected_sk}]):
                 raise LifecycleError("init changed the owned skills reference")
-        else:
-            raise LifecycleError("managed context must identify an owned toolbox or skill")
+    elif (context.get("toolbox_name", "") != ""
+          or context.get("skill_name", "") != ""
+          or context.get("connection_name", "") != ""
+          or context.get("toolbox_endpoint", "") != ""):
+        raise LifecycleError("prompt context cannot declare managed resources")
     if agent.get("name") != context["agent_name"] or agent.get("model") != model_deployment:
         raise LifecycleError("init changed the requested agent identity, model, or kind")
+
+
+def verify_connection(metadata: Path | None, context: dict) -> None:
+    expected_name, expected_target = _expected_connection_name(context)
+    if metadata is None:
+        return
+    document = json.loads(metadata.read_text(encoding="utf-8"))
+    if not isinstance(document, dict):
+        raise LifecycleError("connection show metadata must be an object")
+    kind = document.get("kind")
+    auth_type = document.get("authType")
+    if (document.get("name") != expected_name
+            or document.get("target") != expected_target
+            or not isinstance(kind, str) or kind.casefold() != "remotetool"
+            or not isinstance(auth_type, str)
+            or auth_type.replace("-", "").replace("_", "").casefold() != "userentratoken"):
+        raise LifecycleError("connection show returned unexpected owned name, target, kind, or authType")
 
 
 def verify_deployed(
@@ -424,6 +520,7 @@ def verify_deployed(
     model_deployment: str,
     toolbox_metadata: Path | None = None,
     skill_metadata: Path | None = None,
+    connection_metadata: Path | None = None,
 ) -> None:
     document = json.loads(metadata.read_text(encoding="utf-8"))
     if not isinstance(document, dict):
@@ -439,6 +536,8 @@ def verify_deployed(
     if profile != context.get("execution_profile", "prompt"):
         raise LifecycleError("azd show returned an unexpected execution profile")
     if profile == "managed":
+        if bool(context.get("toolbox_name")) == bool(context.get("skill_name")):
+            raise LifecycleError("managed context must identify an owned toolbox or skill")
         if context.get("toolbox_name"):
             name = owned_toolbox_name(context)
             tools = definition.get("tools")
@@ -447,13 +546,18 @@ def verify_deployed(
                     or mcp_tools[0].get("server_label") != name
                     or not isinstance(mcp_tools[0].get("server_url"), str)):
                 raise LifecycleError("managed agent must attach exactly the owned toolbox MCP server")
-            if toolbox_metadata is None:
-                raise LifecycleError("managed agent verification requires toolbox metadata")
+            if toolbox_metadata is None or connection_metadata is None:
+                raise LifecycleError("managed agent verification requires toolbox and connection metadata")
             version = verify_toolbox(toolbox_metadata, context, mcp_tools[0]["server_url"])
+            expected_conn = toolbox_connection_name(name, version, mcp_tools[0]["server_url"])
             connection_id = mcp_tools[0].get("project_connection_id")
-            if connection_id is not None and connection_id != toolbox_connection_name(name, version, mcp_tools[0]["server_url"]):
+            if (not isinstance(connection_id, str)
+                    or connection_id != context.get("connection_name")
+                    or connection_id != expected_conn
+                    or mcp_tools[0]["server_url"] != context.get("toolbox_endpoint")):
                 raise LifecycleError("managed agent toolbox connection ID does not match the owned toolbox endpoint")
-        elif context.get("skill_name"):
+            verify_connection(connection_metadata, context)
+        else:
             name = owned_skill_name(context)
             skills = definition.get("skills")
             if skill_metadata is None:
@@ -463,8 +567,6 @@ def verify_deployed(
                     or skills[0].get("name") != name or skills[0].get("version") != version
                     or skills[0].get("type", "skill_reference") != "skill_reference"):
                 raise LifecycleError("managed agent must attach the owned skill and version")
-        else:
-            raise LifecycleError("managed context must identify an owned toolbox or skill")
 
 
 def verify_toolbox(metadata: Path, context: dict, endpoint: str) -> str:
@@ -480,14 +582,8 @@ def verify_toolbox(metadata: Path, context: dict, endpoint: str) -> str:
             or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", version["version"])
             or version.get("tools") != [{"type": "web_search"}]):
         raise LifecycleError("toolbox show returned unexpected owned name, version, or tools")
-    project_endpoint = context.get("project_endpoint")
-    if not isinstance(project_endpoint, str):
-        raise LifecycleError("context must contain the project endpoint")
-    project = urlsplit(project_endpoint)
-    if (project.scheme != "https" or not project.hostname or project.query or project.fragment
-            or project.username is not None or any(c.isspace() for c in project_endpoint)):
-        raise LifecycleError("context project endpoint must be an HTTPS URL without credentials/query/fragment")
-    expected = (project_endpoint.rstrip("/") + "/toolboxes/" + quote(name, safe="")
+    project_endpoint = _validate_project_endpoint(context)
+    expected = (project_endpoint + "/toolboxes/" + quote(name, safe="")
                 + "/versions/" + quote(version["version"], safe="") + "/mcp?api-version=v1")
     if not isinstance(endpoint, str) or endpoint != expected or document.get("endpoint") != expected:
         raise LifecycleError("toolbox MCP endpoint must exactly match the owned project, toolbox, and version")
@@ -533,10 +629,10 @@ def skill_absent(metadata: Path, context: dict) -> bool:
 
 
 def connection_absent(metadata: Path, context: dict) -> bool:
-    name = context.get("connection_name")
-    if not isinstance(name, str) or not re.fullmatch(r"ci-e2e-tb-[0-9a-f]{10}-[0-9a-f]{8}-mcp", name):
-        raise LifecycleError("context must identify the owned toolbox connection")
+    name, _ = _expected_connection_name(context)
     connections = json.loads(metadata.read_text(encoding="utf-8"))
+    if connections is None:
+        return True
     if not isinstance(connections, list) or any(
         not isinstance(conn, dict) or not isinstance(conn.get("name"), str) or not conn["name"].strip()
         for conn in connections
@@ -599,6 +695,7 @@ def main(argv=None) -> int:
     deployed.add_argument("--metadata", type=Path, required=True)
     deployed.add_argument("--toolbox-metadata", type=Path)
     deployed.add_argument("--skill-metadata", type=Path)
+    deployed.add_argument("--connection-metadata", type=Path)
     for verification in (adopted, deployed):
         verification.add_argument("--context", type=Path, required=True)
         verification.add_argument("--model-deployment", required=True)
@@ -608,6 +705,9 @@ def main(argv=None) -> int:
     skill = commands.add_parser("verify-skill")
     skill.add_argument("--version", required=True)
     skill_absence = commands.add_parser("skill-absent")
+    connection = commands.add_parser("verify-connection")
+    connection.add_argument("--metadata", type=Path)
+    connection.add_argument("--context", type=Path, required=True)
     connection_absence = commands.add_parser("connection-absent")
     for verification in (toolbox, toolbox_absence, skill, skill_absence, connection_absence):
         verification.add_argument("--metadata", type=Path, required=True)
@@ -636,7 +736,7 @@ def main(argv=None) -> int:
             elif args.command == "verify-deployed":
                 verify_deployed(
                     args.metadata, context, args.model_deployment,
-                    args.toolbox_metadata, args.skill_metadata,
+                    args.toolbox_metadata, args.skill_metadata, args.connection_metadata,
                 )
             elif args.command == "verify-toolbox":
                 version = verify_toolbox(args.metadata, context, args.endpoint)
@@ -647,6 +747,8 @@ def main(argv=None) -> int:
                 verify_skill(args.metadata, context, args.version)
             elif args.command == "skill-absent":
                 return 0 if skill_absent(args.metadata, context) else 1
+            elif args.command == "verify-connection":
+                verify_connection(args.metadata, context)
             elif args.command == "connection-absent":
                 return 0 if connection_absent(args.metadata, context) else 1
             else:

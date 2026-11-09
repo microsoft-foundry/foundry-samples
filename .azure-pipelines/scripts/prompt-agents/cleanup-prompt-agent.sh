@@ -113,22 +113,24 @@ if ! jq -e -s --arg id "$project_id" --arg endpoint "$project_endpoint" --slurpf
     $c.service_env_key == ($c.agent_service | gsub("[- ]"; "_") | ascii_upcase) and
     ($c.service_env_key | test("^[A-Z0-9_]+$")) and
     $o.toolbox_name == $c.toolbox_name and
+    ($o.toolbox_endpoint // "") == ($c.toolbox_endpoint // "") and
     ($o.skill_name // "") == ($c.skill_name // "") and
     ($o.connection_name // "") == ($c.connection_name // "") and
     (($c.agent_name | ltrimstr("ci-prompt-")) as $nonce |
       if $c.execution_profile == "managed" then
         (
           ($c.toolbox_name == ("ci-e2e-tb-" + $nonce) and ($c.skill_name // "") == "" and ($o.skill_deployment_attempted // false) == false and
-            (if ($o.connection_deployment_attempted // false) then
-              (($c.connection_name // "") | type) == "string" and
+            (if ($o.connection_deployment_attempted // false) or (($c.connection_name // "") != "") or (($c.toolbox_endpoint // "") != "") then
+              (($c.connection_name // "") | type) == "string" and (($c.connection_name // "") != "") and
+              (($c.toolbox_endpoint // "") | type) == "string" and (($c.toolbox_endpoint // "") != "") and
               (($c.connection_name // "") | test("^ci-e2e-tb-" + ($nonce[:10]) + "-[0-9a-f]{8}-mcp$"))
-            else (($c.connection_name // "") == "" or (($c.connection_name // "") | test("^ci-e2e-tb-" + ($nonce[:10]) + "-[0-9a-f]{8}-mcp$"))) end))
+            else (($c.connection_name // "") == "" and ($c.toolbox_endpoint // "") == "") end))
           or
           (($c.skill_name // "") == ("ci-e2e-sk-" + $nonce) and $c.toolbox_name == "" and $o.toolbox_deployment_attempted == false and
-            ($c.connection_name // "") == "" and ($o.connection_deployment_attempted // false) == false)
+            ($c.toolbox_endpoint // "") == "" and ($c.connection_name // "") == "" and ($o.connection_deployment_attempted // false) == false)
         )
       else $c.execution_profile == "prompt" and $c.toolbox_name == "" and $o.toolbox_deployment_attempted == false and
-        ($c.skill_name // "") == "" and ($o.skill_deployment_attempted // false) == false and
+        ($c.toolbox_endpoint // "") == "" and ($c.skill_name // "") == "" and ($o.skill_deployment_attempted // false) == false and
         ($c.connection_name // "") == "" and ($o.connection_deployment_attempted // false) == false end) and
     ($o.cleanup | type) == "object" and
     ($o.cleanup | to_entries | all(
@@ -139,6 +141,12 @@ if ! jq -e -s --arg id "$project_id" --arg endpoint "$project_endpoint" --slurpf
       (.value | type) == "string" and (.value | length) > 0)))
 ' "$ownership" > "$recovery/validation-stdout.txt" 2> "$recovery/validation-stderr.txt"; then
   fail "Invalid ownership/context or trusted project mismatch; refusing recovery commands."
+fi
+if [ -n "$(jq -r '.connection_name // ""' "$context")" ] || [ -n "$(jq -r '.toolbox_endpoint // ""' "$context")" ]; then
+  if ! timeout --kill-after=10s 60s "$python" "$helper" verify-connection --context "$context" \
+    >> "$recovery/validation-stdout.txt" 2>> "$recovery/validation-stderr.txt"; then
+    fail "Invalid ownership/context or trusted project mismatch; refusing recovery commands."
+  fi
 fi
 validated=true
 name=$(jq -r .agent_name "$context")
@@ -205,6 +213,11 @@ skill_absent() {
 }
 connection_absent() {
   timeout --kill-after=10s 60s "$python" "$helper" connection-absent \
+    --metadata "$(native_path "$last_stdout")" --context "$context" \
+    >> "$recovery/validation-stdout.txt" 2>> "$recovery/validation-stderr.txt"
+}
+verify_connection() {
+  timeout --kill-after=10s 60s "$python" "$helper" verify-connection \
     --metadata "$(native_path "$last_stdout")" --context "$context" \
     >> "$recovery/validation-stdout.txt" 2>> "$recovery/validation-stderr.txt"
 }
@@ -286,6 +299,8 @@ cleanup_connection() {
     (.[0] | all(type == "object" and (.name | type) == "string" and (.name | test("\\S")))) and
     (.[0] | any((.name | ascii_downcase) == $name))
   ' "$(native_path "$last_stdout")" >> "$recovery/validation-stdout.txt" 2>> "$recovery/validation-stderr.txt" || return 1
+  run_command "${azd_project[@]}" ai connection show "$connection" --project-endpoint "$project_endpoint" --output json --no-prompt || return 1
+  verify_connection || return 1
   run_command "${azd_project[@]}" ai connection delete "$connection" --project-endpoint "$project_endpoint" \
     --force --no-prompt || cleanup_failed=true
   for attempt in 1 2 3; do
