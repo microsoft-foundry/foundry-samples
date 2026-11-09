@@ -68,19 +68,26 @@ class TravelExecutor(AgentExecutor):
         await event_queue.enqueue_event(task)
         updater = TaskUpdater(event_queue, task.id, task.context_id)
         await updater.start_work()
+        evidence = {
+            "specialist_calls": [],
+            "specialist_failures": [],
+            "state_store": {"operations": []},
+        }
+        failure: Exception | None = None
         try:
             message = get_message_text(context.message)
-            answer, evidence = await ask(INSTRUCTIONS, message)
+            try:
+                answer, evidence = await ask(INSTRUCTIONS, message, evidence=evidence)
+            except Exception as error:
+                failure = error
+                logger.exception("A2A_TRAVEL_RESEARCH_FAILED task_id=%s", task.id)
+                answer = f"Travel planning failed: {error}"
             calls = evidence["specialist_calls"]
             task_ids = [f"- Travel Planner: `{task.id}`"]
-            task_ids.extend(
-                f"- {call['agent']}: `{call['task_id']}`" for call in calls
-            )
+            task_ids.extend(f"- {call['agent']}: `{call['task_id']}`" for call in calls)
             if not calls:
                 task_ids.append("- Specialists: not called in this request.")
-            answer += "\n\n### Verified task IDs (this request)\n" + "\n".join(
-                task_ids
-            )
+            answer += "\n\n### Verified task IDs (this request)\n" + "\n".join(task_ids)
             records = {
                 operation["plan"]["plan_id"]: operation["plan"]
                 for operation in evidence["state_store"]["operations"]
@@ -105,7 +112,10 @@ class TravelExecutor(AgentExecutor):
                     summary = {
                         key: record[key]
                         for key in (
-                            "plan_id", "version", "requirements_revision", "status"
+                            "plan_id",
+                            "version",
+                            "requirements_revision",
+                            "status",
                         )
                     }
                     summary["history_count"] = len(record["history"])
@@ -132,6 +142,19 @@ class TravelExecutor(AgentExecutor):
                 ],
                 name="trip-state",
             )
+            if evidence.get("specialist_failures"):
+                await updater.add_artifact(
+                    parts=[
+                        new_text_part(
+                            json.dumps(evidence["specialist_failures"]),
+                            media_type="application/json",
+                        )
+                    ],
+                    name="specialist-failures",
+                )
+            if failure is not None:
+                await updater.failed(new_text_message(answer, role=Role.ROLE_AGENT))
+                return
             await updater.complete()
             logger.info(
                 "A2A_TRAVEL_COMPLETED task_id=%s successful_delegations=%s "
@@ -154,7 +177,6 @@ class TravelExecutor(AgentExecutor):
                     f"Travel planning failed: {error}", role=Role.ROLE_AGENT
                 )
             )
-            raise
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         await TaskUpdater(event_queue, context.task_id, context.context_id).cancel()
@@ -165,7 +187,7 @@ if __name__ == "__main__":
     config = AgentConfig.from_env()
     card = AgentCard(
         name="Travel Planner",
-        description="Copilot SDK travel planner with direct A2A specialists and persistent, versioned trip plans.",
+        description="Copilot SDK Travel Planner discovers A2A specialists and saves cited, unverified trip research in user-isolated versioned storage.",
         version="1.0.0",
         capabilities=AgentCapabilities(),
         default_input_modes=["text/plain"],
@@ -181,8 +203,8 @@ if __name__ == "__main__":
             AgentSkill(
                 id="planner",
                 name="Travel Planner",
-                description=INSTRUCTIONS,
-                tags=["travel", "copilot"],
+                description="Research and revise saved trips by plan ID through native A2A specialists. Web results are not verified fares or availability.",
+                tags=["web-travel-research", "a2a"],
             )
         ],
     )

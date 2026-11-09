@@ -56,12 +56,16 @@ class HotelExecutor(AgentExecutor):
         updater = TaskUpdater(event_queue, task.id, task.context_id)
         await updater.start_work()
         try:
-            answer, searches = await ask(INSTRUCTIONS, get_message_text(context.message))
+            answer, searches = await ask(
+                INSTRUCTIONS, get_message_text(context.message)
+            )
             await updater.add_artifact(
                 parts=[new_text_part(answer, media_type="text/plain")]
             )
             await updater.add_artifact(
-                parts=[new_text_part(json.dumps(searches), media_type="application/json")],
+                parts=[
+                    new_text_part(json.dumps(searches), media_type="application/json")
+                ],
                 name="web-search",
             )
             await updater.complete()
@@ -77,7 +81,6 @@ class HotelExecutor(AgentExecutor):
                     role=Role.ROLE_AGENT,
                 )
             )
-            raise
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         await TaskUpdater(event_queue, context.task_id, context.context_id).cancel()
@@ -88,7 +91,7 @@ if __name__ == "__main__":
     config = AgentConfig.from_env()
     card = AgentCard(
         name="Hotel Agent",
-        description="Copilot SDK hotel research specialist using cited Toolbox web search; rates, availability and cancellation terms may remain unverified.",
+        description="Copilot SDK Hotel Agent researches public hotels through Toolbox web search, returning citations and unverified rate, distance and cancellation warnings.",
         version="1.0.0",
         capabilities=AgentCapabilities(),
         default_input_modes=["text/plain"],
@@ -104,8 +107,8 @@ if __name__ == "__main__":
             AgentSkill(
                 id="hotels",
                 name="Hotel Agent",
-                description="Research hotels for destination, explicit stay dates, travelers, budget and a public office landmark; return source links and uncertainties.",
-                tags=["travel", "hotels"],
+                description="Send destination, stay dates, travelers, budget, refundability and a public office landmark for cited hotel research.",
+                tags=["web-travel-research", "hotels"],
             )
         ],
     )

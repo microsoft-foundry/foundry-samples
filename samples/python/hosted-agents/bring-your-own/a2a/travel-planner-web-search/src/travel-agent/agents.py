@@ -80,6 +80,17 @@ async def connect(
                 (perf_counter() - response.request.extensions["a2a_started_at"]) * 1000,
                 trace.get_current_span().get_span_context().trace_id,
             )
+            if (
+                response.status_code == 404
+                and "agentCard/" in response.request.url.path
+            ):
+                raise RuntimeError(
+                    "Agent Card discovery returned HTTP 404. Verify the specialist "
+                    "endpoint and the planner instance identity's Foundry Agent Consumer "
+                    "access at project scope. A 404 can mask authorization failure; "
+                    "negative authorization decisions were observed cached for five "
+                    "minutes. Allow role propagation/cache expiry before retrying."
+                )
 
     http = await stack.enter_async_context(
         httpx.AsyncClient(

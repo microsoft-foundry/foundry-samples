@@ -408,6 +408,20 @@ class SearchEvidenceTests(unittest.IsolatedAsyncioTestCase):
                     with self.assertRaisesRegex(RuntimeError, "source URLs"):
                         await self.run_search(runtime, results)
 
+    async def test_denied_attempt_receipt_does_not_invalidate_usable_searches(self):
+        for runtime in ("flight-agent", "hotel-agent"):
+            with self.subTest(runtime=runtime):
+                calls = await self.run_search(
+                    runtime,
+                    [
+                        (True, "https://example.test/first"),
+                        (True, "https://example.test/second"),
+                        (False, "The two-search budget is exhausted"),
+                    ],
+                )
+                self.assertEqual(sum(call["success"] for call in calls), 2)
+                self.assertFalse(calls[-1]["success"])
+
 
 class DelegationAssertionTests(unittest.TestCase):
     def test_fixture_accepts_two_or_more_not_zero_or_one(self):

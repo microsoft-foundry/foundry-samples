@@ -20,6 +20,7 @@ def build_tools(
     failures: list[str],
     *,
     research_context: dict[str, str],
+    failed_calls: list[dict[str, str]] | None = None,
 ) -> list[Tool]:
     request_context = context.get_current()
     request_span = trace.get_current_span(request_context).get_span_context()
@@ -106,6 +107,7 @@ def build_tools(
                         )
                     result = {"agent": card.name, "task_id": task.id, "answer": answer}
                     calls.append({"tool": name, **result, **binding})
+                    failures[:] = [failure for failure in failures if failure != name]
                     logger.info(
                         "A2A_DELEGATION_COMPLETED agent=%s task_id=%s state=COMPLETED "
                         "tool_call_id=%s elapsed_ms=%.1f trace_id=%032x",
@@ -123,6 +125,16 @@ def build_tools(
                     context.detach(token)
             except Exception as error:
                 failures.append(name)
+                if failed_calls is not None:
+                    failed_calls.append(
+                        {
+                            "tool": name,
+                            "agent": card.name,
+                            "tool_call_id": invocation.tool_call_id,
+                            "status": "failed",
+                            "error_type": type(error).__name__,
+                        }
+                    )
                 logger.error(
                     "A2A_DELEGATION_FAILED agent=%s method=SendMessage tool_call_id=%s "
                     "error_type=%s elapsed_ms=%.1f trace_id=%032x",

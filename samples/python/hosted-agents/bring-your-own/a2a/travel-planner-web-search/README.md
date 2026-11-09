@@ -121,6 +121,12 @@ uv run --frozen --project src/travel-agent python -m unittest discover -s tests 
 
 ## Prerequisites
 
+For the GitHub template flow below, install GitHub CLI and run `gh auth login`
+then `gh auth status` before init. With the tested azd extension, public
+templates can still trigger GitHub authentication even with `--no-prompt`.
+For unattended use, download/clone the public repository first and initialize
+from its local sample manifest instead; do not wait on an interactive login.
+
 - An existing Foundry project and a deployed **GPT-5.4-mini** model. The manifest
   declares version `2026-03-17`, Global Standard capacity `100` and selects it
   explicitly for all three agents. Model calls and web searches incur charges.
@@ -274,6 +280,12 @@ az role assignment create --assignee-object-id "<PLANNER-INSTANCE-PRINCIPAL-ID>"
 
 Use the same project ARM ID passed to init, not the HTTPS endpoint. This is a
 project-wide runtime grant: review it with the owner and allow propagation.
+Do not invoke before completing this grant. Protected Card 404s can mean either
+an incorrect endpoint or masked authorization failure. The bug bash observed
+negative authorization decisions cached for five minutes; after an early failed
+probe, allow propagation and cache expiry before retrying. This is observed
+platform behavior, not a guaranteed universal TTL. No additional routine grants
+to the Flight/Hotel identities are required by this sample's tested setup.
 It lets the planner discover protected specialist Cards and invoke their agents.
 No role-only change requires redeployment. If you change a specialist endpoint,
 set its environment value, redeploy the planner and invoke its newly reported version.
@@ -369,6 +381,19 @@ The earlier hosted-run evidence predates this dependency update.
 
 ## Troubleshooting
 
+- **Failed research:** the response is a `TASK_STATE_FAILED` Task, not a successful
+  recommendation. Its status message, actual Task ID and compact partial receipts
+  remain available. `specialist-failures` records failed attempts separately from
+  successful Task evidence; successful retries clear their matching outstanding
+  failure, not unrelated failures. Read any pending saved plan before refreshing.
+- **CLI output:** default mode may concatenate artifacts without labels. Use raw
+  output and artifact names (`specialist-calls`, `trip-state`, `specialist-failures`)
+  to inspect receipts. Older datastore help can contradict observed signed-in
+  caller access. Direct-code deployments can emit an irrelevant ACR warning;
+  do not create an ACR solely to silence it. If extension update reports an
+  error, check the installed version before retrying; Windows file-lock cleanup
+  failures can be mislabeled as network errors.
+
 - **Toolbox 401/403 or protected Card 404:** check the relevant instance identity's
   project runtime role, token scope `https://ai.azure.com/.default` and RBAC
   propagation. Never forward the incoming Authorization header.
@@ -389,10 +414,14 @@ The earlier hosted-run evidence predates this dependency update.
 After saving results, delete only your own agents:
 
 ```text
-azd ai agent delete travel-web-planner
-azd ai agent delete travel-web-flights
-azd ai agent delete travel-web-hotels
+azd ai agent delete planner --force
+azd ai agent delete flights --force
+azd ai agent delete hotels --force
 ```
+
+Run these from your initialized project and verify the service keys map to
+your own agents first. `--force` terminates active sessions and deletes all agent
+versions. Do not use these commands against shared agents.
 
 Do not run `azd down` against a shared project or delete a shared model, toolbox
 or state store. Review toolbox/role cleanup with the owner.

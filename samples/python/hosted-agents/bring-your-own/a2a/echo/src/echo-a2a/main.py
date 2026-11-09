@@ -45,7 +45,7 @@ if __name__ == "__main__":
     config = AgentConfig.from_env()
     card = AgentCard(
         name="A2A Echo",
-        description="Returns Echo: followed by the supplied text in a completed Task.",
+        description="Returns the supplied text with an Echo prefix in a completed A2A Task.",
         version="1.0.0",
         capabilities=AgentCapabilities(),
         default_input_modes=["text/plain"],
@@ -61,7 +61,7 @@ if __name__ == "__main__":
             AgentSkill(
                 id="echo",
                 name="Echo",
-                description="Echo the supplied text without a model.",
+                description="Echo text without an LLM or Toolbox.",
                 tags=["echo"],
                 examples=["hello"],
             )

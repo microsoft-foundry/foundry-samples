@@ -21,7 +21,7 @@ from tools import build_tools
 logger = logging.getLogger("a2a.travel")
 
 
-async def ask(instructions: str, message: str) -> tuple[str, dict]:
+async def ask(instructions: str, message: str, *, evidence: dict) -> tuple[str, dict]:
     started = perf_counter()
     request_span = trace.get_current_span().get_span_context()
     endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"].rstrip("/")
@@ -36,6 +36,16 @@ async def ask(instructions: str, message: str) -> tuple[str, dict]:
     research_context: dict[str, str] = {}
     failures: list[str] = []
     operations = []
+    failed_calls: list[dict[str, str]] = []
+    evidence.update(
+        specialist_calls=calls,
+        specialist_failures=failed_calls,
+        state_store={
+            "store": os.environ.get("TRAVEL_PLAN_STORE_NAME", "travel-web-research"),
+            "backend": "foundry" if hosted else "local-file",
+            "operations": operations,
+        },
+    )
     async with (
         DefaultAzureCredential(process_timeout=60) as credential,
         AsyncExitStack() as stack,
@@ -53,7 +63,13 @@ async def ask(instructions: str, message: str) -> tuple[str, dict]:
             await connect(os.environ[setting], stack, direct_credential, headers)
             for setting in ("FLIGHT_AGENT_ENDPOINT", "HOTEL_AGENT_ENDPOINT")
         ]
-        tools = build_tools(agents, calls, failures, research_context=research_context)
+        tools = build_tools(
+            agents,
+            calls,
+            failures,
+            research_context=research_context,
+            failed_calls=failed_calls,
+        )
         store = await FoundryStateStore.get_or_create(
             os.environ.get("TRAVEL_PLAN_STORE_NAME", "travel-web-research"),
             credential=credential,
@@ -122,14 +138,7 @@ async def ask(instructions: str, message: str) -> tuple[str, dict]:
                     (perf_counter() - started) * 1000,
                     request_span.trace_id,
                 )
-                return reply.data.content, {
-                    "specialist_calls": calls,
-                    "state_store": {
-                        "store": store.name,
-                        "backend": "foundry" if hosted else "local-file",
-                        "operations": operations,
-                    },
-                }
+                return reply.data.content, evidence
             finally:
                 await session.disconnect()
         finally:
