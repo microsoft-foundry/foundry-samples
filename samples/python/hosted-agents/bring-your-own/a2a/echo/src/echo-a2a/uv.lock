@@ -269,23 +269,23 @@ wheels = [
 
 [[package]]
 name = "azure-ai-agentserver-a2a"
-version = "1.0.0a20261029006"
-source = { registry = "https://pkgs.dev.azure.com/azure-sdk/public/_packaging/azure-sdk-for-python/pypi/simple/" }
+version = "1.0.0b1"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "a2a-sdk", extra = ["http-server"] },
     { name = "azure-ai-agentserver-core" },
     { name = "opentelemetry-api" },
     { name = "starlette" },
 ]
-sdist = { url = "https://pkgs.dev.azure.com/azure-sdk/29ec6040-b234-4e31-b139-33dc4287b756/_packaging/3572dbf9-b5ef-433b-9137-fc4d7768e7cc/pypi/download/azure-ai-agentserver-a2a/1a20261029006/azure_ai_agentserver_a2a-1.0.0a20261029006.tar.gz", hash = "sha256:c9531d3e72c466d191c5ce4172c3bde91251ae94e99d2b7295a7b68595c9db61", size = 53337, upload-time = "2026-10-30T07:12:19Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/31/0f/90f54ab7794f953591a5c5314a5cb0b281137897164f2b41b5c3dd6bd25e/azure_ai_agentserver_a2a-1.0.0b1.tar.gz", hash = "sha256:6a110fe6c8f5c7290cf7562c9aeb6966c0f517d349f7e484c1a529a320ad7cbe", size = 53264, upload-time = "2026-11-05T09:56:29.422Z" }
 wheels = [
-    { url = "https://pkgs.dev.azure.com/azure-sdk/29ec6040-b234-4e31-b139-33dc4287b756/_packaging/3572dbf9-b5ef-433b-9137-fc4d7768e7cc/pypi/download/azure-ai-agentserver-a2a/1a20261029006/azure_ai_agentserver_a2a-1.0.0a20261029006-py3-none-any.whl", hash = "sha256:4a78f082411c6d3da47489a47eb8dcb9dbd3b16deed8a526f49b666fd1053605", size = 21359, upload-time = "2026-10-30T07:12:17Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/6f/315b94869499ec83e312d2f6f1345ef788bcb8808d3b40ef7dc939d72b29/azure_ai_agentserver_a2a-1.0.0b1-py3-none-any.whl", hash = "sha256:e54dc54b88747023c42da6b3d3737b9568ef3b2823079ae594562392f292ebc2", size = 21232, upload-time = "2026-11-05T09:56:31.017Z" },
 ]
 
 [[package]]
 name = "azure-ai-agentserver-core"
-version = "2.3.1a20261029006"
-source = { registry = "https://pkgs.dev.azure.com/azure-sdk/public/_packaging/azure-sdk-for-python/pypi/simple/" }
+version = "2.3.1b1"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "azure-core" },
@@ -297,9 +297,9 @@ dependencies = [
     { name = "opentelemetry-sdk" },
     { name = "starlette" },
 ]
-sdist = { url = "https://pkgs.dev.azure.com/azure-sdk/29ec6040-b234-4e31-b139-33dc4287b756/_packaging/3572dbf9-b5ef-433b-9137-fc4d7768e7cc/pypi/download/azure-ai-agentserver-core/2.3.1a20261029006/azure_ai_agentserver_core-2.3.1a20261029006.tar.gz", hash = "sha256:e7bc96ee424aecee6234b33fb51a4d74e2f30d3e474e29d83bdd00fa9f74a0ec", size = 436446, upload-time = "2026-10-30T07:12:22Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/27/8d/772067d5572c5eaeb2a7d9f23286f33d1a8f2f778cfba056404a7a7b132b/azure_ai_agentserver_core-2.3.1b1.tar.gz", hash = "sha256:1728ca9c62ea9a7df0a4da0355405d38d6e39636071ca030eec23055e21190b0", size = 436057, upload-time = "2026-11-05T09:18:09.591Z" }
 wheels = [
-    { url = "https://pkgs.dev.azure.com/azure-sdk/29ec6040-b234-4e31-b139-33dc4287b756/_packaging/3572dbf9-b5ef-433b-9137-fc4d7768e7cc/pypi/download/azure-ai-agentserver-core/2.3.1a20261029006/azure_ai_agentserver_core-2.3.1a20261029006-py3-none-any.whl", hash = "sha256:17a1650cfdd4a61c9d47c856c9fa4e770cbf9e88c69d5332171be4d3a64a8563", size = 226134, upload-time = "2026-10-30T07:12:21Z" },
+    { url = "https://files.pythonhosted.org/packages/bd/c9/419081f2a6afe14c08b05fb609d49a0739f01e711c15f520ad03927ed9eb/azure_ai_agentserver_core-2.3.1b1-py3-none-any.whl", hash = "sha256:baf80ca216b233ed8f1462fa3f26227ec68b25eb55d9a2a7b1caca7da9dc618d", size = 226004, upload-time = "2026-11-05T09:18:11.489Z" },
 ]
 
 [[package]]
@@ -711,8 +711,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk", specifier = "==1.2.3" },
-    { name = "azure-ai-agentserver-a2a", specifier = "==1.0.0a20261029006", index = "https://pkgs.dev.azure.com/azure-sdk/public/_packaging/azure-sdk-for-python/pypi/simple/" },
-    { name = "azure-ai-agentserver-core", specifier = "==2.3.1a20261029006", index = "https://pkgs.dev.azure.com/azure-sdk/public/_packaging/azure-sdk-for-python/pypi/simple/" },
+    { name = "azure-ai-agentserver-a2a", specifier = "==1.0.0b1" },
+    { name = "azure-ai-agentserver-core", specifier = "==2.3.1b1" },
     { name = "azure-identity", specifier = "==1.25.1" },
 ]
 
