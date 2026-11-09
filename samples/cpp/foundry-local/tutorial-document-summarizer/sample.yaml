@@ -1,0 +1,4 @@
+name: Foundry Local C++ tutorial document summarizer
+description: Read and summarize a local text document with a native chat session.
+build: cmake -S . -B build
+validate: cmake --build build --config Release --target tutorial-document-summarizer

@@ -30,3 +30,13 @@ class NativeA2ATests(unittest.TestCase):
         }
         with self.assertRaises(spec.SpecError):
             spec.build_plan(document, protocol="a2a")
+
+    def test_a2a_does_not_accept_responses_previous_turn(self):
+        document = {
+            "tests": [{
+                "name": "not-a-responses-chain",
+                "turns": [{"input": "first"}, {"input": "second", "previous_turn": 1}],
+            }]
+        }
+        with self.assertRaises(spec.SpecError):
+            spec.build_plan(document, protocol="a2a")

@@ -25,6 +25,11 @@ Use the configuration-driven `langchain_azure_ai.agents.hosting.run` entrypoint 
 | 11  | [Deep Agents](responses/11-deep-agents/)                              | A deep research agent with Toolbox tools and a Foundry-backed checkpointer. Uses the host class for async resource lifecycle management.                                               |
 | 12  | [Custom Host](responses/12-custom-host/)                              | Extends a multi-turn chat agent with a locale header and custom location messages using `ResponsesHostServer`.                                                                         |
 | 13  | [Custom Stores](responses/13-custom-store/)                          | Demonstrates implementing custom response and conversation-chain stores and wiring LangGraph checkpoints and long-term memory for Foundry-hosted or on-premises agents.              |
+| 14 | [Middleware](responses/14-middleware/) | Standard LangChain `create_agent` with built-in `HumanInTheLoopMiddleware` and a custom `@before_model` hook, using simulated email tools. |
+
+[Middleware](responses/14-middleware/) adapts the
+[SDK middleware example at `ed7b1ee`](https://github.com/langchain-ai/langchain-azure/tree/ed7b1ee2d9b7b94ddaa3ae5d73317b6bc504952e/samples/hosting/langgraph-hosted-agents/responses/11_middleware)
+for Foundry configuration, deployment, and integration.
 
 ### Invocations API
 

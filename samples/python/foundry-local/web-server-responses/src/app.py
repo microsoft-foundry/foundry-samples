@@ -48,16 +48,22 @@ if current_ep:
 # <model_setup>
 model_alias = "qwen2.5-0.5b"
 model = manager.catalog.get_model(model_alias)
+if model is None:
+    manager.close()
+    raise RuntimeError(f"Model '{model_alias}' was not found in the catalog.")
 
-print(f"\nDownloading model {model_alias}...")
-model.download(
-    lambda progress: print(
-        f"\rDownloading model: {progress:.2f}%",
-        end="",
-        flush=True,
+if model.is_cached:
+    print(f"\nUsing cached model {model.id}")
+else:
+    print(f"\nDownloading model {model_alias}...")
+    model.download(
+        lambda progress: print(
+            f"\rDownloading model: {progress:.2f}%",
+            end="",
+            flush=True,
+        )
     )
-)
-print("\nModel downloaded")
+    print("\nModel downloaded")
 
 print("\nLoading model...")
 model.load()
@@ -155,5 +161,7 @@ finally:
     # Tidy up
     openai.close()
     manager.stop_web_service()
-    model.unload()
+    if model.is_loaded:
+        model.unload()
+    manager.close()
 # </complete_code>

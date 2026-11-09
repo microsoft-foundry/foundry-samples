@@ -1,0 +1,6 @@
+.azure/
+appPackage/
+appPackage.zip
+.appPackage.zip.azd-generated
+TEAMS_APP_SETUP.md
+.github-copilot-activity/

@@ -5,6 +5,13 @@ param azureDeployName string = utcNow()
 param account_name string = 'foundy'
 
 var accountName string = '${account_name}${substring(uniqueString(azureDeployName), 0,4)}'
+var uniqueSuffix = substring(uniqueString(azureDeployName), 0, 4)
+
+@description('Deploy a Log Analytics workspace + Application Insights, connect them to the Foundry account, and grant the project managed identity read access so agent traces can be viewed and evaluated. Adds resources/cost. Default true.')
+param deployApplicationInsights bool = true
+
+var appInsightsName = toLower('${uniqueSuffix}appinsights')
+var logAnalyticsName = toLower('${uniqueSuffix}loganalytics')
 
 @description('The name of your project')
 param project_name string = 'project'
@@ -138,6 +145,31 @@ resource projectCapabilityHost 'Microsoft.CognitiveServices/accounts/projects/ca
   }
   dependsOn: [
     accountCapabilityHost
+  ]
+}
+
+// Application Insights + Foundry connection (agent tracing), gated by deployApplicationInsights
+module applicationInsights 'modules-basic/application-insights.bicep' = if (deployApplicationInsights) {
+  name: 'app-insights-${uniqueSuffix}-deployment'
+  params: {
+    location: location
+    aiAccountName: account.name
+    logAnalyticsName: logAnalyticsName
+    appInsightsName: appInsightsName
+  }
+  dependsOn: [
+    project
+  ]
+}
+
+module applicationInsightsRoleAssignment 'modules-basic/application-insights-role-assignment.bicep' = if (deployApplicationInsights) {
+  name: 'app-insights-ra-${uniqueSuffix}-deployment'
+  params: {
+    appInsightsName: appInsightsName
+    projectPrincipalId: project.identity.principalId
+  }
+  dependsOn: [
+    applicationInsights
   ]
 }
 

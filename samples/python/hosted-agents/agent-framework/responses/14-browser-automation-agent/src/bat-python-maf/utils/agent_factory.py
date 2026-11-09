@@ -21,6 +21,7 @@ from azure.identity import DefaultAzureCredential
 from .logging import redact_sensitive_values
 from .paths import prompts_root, skill_paths
 from .settings import AgentSettings, ScopedAzureCredential
+from .tool_catalog import tool_catalog_middleware
 from .tools import (
     clear_live_view_url,
     get_live_view_url,
@@ -131,7 +132,11 @@ def build_agent(settings: AgentSettings) -> tuple[Agent, MCPStreamableHTTPTool]:
         instructions=instructions,
         tools=[toolbox_mcp_tool],
         context_providers=[skills_provider],
-        middleware=[tool_logging_middleware, live_view_url_inject_middleware],
+        middleware=[
+            tool_logging_middleware,
+            live_view_url_inject_middleware,
+            tool_catalog_middleware,
+        ],
         default_options={"store": False},
     )
     return agent, toolbox_mcp_tool

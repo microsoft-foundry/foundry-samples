@@ -1,5 +1,5 @@
 name: Web Server with Responses API (Python)
-description: Call a running local OpenAI-compatible web server with the Responses API, including streaming and tool calling.
+description: Use the SDK v2 local web service for Responses streaming and tool calling.
 
-build: "pip install -r requirements.txt"
-validate: "python -m py_compile $(find . -maxdepth 3 -name '*.py' -not -path './.venv/*')"
+build: "python -m pip install -r requirements.txt"
+validate: "python -m compileall -q src"

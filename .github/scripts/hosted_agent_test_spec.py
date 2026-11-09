@@ -344,7 +344,7 @@ def validate_spec(document: Any) -> dict[str, Any]:
             turn = _require_mapping(turn_value, turn_context)
             _require_keys(
                 turn,
-                {"input", "assertions", "approvals"},
+                {"input", "assertions", "approvals", "previous_turn"},
                 turn_context,
                 {"input"},
             )
@@ -354,6 +354,13 @@ def validate_spec(document: Any) -> dict[str, Any]:
                 )
             if not isinstance(turn["input"], str):
                 _validate_json_value(turn["input"], f"{turn_context}.input")
+            if "previous_turn" in turn:
+                previous_turn = turn["previous_turn"]
+                if type(previous_turn) is not int or not 1 <= previous_turn < turn_index:
+                    raise SpecError(
+                        f"{turn_context}.previous_turn must be the 1-based index "
+                        "of an earlier turn in the same test"
+                    )
             if "approvals" in turn:
                 _validate_approvals(turn["approvals"], f"{turn_context}.approvals")
             assertions = turn.get("assertions", [])
@@ -412,6 +419,11 @@ def build_plan(
         raise SpecError(f"the {profile} execution profile supports only the Responses protocol")
     for test_index, test in enumerate(document["tests"], start=1):
         for turn_index, turn in enumerate(test["turns"], start=1):
+            if "previous_turn" in turn and (protocol != "responses" or profile != "hosted"):
+                raise SpecError(
+                    f"document.tests[{test_index}].turns[{turn_index}].previous_turn "
+                    "is supported only by the hosted Responses execution profile"
+                )
             if profile != "hosted" and "approvals" in turn:
                 raise SpecError(
                     f"document.tests[{test_index}].turns[{turn_index}].approvals "
@@ -486,6 +498,11 @@ def build_plan(
                         "serialized_input": serialize_input(turn["input"]),
                         "assertions": turn.get("assertions", []),
                         "approvals": turn.get("approvals"),
+                        **(
+                            {"previous_turn": turn["previous_turn"]}
+                            if "previous_turn" in turn
+                            else {}
+                        ),
                     }
                 )
         tests.append(

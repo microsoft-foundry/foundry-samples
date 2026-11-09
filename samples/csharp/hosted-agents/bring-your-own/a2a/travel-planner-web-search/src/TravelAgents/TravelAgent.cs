@@ -57,7 +57,7 @@ public sealed class TravelAgent(ResearchRuntime runtime, ILogger<TravelAgent> lo
         }
         catch (Exception error)
         {
-            logger.LogError(error, "TRAVEL_FAILED task_id={TaskId}", context.TaskId);
+            logger.LogError("TRAVEL_FAILED task_id={TaskId} error_type={ErrorType}", context.TaskId, error.GetType().Name);
             if (error is ResearchException researchFailure)
                 await updater.AddArtifactAsync([Part.FromText(JsonSerializer.Serialize(researchFailure.Searches))], name: "web-search", cancellationToken: ct);
             if (_role == "planner")
@@ -113,7 +113,7 @@ public sealed class TravelAgent(ResearchRuntime runtime, ILogger<TravelAgent> lo
             {
                 failures.Add(error.GetType().Name);
                 operations.Add(new { action = "failed", errorType = error.GetType().Name });
-                logger.LogError(error, "PLANNER_TOOL_FAILED");
+                logger.LogError("PLANNER_TOOL_FAILED error_type={ErrorType}", error.GetType().Name);
                 throw;
             }
             finally { Activity.Current = previous; gate.Release(); }

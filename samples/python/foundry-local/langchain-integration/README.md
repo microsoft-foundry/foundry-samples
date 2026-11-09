@@ -1,6 +1,7 @@
 # LangChain Integration (Python)
 
-LangChain integration for building translation and text generation chains.
+Load a cached-or-downloaded model with SDK v2, expose its local
+OpenAI-compatible endpoint, and run a LangChain translation chain.
 
 > Part of the [Foundry Local samples for Python](../).
 

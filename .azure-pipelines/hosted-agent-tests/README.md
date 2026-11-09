@@ -202,6 +202,7 @@ tests:
 | test | `assertions` | Optional sequence of test-scope assertions. |
 | turn | `input` | Required string, mapping, or sequence. Nested mappings require string keys and may contain strings, finite numbers, Booleans, null, mappings, and sequences. YAML-specific timestamps, sets, binary values, recursive aliases, and other non-JSON values are rejected. Numbers, Booleans, and null are not valid top-level inputs. |
 | turn | `approvals` | Optional Responses-only MCP policy. |
+| turn | `previous_turn` | Optional hosted Responses-only, 1-based index of an earlier turn in the same test whose stored response is selected as the parent. |
 | turn | `assertions` | Optional sequence of turn-scope assertions. |
 
 Unknown fields and duplicate YAML keys are rejected at every scope.
@@ -212,6 +213,14 @@ Unknown fields and duplicate YAML keys are rejected at every scope.
 - Turns execute in order and use the cell-owned hosted session. Multi-turn
   Responses tests store each accepted turn and chain the next one with
   `previous_response_id`; each test starts a new chain.
+- Hosted Responses turns can set `previous_turn` to branch from an earlier turn
+  instead of the immediately preceding one. For example, turns 2 and 3 can both
+  set `previous_turn: 1`, and turn 4 can set `previous_turn: 2` to rewind after
+  turn 3. References cannot cross tests or select current/future turns. A missing
+  successful parent response fails execution rather than starting a new root.
+  Each accepted turn must return a new response ID, including regeneration.
+  Omitting the field preserves sequential continuation. Invocations, A2A, prompt,
+  and managed execution profiles do not support it.
 - String input is literal; no shell, environment, or template expansion occurs.
 - A mapping or sequence is validated recursively and serialized as compact JSON.
 - A nonmatching `when.toolbox_label` is `not_applicable`, not passed.

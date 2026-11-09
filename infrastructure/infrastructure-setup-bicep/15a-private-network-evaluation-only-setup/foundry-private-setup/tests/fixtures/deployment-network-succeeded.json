@@ -1,0 +1,27 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-evaluation-example/providers/Microsoft.Resources/deployments/setup-network-fixture",
+  "name": "setup-network-fixture",
+  "type": "Microsoft.Resources/deployments",
+  "properties": {
+    "provisioningState": "Succeeded",
+    "correlationId": "33333333-3333-3333-3333-333333333333",
+    "timestamp": "2026-10-21T20:40:00Z",
+    "duration": "PT1M12.235S",
+    "templateHash": "145803366213390841",
+    "parameters": {
+      "location": { "type": "String", "value": "koreacentral" },
+      "config": {
+        "type": "Object",
+        "value": {
+          "mode": "create",
+          "vnetName": "vnet-evaluation",
+          "addressPrefix": "10.241.0.0/16",
+          "agentSubnetName": "agent",
+          "agentSubnetPrefix": "10.241.0.0/24",
+          "privateEndpointSubnetName": "pe",
+          "privateEndpointSubnetPrefix": "10.241.1.0/24"
+        }
+      }
+    }
+  }
+}

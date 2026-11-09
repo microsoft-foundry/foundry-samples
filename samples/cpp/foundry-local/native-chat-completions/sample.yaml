@@ -1,0 +1,4 @@
+name: Foundry Local C++ native chat completions
+description: Run non-streaming and streaming chat completions with a native chat session.
+build: cmake -S . -B build
+validate: cmake --build build --config Release --target native-chat-completions

@@ -1,6 +1,11 @@
 // <complete_code>
 // <imports>
-import { FoundryLocalManager } from 'foundry-local-sdk';
+import {
+    AudioSession,
+    FoundryLocalManager,
+    Item,
+    Request
+} from 'foundry-local-sdk';
 // </imports>
 
 // Initialize the Foundry Local SDK
@@ -45,32 +50,41 @@ console.log('✓ Model loaded');
 // </model_setup>
 
 // <transcription>
-// Create audio client
-console.log('\nCreating audio client...');
-const audioClient = model.createAudioClient();
-console.log('✓ Audio client created');
+// Create a native audio session
+console.log('\nCreating audio session...');
+const audioSession = new AudioSession(model);
+console.log('✓ Audio session created');
 
 // Example audio transcription
 const audioFile = process.argv[2] || './Recording.mp3';
 console.log(`\nTranscribing ${audioFile}...`);
-const transcription = await audioClient.transcribe(audioFile);
+const response = await audioSession.processRequest(
+    new Request().addItem(Item.audioFromUri(audioFile))
+);
+const transcription = response.output.find((item) => item.type === 'speechResult');
 
 console.log('\nAudio transcription result:');
-console.log(transcription.text);
+console.log(transcription?.text ?? 'No transcription returned.');
 console.log('✓ Audio transcription completed');
 
 // Same example but with streaming transcription using async iteration
 console.log('\nTesting streaming audio transcription...');
-for await (const result of audioClient.transcribeStreaming(audioFile)) {
-    // Output the intermediate transcription results as they are received without line ending
-    process.stdout.write(result.text);
+const stream = audioSession.processStreamingRequest(
+    new Request().addItem(Item.audioFromUri(audioFile))
+);
+for await (const item of stream) {
+    if (item.type === 'speechSegment' && item.text) {
+        process.stdout.write(item.text);
+    }
 }
+await stream.response;
 console.log('\n✓ Streaming transcription completed');
 // </transcription>
 
 // <cleanup>
 // Unload the model
 console.log('Unloading model...');
+audioSession.dispose();
 await model.unload();
 console.log(`✓ Model unloaded`);
 // </cleanup>

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "resourceGroupName": {
+      "value": "${AZURE_FOUNDRY_RESOURCE_GROUP}"
+    },
+    "accountName": {
+      "value": "${AZURE_AI_ACCOUNT_NAME}"
+    },
+    "projectName": {
+      "value": "${AZURE_AI_PROJECT_NAME}"
+    },
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
+    "location": {
+      "value": "${AZURE_LOCATION}"
+    },
+    "connectorLocation": {
+      "value": "${CONNECTOR_LOCATION=westcentralus}"
+    }
+  }
+}

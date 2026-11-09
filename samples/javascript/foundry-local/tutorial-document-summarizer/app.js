@@ -1,22 +1,30 @@
 // <complete_code>
 // <imports>
-import { FoundryLocalManager } from 'foundry-local-sdk';
+import {
+    ChatSession,
+    FoundryLocalManager,
+    Item,
+    Request
+} from 'foundry-local-sdk';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, basename } from 'path';
 // </imports>
 
-async function summarizeFile(chatClient, filePath, systemPrompt) {
+async function summarizeFile(chatSession, filePath, systemPrompt) {
     const content = readFileSync(filePath, 'utf-8');
-    const messages = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: content }
-    ];
-
-    const response = await chatClient.completeChat(messages);
-    console.log(response.choices[0]?.message?.content);
+    const request = new Request()
+        .addItem(Item.systemMessage(systemPrompt))
+        .addItem(Item.userMessage(content));
+    const response = await chatSession.processRequest(request);
+    const text = response.output
+        .map((item) => item.type === 'message'
+            ? item.content ?? item.parts?.map((part) => part.text ?? '').join('') ?? ''
+            : item.type === 'text' ? item.text : '')
+        .join('');
+    console.log(text);
 }
 
-async function summarizeDirectory(chatClient, directory, systemPrompt) {
+async function summarizeDirectory(model, directory, systemPrompt) {
     const txtFiles = readdirSync(directory)
         .filter(f => f.endsWith('.txt'))
         .sort();
@@ -28,7 +36,9 @@ async function summarizeDirectory(chatClient, directory, systemPrompt) {
 
     for (const fileName of txtFiles) {
         console.log(`--- ${fileName} ---`);
-        await summarizeFile(chatClient, join(directory, fileName), systemPrompt);
+        const session = new ChatSession(model);
+        await summarizeFile(session, join(directory, fileName), systemPrompt);
+        session.dispose();
         console.log();
     }
 }
@@ -62,8 +72,6 @@ console.log('\nModel downloaded.');
 await model.load();
 console.log('Model loaded and ready.\n');
 
-// Create a chat client
-const chatClient = model.createChatClient();
 // </init>
 
 // <summarization>
@@ -78,14 +86,18 @@ const target = process.argv[2] || 'document.txt';
 try {
     const stats = statSync(target);
     if (stats.isDirectory()) {
-        await summarizeDirectory(chatClient, target, systemPrompt);
+        await summarizeDirectory(model, target, systemPrompt);
     } else {
         console.log(`--- ${basename(target)} ---`);
-        await summarizeFile(chatClient, target, systemPrompt);
+        const session = new ChatSession(model);
+        await summarizeFile(session, target, systemPrompt);
+        session.dispose();
     }
 } catch {
     console.log(`--- ${basename(target)} ---`);
-    await summarizeFile(chatClient, target, systemPrompt);
+    const session = new ChatSession(model);
+    await summarizeFile(session, target, systemPrompt);
+    session.dispose();
 }
 // </summarization>
 

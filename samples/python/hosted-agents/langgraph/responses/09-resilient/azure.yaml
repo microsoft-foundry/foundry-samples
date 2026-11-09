@@ -33,6 +33,7 @@ services:
         - Python
     project: src/langchain-azure-resilient-responses
     language: python
+    startupCommand: uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses --option resilient_background=true --option steerable_conversations=true
     codeConfiguration:
       runtime: python_3_13
       entryPoint: '-m langchain_azure_ai.agents.hosting.run --protocol responses --option resilient_background=true --option steerable_conversations=true'

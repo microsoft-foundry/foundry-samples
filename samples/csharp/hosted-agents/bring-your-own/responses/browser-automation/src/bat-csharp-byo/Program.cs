@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft. All rights reserved.
 
 using System.Collections.Concurrent;
+using System.ClientModel.Primitives;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -181,6 +182,10 @@ public class BrowserAutomationHandler : ResponseHandler
 
         var instructions = Constants.GetSystemPrompt(Skills.ListSkills());
         var tools = await BuildToolsAsync(cancellationToken);
+        foreach (var tool in tools)
+            stream.Response.Tools.Add(
+                ModelReaderWriter.Read<Tool>(ModelReaderWriter.Write(tool))
+                ?? throw new InvalidOperationException("Failed to serialize the tool schema."));
         var usedSessions = new HashSet<string>();
         string finalReply = "";
 
@@ -211,11 +216,10 @@ public class BrowserAutomationHandler : ResponseHandler
             foreach (var call in calls)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var isBrowserTool = call.FunctionName != "load_skill";
                 foreach (var streamEvent in stream.OutputItemFunctionCall(
                              call.FunctionName,
                              call.CallId,
-                             isBrowserTool ? "{}" : call.FunctionArguments.ToString()))
+                             call.FunctionArguments.ToString()))
                     yield return streamEvent;
 
                 var liveViewUrls = ActiveSessions.Values
@@ -235,7 +239,7 @@ public class BrowserAutomationHandler : ResponseHandler
                 if (result.LiveViewUrl is { } liveViewUrl)
                     liveViewUrls.Add(liveViewUrl);
                 publicOutput = Redaction.PublicToolOutput(
-                    call.FunctionName, publicOutput, result.IsError, liveViewUrls);
+                    call.FunctionName, publicOutput, liveViewUrls);
                 foreach (var streamEvent in stream.OutputItemFunctionCallOutput(
                              call.CallId,
                              BinaryData.FromObjectAsJson(publicOutput)))

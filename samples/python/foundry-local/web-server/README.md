@@ -1,6 +1,7 @@
 # Web Server (Python)
 
-Start a local OpenAI-compatible web server and call it with the OpenAI Python SDK.
+Load a model with SDK v2, start the built-in OpenAI-compatible web service, and
+stream a chat completion with the OpenAI Python client.
 
 > Part of the [Foundry Local samples for Python](../).
 

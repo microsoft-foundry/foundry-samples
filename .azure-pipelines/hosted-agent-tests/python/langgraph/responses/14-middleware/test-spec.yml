@@ -1,0 +1,41 @@
+version: 1
+
+sample:
+  owner: jiahuigu
+  experiences: [azd, vscode]
+
+tests:
+  - name: email-pauses-before-execution
+    turns:
+      - input: Send an email to alice@example.com with subject Project update and body The review starts at 10:00. Call send_email exactly once.
+        assertions:
+          - source: raw
+            type: regex
+            value: '"type"\s*:\s*"mcp_approval_request"'
+          - source: raw
+            type: contains
+            value: action_requests
+          - source: raw
+            type: contains
+            value: allowed_decisions
+          - source: raw
+            type: contains
+            value: alice@example.com
+  - name: approved-email-executes
+    turns:
+      - input: Send an email to approved@example.com with subject Approved update and body MIDDLEWARE-APPROVED. Call send_email exactly once. After approval, quote the complete tool receipt verbatim.
+        approvals:
+          mcp:
+            - server_label: langgraph
+              name: __hosted_agent_adapter_interrupt__
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: approved@example.com
+          - source: assistant_text
+            type: contains
+            value: MIDDLEWARE-APPROVED
+    assertions:
+      - source: console_log
+        type: contains
+        value: Simulated send_email tool executed

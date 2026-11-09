@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "location": "koreacentral",
+  "resourceGroup": { "mode": "existing", "name": "integration-example" },
+  "foundryAccount": { "mode": "existing", "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/foundry-example/providers/Microsoft.CognitiveServices/accounts/account-example" },
+  "foundryProject": { "mode": "existing", "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/foundry-example/providers/Microsoft.CognitiveServices/accounts/account-example/projects/project-example" },
+  "storageAccount": { "mode": "existing", "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dependencies-example/providers/Microsoft.Storage/storageAccounts/storageexample" },
+  "network": {
+    "mode": "existing",
+    "agentSubnetResourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dependencies-example/providers/Microsoft.Network/virtualNetworks/network-example/subnets/agent",
+    "privateEndpointSubnetResourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dependencies-example/providers/Microsoft.Network/virtualNetworks/network-example/subnets/pe"
+  },
+  "applicationInsights": { "mode": "none" },
+  "privateNetworking": {
+    "dnsZones": {
+      "privatelink.services.ai.azure.com": { "mode": "existing", "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dns-example/providers/Microsoft.Network/privateDnsZones/privatelink.services.ai.azure.com", "linkVnet": true },
+      "privatelink.openai.azure.com": { "mode": "existing", "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dns-example/providers/Microsoft.Network/privateDnsZones/privatelink.openai.azure.com", "linkVnet": true },
+      "privatelink.cognitiveservices.azure.com": { "mode": "existing", "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dns-example/providers/Microsoft.Network/privateDnsZones/privatelink.cognitiveservices.azure.com", "linkVnet": true },
+      "privatelink.blob.core.windows.net": { "mode": "existing", "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dns-example/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net", "linkVnet": true }
+    }
+  }
+}

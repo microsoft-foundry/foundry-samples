@@ -1,0 +1,71 @@
+{
+  "approved": {
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "metadata": { "_generator": { "name": "bicep", "version": "0.42.1", "templateHash": "11" }, "custom": "keep" },
+    "parameters": { "name": { "type": "string", "defaultValue": "example" } },
+    "outputs": { "result": { "type": "string", "value": "constant" } },
+    "resources": [
+      {
+        "type": "Microsoft.Resources/deployments",
+        "name": "module",
+        "apiVersion": "2022-09-01",
+        "properties": {
+          "mode": "Incremental",
+          "template": {
+            "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+            "contentVersion": "1.0.0.0",
+            "metadata": { "_generator": { "name": "bicep", "version": "0.42.1", "templateHash": "12" } },
+            "parameters": { "value": { "type": "string", "defaultValue": "keep" } },
+            "outputs": { "result": { "type": "string", "value": "keep" } },
+            "resources": [
+              {
+                "type": "Example.Provider/resources",
+                "name": "child",
+                "properties": {
+                  "type": "String",
+                  "values": ["a", "b"],
+                  "metadata": { "_generator": { "name": "bicep", "version": "custom", "templateHash": "13" } }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "exported": {
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "metadata": { "custom": "keep" },
+    "parameters": { "name": { "type": "String", "defaultValue": "example" } },
+    "outputs": { "result": { "type": "String", "value": "constant" } },
+    "resources": [
+      {
+        "type": "Microsoft.Resources/deployments",
+        "name": "module",
+        "apiVersion": "2022-09-01",
+        "properties": {
+          "mode": "Incremental",
+          "template": {
+            "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+            "contentVersion": "1.0.0.0",
+            "parameters": { "value": { "type": "String", "defaultValue": "keep" } },
+            "outputs": { "result": { "type": "String", "value": "keep" } },
+            "resources": [
+              {
+                "type": "Example.Provider/resources",
+                "name": "child",
+                "properties": {
+                  "type": "String",
+                  "values": ["a", "b"],
+                  "metadata": { "_generator": { "name": "bicep", "version": "custom", "templateHash": "13" } }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

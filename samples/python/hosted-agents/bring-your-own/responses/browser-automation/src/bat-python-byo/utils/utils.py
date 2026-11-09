@@ -9,17 +9,6 @@ _REDACT_PATTERNS = [
     (re.compile(r"(accessKey=)[^&\s\"']+", re.IGNORECASE), r"\1<redacted>"),
     (re.compile(r"\beyJ[a-zA-Z0-9._-]{20,}\b"), "<token>"),
 ]
-_PRIVATE_RESULT_TOOLS = {
-    "browser_snapshot",
-    "browser_take_screenshot",
-    "browser_evaluate",
-    "browser_run_code",
-}
-_PRIVATE_SECTIONS = re.compile(
-    r"^###[ \t]+(Snapshot|Page snapshot|Ran Playwright code)[ \t]*\r?\n"
-    r".*?(?=^###[ \t]|\Z)",
-    re.IGNORECASE | re.MULTILINE | re.DOTALL,
-)
 
 
 def redact(text: str) -> str:
@@ -30,13 +19,10 @@ def redact(text: str) -> str:
 
 
 def public_tool_output(
-    name: str, output: str, is_error: bool, live_view_urls: list[str],
+    name: str, output: str, live_view_urls: list[str],
 ) -> str:
     if name == "load_skill":
         return output
-    if name.rsplit("___", maxsplit=1)[-1] in _PRIVATE_RESULT_TOOLS:
-        status = "failed" if is_error else "returned"
-        return f"Browser tool {status}; result omitted for privacy."
 
     def sanitize_json(value):
         if isinstance(value, dict):
@@ -44,9 +30,8 @@ def public_tool_output(
                 return {"type": "text", "text": "Screenshot omitted for privacy."}
             return {
                 key: (
-                    "Content omitted for privacy."
-                    if key.replace("_", "").replace(" ", "").lower()
-                    in {"snapshot", "pagesnapshot", "screenshot", "ranplaywrightcode"}
+                    "Screenshot omitted for privacy."
+                    if key.replace("_", "").replace(" ", "").lower() == "screenshot"
                     else sanitize_json(item)
                 )
                 for key, item in value.items()
@@ -78,10 +63,6 @@ def public_tool_output(
                     json.dumps(url, ensure_ascii=False)[1:-1],
                     "[live-view URL omitted]",
                 )
-        text = _PRIVATE_SECTIONS.sub(
-            lambda match: f"### {match[1]}\nContent omitted for privacy.\n",
-            text,
-        )
         return prefix + redact(text)
 
     return sanitize_text(output)

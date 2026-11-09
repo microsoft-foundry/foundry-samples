@@ -2,3 +2,4 @@ name: Chat and Audio Transcription (JavaScript)
 description: Unified sample demonstrating both chat and audio transcription in one application.
 
 build: "npm install --omit=optional --no-audit --no-fund"
+validate: "node --check src/app.js"

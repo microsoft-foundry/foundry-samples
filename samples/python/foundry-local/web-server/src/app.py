@@ -30,14 +30,18 @@ if current_ep:
 
 # Load a model
 model = manager.catalog.get_model("qwen2.5-0.5b")
-model.download(
-    lambda progress: print(
-        f"\rDownloading model: {progress:.2f}%",
-        end="",
-        flush=True,
+if model is None:
+    manager.close()
+    raise RuntimeError("Model 'qwen2.5-0.5b' was not found in the catalog.")
+if not model.is_cached:
+    model.download(
+        lambda progress: print(
+            f"\rDownloading model: {progress:.2f}%",
+            end="",
+            flush=True,
+        )
     )
-)
-print()
+    print()
 model.load()
 print("Model loaded.")
 
@@ -54,24 +58,28 @@ client = openai.OpenAI(
 )
 # </rest_client>
 
-# <chat_completion>
-# Make a chat completion request via the REST API
-response = client.chat.completions.create(
-    model=model.id,
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "What is the golden ratio?"},
-    ],
-    stream=True,
-)
+try:
+    # <chat_completion>
+    # Make a chat completion request via the REST API
+    response = client.chat.completions.create(
+        model=model.id,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "What is the golden ratio?"},
+        ],
+        stream=True,
+    )
 
-for chunk in response:
-    if chunk.choices and chunk.choices[0].delta.content is not None:
-        print(chunk.choices[0].delta.content, end="", flush=True)
-print()
-# </chat_completion>
-
-# Clean up
-model.unload()
-manager.stop_web_service()
+    for chunk in response:
+        if chunk.choices and chunk.choices[0].delta.content is not None:
+            print(chunk.choices[0].delta.content, end="", flush=True)
+    print()
+    # </chat_completion>
+finally:
+    # Clean up
+    client.close()
+    manager.stop_web_service()
+    if model.is_loaded:
+        model.unload()
+    manager.close()
 # </complete_code>

@@ -46,13 +46,19 @@ Invoke `http://localhost:8088/responses` with a Responses request containing an 
 
 ## Chat output and evaluation
 
+Responses automatically publish the actual model-facing tool schemas in `response.tools`, including local skill/session functions and adapted browser tools. Foundry's **Evaluate against agent** workflow can use these definitions without a separate evaluation script.
+
 Responses include structured `function_call` and `function_call_output` items with matching `call_id` values, followed by the final assistant message. These items are emitted regardless of `/verbose` and retained when rebuilding conversation history; unmatched tool items at a truncated history boundary are skipped with a warning.
 
-In structured tool records, browser-call arguments are published as `{}`. Results from `browser_snapshot`, `browser_take_screenshot`, `browser_evaluate`, and `browser_run_code` are replaced with an explicit omission notice, including when tool names have a Toolbox prefix. Known failures remain marked as failures. Other tool results and errors remain visible, but standard Playwright snapshot and generated-code sections are replaced with omission notices. JSON snapshot/screenshot fields, MCP image bodies, and live-view URL fields are also omitted, and known runtime live-view URLs are redacted from text. Local `load_skill` calls retain their arguments and results.
+Structured tool records retain actual model-generated arguments and text results, including browser snapshots, generated code, and evaluate/run-code results, so tool evaluators can inspect the evidence. Known failures remain marked as failures. Screenshot fields and MCP image bodies are replaced with omission notices. Live-view URL fields are omitted, and known runtime live-view URLs and recognized token patterns are redacted from result text. Local `load_skill` calls retain their arguments and results.
 
 Chat contains the model's answer, not automatic copies of raw browser results. The application streams available live-view links when a browser opens and lists active live-view links in a separate message after the model's answer. `/verbose` adds tool-name progress messages, not raw result dumps. The internal model loop retains the original arguments and full results, including failures, with live-view URLs removed from model-visible tool output. Conversation history retains filtered tool records and chat messages.
 
-Only the structured tool records are filtered. Chat still includes access-bearing live-view links, and model-generated answers may include requested page content. This separation is not a security boundary or a guarantee that evaluations cannot see sensitive details; evaluation input mapping must be configured separately. User input, logs, and separately enabled SDK telemetry can also contain sensitive data.
+Browser creation results omit the live-view URL without adding a replacement note. Chat links remain enabled, so evaluators can still flag unsupported links or strict-format violations; this change does not separate UI messages from evaluation input.
+
+Actual tool arguments and text results can contain sensitive form values or page content and are exposed in Responses output, conversation history, and evaluations that consume them. Chat still includes access-bearing live-view links. The remaining result filtering is not a security boundary; use non-sensitive evaluation data and configure access and evaluation input mapping appropriately. User input, logs, and separately enabled SDK telemetry can also contain sensitive data.
+
+The system prompt and form-filler skill guide the model to use control-specific tools, refresh page state after failures, and retry only unfinished work. They require checking submission outcomes before retrying. These are model instructions, not automatic retries or a guarantee of error-free browser actions.
 
 ## Deploy
 

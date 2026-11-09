@@ -159,6 +159,54 @@ deploys temporary resource groups. Pipeline/diagnostic-only changes select
 `00-basic` as a smoke template. A primary-region deployment failure remains a
 failure even if fallback-region diagnostics succeed.
 
+For Bicep sample `48-bring-own-model-private-ca`, CI runs the certificate
+bootstrap before deployment, creates the per-attempt Key Vault, and supplies
+the generated gateway certificate/key as secure parameters. The service
+connection needs permission to assign `Key Vault Secrets Officer` to itself.
+CI uses the attempt's region for Cosmos DB and Search and the configured CI
+model. Temporary certificate material and parameter files are removed on exit.
+
+### Temporary Bicep deployment exclusions
+
+The following samples are temporarily excluded from live deployment pending
+owner verification of CI readiness:
+
+- `00-basic`
+- `31-customer-managed-keys-standard-agent`
+- `40-basic-agent-setup`
+- `41-standard-agent-setup`
+- `42-basic-agent-setup-with-customization`
+- `43-standard-agent-setup-with-customization`
+
+These exclusions also apply to manual `samplePath` and `validateAll` runs.
+Manual paths are normalized relative to the checkout and must resolve to an
+existing directory below the Bicep root; equivalent paths receive the same exclusion.
+Static compilation remains required. Each selected deployment for these samples emits
+a warning that live deployment is not validated; other samples still deploy
+and their failures remain blocking.
+
+`00-basic` failed live deployment in
+[this run](https://msdata.visualstudio.com/Vienna/_build/results?buildId=243352325).
+While it is excluded, pipeline/diagnostic-only changes still compile the smoke
+template but do not perform a live smoke deployment.
+
+Sample 31 failed live deployment in the
+[README-only baseline PR](https://github.com/microsoft-foundry/foundry-samples/pull/1113)
+([run](https://msdata.visualstudio.com/Vienna/_build/results?buildId=243122086)).
+Sample 40 failed live deployment on
+[main](https://msdata.visualstudio.com/Vienna/_build/results?buildId=243156248).
+
+Sample 42 requires an existing Azure OpenAI resource, which CI does not
+supply. The [README-only baseline PR](https://github.com/microsoft-foundry/foundry-samples/pull/1115)
+demonstrates the resulting `existingAoaiResourceIdSubId` array-index failure
+independently of the Application Insights contribution.
+This specific failure has not been established for samples 41 and 43; their
+exclusion is an explicit coverage decision, not a diagnosis of the same error.
+Remove each explicit exclusion in `private-bicep-pr-ci.yml` once its owner
+verifies CI prerequisites and successful live deployment.
+
+### Bicep diagnostics
+
 Diagnostics use the existing public
 [diagnostic-agent sample](../samples/python/hosted-agents/bring-your-own/invocations/diagnostic-agent).
 When no Foundry project is deployed, or the runner cannot reach a private-only

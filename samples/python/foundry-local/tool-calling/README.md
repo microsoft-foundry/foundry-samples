@@ -1,6 +1,7 @@
 # Tool Calling (Python)
 
-Tool calling with custom function definitions (get_weather, calculate).
+Register function definitions on a native SDK v2 `ChatSession`, execute emitted
+`ToolCallItem` requests, and return `ToolResultItem` values.
 
 > Part of the [Foundry Local samples for Python](../).
 

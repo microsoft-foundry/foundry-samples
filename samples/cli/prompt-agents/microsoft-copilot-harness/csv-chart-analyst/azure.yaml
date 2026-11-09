@@ -1,0 +1,76 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.36.0'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.21'
+    azure.ai.projects: '>=1.0.0-beta.14'
+
+name: csv-chart-analyst
+
+hooks:
+  postdeploy:
+    posix:
+      shell: sh
+      run: ./scripts/assign-agent-role.sh
+      interactive: false
+      continueOnError: false
+    windows:
+      shell: pwsh
+      run: ./scripts/assign-agent-role.ps1
+      interactive: false
+      continueOnError: false
+
+services:
+  ai-project:
+    host: azure.ai.project
+    deployments:
+      - name: gpt-5.4-mini
+        model:
+          format: OpenAI
+          name: gpt-5.4-mini
+          version: '2026-03-17'
+        sku:
+          name: GlobalStandard
+          capacity: 50
+
+  csv-chart-analyst:
+    host: azure.ai.agent
+    project: .
+    kind: prompt
+    name: csv-chart-analyst
+    displayName: CSV Chart Analyst
+    description: Analyze an uploaded CSV in a multi-turn conversation and generate downloadable charts.
+    model: gpt-5.4-mini
+    harness:
+      type: microsoft_copilot_preview
+    instructions: |
+      You are a careful data analyst. Use the attached CSV that the harness stages in your workspace.
+      Inspect the data with shell and Python before drawing conclusions, explain assumptions, and
+      distinguish facts from interpretations. Use Python's standard library where practical. When
+      charting libraries are unavailable, install the minimum required package with pip.
+
+      When asked for a chart, generate a polished PNG with a descriptive title, labeled axes,
+      readable legends, and accessible colors. Save generated outputs in the runtime-provided output
+      directory and return them as downloadable Foundry Files. If the response doesn't include a
+      file citation, state the exact filename as `File:` and Foundry file ID as `Download ID:`.
+
+      Do not modify the source CSV. Never invent columns or values. If the data is insufficient or
+      malformed, explain the issue and suggest the smallest correction.
+    tools:
+      - type: microsoft_copilot_toolset_preview
+        defaultConfig:
+          enabled: false
+        configs:
+          - name: filesystem_read
+            enabled: true
+          - name: filesystem_write
+            enabled: true
+          - name: shell
+            enabled: true
+    uses:
+      - ai-project
+
+infra:
+  provider: microsoft.foundry
+  path: infra

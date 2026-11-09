@@ -13,6 +13,14 @@ import yaml
 ROOT = Path(__file__).resolve().parents[3]
 PIPELINE = ROOT / ".azure-pipelines/private-bicep-pr-ci.yml"
 SAMPLE_ROOT = "infrastructure/infrastructure-setup-bicep"
+EXCLUDED_SAMPLES = (
+    "00-basic",
+    "31-customer-managed-keys-standard-agent",
+    "40-basic-agent-setup",
+    "41-standard-agent-setup",
+    "42-basic-agent-setup-with-customization",
+    "43-standard-agent-setup-with-customization",
+)
 
 
 class BicepPipelineTests(unittest.TestCase):
@@ -65,7 +73,7 @@ class BicepPipelineTests(unittest.TestCase):
             git("init", "-q")
             git("config", "user.name", "CI")
             git("config", "user.email", "ci@example.com")
-            for name in ("00-basic", "01-example"):
+            for name in ("01-example", *EXCLUDED_SAMPLES):
                 template = repo / SAMPLE_ROOT / name / "main.bicep"
                 template.parent.mkdir(parents=True)
                 template.write_text("param location string\n", encoding="utf-8")
@@ -73,6 +81,7 @@ class BicepPipelineTests(unittest.TestCase):
             git("commit", "-qm", "base")
             for changed, expected in (
                 (f"{SAMPLE_ROOT}/01-example/main.bicep", "01-example"),
+                *((f"{SAMPLE_ROOT}/{name}/main.bicep", name) for name in EXCLUDED_SAMPLES),
                 (".azure-pipelines/scripts/bicep/run-data-plane-diagnostics.sh", "00-basic"),
                 (PIPELINE.relative_to(ROOT).as_posix(), "00-basic"),
             ):
@@ -91,6 +100,213 @@ class BicepPipelineTests(unittest.TestCase):
                     calls = (repo / "calls.txt").read_text(encoding="utf-8")
                     self.assertIn(f"bicep build --file {SAMPLE_ROOT}/{expected}/main.bicep", calls)
                     (repo / "calls.txt").unlink()
+
+    def test_manual_sample_paths_are_normalized_and_contained(self):
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "Bash is required for pipeline selection checks")
+        static = self.pipeline["stages"][0]["jobs"][0]["steps"][1]["bash"]
+        live = self.pipeline["stages"][2]["jobs"][0]["steps"][1]["inputs"]["inlineScript"]
+        sample = "42-basic-agent-setup-with-customization"
+        canonical = f"{SAMPLE_ROOT}/{sample}"
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            template = repo / canonical / "main.bicep"
+            template.parent.mkdir(parents=True)
+            template.write_text("param location string\n", encoding="utf-8")
+            (repo / "outside").mkdir()
+            (repo / f"{SAMPLE_ROOT}-other").mkdir()
+            for stage, script in (("static", static), ("live", live)):
+                start = script.index('if [ -n "${{ parameters.samplePath }}" ]; then')
+                end = script.index('elif [ "${{ parameters.validateAll }}" = "true" ]; then', start)
+                selection = script[start:end] + 'fi\nprintf "SELECTED %s\\n" "$sample_path"\n'
+                selection = selection.replace("$(BICEP_ROOT)", SAMPLE_ROOT)
+                if stage == "live":
+                    loop = script[script.index('for deployment_file in "${deployment_files[@]}"; do'):]
+                    selection += loop.replace("$(BICEP_ROOT)", SAMPLE_ROOT)
+                for path, accepted in (
+                    (canonical, True),
+                    (f"{SAMPLE_ROOT}/./{sample}", True),
+                    (f"./{SAMPLE_ROOT}//{sample}/", True),
+                    (f"{canonical}/../{sample}", True),
+                    (SAMPLE_ROOT, False),
+                    (f"{SAMPLE_ROOT}/../../outside", False),
+                    (f"{SAMPLE_ROOT}/../infrastructure-setup-bicep-other", False),
+                    (f"{SAMPLE_ROOT}/missing", False),
+                    (f"{canonical}/main.bicep", False),
+                ):
+                    with self.subTest(stage=stage, path=path):
+                        result = subprocess.run(
+                            [
+                                bash, "-c",
+                                "set -euo pipefail\n" + selection.replace("${{ parameters.samplePath }}", path),
+                            ],
+                            cwd=repo, capture_output=True, text=True,
+                        )
+                        self.assertEqual(0 if accepted else 1, result.returncode, result.stdout + result.stderr)
+                        if accepted:
+                            self.assertIn(f"SELECTED {canonical}\n", result.stdout)
+                            if stage == "live":
+                                self.assertIn(f"Skipping live deployment of {canonical}/main.bicep", result.stdout)
+                                self.assertIn("live deployment is NOT validated", result.stdout)
+                        else:
+                            self.assertIn("##vso[task.logissue type=error]", result.stdout)
+
+    def test_private_ca_bootstrap_supplies_deployment_inputs_and_cleans_up(self):
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "Bash is required for pipeline deployment checks")
+        script = self.pipeline["stages"][2]["jobs"][0]["steps"][1]["inputs"]["inlineScript"]
+        cleanup = script[script.index("cleanup_groups=()"):script.index('if [ "$(Build.Reason)"')]
+        deploy = script[script.index("deploy_with_location() {"):script.index("bicepparam_supports_location() {")]
+        deploy = deploy.replace("$(BICEP_ROOT)", SAMPLE_ROOT)
+        deploy = deploy.replace("$(Build.BuildId)", "123").replace("$(System.JobAttempt)", "1")
+        deploy = deploy.replace("$(AZURE_SUBSCRIPTION_ID)", "test-subscription")
+        stub = """
+set -euo pipefail
+rg_prefix=ci-rg
+deployment_prefix=ci-deploy
+ci_model_name=gpt-5-mini
+ci_model_version=2025-08-07
+fallback_location=eastus
+az() {
+    case "$1 $2 $3" in
+        "deployment group create")
+            printf '%s\\n' "$@" > deployment-args.txt
+            while [ "$#" -gt 0 ]; do
+                if [ "$1" = "--parameters" ] && [ -f "$2" ]; then
+                    cat "$2" > deployed-parameters.txt
+                fi
+                shift
+            done
+            ;;
+        "deployment group show") printf 'Succeeded\\n' ;;
+        "resource list --resource-group") printf '1\\n' ;;
+    esac
+}
+pwsh() {
+    printf '%s\\n' "$@" > bootstrap-args.txt
+    while [ "$#" -gt 0 ]; do
+        if [ "$1" = "-OutDir" ]; then
+            printf 'fixture-certificate' > "$2/cert.b64"
+            printf 'fixture-private-key' > "$2/key.b64"
+            printf 'fixture-version' > "$2/certversion.txt"
+        fi
+        shift
+    done
+    return "$BOOTSTRAP_EXIT_CODE"
+}
+bash() { :; }
+"""
+        sample = "48-bring-own-model-private-ca"
+        for name, extension, bootstrap_exit, expected_exit in (
+            (sample, "bicepparam", 0, 0),
+            (sample, "bicep", 0, 0),
+            (sample, "bicepparam", 7, 1),
+            ("01-example", "bicep", 7, 0),
+        ):
+            with self.subTest(name=name, extension=extension, bootstrap_exit=bootstrap_exit):
+                with tempfile.TemporaryDirectory() as directory:
+                    repo = Path(directory)
+                    sample_dir = repo / SAMPLE_ROOT / name
+                    sample_dir.mkdir(parents=True)
+                    if name == sample:
+                        for file in ("main.bicep", "main.bicepparam"):
+                            shutil.copyfile(ROOT / SAMPLE_ROOT / sample / file, sample_dir / file)
+                    else:
+                        (sample_dir / "main.bicep").write_text("param location string\n", encoding="utf-8")
+                    cert_temp = repo / "cert-temp"
+                    cert_temp.mkdir()
+                    deployment_file = f"{SAMPLE_ROOT}/{name}/main.{extension}"
+                    result = subprocess.run(
+                        [bash],
+                        input=stub + cleanup + deploy +
+                        f'\ndeploy_with_location "{deployment_file}" westus primary\n',
+                        cwd=repo,
+                        env={**os.environ, "BOOTSTRAP_EXIT_CODE": str(bootstrap_exit),
+                             "AGENT_TEMPDIRECTORY": cert_temp.as_posix()},
+                        capture_output=True, text=True,
+                    )
+                    self.assertEqual(expected_exit, result.returncode, result.stdout + result.stderr)
+                    self.assertEqual([], list(cert_temp.iterdir()))
+                    self.assertFalse((sample_dir / f".ci.main.{extension}").exists())
+                    if name != sample:
+                        self.assertFalse((repo / "bootstrap-args.txt").exists())
+                        self.assertTrue((repo / "deployment-args.txt").exists())
+                        continue
+                    bootstrap_args = (repo / "bootstrap-args.txt").read_text(encoding="utf-8")
+                    self.assertIn("-PrincipalType\nServicePrincipal\n", bootstrap_args)
+                    self.assertIn("-Location\nwestus\n", bootstrap_args)
+                    if bootstrap_exit:
+                        self.assertFalse((repo / "deployment-args.txt").exists())
+                        continue
+                    captured = repo / ("deployed-parameters.txt" if extension == "bicepparam"
+                                       else "deployment-args.txt")
+                    inputs = captured.read_text(encoding="utf-8")
+                    for param, value in (
+                        ("gatewayCertPemB64", "fixture-certificate"),
+                        ("gatewayKeyPemB64", "fixture-private-key"),
+                        ("gatewayCaSecretVersion", "fixture-version"),
+                        ("cosmosLocation", "westus"),
+                        ("searchLocation", "westus"),
+                        ("foundryModelName", "gpt-5-mini"),
+                        ("foundryModelVersion", "2025-08-07"),
+                    ):
+                        expected = f"param {param} = '{value}'" if extension == "bicepparam" else f"{param}={value}"
+                        self.assertIn(expected, inputs)
+                    vault = next(line for line in inputs.splitlines()
+                                 if line.startswith("param keyVaultName =" if extension == "bicepparam"
+                                                    else "keyVaultName="))
+                    vault_name = vault.split("'")[1] if extension == "bicepparam" else vault.split("=", 1)[1]
+                    self.assertIn(f"-KeyVaultName\n{vault_name}\n", bootstrap_args)
+                    self.assertNotIn("fixture-private-key", result.stdout + result.stderr)
+
+    def test_live_deployment_exclusion_is_sample_specific_and_preserves_failures(self):
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "Bash is required for pipeline deployment checks")
+        script = self.pipeline["stages"][2]["jobs"][0]["steps"][1]["inputs"]["inlineScript"]
+        loop = script[script.index('for deployment_file in "${deployment_files[@]}"; do'):]
+        loop = loop.replace("$(BICEP_ROOT)", SAMPLE_ROOT)
+        stub = """
+set -euo pipefail
+primary_location=westus
+fallback_location=eastus
+deployment_files=("$@")
+deploy_with_location() {
+    printf 'DEPLOY %s %s\\n' "$1" "$2"
+    return "$DEPLOY_EXIT_CODE"
+}
+bicepparam_supports_location() { return 0; }
+"""
+        excluded_dirs = {f"{SAMPLE_ROOT}/{name}" for name in EXCLUDED_SAMPLES}
+        excluded_files = [f"{SAMPLE_ROOT}/{name}/main.bicep" for name in EXCLUDED_SAMPLES]
+        other = f"{SAMPLE_ROOT}/01-connections/main.bicep"
+        lookalikes = [f"{SAMPLE_ROOT}/{name}-other/main.bicep" for name in EXCLUDED_SAMPLES]
+        for files, deploy_exit_code, expected_exit_code in (
+            *(([file], 0, 0) for file in excluded_files),
+            *(([f"{directory}/main.bicepparam"], 0, 0) for directory in sorted(excluded_dirs)),
+            (excluded_files, 0, 0),
+            (excluded_files + [other], 0, 0),
+            (lookalikes, 0, 0),
+            (excluded_files + [other], 7, 1),
+        ):
+            with self.subTest(files=files, deploy_exit_code=deploy_exit_code):
+                result = subprocess.run(
+                    [bash, "-c", stub + loop, "bicep-ci", *files],
+                    cwd=ROOT,
+                    env={**os.environ, "DEPLOY_EXIT_CODE": str(deploy_exit_code)},
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(expected_exit_code, result.returncode, result.stdout + result.stderr)
+                for file in files:
+                    if file.rsplit("/", 1)[0] in excluded_dirs:
+                        self.assertIn(f"Skipping live deployment of {file}", result.stdout)
+                        self.assertIn("##vso[task.logissue type=warning]", result.stdout)
+                        self.assertIn("live deployment is NOT validated", result.stdout)
+                        self.assertNotIn(f"DEPLOY {file}", result.stdout)
+                    else:
+                        self.assertIn(f"DEPLOY {file} westus", result.stdout)
+                if expected_exit_code:
+                    self.assertIn("##vso[task.logissue type=error]", result.stdout)
+                    self.assertIn(f"DEPLOY {other} eastus", result.stdout)
 
 
 if __name__ == "__main__":

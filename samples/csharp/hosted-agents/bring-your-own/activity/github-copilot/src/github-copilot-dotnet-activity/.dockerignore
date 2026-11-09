@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+.azure/
+.vscode/
+.git/
+.env
+.env.*
+*.user
+appPackage/
+TEAMS_APP_SETUP.md

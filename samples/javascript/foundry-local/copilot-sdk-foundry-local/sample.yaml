@@ -1,5 +1,5 @@
 name: GitHub Copilot SDK with Foundry Local (JavaScript)
-description: GitHub Copilot SDK integration with Foundry Local for agentic AI workflows.
+description: GitHub Copilot SDK integration through the Foundry Local v2 embedded web service.
 
 # SKIP: Depends on @github/copilot-sdk which pulls native platform binaries.
 build: "echo 'SKIP: Depends on @github/copilot-sdk which pulls native platform binaries.'"

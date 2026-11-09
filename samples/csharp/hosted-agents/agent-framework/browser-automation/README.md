@@ -26,6 +26,7 @@ No browser tool schema is hardcoded in the application, and no local browser CLI
 | --- | --- |
 | `src/bat-csharp-maf/Program.cs` | Builds and hosts the Agent Framework agent. |
 | `src/bat-csharp-maf/utils/Middlewares.cs` | Logs calls and injects exact live-view links. |
+| `src/bat-csharp-maf/utils/ToolCatalog.cs` | Publishes actual runtime tool schemas in Responses metadata. |
 | `src/bat-csharp-maf/prompts/base.md` | Browser lifecycle and automation behavior. |
 | `src/bat-csharp-maf/skills/` | Browser automation procedures loaded by the agent. |
 | `hooks/setup-toolbox.*` | Publishes the GA browser automation toolbox. |

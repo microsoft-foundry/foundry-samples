@@ -8,8 +8,7 @@ from dotenv import load_dotenv
 
 from utils.agent_factory import build_agent
 from utils.settings import make_settings
-
-from agent_framework_foundry_hosting import ResponsesHostServer
+from utils.tool_catalog import ToolCatalogResponsesHostServer
 
 warnings.filterwarnings("ignore", message=r"\[SKILLS\].*")
 
@@ -25,7 +24,7 @@ def main() -> None:
         logger.info("Model: %s", settings.model)
         logger.info("Toolbox: %s", settings.toolbox_name)
     agent, _ = build_agent(settings)
-    ResponsesHostServer(agent).run()
+    ToolCatalogResponsesHostServer(agent).run()
 
 
 if __name__ == "__main__":

@@ -55,7 +55,6 @@ def scrub_browser_session_result(contents: list[Content]) -> None:
         if isinstance(live_view_url, str) and live_view_url:
             global _live_view_url
             _live_view_url = live_view_url
-            value["note"] = "The live view link is delivered directly to the user."
         content.text = json.dumps(value, ensure_ascii=False)
 
 
@@ -75,4 +74,5 @@ def make_toolbox_mcp_tool(
         load_prompts=False,
         description="Azure Playwright browser automation tools.",
         approval_mode="never_require",
+        tool_result_content="content_first",
     )

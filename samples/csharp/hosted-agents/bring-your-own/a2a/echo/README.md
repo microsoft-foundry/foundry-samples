@@ -14,6 +14,8 @@ No model, Toolbox, SDK checkout or global NuGet configuration is required.
 The sample-local [NuGet.Config](NuGet.Config) selects the public Azure SDK
 development feed. This alpha was built from SDK commit `6679d88e2`; later PR
 fixes are not included. It is not a stable SDK release.
+The runtime source folder also carries that feed configuration, so an azd
+copy of only the application can restore independently.
 
 ## How it works
 

@@ -6,8 +6,8 @@
 use std::io::{self, Write};
 
 use foundry_local_sdk::{
-    ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage,
-    ChatCompletionRequestUserMessage, FoundryLocalConfig, FoundryLocalManager,
+    ChatSession, FoundryLocalConfig, FoundryLocalManager, Item, Request, RequestOptions,
+    SearchOptions, TextKind,
 };
 use tokio_stream::StreamExt;
 // </imports>
@@ -35,14 +35,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     current_ep = ep_name.to_string();
                 }
-                print!("\r  {:<30}  {:5.1}%", ep_name, percent);
+                print!("\r  {ep_name:<30}  {percent:5.1}%");
                 io::stdout().flush().ok();
             }
         })
         .await?;
     println!();
 
-    // ── 2. Pick a modeland ensure it is downloaded ──────────────────────
+    // ── 2. Pick a model and ensure it is downloaded ─────────────────────
     // <model_setup>
     let model = manager.catalog().get_model(ALIAS).await?;
     println!("Model: {} (id: {})", model.alias(), model.id());
@@ -63,56 +63,64 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✓ Model loaded\n");
     // </model_setup>
 
-    // ── 3. Create a chat client──────────────────────────────────────────
+    // ── 3. Create a stateful chat session ────────────────────────────────
     // <chat_client>
-    let client = model.create_chat_client()
-        .temperature(0.7)
-        .max_tokens(256);
+    let session = ChatSession::new(&model).await?;
+    session
+        .set_options(RequestOptions {
+            search: SearchOptions {
+                temperature: Some(0.7),
+                max_output_tokens: Some(256),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .await?;
     // </chat_client>
 
-    // ── 4. Non-streamingchat completion ─────────────────────────────────
+    // ── 4. Non-streaming chat completion ────────────────────────────────
     // <chat_completion>
-    let messages: Vec<ChatCompletionRequestMessage> = vec![
-        ChatCompletionRequestSystemMessage::from("You are a helpful assistant.").into(),
-        ChatCompletionRequestUserMessage::from("What is Rust's ownership model?").into(),
-    ];
+    let request = Request::from_items(vec![
+        Item::system_message(vec![Item::text("You are a helpful assistant.")]),
+        Item::user_message(vec![Item::text("What is Rust's ownership model?")]),
+    ]);
 
     println!("--- Non-streaming completion ---");
-    let response = client.complete_chat(&messages, None).await?;
-    if let Some(choice) = response.choices.first() {
-        if let Some(ref content) = choice.message.content {
-            println!("Assistant: {content}");
+    let response = session.process_request(request).await?;
+    print!("Assistant: ");
+    for item in &response.items {
+        if let Some(message) = item.as_message() {
+            print!("{}", message.text());
         }
     }
+    println!();
     // </chat_completion>
 
-    // ── 5. Streamingchat completion ─────────────────────────────────────
+    // ── 5. Streaming chat completion ────────────────────────────────────
     // <streaming>
-    let stream_messages: Vec<ChatCompletionRequestMessage> = vec![
-        ChatCompletionRequestSystemMessage::from("You are a helpful assistant.").into(),
-        ChatCompletionRequestUserMessage::from("Explain the borrow checker in two sentences.")
-            .into(),
-    ];
+    let request = Request::from_items(vec![Item::user_message(vec![Item::text(
+        "Explain the borrow checker in two sentences.",
+    )])]);
 
     println!("\n--- Streaming completion ---");
     print!("Assistant: ");
-    let mut stream = client
-        .complete_streaming_chat(&stream_messages, None)
-        .await?;
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk?;
-        if let Some(choice) = chunk.choices.first() {
-            if let Some(ref content) = choice.delta.content {
-                print!("{content}");
-                io::stdout().flush().ok();
-            }
+    let mut stream = session.process_streaming_request(request);
+    while let Some(item) = stream.next().await {
+        if let Item::Text {
+            text,
+            kind: TextKind::Default,
+        } = item?
+        {
+            print!("{text}");
+            io::stdout().flush().ok();
         }
     }
     println!("\n");
     // </streaming>
 
-    // ── 6. Unloadthe model──────────────────────────────────────────────
+    // ── 6. Unload the model ─────────────────────────────────────────────
     // <cleanup>
+    drop(session);
     println!("Unloading model...");
     model.unload().await?;
     println!("Done.");

@@ -1,12 +1,14 @@
 // Copyright (c) Microsoft. All rights reserved.
 
 using Azure.AI.Projects;
+using Azure.AI.AgentServer.Responses;
 using Azure.Identity;
 using BrowserAutomation;
 using DotNetEnv;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Foundry.Hosting;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 Env.NoClobber().TraversePath().Load();
 
@@ -62,7 +64,8 @@ AIAgent baseAgent = new AIProjectClient(
             Instructions = systemPrompt,
         },
         AIContextProviders = [skillsProvider],
-    });
+    },
+    clientFactory: client => new ToolCatalogChatClient(client));
 
 var agent = baseAgent
     .AsBuilder()
@@ -74,6 +77,9 @@ var agent = baseAgent
 
 var builder = AgentHost.CreateBuilder(args);
 builder.Services.AddFoundryResponses(agent);
+builder.Services.AddSingleton<AgentFrameworkResponseHandler>();
+builder.Services.Replace(
+    ServiceDescriptor.Singleton<ResponseHandler, ToolCatalogResponseHandler>());
 builder.Services.AddFoundryToolboxes(
     new ToolboxScopedCredential(new DefaultAzureCredential()),
     options => options.ApiVersion = "v1",

@@ -2,3 +2,4 @@ name: Audio Transcription (JavaScript)
 description: Transcribe audio files using the Whisper model with streaming output.
 
 build: "npm install --omit=optional --no-audit --no-fund"
+validate: "node --check app.js"

@@ -169,7 +169,6 @@ class ToolboxClient:
                     continue
                 if isinstance(value, dict):
                     value.pop("liveViewUrl", None)
-                    value["note"] = "Live-view URL omitted from model-visible tool output."
                     sanitized_items.append(
                         json.dumps(value, ensure_ascii=False)
                     )
@@ -181,10 +180,10 @@ class ToolboxClient:
         is_error = bool(result.get("isError"))
         live_view_urls = [live_view_url] if live_view_url else []
         public_output = "\n".join(
-            public_tool_output(tool_name, text, is_error, live_view_urls)
+            public_tool_output(tool_name, text, live_view_urls)
             for text in text_items if text
         ) if any(text_items) else public_tool_output(
-            tool_name, output, is_error, live_view_urls
+            tool_name, output, live_view_urls
         )
         return ToolboxCallResult(
             output=output,

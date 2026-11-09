@@ -1,5 +1,5 @@
-name: Tutorial: Document Summarizer (Rust)
-description: Summarize documents with AI (tutorial).
+name: "Tutorial: Document Summarizer (Rust)"
+description: Summarize text documents with v2 chat sessions (tutorial).
 
 build: "cargo build --verbose"
 validate: "cargo check"

@@ -29,6 +29,14 @@ The live-view URL is delivered directly to the user. Do not repeat or modify it.
 
 Use `browser_tabs` for tab management, `browser_take_screenshot` for visual evidence, and `browser_network_requests` or `browser_console_messages` for diagnostics.
 
+## Recover safely
+
+- After a failed action or timeout, take a full snapshot without a target in the same session and active tab. Check page readiness, overlays, and whether the action already succeeded before choosing a fresh ref or unique selector.
+- A URL and title without an accessibility tree are not enough to identify elements. Use another appropriate discovered inspection tool rather than inventing refs.
+- Batch compatible text-entry fields only. Use appropriate discovered tools for native selects, checkboxes, and radio buttons, and distinguish editable datalist inputs from native selects. Check current state before clicking so an already-correct value is not toggled.
+- A failed form-fill batch may leave earlier fields updated. Inspect current values and retry only unfinished fields, not the whole batch.
+- After a submit timeout, inspect navigation or confirmation before retrying. Never repeat a confirmed submission; if its outcome remains unknown, report that uncertainty instead of submitting again.
+
 ## Cleanup
 
 Keep sessions open after successful work and while waiting for user input, approval, CAPTCHA, MFA, or manual browser interaction. Resume in the same browser with a fresh snapshot when the user replies.
