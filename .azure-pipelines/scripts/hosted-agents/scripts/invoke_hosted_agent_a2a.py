@@ -133,6 +133,7 @@ def invoke_turn(
     error = ""
     exit_code = 1
     terminal = False
+    diagnostic = ""
     try:
         result = transport(
             [
@@ -155,6 +156,7 @@ def invoke_turn(
             ]
         )
         raw = result.stdout
+        diagnostic = result.stderr if result.returncode else ""
         if result.stderr:
             print(result.stderr, file=sys.stderr, end="")
         body = raw
@@ -182,7 +184,11 @@ def invoke_turn(
         terminal = True
     if error:
         print(f"A2A invocation error: {error}", file=sys.stderr)
-    output = raw + (f"\nA2A invocation error: {error}\n" if error else "")
+    output = (
+        raw
+        + ("\n" + diagnostic if diagnostic else "")
+        + (f"\nA2A invocation error: {error}\n" if error else "")
+    )
     for suffix, content in (
         ("out", output),
         ("raw", body),

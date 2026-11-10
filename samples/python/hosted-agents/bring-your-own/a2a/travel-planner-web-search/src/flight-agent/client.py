@@ -30,6 +30,12 @@ logger = logging.getLogger("a2a.web_research")
 
 
 def validate_toolbox_endpoint(endpoint: str, project: str) -> None:
+    if (
+        "\\" in endpoint
+        or "%" in urlsplit(endpoint).path
+        or any(segment in {".", ".."} for segment in urlsplit(endpoint).path.split("/"))
+    ):
+        raise ValueError("TOOLBOX_ENDPOINT contains an unsafe path")
     target, origin = urlsplit(endpoint), urlsplit(project)
     if (
         target.scheme != "https"

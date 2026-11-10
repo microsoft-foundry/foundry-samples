@@ -50,7 +50,9 @@ def completed(request_id):
 
 
 class A2AInvocationTests(unittest.TestCase):
-    def run_turn(self, change=None, *, status=200, cli_exit=0, raw_json=False):
+    def run_turn(
+        self, change=None, *, status=200, cli_exit=0, raw_json=False, stderr=""
+    ):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
             (work / "input").write_text("hello\n", encoding="utf-8")
@@ -80,7 +82,7 @@ class A2AInvocationTests(unittest.TestCase):
                     if raw_json
                     else f"HTTP/2.0 {status} OK\r\nContent-Type: application/json\r\n\r\n{body}"
                 )
-                return subprocess.CompletedProcess(arguments, cli_exit, raw, "")
+                return subprocess.CompletedProcess(arguments, cli_exit, raw, stderr)
 
             outcome = invoke.invoke_turn(
                 1,
@@ -97,6 +99,9 @@ class A2AInvocationTests(unittest.TestCase):
             )
             text = (work / "invoke-response-1.txt").read_text()
             raw = (work / "invoke-raw-1.json").read_text()
+            if cli_exit and stderr:
+                self.assertIn(stderr, (work / "invoke-out-1.txt").read_text())
+                self.assertNotIn(stderr, raw)
             self.assertTrue(
                 (work / "evidence/turn-1-attempt-1-a2a-request.json").is_file()
             )
@@ -104,6 +109,12 @@ class A2AInvocationTests(unittest.TestCase):
                 json.loads((work / "invoke-result-1.json").read_text()), outcome
             )
             return outcome, text, raw
+
+    def test_stderr_only_retry_diagnostics_are_retained_separately(self):
+        for error in ("session_not_ready", "session_quota_exceeded", "HTTP 429"):
+            outcome, _, _ = self.run_turn(cli_exit=1, stderr=error)
+            self.assertEqual(outcome["turn_exit"], 1)
+            self.assertFalse(outcome["approval_terminal_error"])
 
     def test_completed_task_produces_artifact_text_and_raw_evidence(self):
         for raw_json in (False, True):

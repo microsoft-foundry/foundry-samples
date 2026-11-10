@@ -211,6 +211,13 @@ projects and uniquely renames every agent; it does not collapse specialists into
 the planner. The selected CI project must support native A2A and have the
 sample's declared model deployment. Offline harness tests do not establish that
 these cloud prerequisites are available.
+
+For multi-agent A2A fixtures, the deployment phase checks the selected planner's
+instance identity for project-scoped Foundry Agent Consumer access and creates
+an assignment only when needed. The CI identity must have permission to manage
+role assignments at that scope. Job-owned assignment IDs are recorded before
+creation and removed in the always-run toolbox cleanup phase; existing grants
+are never deleted. CI waits briefly for propagation before invoking.
 | test | `name` | Required non-empty string, unique within the file. |
 | test | `when` | Optional mapping. `toolbox_label` is its only supported field. |
 | test | `turns` | Required non-empty sequence. |

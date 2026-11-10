@@ -185,7 +185,7 @@ terminal. `set` in PowerShell does not set this environment variable.
 Get your existing project ARM ID from the owner, then run:
 
 ```text
-azd ai agent init --src . -t "https://github.com/Hameedkunkanoor/foundry-samples/blob/feature/native-a2a-echo-travel-web-search/samples/python/hosted-agents/bring-your-own/a2a/travel-planner-web-search/azure.yaml" --project-id "<PROJECT-ARM-ID>" -e travel-web-search
+azd ai agent init --src . -t "https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/a2a/travel-planner-web-search/azure.yaml" --project-id "<PROJECT-ARM-ID>" -e travel-web-search
 ```
 
 In `azure.yaml`, change the service-level agent names to unique names if needed.

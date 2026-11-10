@@ -76,6 +76,29 @@ REQUIREMENTS = {
 
 
 class PlanResearchTests(unittest.IsolatedAsyncioTestCase):
+    async def test_metadata_only_edit_of_existing_draft_does_not_force_research(self):
+        self.operations.clear()
+        updated = await self.invoke(
+            "update_plan",
+            plan_id=self.plan["plan_id"],
+            expected_version=1,
+            metadata_patch={"label": "Pending trip"},
+        )
+        self.assertEqual(updated["status"], "needs_replan")
+        store_module.validate_completion(self.operations, self.calls)
+        self.assertFalse(self.operations[0]["requirements_changed"])
+
+    async def test_requirement_edit_still_requires_completed_research(self):
+        self.operations.clear()
+        await self.invoke(
+            "update_plan",
+            plan_id=self.plan["plan_id"],
+            expected_version=1,
+            requirements_patch={"budget_cents": 100000},
+        )
+        with self.assertRaisesRegex(RuntimeError, "completed refresh"):
+            store_module.validate_completion(self.operations, self.calls)
+
     async def asyncSetUp(self):
         self.store = MemoryStore()
         self.calls = []
@@ -304,6 +327,27 @@ class PlanResearchTests(unittest.IsolatedAsyncioTestCase):
 
 
 class SearchEvidenceTests(unittest.IsolatedAsyncioTestCase):
+    def test_toolbox_path_normalization_cannot_escape_project(self):
+        project = "https://example.test/api/projects/demo"
+        for runtime in ("flight-agent", "hotel-agent"):
+            client = load("boundary_" + runtime, ROOT / "src" / runtime / "client.py")
+            for path in (
+                "/toolboxes/../../other/toolboxes/web/mcp",
+                "/toolboxes/%2e%2e/web/mcp",
+                "/toolboxes/./web/mcp",
+                "/toolboxes/web\\..\\other/mcp",
+                "/toolboxes/%252e%252e/web/mcp",
+            ):
+                with self.subTest(runtime=runtime, path=path), self.assertRaises(
+                    ValueError
+                ):
+                    client.validate_toolbox_endpoint(
+                        project + path + "?api-version=v1", project
+                    )
+            client.validate_toolbox_endpoint(
+                project + "/toolboxes/web/mcp?api-version=v1", project
+            )
+
     async def run_search(self, runtime, results):
         module = load("research_" + runtime, ROOT / "src" / runtime / "client.py")
         configuration = {}

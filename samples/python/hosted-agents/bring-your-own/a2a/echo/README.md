@@ -55,7 +55,7 @@ azd auth login
 $env:AZD_ALPHA_ENABLE_AGENTS_A2A = "true"
 
 azd ai agent init --src . `
-    -t "https://github.com/Hameedkunkanoor/foundry-samples/blob/feature/native-a2a-echo-travel-web-search/samples/python/hosted-agents/bring-your-own/a2a/echo/azure.yaml" `
+    -t "https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/a2a/echo/azure.yaml" `
     --project-id "<PROJECT-ARM-ID>" --agent-name "a2a-echo-youralias-01"
 
 azd deploy echo

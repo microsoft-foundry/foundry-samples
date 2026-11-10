@@ -1040,6 +1040,15 @@ while : ; do
   echo "Deploy failed"
   exit 1
 done
+if [ "$PROTOCOL" = "a2a" ]; then
+  fixture_relative=$(python3 "$REPO_ROOT/.github/scripts/hosted_agent_fixture.py" \
+    fixture-dir --sample-dir "$SAMPLE_PATH")
+  if [ "$(yq '.sample.endpoints // {} | length' "$REPO_ROOT/$fixture_relative/test-spec.yml")" -gt 0 ]; then
+    python3 "$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/hosted_agent_a2a_access.py" \
+      grant "/tmp/a2a-access-${COMBO_ID}.json" "$FOUNDRY_AGENT_NAME" || exit 1
+    sleep 60
+  fi
+fi
 STEP_DEPLOY_AGENT
     ;;
   verify-deploy)
@@ -1948,6 +1957,10 @@ STEP_DELETE_AGENT_SESSION
     echo "##[section]Delete temporary toolboxes"
     bash /dev/fd/3 3<<'STEP_DELETE_TEMPORARY_TOOLBOXES'
 set -euo pipefail
+if [ "$PROTOCOL" = "a2a" ]; then
+  python3 "$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/hosted_agent_a2a_access.py" \
+    cleanup "/tmp/a2a-access-${COMBO_ID}.json" "$FOUNDRY_AGENT_NAME"
+fi
 if [ ! -f "$CI_TOOLBOX_STATE_FILE" ] || [ "$(jq '.toolboxes | length' "$CI_TOOLBOX_STATE_FILE")" -eq 0 ]; then
   echo "No cell-owned toolboxes to delete."
   jq -n '{operation:"cell",results:[]}' > "$CI_TOOLBOX_CLEANUP_RESULT"

@@ -131,12 +131,19 @@ def validate_completion(
     operations: list[dict[str, Any]], calls: list[dict[str, str]]
 ) -> None:
     changed = {}
+    refresh_required = set()
     for operation in operations:
         if operation["action"] in {"created", "updated", "recommendation_saved"}:
             record = operation["plan"]
             changed[record["plan_id"]] = record
+            if operation["action"] == "created" or operation.get(
+                "requirements_changed"
+            ):
+                refresh_required.add(record["plan_id"])
     pending = [
-        key for key, record in changed.items() if record["status"] == "needs_replan"
+        key
+        for key, record in changed.items()
+        if key in refresh_required and record["status"] == "needs_replan"
     ]
     if pending:
         raise RuntimeError(
@@ -345,7 +352,11 @@ def build_tools(
                 "removed_metadata_keys": params.remove_metadata_keys,
             }
         )
-        return await write(item, record, "updated")
+        result = await write(item, record, "updated")
+        operations[-1]["requirements_changed"] = (
+            requirements != item.value["requirements"]
+        )
+        return result
 
     async def save(params: SaveRecommendation) -> str:
         item = await read(params.plan_id)
