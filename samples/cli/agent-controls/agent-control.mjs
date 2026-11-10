@@ -204,7 +204,15 @@ export class AgentControlClient {
         redirect: "error",
         signal: controller.signal,
       });
-      const result = await readJson(response);
+      let result;
+      try {
+        result = await readJson(response);
+      } catch (error) {
+        if (!response.ok) {
+          throw new Error(`Agent Control HTTP ${response.status}: unreadable error response`, { cause: error });
+        }
+        throw error;
+      }
       if (!response.ok) {
         throw new Error(`Agent Control HTTP ${response.status}: ${result.error?.code ?? "unknown_error"}`);
       }
