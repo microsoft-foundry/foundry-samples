@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def main() -> None:
-    root = Path(__file__).resolve().parents[3]
+    root = Path(__file__).resolve().parents[2]
     project = root / (
         "samples/python/hosted-agents/langgraph/responses/07-human-in-the-loop/"
         "src/langgraph-human-in-the-loop-responses"
@@ -29,7 +29,7 @@ def main() -> None:
             "unittest",
             "discover",
             "-s",
-            ".azure-pipelines/scripts/hosted-agents/runtime-tests",
+            ".github/scripts/runtime-tests",
             "-p",
             "test_*.py",
         ],

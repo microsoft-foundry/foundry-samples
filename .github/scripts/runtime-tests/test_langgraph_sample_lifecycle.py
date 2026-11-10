@@ -1,7 +1,7 @@
 """Local sample lifecycle regressions using runtime dependencies, not Azure access.
 
 Run with the sample's frozen runtime dependencies:
-    python .azure-pipelines/scripts/hosted-agents/run_runtime_tests.py
+    python .github/scripts/run_hosted_agent_runtime_tests.py
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from starlette.testclient import TestClient
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[3]
 SAMPLE = ROOT / (
     "samples/python/hosted-agents/langgraph/responses/07-human-in-the-loop/"
     "src/langgraph-human-in-the-loop-responses/main.py"

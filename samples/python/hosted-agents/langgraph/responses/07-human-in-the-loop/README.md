@@ -47,6 +47,26 @@ The Responses host emits two paired output items for each pause, both keyed by t
 
 The graph factory is registered in `langgraph.json` and loaded by `langchain_azure_ai.agents.hosting.run`, which exposes the OpenAI-compatible Responses endpoint at `/responses` and handles conversation history, interrupt serialization, and streaming lifecycle events automatically.
 
+### Lifecycle regression check
+
+From the repository root, run the shared runtime regression entrypoint:
+
+```bash
+python -m pip install "uv==0.11.7"
+python .github/scripts/run_hosted_agent_runtime_tests.py
+```
+
+It installs this sample's committed dependencies with `uv sync --frozen` before
+running the actual graph through a local Responses HTTP host. A scripted model
+lets the test assert that rich `function_call_output` revision feedback reaches
+the model, and that a new task after approval receives neither the prior draft
+nor its revision feedback. No Azure credentials or model calls are needed.
+
+GitHub scripts self-test runs this in a dedicated runtime job, separate from
+lightweight policy tests. Missing dependencies and test failures are not skipped.
+The cloud contract separately tests latest-task selection in Code and Container
+deployments; this local regression is not cloud or UI acceptance.
+
 ## Option 1: Azure Developer CLI (`azd`)
 
 ### Prerequisites

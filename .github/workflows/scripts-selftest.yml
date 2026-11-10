@@ -46,7 +46,7 @@ jobs:
       - name: Install runtime test resolver
         run: python -m pip install --disable-pip-version-check "uv==0.11.7"
       - name: Run frozen hosted-agent runtime regressions
-        run: python .azure-pipelines/scripts/hosted-agents/run_runtime_tests.py
+        run: python .github/scripts/run_hosted_agent_runtime_tests.py
 
   ado-pipelines-harness:
     runs-on: ubuntu-latest
@@ -66,6 +66,7 @@ jobs:
       - name: Test hosted-agent helpers and fixture contracts
         run: |
           python -m unittest discover -s .azure-pipelines/scripts/hosted-agents/tests -p 'test_*.py'
+          python .github/scripts/test/test_hosted_agent_runtime_entrypoint.py
           bash .azure-pipelines/scripts/hosted-agents/tests/test-hosted-agent-ci-toolboxes.sh
           bash .azure-pipelines/scripts/hosted-agents/tests/test-hosted-agent-session-quota.sh
           python .github/scripts/test/test_ado_pipeline_fixtures.py

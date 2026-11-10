@@ -186,12 +186,6 @@ stages:
               fi
             displayName: Test and validate hosted-agent test specs
 
-          - bash: |
-              set -euo pipefail
-              python3 -m pip install --disable-pip-version-check "uv==0.11.7"
-              python3 .azure-pipelines/scripts/hosted-agents/run_runtime_tests.py
-            displayName: Run frozen hosted-agent runtime regressions
-
           - bash: .azure-pipelines/scripts/hosted-agents/tests/test-hosted-agent-ci-toolboxes.sh
             displayName: Test hosted-agent CI toolbox lifecycle scripts
 
