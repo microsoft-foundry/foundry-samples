@@ -29,6 +29,9 @@
 /samples/python/voice-agents/     @microsoft-foundry/voice-agents-sample
 /samples/typescript/voice-agents/ @microsoft-foundry/voice-agents-sample
 
+#agent controls samples
+/samples/cli/agent-controls/ @microsoft-foundry/agent-controls
+
 #### Partner / external collaborator sample areas #######################################################
 # Partners are outside collaborators (not org members). Each entry is the source of truth for that
 # partner. Update alongside step 3 of the onboarding process in docs/external-contributions.md.
