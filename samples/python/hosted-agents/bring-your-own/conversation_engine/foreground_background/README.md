@@ -13,9 +13,10 @@ Microsoft has no responsibility to you or others with respect to any of these sa
 
 ## What this sample demonstrates
 
-This is the original model-backed foreground/background VoiceLive sample, moved to
-`conversation_engine/foreground_background` and hosted on the dedicated
-`voice_conversation_engine:1.0.0` protocol. It does not expose a Responses HTTP endpoint.
+This is a CE variant of the model-backed foreground/background VoiceLive sample, hosted on the
+dedicated `voice_conversation_engine:1.0.0` protocol. The
+[original Responses sample](../../voicelive/foreground-background-agents-responses-voicelive/)
+remains unchanged at its original path. This CE variant does not expose a Responses HTTP endpoint.
 The Router still uses Chat Completions, and the Worker still uses the model's Responses API;
 those upstream model APIs are independent of the Hosted Agent ingress protocol.
 
@@ -90,9 +91,12 @@ its business stream uses cancellable asynchronous calls and ordinary synchronous
 - For deployment, matching Hosted Agent ingress and Voice Live support for
   `voice_conversation_engine:1.0.0`. A successful local SDK test does not establish that rollout.
 
-The model deployment, Hosted Agent name, CPU/memory settings, and runtime directory name are
-retained from the original sample. The manifest adds a Voice wrapper whose `conversationEngine`
-references the Hosted Agent. No cloud resource is created by checking out this sample.
+The model deployment, CPU/memory settings, and runtime directory name are retained from the
+original sample. The CE manifest uses the distinct Hosted Agent name
+`foreground-background-agents-ce` and Voice wrapper name `foreground-background-agents-ce-voice`,
+so deploying it in the same project does not replace the original Responses Agent.
+The wrapper's `conversationEngine` references the CE Agent. No cloud resource is created by
+checking out this sample.
 
 ## Option 1: Azure Developer CLI
 
@@ -108,7 +112,7 @@ azd provision
 azd ai agent run
 ```
 
-The public manifest URL is available after this migration is merged. Before then, use the local
+The public manifest URL is available after this CE variant is merged. Before then, use the local
 manifest's absolute path from a fresh directory. To reuse an existing project/model, configure
 that azd environment for those existing resources and do not run `azd provision` or `azd up`.
 

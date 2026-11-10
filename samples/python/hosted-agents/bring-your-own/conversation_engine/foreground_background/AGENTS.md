@@ -1,6 +1,6 @@
 # Coding Agent Instructions — Foreground + Background Conversation Engine
 
-This is the migrated, model-backed field-operations sample. It uses Hosted protocol
+This is the model-backed CE counterpart to the retained Responses sample. It uses Hosted protocol
 `voice_conversation_engine:1.0.0` and Bridge message version `1.0`.
 
 ## Scope and implementation
@@ -33,7 +33,9 @@ Do not claim fake-model tests validate live model permissions or deployed audio.
 ## Deployment
 
 `azure.yaml` uses direct code deployment on Python 3.13 and also declares a managed Voice wrapper.
-Keep the original project and resource identifiers; initialize azd from a fresh directory.
+Keep the runtime directory and model deployment; initialize azd from a fresh directory.
+Use distinct CE Hosted Agent and Voice wrapper names so the original Responses Agent is not
+replaced when both samples are deployed in the same project. Leave the original sample unchanged.
 Neither deprecated Bridge metadata key is needed. The SDK's independent legacy WS route remains
 available, but only CE is declared. Agent Inspector and `azd ai agent invoke` are not CE clients.
 Keep the model/identity and service-side CE rollout prerequisites explicit in the README.

@@ -30,7 +30,7 @@ require no model call.
 | --- | --- | --- |
 | Python | [Voice Live — Adapter Mode](adapter_mode/) | Recommended for reusing an invocation handler: a CE-only Agent calls a streaming HTTP-shaped Echo handler in process. |
 | Python | [Voice Live Bridge — Basic Python](basic/) | A framework-free Python hosted agent using `azure-ai-agentserver-invocations`. |
-| Python | [Foreground + Background Conversation Engine](foreground_background/) | Model-backed foreground Router and background tool Worker, migrated from the Responses VoiceLive sample. |
+| Python | [Foreground + Background Conversation Engine](foreground_background/) | Model-backed foreground Router and background tool Worker; CE counterpart to the retained Responses VoiceLive sample. |
 | Python | [Voice Live Bridge — LangChain Python](langchain/) | Model-free async story stream; legacy directory/Agent names retained. |
 | Python | [Voice Live Bridge — LangGraph Python](langgraph/) | Model-free async story stream; legacy directory/Agent names retained. |
 | C# | [Voice Live — Adapter Mode](../../../../csharp/hosted-agents/bring-your-own/conversation_engine/adapter_mode/) | The equivalent in-process adapter and streaming Echo handler for .NET. |
