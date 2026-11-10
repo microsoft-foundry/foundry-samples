@@ -47,6 +47,78 @@ class PipelineTests(unittest.TestCase):
         self.work = Path(self.directory.name)
         self.steps = {action(step): step for step in JOB["steps"] if action(step)}
 
+    def resolve_response_parents(self, tests, failed_turn=None, duplicate_turn=None):
+        setup = RUNNER[
+            RUNNER.index("declare -A response_ids=()"):
+            RUNNER.index("  line=$(jq -r '.serialized_input'", RUNNER.index("declare -A response_ids=()"))
+        ]
+        update_start = RUNNER.index(
+            '  if [ "$PROTOCOL" = "responses" ] && [ "$test_turn_count" -gt 1 ] && [ $turn_exit -eq 0 ]; then'
+        )
+        update = RUNNER[update_start:RUNNER.index("  # Persist only", update_start)]
+        turns = [
+            {"global_turn": global_turn, "turn": index, "test_turn_count": len(test), **record}
+            for global_turn, (index, test, record) in enumerate(
+                ((index, test, record) for test in tests
+                 for index, record in enumerate(test, start=1)), start=1
+            )
+        ]
+        (self.work / "turns.jsonl").write_text(
+            "".join(json.dumps(turn) + "\n" for turn in turns), encoding="utf-8"
+        )
+        script = f"""\
+PROTOCOL=responses
+overall_exit=0
+{setup}
+  printf '%s\\n' "$turn_record" >> observed.jsonl
+  turn_exit=0
+  [ "$turn" != "{failed_turn}" ] || turn_exit=1
+  result_file=result.json
+  printf '{{"response_id":"response-%s"}}\\n' "$turn" > "$result_file"
+  [ "$turn" != "{duplicate_turn}" ] || printf '{{"response_id":"response-1"}}\\n' > "$result_file"
+{update}
+  [ "$turn_exit" -eq 0 ] || overall_exit=1
+done < turns.jsonl
+exit "$overall_exit"
+"""
+        result = subprocess.run(
+            [BASH, "-c", script], cwd=self.work, capture_output=True,
+            encoding="utf-8", timeout=20,
+        )
+        observed = [
+            json.loads(line) for line in (self.work / "observed.jsonl").read_text().splitlines()
+        ]
+        return result, observed
+
+    def test_branching_rewind_and_regeneration_resolve_exact_parents(self):
+        result, turns = self.resolve_response_parents([
+            [{}, {"previous_turn": 1}, {"previous_turn": 1},
+             {"previous_turn": 2}, {}, {"previous_turn": 1}],
+            [{}, {}],
+        ])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            [turn.get("previous_response_id") for turn in turns],
+            [None, "response-1", "response-1", "response-2",
+             "response-4", "response-1", None, "response-7"],
+        )
+        self.assertTrue(all(turn["persist_response"] for turn in turns))
+
+    def test_missing_parent_fails_instead_of_starting_a_new_root(self):
+        result, turns = self.resolve_response_parents(
+            [[{}, {"previous_turn": 1}]], failed_turn=1
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("no successful stored response", result.stdout)
+        self.assertEqual(len(turns), 1)
+
+    def test_regeneration_requires_a_new_response_id(self):
+        result, _ = self.resolve_response_parents(
+            [[{}, {"previous_turn": 1}]], duplicate_turn=2
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("reused a response id", result.stdout)
+
     def run_phase(self, name, overrides=None, keep=(), env=None, shorten_timeout=False):
         overrides = overrides or {}
 

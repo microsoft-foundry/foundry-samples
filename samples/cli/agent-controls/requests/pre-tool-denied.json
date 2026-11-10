@@ -1,0 +1,14 @@
+{
+  "spec": "agent-hooks/0.1",
+  "interception_point": "pre_tool_call",
+  "timestamp": "2026-11-04T12:00:00Z",
+  "sequence": 3,
+  "agent": { "id": "support-agent", "framework": "custom" },
+  "session": { "id": "sample-tool-denied" },
+  "tool_call": {
+    "id": "refund-2",
+    "name": "refund_order",
+    "args": { "order_id": "demo-001", "amount": 100.01 }
+  },
+  "target": { "order_id": "demo-001", "amount": 100.01 }
+}

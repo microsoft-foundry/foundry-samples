@@ -1,0 +1,14 @@
+{
+  "spec": "agent-hooks/0.1",
+  "interception_point": "pre_tool_call",
+  "timestamp": "2026-11-04T12:00:00Z",
+  "sequence": 0,
+  "agent": { "id": "retrieval-agent", "framework": "custom" },
+  "session": { "id": "sample-approved-url" },
+  "tool_call": {
+    "id": "fetch-1",
+    "name": "fetch_document",
+    "args": { "url": "https://learn.microsoft.com/azure/" }
+  },
+  "target": { "url": "https://learn.microsoft.com/azure/" }
+}

@@ -1,0 +1,10 @@
+{
+  "spec": "agent-hooks/0.1",
+  "interception_point": "input",
+  "timestamp": "2026-11-04T12:00:00Z",
+  "sequence": 0,
+  "agent": { "id": "support-agent", "framework": "custom" },
+  "session": { "id": "sample-input" },
+  "input": { "content": "Please explain the refund process.", "role": "user" },
+  "target": { "content": "Please explain the refund process.", "role": "user" }
+}
