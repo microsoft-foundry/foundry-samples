@@ -40,7 +40,7 @@ from loguru import logger
 
 # Load .env from the same directory as this file BEFORE importing the bot.
 load_dotenv(
-    Path(__file__).resolve().parent / ".env", override=True
+    Path(__file__).resolve().parent / ".env", override=False
 )
 
 from bot_webrtc_server import run_bot  # noqa: E402
@@ -280,7 +280,7 @@ async def signaling_ws(ws: WebSocket):
 
 def main() -> None:
     host = os.environ.get("SERVER_HOST", "0.0.0.0")
-    port = int(os.environ.get("PORT", os.environ.get("SERVER_PORT", "8089")))
+    port = int(os.environ.get("PORT", "8089"))
     uvicorn.run(app, host=host, port=port)
 
 
