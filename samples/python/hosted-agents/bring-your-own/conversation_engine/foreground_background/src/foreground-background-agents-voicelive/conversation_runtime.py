@@ -116,6 +116,8 @@ class ConversationRuntime(VoiceRuntime):
             InputOrigin.USER,
             reason=reason,
         )
+        if not state.active:
+            self._detach(session)
 
     def _reconcile(self, session: Session, response_id: str, heard_text: str) -> None:
         state = self._state_for(session)

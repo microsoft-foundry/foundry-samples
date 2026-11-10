@@ -207,8 +207,16 @@ class ForegroundBackgroundAgent:
             else:
                 message = arguments.get("ack_message") or data.get("error", "Still working on it.")
         active = store.active_tasks()
+        # Results may become ready during Router I/O, after its context was built.
+        # Do not repeat results the Router saw or a status/result lookup just emitted.
+        known_completed = {task.task_id for task in completed}
+        active.extend(
+            task for task in store.completed_tasks()
+            if task.task_id not in known_completed and task.task_id not in turn.delivered_task_ids
+        )
         for chunk in text_chunks(message):
             yield chunk
+        has_output = bool(message)
 
         next_status = asyncio.get_running_loop().time() + STATUS_INTERVAL
         status_count = 0
@@ -250,13 +258,19 @@ class ForegroundBackgroundAgent:
                 if not any(t.status in (TaskStatus.QUEUED, TaskStatus.RUNNING) for t in active):
                     break
                 status = update.choices[0].message.content or ""
+                if status and has_output:
+                    yield "\n\n"
                 for chunk in text_chunks(status):
                     yield chunk
+                has_output = has_output or bool(status)
             except Exception as error:
                 logger.warning("Status update skipped; error_type=%s", type(error).__name__)
         for task in active:
             if task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
                 if task.status is TaskStatus.COMPLETED:
                     turn.delivered_task_ids.add(task.task_id)
+                if has_output:
+                    yield "\n\n"
                 for chunk in text_chunks(task_message(task)):
                     yield chunk
+                has_output = True
