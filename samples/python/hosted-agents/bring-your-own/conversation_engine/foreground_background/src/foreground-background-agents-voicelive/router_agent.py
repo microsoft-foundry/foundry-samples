@@ -45,7 +45,7 @@ ROUTER_TOOLS = [
                     ),
                 },
             },
-            "required": ["message"],
+            "required": ["message", "delivered_task_ids"],
         },
     },
     {

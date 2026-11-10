@@ -45,13 +45,13 @@ class Conversation:
         for task in self.tasks.active_tasks():
             task.cancel_event.set()
 
-    def reconcile(self, response_id: str, heard_text: str) -> None:
+    def reconcile(self, response_id: str, heard_text: str, *, allow_append: bool = False) -> None:
         for entry in self.history:
             if entry.response_id == response_id:
                 entry.content = heard_text
                 return
-        if heard_text:
-            # A send may still be unwinding when the caller-heard event arrives.
+        if allow_append and heard_text:
+            # Only a first in-flight send can be missing without having been evicted.
             self.history.append(HistoryEntry("assistant", heard_text, response_id))
 
 
@@ -137,6 +137,8 @@ class ForegroundBackgroundAgent:
         store = conversation.tasks
         store.cleanup()
         completed = store.completed_tasks()
+        # Keep references across Router I/O, including tasks that fail or get cancelled.
+        active = store.active_tasks()
         context_parts = [
             build_task_context(store),
             build_delivered_context(store),
@@ -174,10 +176,14 @@ class ForegroundBackgroundAgent:
         arguments = json.loads(call.arguments)
         if call.name == "respond_directly":
             message = arguments.get("message", "")
-            reported = arguments.get("delivered_task_ids", [])
-            turn.delivered_task_ids.update(
-                task.task_id for task in completed if task.task_id in reported
-            )
+            reported = arguments.get("delivered_task_ids")
+            if (
+                not isinstance(reported, list)
+                or any(not isinstance(task_id, str) for task_id in reported)
+                or not set(reported).issubset({task.task_id for task in completed})
+            ):
+                raise ValueError("Router returned invalid delivered task IDs")
+            turn.delivered_task_ids.update(reported)
         else:
             result, new_task = execute_router_tool(call.name, arguments, store)
             data = json.loads(result)
@@ -188,13 +194,18 @@ class ForegroundBackgroundAgent:
                         new_task,
                         [*history, {"type": "message", "role": "user", "content": new_task.query}],
                     )
-                message = arguments.get("ack_message", "On it.")
+                    active.append(new_task)
+                    message = arguments.get("ack_message", "On it.")
+                else:
+                    message = "I'm busy; I haven't started another task."
             elif call.name == "cancel_task":
                 message = (
                     (arguments.get("ack_message") or "Cancellation requested.")
                     if data["cancelled"]
                     else "There is no active work to cancel."
                 )
+            elif task is None:
+                message = data.get("error", "No task found")
             elif task and task.status in (
                 TaskStatus.COMPLETED,
                 TaskStatus.DELIVERED,
@@ -202,18 +213,12 @@ class ForegroundBackgroundAgent:
                 TaskStatus.CANCELLED,
             ):
                 message = task_message(task)
+                # This lookup already conveys the terminal outcome; do not repeat it below.
+                active = [candidate for candidate in active if candidate is not task]
                 if task.status is TaskStatus.COMPLETED:
                     turn.delivered_task_ids.add(task.task_id)
             else:
                 message = arguments.get("ack_message") or data.get("error", "Still working on it.")
-        active = store.active_tasks()
-        # Results may become ready during Router I/O, after its context was built.
-        # Do not repeat results the Router saw or a status/result lookup just emitted.
-        known_completed = {task.task_id for task in completed}
-        active.extend(
-            task for task in store.completed_tasks()
-            if task.task_id not in known_completed and task.task_id not in turn.delivered_task_ids
-        )
         for chunk in text_chunks(message):
             yield chunk
         has_output = bool(message)

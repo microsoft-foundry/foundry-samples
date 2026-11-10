@@ -248,6 +248,7 @@ async def run_worker(task: Task, input_items: list[dict], responses_client, mode
                     input=input_items,
                     tools=DOMAIN_TOOLS,
                     store=False,
+                    include=["reasoning.encrypted_content"],
                 )
 
             response = await loop.run_in_executor(None, create_response)
@@ -282,6 +283,9 @@ async def run_worker(task: Task, input_items: list[dict], responses_client, mode
                 task.result = response.output_text or "(No response)"
                 return
 
+            # Replay the complete model output, including reasoning, before tool results.
+            input_items.extend(response.output)
+
             # ── Execute each tool call ──
             for tc in tool_calls:
                 task.current_tool = tc.name
@@ -290,27 +294,23 @@ async def run_worker(task: Task, input_items: list[dict], responses_client, mode
                     arguments = (
                         json.loads(tc.arguments) if isinstance(tc.arguments, str) else tc.arguments
                     )
-                    result_text = await loop.run_in_executor(
-                        None, _execute_tool, tc.name, arguments
-                    )
+
+                    def execute_tool(name=tc.name, tool_arguments=arguments):
+                        # Like model calls, queued tools must check cancellation at entry.
+                        if task.cancel_event.is_set():
+                            return None
+                        return _execute_tool(name, tool_arguments)
+
+                    result_text = await loop.run_in_executor(None, execute_tool)
+                    if result_text is None:
+                        task.status = TaskStatus.CANCELLED
+                        task.result = "(Cancelled by user)"
+                        return
                     logger.info("Tool '%s' returned %d chars", tc.name, len(result_text))
                 except Exception as e:
                     logger.error("Tool failed; error_type=%s", type(e).__name__)
                     result_text = "The tool failed. Try another available source."
 
-                input_items.append(
-                    {
-                        "type": "function_call",
-                        "id": tc.id,
-                        "call_id": tc.call_id,
-                        "name": tc.name,
-                        "arguments": (
-                            tc.arguments
-                            if isinstance(tc.arguments, str)
-                            else json.dumps(tc.arguments)
-                        ),
-                    }
-                )
                 input_items.append(
                     {
                         "type": "function_call_output",

@@ -26,6 +26,10 @@ The background Worker retains the five-round tool loop and the four original dom
 `search_site_specs`, `search_work_iq`, `get_repair_procedure`, and `analyze_document`.
 These tools return mock data and simulate 6–12 seconds of service latency. They do not connect
 to real Work IQ, document-processing, or procedural-memory services.
+Only one business Worker runs per connection. While it is busy, another `start_task` request
+is explicitly declined, not queued or acknowledged as started; retry after the current work ends.
+Worker model continuations preserve all returned output items, including encrypted reasoning,
+in their original order before appending tool results.
 
 Voice Live owns speech recognition, turn detection, synthesis, and playback. The hosted
 conversation engine handles text and control events. Router latency depends on the model;
@@ -61,6 +65,8 @@ Tasks and the last 20 history entries belong to one physical connection, not a p
 store. History advances after successful text sends; `heard_text` updates replace an interrupted
 assistant entry before a later Router request uses it. Queued turns build history when they
 actually start, not when they are enqueued.
+Playback corrections for entries already outside that history window do not reinsert old speech
+as the newest reply. A correction can add a missing entry only during its first text send.
 
 Barge-in or a response timeout stops foreground speech/waiting without cancelling the business
 Worker. Its result can be delivered by a later turn on the same connection. Session end,
@@ -68,10 +74,14 @@ disconnect, or the third no-input event requests cooperative Worker cancellation
 transport I/O. It does not block the SDK receive callback waiting for a synchronous model/tool
 call. Shutdown retains and joins Workers before closing clients; an already-running call must
 settle first. Model requests use a 30-second timeout without automatic retries.
+Cancellation is checked when queued model/tool calls actually start; calls already executing
+are still drained cooperatively.
 
 Completed results are marked `DELIVERED` only after a successful CE `response.done` send.
-The Router identifies paraphrased/translated results explicitly through `delivered_task_ids`;
-direct result/status paths also track the task ID. Text-substring matching is not used.
+The Router identifies paraphrased/translated results explicitly through required
+`delivered_task_ids` (an empty array for unrelated chat). Invalid or missing IDs fail the turn
+before speech rather than silently losing delivery bookkeeping.
+Direct result/status paths also track the task ID. Text-substring matching is not used.
 This is transport-level delivery, not proof that all audio was heard. Playback corrections still
 update history. Failure messages sent to the caller and Router context are sanitized.
 

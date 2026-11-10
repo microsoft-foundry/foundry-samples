@@ -41,9 +41,18 @@ class HistorySession:
         self.state = state
         self.conversation = conversation
         self.turn = turn
+        self._sent_text = False
+        self.first_delta_pending = False
 
     async def send(self, message: Any) -> None:
-        await self.session.send(message)
+        is_delta = isinstance(message, ResponseOutputTextDelta)
+        self.first_delta_pending = is_delta and not self._sent_text
+        try:
+            await self.session.send(message)
+        finally:
+            self.first_delta_pending = False
+        if is_delta:
+            self._sent_text = True
         operation = self.state.responses.get(self.turn.response_id)
         if not self.state.active or (operation and operation.cancellation_requested):
             return
@@ -123,7 +132,15 @@ class ConversationRuntime(VoiceRuntime):
         state = self._state_for(session)
         conversation = self.conversations.get(session)
         if state and conversation and response_id in state.heard_text_by_response:
-            conversation.reconcile(response_id, heard_text[:MAX_MESSAGE_CHARACTERS])
+            operation = state.responses.get(response_id)
+            pending_first_send = (
+                operation is not None
+                and isinstance(operation.session, HistorySession)
+                and operation.session.first_delta_pending
+            )
+            conversation.reconcile(
+                response_id, heard_text[:MAX_MESSAGE_CHARACTERS], allow_append=pending_first_send,
+            )
 
     async def on_user_barge_in(self, session: Session, event: UserBargeIn) -> None:
         self._reconcile(session, event.response_id, event.heard_text)

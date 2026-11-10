@@ -24,6 +24,8 @@ from task_store import TaskStatus
 
 
 def tool(name: str, **arguments: Any) -> Any:
+    if name == "respond_directly":
+        arguments.setdefault("delivered_task_ids", [])
     return SimpleNamespace(
         choices=[
             SimpleNamespace(
@@ -315,6 +317,7 @@ async def test_failed_send_does_not_commit_history_or_delivery() -> None:
     with pytest.raises(RuntimeError):
         await session.send(ResponseDone(response_id=turn.response_id))
     assert not conversation.history
+    assert not session.first_delta_pending
     assert task.status is TaskStatus.COMPLETED
 
 
@@ -737,10 +740,10 @@ def test_expired_latest_task_does_not_select_an_older_result() -> None:
     assert conversation.tasks.get("latest") is None
 
 
-def test_heard_text_is_retained_when_send_has_not_recorded_an_entry() -> None:
+def test_missing_history_is_not_appended_without_a_pending_first_send() -> None:
     conversation = Conversation()
     conversation.reconcile("r_pending_send", "Already heard")
-    assert conversation.history[-1].content == "Already heard"
+    assert not conversation.history
 
 
 async def test_real_model_client_factories_can_close_without_network(
