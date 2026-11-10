@@ -2,11 +2,13 @@
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
 import unittest
 from unittest import mock
+import yaml
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "prompt_agent_helpers.py"
@@ -35,6 +37,15 @@ class HelperTests(unittest.TestCase):
         for harness_type in ("github_copilot_preview", "microsoft_copilot_preview"):
             document["services"]["agent"]["harness"] = {"type": harness_type}
             self.assertEqual(helpers.validate_manifest(document, "agent"), "project")
+        document["services"]["agent"].pop("toolbox")
+        document["services"]["agent"].update(
+            toolboxes=["toolbox"],
+            tools=[
+                {"type": "microsoft_copilot_toolset_preview", "defaultConfig": {"enabled": False}},
+                {"type": "mcp", "server_label": "toolbox", "require_approval": "never"},
+            ],
+        )
+        self.assertEqual(helpers.validate_manifest(document, "agent"), "project")
         for bad_harness in ("", {"type": ""}, {"type": "bad name"}, {"type": "ok", "extra": True}):
             document["services"]["agent"]["harness"] = bad_harness
             with self.assertRaisesRegex(helpers.LifecycleError, "managed harness.type must be a nonempty identifier"):
@@ -43,6 +54,19 @@ class HelperTests(unittest.TestCase):
         document["services"]["toolbox"]["tools"] = [{"type": "mcp"}]
         with self.assertRaisesRegex(helpers.LifecycleError, "only web_search"):
             helpers.validate_manifest(document, "agent")
+        skill_doc = {"services": {
+            "project": {"host": "azure.ai.project"},
+            "travel-guide": {"host": "azure.ai.skill", "uses": ["project"], "archive": "./skills/travel-guide"},
+            "agent": {
+                "host": "azure.ai.agent", "kind": "prompt", "project": ".",
+                "uses": ["project", "travel-guide"], "harness": {"type": "microsoft_copilot_preview"},
+                "skills": ["travel-guide"], "tools": [{"type": "web_search"}],
+            },
+        }}
+        self.assertEqual(helpers.validate_manifest(skill_doc, "agent"), "project")
+        skill_doc["services"]["travel-guide"]["archive"] = "../outside"
+        with self.assertRaisesRegex(helpers.LifecycleError, "skill archive"):
+            helpers.validate_manifest(skill_doc, "agent")
 
     def test_absence_requires_exact_owned_target(self):
         name = "ci-prompt-owned"
@@ -56,12 +80,16 @@ class HelperTests(unittest.TestCase):
         self.assertFalse(helpers.agent_absent(message, 1, "ci-prompt-other", endpoint))
         self.assertFalse(helpers.agent_absent(message.replace("404: 404", "403: 403"), 1, name, endpoint))
 
-    def test_toolbox_endpoint_and_absence_are_pinned(self):
+    def test_toolbox_skill_and_connection_absence_are_pinned(self):
+        nonce = "a" * 32
         context = {
-            "execution_profile": "managed", "agent_name": "ci-prompt-owned",
-            "toolbox_name": "ci-e2e-tb-owned", "project_endpoint": "https://project.invalid/api/projects/project",
+            "execution_profile": "managed", "agent_name": "ci-prompt-" + nonce,
+            "toolbox_name": "ci-e2e-tb-" + nonce, "skill_name": "ci-e2e-sk-" + nonce,
+            "project_endpoint": "https://project.invalid/api/projects/project",
         }
-        endpoint = context["project_endpoint"] + "/toolboxes/ci-e2e-tb-owned/versions/3/mcp?api-version=v1"
+        endpoint = context["project_endpoint"] + f"/toolboxes/{context['toolbox_name']}/versions/3/mcp?api-version=v1"
+        context["toolbox_endpoint"] = endpoint
+        context["connection_name"] = helpers.toolbox_connection_name(context["toolbox_name"], "3", endpoint)
         metadata = {
             "toolbox": {"name": context["toolbox_name"]},
             "version": {"name": context["toolbox_name"], "version": "3", "tools": [{"type": "web_search"}]},
@@ -70,7 +98,7 @@ class HelperTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "metadata.json"
             path.write_text(json.dumps(metadata), encoding="utf-8")
-            helpers.verify_toolbox(path, context, endpoint)
+            self.assertEqual(helpers.verify_toolbox(path, context, endpoint), "3")
             with self.assertRaisesRegex(helpers.LifecycleError, "MCP endpoint"):
                 helpers.verify_toolbox(path, context, endpoint.replace("versions/3", "versions/4"))
             path.write_text(json.dumps({"toolboxes": [{"name": context["toolbox_name"].upper()}]}), encoding="utf-8")
@@ -78,6 +106,166 @@ class HelperTests(unittest.TestCase):
             path.write_text('{"toolboxes": [{}]}', encoding="utf-8")
             with self.assertRaisesRegex(helpers.LifecycleError, "nonempty toolbox names"):
                 helpers.toolbox_absent(path, context)
+            path.write_text(json.dumps({"name": context["skill_name"], "default_version": "1", "latest_version": "1"}), encoding="utf-8")
+            self.assertEqual(helpers.verify_skill(path, context, "1"), "1")
+            with self.assertRaisesRegex(helpers.LifecycleError, "skill show returned"):
+                helpers.verify_skill(path, context, "2")
+            path.write_text(json.dumps([{"name": context["skill_name"].upper()}]), encoding="utf-8")
+            self.assertFalse(helpers.skill_absent(path, context))
+            conn_doc = {
+                "name": context["connection_name"], "target": endpoint,
+                "kind": "RemoteTool", "authType": "UserEntraToken",
+                "metadata": {"type": "toolbox_MCP", "toolboxName": context["toolbox_name"], "toolboxVersion": "3"},
+            }
+            path.write_text(json.dumps(conn_doc), encoding="utf-8")
+            helpers.verify_connection(path, context)
+            helpers.verify_connection(path, context, allowed_auth_types=("userentratoken",))
+            with self.assertRaisesRegex(helpers.LifecycleError, "connection show returned"):
+                helpers.verify_connection(path, context, allowed_auth_types=("projectmanagedidentity",))
+            path.write_text(json.dumps({**conn_doc, "authType": "ProjectManagedIdentity"}), encoding="utf-8")
+            helpers.verify_connection(path, context)
+            helpers.verify_connection(path, context, allowed_auth_types=("projectmanagedidentity",))
+            with self.assertRaisesRegex(helpers.LifecycleError, "connection show returned"):
+                helpers.verify_connection(path, context, allowed_auth_types=("userentratoken",))
+            for field, bad_val in (
+                ("name", "wrong"), ("target", "https://other.invalid"), ("kind", "ApiKey"),
+                ("authType", "ApiKey"), ("metadata", {"type": "toolbox_MCP", "toolboxName": context["toolbox_name"], "toolboxVersion": "1"}),
+            ):
+                path.write_text(json.dumps({**conn_doc, field: bad_val}), encoding="utf-8")
+                with self.assertRaisesRegex(helpers.LifecycleError, "connection show returned"):
+                    helpers.verify_connection(path, context)
+            tb_path = Path(directory) / "toolbox.json"
+            tb_path.write_text(json.dumps(metadata), encoding="utf-8")
+            conn_path = Path(directory) / "connection.json"
+            conn_path.write_text(json.dumps(conn_doc), encoding="utf-8")
+            agent_path = Path(directory) / "agent.json"
+            agent_doc = {
+                "name": context["agent_name"],
+                "versions": {"latest": {"version": "1", "definition": {
+                    "kind": "prompt", "model": "gpt-4o",
+                    "harness": {"type": "microsoft_copilot_preview"},
+                    "tools": [{
+                        "type": "mcp", "server_label": context["toolbox_name"],
+                        "server_url": endpoint, "project_connection_id": context["connection_name"],
+                    }],
+                }}},
+            }
+            agent_path.write_text(json.dumps(agent_doc), encoding="utf-8")
+            tb_only_ctx = {**context, "skill_name": ""}
+            helpers.verify_deployed(agent_path, tb_only_ctx, "gpt-4o", tb_path, None, conn_path)
+            with self.assertRaisesRegex(helpers.LifecycleError, "toolbox and connection metadata"):
+                helpers.verify_deployed(agent_path, tb_only_ctx, "gpt-4o", tb_path, None, None)
+            no_conn_agent = json.loads(json.dumps(agent_doc))
+            no_conn_agent["versions"]["latest"]["definition"]["tools"][0].pop("project_connection_id")
+            agent_path.write_text(json.dumps(no_conn_agent), encoding="utf-8")
+            with self.assertRaisesRegex(helpers.LifecycleError, "connection ID"):
+                helpers.verify_deployed(agent_path, tb_only_ctx, "gpt-4o", tb_path, None, conn_path)
+            path.write_text(json.dumps([{"name": context["connection_name"].upper()}]), encoding="utf-8")
+            self.assertFalse(helpers.connection_absent(path, context))
+            path.write_text("null", encoding="utf-8")
+            self.assertTrue(helpers.connection_absent(path, context))
+            with self.assertRaisesRegex(helpers.LifecycleError, "owned toolbox connection"):
+                helpers.connection_absent(path, {**context, "connection_name": "ci-e2e-tb-aaaaaaaaaa-00000000-mcp"})
+
+    def test_verify_adopted_enforces_exclusive_toolbox_and_skill_topology(self):
+        nonce = "b" * 32
+        agent_name = "ci-prompt-" + nonce
+        tb_name = "ci-e2e-tb-" + nonce
+        sk_name = "ci-e2e-sk-" + nonce
+        tb_context = {
+            "execution_profile": "managed", "agent_name": agent_name, "agent_service": "agent",
+            "toolbox_name": tb_name, "skill_name": "", "connection_name": "", "toolbox_endpoint": "",
+            "project_endpoint": "https://project.invalid/api/projects/project",
+        }
+        sk_context = {**tb_context, "toolbox_name": "", "skill_name": sk_name}
+        tb_doc = {"services": {
+            "project": {"host": "azure.ai.project"},
+            tb_name: {"host": "azure.ai.toolbox", "uses": ["project"], "tools": [{"type": "web_search"}]},
+            "agent": {
+                "host": "azure.ai.agent", "kind": "prompt", "project": ".",
+                "name": agent_name, "model": "gpt-4o", "uses": ["project", tb_name],
+                "harness": {"type": "microsoft_copilot_preview"}, "toolboxes": [tb_name],
+            },
+        }}
+        sk_doc = {"services": {
+            "project": {"host": "azure.ai.project"},
+            sk_name: {"host": "azure.ai.skill", "uses": ["project"], "archive": f"./skills/{sk_name}"},
+            "agent": {
+                "host": "azure.ai.agent", "kind": "prompt", "project": ".",
+                "name": agent_name, "model": "gpt-4o", "uses": ["project", sk_name],
+                "harness": {"type": "microsoft_copilot_preview"}, "skills": [sk_name],
+            },
+        }}
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "azure.yaml"
+            manifest.write_text(yaml.safe_dump(tb_doc), encoding="utf-8")
+            helpers.verify_adopted(manifest, tb_context, "gpt-4o")
+            with self.assertRaisesRegex(helpers.LifecycleError, "owned skill service"):
+                helpers.verify_adopted(manifest, sk_context, "gpt-4o")
+            with self.assertRaisesRegex(helpers.LifecycleError, "owned toolbox or skill"):
+                helpers.verify_adopted(manifest, {**tb_context, "skill_name": sk_name}, "gpt-4o")
+            no_tb = yaml.safe_load(manifest.read_text(encoding="utf-8"))
+            no_tb["services"]["agent"].pop("toolboxes")
+            manifest.write_text(yaml.safe_dump(no_tb), encoding="utf-8")
+            with self.assertRaisesRegex(helpers.LifecycleError, "toolboxes or legacy toolbox"):
+                helpers.verify_adopted(manifest, tb_context, "gpt-4o")
+            manifest.write_text(yaml.safe_dump(sk_doc), encoding="utf-8")
+            helpers.verify_adopted(manifest, sk_context, "gpt-4o")
+            with self.assertRaisesRegex(helpers.LifecycleError, "owned toolbox service"):
+                helpers.verify_adopted(manifest, tb_context, "gpt-4o")
+
+    def test_source_skill_bundle_rejects_symlinks_before_copy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sample = Path(directory) / "sample"
+            skill_dir = sample / "skills/travel-guide"
+            skill_dir.mkdir(parents=True)
+            skill_md = skill_dir / "SKILL.md"
+            skill_md.write_text(
+                "---\nname: travel-guide\ndescription: Guide\n---\nFollow instructions.\n",
+                encoding="utf-8",
+            )
+            aux = skill_dir / "notes.txt"
+            aux.write_text("helper notes\n", encoding="utf-8")
+            helpers._validate_source_skill_bundle(sample, "travel-guide")
+            for target in (sample / "skills", skill_dir, skill_md, aux):
+                with self.subTest(target=target.name):
+                    orig_is_symlink = Path.is_symlink
+                    with mock.patch.object(
+                        Path, "is_symlink", autospec=True,
+                        side_effect=lambda p, t=target: True if p == t else orig_is_symlink(p),
+                    ):
+                        with self.assertRaisesRegex(helpers.LifecycleError, "symlink"):
+                            helpers._validate_source_skill_bundle(sample, "travel-guide")
+            outside = Path(directory) / "outside.txt"
+            outside.write_text("outside\n", encoding="utf-8")
+            link = skill_dir / "linked.txt"
+            try:
+                os.symlink(outside, link)
+            except OSError:
+                pass
+            else:
+                with self.assertRaisesRegex(helpers.LifecycleError, "symlink"):
+                    helpers._validate_source_skill_bundle(sample, "travel-guide")
+
+    def test_quickstart_web_research_spec_accepts_streamed_preamble(self):
+        spec = SCRIPT.parents[2] / "prompt-agent-tests/cli/microsoft-copilot-harness/quickstart-web-research/test-spec.yml"
+        plan = helpers.plan_contract(spec, "managed")
+        streamed = (
+            'I\'m checking the official Python release and "What\'s New" pages directly, '
+            'then I\'ll return the requested fields with citations.'
+            'VERSION: Python 3.15.2 - [official Python release page](https://www.python.org/downloads/release/python-3152/)\n'
+            'RELEASE_DATE: October 6, 2026\n'
+            'CHANGE_1: Improved JIT compiler performance\n'
+            'CHANGE_2: Enhanced REPL diagnostics\n'
+            'RELEASE_URL: https://www.python.org/downloads/release/python-3152/\n'
+            'WHATS_NEW_URL: https://docs.python.org/3/whatsnew/3.15.html\n'
+        )
+        for assertion in plan["tests"][0]["turns"][0]["assertions"]:
+            matches = list(helpers.re.finditer(assertion["value"], streamed))
+            if assertion.get("max_matches") == 0:
+                self.assertEqual(matches, [])
+            else:
+                self.assertGreaterEqual(len(matches), 1, assertion["value"])
 
 
 if __name__ == "__main__":

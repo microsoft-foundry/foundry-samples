@@ -13,7 +13,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 # Foundry hosted agents expose port 8088 by convention; force the
 # server to bind there regardless of the .env default (8089).
-ENV SERVER_PORT=8088
+ENV PORT=8088
 
 # Install Python dependencies and strip unnecessary artifacts in the same layer.
 COPY pyproject.toml uv.lock uv.toml ./
