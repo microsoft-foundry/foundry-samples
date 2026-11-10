@@ -14,7 +14,16 @@ from uuid import uuid4
 
 
 class ServiceError(ValueError):
-    """A valid JSON-RPC error, distinct from a malformed envelope."""
+    """A valid service failure, distinct from a malformed envelope."""
+
+
+RETRYABLE_SERVICE_ERROR = re.compile(
+    r"session_not_ready|session[_ ]quota|quota[_ ]exceeded|throttl|rate[_ ]limit|HTTP 429"
+    r"|Error calling model:.*(?:Error code:\s*(?:500|502|503|504)\b|server_error)"
+    r"|currently experiencing high demand.*exceeds the maximum usage size allowed during peak load"
+    r"|internal server error occurred",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 def _run(arguments: Sequence[str]) -> subprocess.CompletedProcess[str]:
@@ -72,6 +81,19 @@ def task_text(body: str, request_id: str) -> str:
     ):
         raise ValueError("A2A SendMessage did not return a Task with an ID")
     status = task.get("status")
+    if isinstance(status, dict) and status.get("state") == "TASK_STATE_FAILED":
+        message = status.get("message")
+        parts = message.get("parts") if isinstance(message, dict) else None
+        if not isinstance(parts, list) or not all(
+            isinstance(part, dict)
+            and ("text" not in part or isinstance(part["text"], str))
+            for part in parts
+        ):
+            raise ValueError(
+                f"A2A failed Task has no valid status message: {json.dumps(status)}"
+            )
+        diagnostic = "\n".join(part["text"] for part in parts if "text" in part)
+        raise ServiceError(f"A2A Task failed: {diagnostic}")
     if not isinstance(status, dict) or status.get("state") != "TASK_STATE_COMPLETED":
         raise ValueError(
             f"A2A Task did not complete successfully: {json.dumps(status)}"
@@ -194,13 +216,7 @@ def invoke_turn(
             exit_code = 0
     except ServiceError as exc:
         error = str(exc)
-        terminal = not bool(
-            re.search(
-                r"session_not_ready|session[_ ]quota|quota[_ ]exceeded|throttl|rate[_ ]limit|HTTP 429",
-                error,
-                re.IGNORECASE,
-            )
-        )
+        terminal = RETRYABLE_SERVICE_ERROR.search(error) is None
     except (ValueError, OSError, subprocess.TimeoutExpired) as exc:
         error = str(exc)
         terminal = True

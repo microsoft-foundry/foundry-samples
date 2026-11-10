@@ -5,12 +5,13 @@ import copy
 import importlib.util
 import json
 import os
-from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 import yaml
 
@@ -50,6 +51,50 @@ def completed(request_id):
 
 
 class A2AInvocationTests(unittest.TestCase):
+    def test_failed_task_transient_diagnostics_are_retryable_not_successful(self):
+        for message in (
+            "Model deployment rate limit exceeded",
+            "Error calling model: Error code: 503 - server_error",
+            "The model is currently experiencing high demand that exceeds the maximum usage size allowed during peak load.",
+            "session_not_ready",
+        ):
+            with self.subTest(message=message):
+
+                def change(response, message=message):
+                    response["result"]["task"]["status"] = {
+                        "state": "TASK_STATE_FAILED",
+                        "message": {"parts": [{"text": message}]},
+                    }
+                    return response
+
+                outcome, text, raw = self.run_turn(change)
+                self.assertEqual(outcome["turn_exit"], 1)
+                self.assertFalse(outcome["approval_terminal_error"])
+                self.assertEqual(text, "")
+                self.assertIn(message, raw)
+
+    def test_nonretryable_and_malformed_failed_tasks_stay_terminal(self):
+        for message in (
+            {"parts": [{"text": "No cited search results"}]},
+            {"parts": [{"text": "Invalid trip requirements"}]},
+            {"parts": [{"text": 503}]},
+            {"parts": "Model deployment rate limit exceeded"},
+            {"parts": [{"text": "Model deployment rate limit exceeded"}, None]},
+        ):
+            with self.subTest(message=message):
+
+                def change(response, message=message):
+                    response["result"]["task"]["status"] = {
+                        "state": "TASK_STATE_FAILED",
+                        "message": message,
+                    }
+                    return response
+
+                outcome, text, _ = self.run_turn(change)
+                self.assertEqual(outcome["turn_exit"], 1)
+                self.assertTrue(outcome["approval_terminal_error"])
+                self.assertEqual(text, "")
+
     def test_http_success_retryable_jsonrpc_errors_reach_retry_classifiers(self):
         for message in (
             "session_not_ready",
@@ -340,6 +385,61 @@ class A2APreparationTests(unittest.TestCase):
     "Linux runner integration",
 )
 class A2ARunnerTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("yq"), "Structure validation needs yq")
+    def test_structure_checks_every_agent_project(self):
+        runner = (SCRIPTS.parent / "run-hosted-agent.sh").read_text()
+        body = re.search(
+            r"3<<'STEP_VALIDATE_SAMPLE_STRUCTURE'\n(.*?)\nSTEP_VALIDATE_SAMPLE_STRUCTURE",
+            runner,
+            re.DOTALL,
+        )[1]
+        for name in ("echo", "travel-planner-web-search"):
+            manifest = yaml.safe_load((ROOT / SAMPLE / name / "azure.yaml").read_text())
+            projects = [
+                service["project"]
+                for service in manifest["services"].values()
+                if service.get("host") == "azure.ai.agent"
+            ]
+            empty_project = copy.deepcopy(manifest)
+            agents = [
+                service
+                for service in empty_project["services"].values()
+                if service.get("host") == "azure.ai.agent"
+            ]
+            agents[-1]["project"] = ""
+            no_agents = {"services": {}}
+            for case, document, missing in (
+                ("valid", manifest, None),
+                ("missing-directory", manifest, projects[-1]),
+                ("empty-project", empty_project, None),
+                ("no-agents", no_agents, None),
+            ):
+                with self.subTest(
+                    sample=name, case=case
+                ), tempfile.TemporaryDirectory() as directory:
+                    work = Path(directory)
+                    (work / "azure.yaml").write_text(yaml.safe_dump(document))
+                    for project in projects:
+                        if project != missing:
+                            (work / project).mkdir(parents=True)
+                    result = subprocess.run(
+                        ["bash", "-c", body],
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                        env={**os.environ, "SAMPLE_PATH": str(work)},
+                        timeout=10,
+                    )
+                    self.assertEqual(
+                        result.returncode,
+                        int(case != "valid"),
+                        result.stdout + result.stderr,
+                    )
+                    if missing:
+                        self.assertIn(
+                            f"missing source directory '{missing}'", result.stdout
+                        )
+
     @unittest.skipUnless(shutil.which("yq"), "Toolbox preparation needs yq")
     def test_native_setup_uses_existing_toolbox_isolation_lifecycle(self):
         root = ROOT / SAMPLE / "travel-planner-web-search"
@@ -397,7 +497,19 @@ class A2ARunnerTests(unittest.TestCase):
     def test_real_runner_rejects_failed_task_even_when_cli_exits_zero(self):
         self.run_invoke(True)
 
-    def run_invoke(self, fail):
+    def test_real_runner_does_not_retry_permanent_failed_task_diagnostics(self):
+        self.run_invoke(True, diagnostic="No cited search results")
+
+    def test_real_runner_retries_transient_failed_task_and_keeps_evidence(self):
+        for diagnostic in (
+            "Model deployment rate limit exceeded",
+            "Error calling model: Error code: 503 - server_error",
+            "The model is currently experiencing high demand that exceeds the maximum usage size allowed during peak load.",
+        ):
+            with self.subTest(diagnostic=diagnostic):
+                self.run_invoke(False, diagnostic=diagnostic)
+
+    def run_invoke(self, fail, *, diagnostic=None):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
             azd = work / "azd"
@@ -413,14 +525,23 @@ class A2ARunnerTests(unittest.TestCase):
                 "    assert args[3] == 'cell-agent'\n"
                 "    assert os.environ['AZD_ALPHA_ENABLE_AGENTS_A2A'] == 'true'\n"
                 "    req = json.loads(Path(args[args.index('--input-file') + 1]).read_text())\n"
+                "    counter = Path('invoke-count')\n"
+                "    attempt = int(counter.read_text()) + 1 if counter.exists() else 1\n"
+                "    counter.write_text(str(attempt))\n"
                 f"    state = {'TASK_STATE_FAILED' if fail else 'TASK_STATE_COMPLETED'!r}\n"
                 "    body = {'jsonrpc':'2.0','id':req['id'],'result':{'task':{'id':'task-1','status':{'state':state},'artifacts':[{'parts':[{'text':'Echo: hello'}]}]}}}\n"
+                f"    diagnostic = {diagnostic!r}\n"
+                "    if diagnostic and attempt == 1:\n"
+                "        body['result']['task']['status'] = {'state':'TASK_STATE_FAILED','message':{'parts':[{'text':diagnostic}]}}\n"
                 "    print('HTTP/2.0 200 OK\\nContent-Type: application/json\\n\\n' + json.dumps(body))\n"
                 "else:\n"
                 "    raise AssertionError(args)\n",
                 encoding="utf-8",
             )
             azd.chmod(0o700)
+            sleep = work / "sleep"
+            sleep.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            sleep.chmod(0o700)
             combo = work.name + "-a2a"
             evidence = Path("/tmp") / f"agent-test-evidence-{combo}"
             self.addCleanup(shutil.rmtree, evidence, True)
@@ -458,6 +579,13 @@ class A2ARunnerTests(unittest.TestCase):
             status = json.loads((evidence / "turn-1-status.json").read_text())
             self.assertEqual(status["exit_code"], int(fail))
             self.assertEqual(status["protocol"], "a2a")
+            self.assertEqual(
+                status["final_attempt"], 2 if diagnostic and not fail else 1
+            )
+            if diagnostic:
+                first = (evidence / "turn-1-attempt-1-a2a-response.txt").read_text()
+                self.assertIn("TASK_STATE_FAILED", first)
+                self.assertIn(diagnostic, first)
             plan = build_plan(
                 load_spec(ROOT / FIXTURE / "echo/test-spec.yml"), protocol="a2a"
             )

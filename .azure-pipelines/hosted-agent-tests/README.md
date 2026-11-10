@@ -6,6 +6,14 @@ to GitHub's workflow approval controls. It uses read-only permissions and no
 Azure credentials. Deploying agents and evaluating the evidence described below
 are separate cloud E2E responsibilities; the PR policy does not run them.
 
+For multi-agent samples, cloud E2E preparation validates each hosted agent's
+project directory separately. Native A2A invocations require a completed Task
+with text artifacts; a failed Task is never successful evidence. Explicitly
+transient diagnostics in a failed Task's status-message parts can enter the
+existing bounded readiness/model-throttle retries. Malformed responses and
+nonretryable failures remain terminal, and each attempt's raw A2A response is
+retained even if a later attempt succeeds.
+
 ## Why this contract exists
 
 The sample author defines the agent's intended behavior. The shared CI runner can

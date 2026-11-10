@@ -255,11 +255,17 @@ errors=()
 if [ ! -f "$sample_dir/azure.yaml" ]; then
   errors+=("missing azure.yaml")
 else
-  proj=$(yq '(.services[] | select(.host == "azure.ai.agent") | .project) // ""' "$sample_dir/azure.yaml")
-  if [ -z "$proj" ]; then
+  projects=$(yq -r '.services | to_entries[] | select(.value.host == "azure.ai.agent") | [.key, (.value.project // "")] | @tsv' "$sample_dir/azure.yaml")
+  if [ -z "$projects" ]; then
     errors+=("azure.yaml has no 'project: src/<agent>' entry")
-  elif [ ! -d "$sample_dir/$proj" ]; then
-    errors+=("missing source directory '$proj'")
+  else
+    while IFS=$'\t' read -r service proj; do
+      if [ -z "$proj" ]; then
+        errors+=("azure.yaml service '$service' has no 'project: src/<agent>' entry")
+      elif [ ! -d "$sample_dir/$proj" ]; then
+        errors+=("missing source directory '$proj'")
+      fi
+    done <<< "$projects"
   fi
 fi
 if [ ${#errors[@]} -gt 0 ]; then
@@ -1559,7 +1565,7 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
     # propagates to the MCP gateway's auth cache. The HTTP/2
     # "stream ... CANCEL" signal is a transient server-side
     # stream reset and is also retried.
-    if grep -qiE "session_not_ready|status[ _]?code[: ]+424|HTTP 424|readiness|PermissionDenied|Principal does not have access|still being provisioned|version is still being|\"status\"[[:space:]]*:[[:space:]]*\"failed\"|\"code\"[[:space:]]*:[[:space:]]*\"server_error\"|invalid_payload|internal server error occurred|401 Unauthorized|stream error.*CANCEL|received from peer|connection reset by peer|EOF while reading response" /tmp/invoke-out-${turn}.txt; then
+    if hosted_agent_is_transient_error "${quota_error_files[@]}"; then
       echo "##vso[task.logissue type=warning]Turn $turn transient attempt $transient_attempt hit transient error; retrying in ${backoff}s"
       sleep "$backoff"
       backoff=$((backoff * 2))

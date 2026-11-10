@@ -61,6 +61,26 @@ assert_throttle_error "$work/responses-deployment-throttle"
 assert_not_throttle_error "$work/server-error"
 assert_not_throttle_error "$work/assistant-prose-about-throttling"
 
+printf '%s\n' '{"jsonrpc":"2.0","result":{"task":{"status":{"state":"TASK_STATE_FAILED","message":{"parts":[{"text":"Model deployment rate limit exceeded"}]}}}}}' \
+  > "$work/a2a-throttle"
+printf '%s\n' '{"jsonrpc":"2.0","result":{"task":{"status":{"state":"TASK_STATE_FAILED","message":{"parts":[{"text":"The model is currently experiencing high demand that exceeds the maximum usage size allowed during peak load."}]}}}}}' \
+  > "$work/a2a-high-demand"
+printf '%s\n' '{"jsonrpc":"2.0","result":{"task":{"status":{"state":"TASK_STATE_FAILED","message":{"parts":[{"text":"Error calling model: Error code: 503 - server_error"}]}}}}}' \
+  > "$work/a2a-transient"
+printf '%s\n' '{"jsonrpc":"2.0","result":{"task":{"status":{"state":"TASK_STATE_FAILED","message":{"parts":[{"text":"No cited search results"}]}}}}}' \
+  > "$work/a2a-permanent"
+printf '%s\n' '{"result":{"task":{"status":{"state":"TASK_STATE_COMPLETED"},"artifacts":[{"parts":[{"text":"Model deployment rate limit exceeded"}]}]}}}' \
+  > "$work/a2a-prose"
+
+assert_throttle_error "$work/a2a-throttle"
+assert_throttle_error "$work/a2a-high-demand"
+assert_not_throttle_error "$work/a2a-prose"
+assert_not_throttle_error "$work/a2a-permanent"
+hosted_agent_is_transient_error "$work/a2a-transient" || fail "A2A model 503 must be transient"
+if hosted_agent_is_transient_error "$work/a2a-permanent" "$work/a2a-prose"; then
+  fail "permanent A2A failures and artifact prose must not be transient"
+fi
+
 delays=()
 for _ in $(seq 1 100); do
   delay=$(hosted_agent_quota_retry_delay)
