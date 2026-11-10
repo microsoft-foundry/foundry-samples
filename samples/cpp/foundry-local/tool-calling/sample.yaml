@@ -1,0 +1,4 @@
+name: Foundry Local C++ tool calling
+description: Define a local function tool and complete a native tool-call loop.
+build: cmake -S . -B build
+validate: cmake --build build --config Release --target tool-calling

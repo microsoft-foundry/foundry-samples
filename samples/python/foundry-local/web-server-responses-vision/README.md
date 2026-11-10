@@ -21,7 +21,8 @@ That installs:
 - `openai`
 - `Pillow` (for image resizing)
 
-The sample downloads the specified model the first time it runs (skips if already cached).
+The sample uses the unified SDK v2 package and downloads the specified model
+only when it is not already cached.
 
 ## Run the sample
 

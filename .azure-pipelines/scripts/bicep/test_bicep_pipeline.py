@@ -151,6 +151,114 @@ class BicepPipelineTests(unittest.TestCase):
                         else:
                             self.assertIn("##vso[task.logissue type=error]", result.stdout)
 
+    def test_private_ca_bootstrap_supplies_deployment_inputs_and_cleans_up(self):
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "Bash is required for pipeline deployment checks")
+        script = self.pipeline["stages"][2]["jobs"][0]["steps"][1]["inputs"]["inlineScript"]
+        cleanup = script[script.index("cleanup_groups=()"):script.index('if [ "$(Build.Reason)"')]
+        deploy = script[script.index("deploy_with_location() {"):script.index("bicepparam_supports_location() {")]
+        deploy = deploy.replace("$(BICEP_ROOT)", SAMPLE_ROOT)
+        deploy = deploy.replace("$(Build.BuildId)", "123").replace("$(System.JobAttempt)", "1")
+        deploy = deploy.replace("$(AZURE_SUBSCRIPTION_ID)", "test-subscription")
+        stub = """
+set -euo pipefail
+rg_prefix=ci-rg
+deployment_prefix=ci-deploy
+ci_model_name=gpt-5-mini
+ci_model_version=2025-08-07
+fallback_location=eastus
+az() {
+    case "$1 $2 $3" in
+        "deployment group create")
+            printf '%s\\n' "$@" > deployment-args.txt
+            while [ "$#" -gt 0 ]; do
+                if [ "$1" = "--parameters" ] && [ -f "$2" ]; then
+                    cat "$2" > deployed-parameters.txt
+                fi
+                shift
+            done
+            ;;
+        "deployment group show") printf 'Succeeded\\n' ;;
+        "resource list --resource-group") printf '1\\n' ;;
+    esac
+}
+pwsh() {
+    printf '%s\\n' "$@" > bootstrap-args.txt
+    while [ "$#" -gt 0 ]; do
+        if [ "$1" = "-OutDir" ]; then
+            printf 'fixture-certificate' > "$2/cert.b64"
+            printf 'fixture-private-key' > "$2/key.b64"
+            printf 'fixture-version' > "$2/certversion.txt"
+        fi
+        shift
+    done
+    return "$BOOTSTRAP_EXIT_CODE"
+}
+bash() { :; }
+"""
+        sample = "48-bring-own-model-private-ca"
+        for name, extension, bootstrap_exit, expected_exit in (
+            (sample, "bicepparam", 0, 0),
+            (sample, "bicep", 0, 0),
+            (sample, "bicepparam", 7, 1),
+            ("01-example", "bicep", 7, 0),
+        ):
+            with self.subTest(name=name, extension=extension, bootstrap_exit=bootstrap_exit):
+                with tempfile.TemporaryDirectory() as directory:
+                    repo = Path(directory)
+                    sample_dir = repo / SAMPLE_ROOT / name
+                    sample_dir.mkdir(parents=True)
+                    if name == sample:
+                        for file in ("main.bicep", "main.bicepparam"):
+                            shutil.copyfile(ROOT / SAMPLE_ROOT / sample / file, sample_dir / file)
+                    else:
+                        (sample_dir / "main.bicep").write_text("param location string\n", encoding="utf-8")
+                    cert_temp = repo / "cert-temp"
+                    cert_temp.mkdir()
+                    deployment_file = f"{SAMPLE_ROOT}/{name}/main.{extension}"
+                    result = subprocess.run(
+                        [bash],
+                        input=stub + cleanup + deploy +
+                        f'\ndeploy_with_location "{deployment_file}" westus primary\n',
+                        cwd=repo,
+                        env={**os.environ, "BOOTSTRAP_EXIT_CODE": str(bootstrap_exit),
+                             "AGENT_TEMPDIRECTORY": cert_temp.as_posix()},
+                        capture_output=True, text=True,
+                    )
+                    self.assertEqual(expected_exit, result.returncode, result.stdout + result.stderr)
+                    self.assertEqual([], list(cert_temp.iterdir()))
+                    self.assertFalse((sample_dir / f".ci.main.{extension}").exists())
+                    if name != sample:
+                        self.assertFalse((repo / "bootstrap-args.txt").exists())
+                        self.assertTrue((repo / "deployment-args.txt").exists())
+                        continue
+                    bootstrap_args = (repo / "bootstrap-args.txt").read_text(encoding="utf-8")
+                    self.assertIn("-PrincipalType\nServicePrincipal\n", bootstrap_args)
+                    self.assertIn("-Location\nwestus\n", bootstrap_args)
+                    if bootstrap_exit:
+                        self.assertFalse((repo / "deployment-args.txt").exists())
+                        continue
+                    captured = repo / ("deployed-parameters.txt" if extension == "bicepparam"
+                                       else "deployment-args.txt")
+                    inputs = captured.read_text(encoding="utf-8")
+                    for param, value in (
+                        ("gatewayCertPemB64", "fixture-certificate"),
+                        ("gatewayKeyPemB64", "fixture-private-key"),
+                        ("gatewayCaSecretVersion", "fixture-version"),
+                        ("cosmosLocation", "westus"),
+                        ("searchLocation", "westus"),
+                        ("foundryModelName", "gpt-5-mini"),
+                        ("foundryModelVersion", "2025-08-07"),
+                    ):
+                        expected = f"param {param} = '{value}'" if extension == "bicepparam" else f"{param}={value}"
+                        self.assertIn(expected, inputs)
+                    vault = next(line for line in inputs.splitlines()
+                                 if line.startswith("param keyVaultName =" if extension == "bicepparam"
+                                                    else "keyVaultName="))
+                    vault_name = vault.split("'")[1] if extension == "bicepparam" else vault.split("=", 1)[1]
+                    self.assertIn(f"-KeyVaultName\n{vault_name}\n", bootstrap_args)
+                    self.assertNotIn("fixture-private-key", result.stdout + result.stderr)
+
     def test_live_deployment_exclusion_is_sample_specific_and_preserves_failures(self):
         bash = shutil.which("bash")
         self.assertIsNotNone(bash, "Bash is required for pipeline deployment checks")

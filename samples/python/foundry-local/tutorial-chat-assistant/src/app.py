@@ -1,6 +1,16 @@
 # <complete_code>
 # <imports>
-from foundry_local_sdk import Configuration, FoundryLocalManager
+from foundry_local_sdk import (
+    ChatSession,
+    Configuration,
+    FoundryLocalManager,
+    MessageItem,
+    Request,
+    RequestOptions,
+    SearchOptions,
+    TextItem,
+    TextItemType,
+)
 
 # </imports>
 
@@ -12,79 +22,76 @@ def main():
     FoundryLocalManager.initialize(config)
     manager = FoundryLocalManager.instance
 
-    # Download and register all execution providers.
-    current_ep = ""
+    # Discover and register execution providers that are not already available.
+    missing_eps = [ep.name for ep in manager.discover_eps() if not ep.is_registered]
+    if missing_eps:
+        manager.download_and_register_eps(missing_eps)
 
-    def ep_progress(ep_name: str, percent: float):
-        nonlocal current_ep
-        if ep_name != current_ep:
-            if current_ep:
-                print()
-            current_ep = ep_name
-        print(f"\r  {ep_name:<30}  {percent:5.1f}%", end="", flush=True)
-
-    manager.download_and_register_eps(progress_callback=ep_progress)
-    if current_ep:
-        print()
-
-    # Select and load a model from the catalog
+    # Select and load a model from the catalog.
     model = manager.catalog.get_model("qwen2.5-0.5b")
-    model.download(
-        lambda progress: print(
-            f"\rDownloading model: {progress:.2f}%", end="", flush=True
+    if model is None:
+        raise RuntimeError("Model 'qwen2.5-0.5b' was not found in the catalog.")
+    if not model.is_cached:
+        model.download(
+            lambda progress: print(
+                f"\rDownloading model: {progress:.2f}%", end="", flush=True
+            )
         )
-    )
-    print()
+        print()
     model.load()
     print("Model loaded and ready.")
-
-    # Get a chat client
-    client = model.get_chat_client()
     # </init>
 
-    # <system_prompt>
-    # Start the conversation with a system prompt
-    messages = [
-        {
-            "role": "system",
-            "content": "You are a helpful, friendly assistant. Keep your responses "
-            "concise and conversational. If you don't know something, say so.",
-        }
-    ]
-    # </system_prompt>
+    try:
+        # <system_prompt>
+        # Start the conversation with a system prompt.
+        system_prompt = (
+            "You are a helpful, friendly assistant. Keep your responses "
+            "concise and conversational. If you don't know something, say so."
+        )
+        # </system_prompt>
 
-    print("\nChat assistant ready! Type 'quit' to exit.\n")
+        print("\nChat assistant ready! Type 'quit' to exit.\n")
 
-    # <conversation_loop>
-    while True:
-        user_input = input("You: ")
-        if user_input.strip().lower() in ("quit", "exit"):
-            break
+        with ChatSession(model) as session:
+            session.set_options(
+                RequestOptions(
+                    search=SearchOptions(temperature=0.7, max_output_tokens=512)
+                )
+            )
+            session.set_streaming(True)
+            first_turn = True
 
-        # Add the user's message to conversation history
-        messages.append({"role": "user", "content": user_input})
+            # <conversation_loop>
+            while True:
+                user_input = input("You: ")
+                if user_input.strip().lower() in ("quit", "exit"):
+                    break
 
-        # <streaming>
-        # Stream the response token by token
-        print("Assistant: ", end="", flush=True)
-        full_response = ""
-        for chunk in client.complete_streaming_chat(messages):
-            if not chunk.choices:
-                continue
-            content = chunk.choices[0].delta.content
-            if content:
-                print(content, end="", flush=True)
-                full_response += content
-        print("\n")
+                # <streaming>
+                # The stateful session retains earlier turns automatically.
+                with Request() as request:
+                    if first_turn:
+                        request.add_item(MessageItem.system(system_prompt))
+                        first_turn = False
+                    request.add_item(MessageItem.user(user_input))
+                    print("Assistant: ", end="", flush=True)
+                    with session.process_streaming_request(request) as stream:
+                        for item in stream:
+                            if (
+                                isinstance(item, TextItem)
+                                and item.type == TextItemType.DEFAULT
+                            ):
+                                print(item.text, end="", flush=True)
+                    print("\n")
         # </streaming>
-
-        # Add the complete response to conversation history
-        messages.append({"role": "assistant", "content": full_response})
     # </conversation_loop>
-
-    # Clean up - unload the model
-    model.unload()
-    print("Model unloaded. Goodbye!")
+    finally:
+        # Clean up - unload the model
+        if model.is_loaded:
+            model.unload()
+        manager.close()
+        print("Model unloaded. Goodbye!")
 
 
 if __name__ == "__main__":

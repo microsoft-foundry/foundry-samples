@@ -1,7 +1,13 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { FoundryLocalManager } from "foundry-local-sdk";
+import {
+  AudioSession,
+  ChatSession,
+  FoundryLocalManager,
+  Item,
+  Request,
+} from "foundry-local-sdk";
 import path from "path";
 
 // Model aliases
@@ -71,38 +77,42 @@ async function main() {
 
   // --- Step 1: Transcribe audio ---
   console.log("=== Step 1: Audio Transcription ===");
-  const audioClient = whisperModel.createAudioClient();
-  audioClient.settings.language = "en";
-
-  // Update this path to point to your audio file
+  const audioSession = new AudioSession(whisperModel);
   const audioFilePath = path.resolve("recording.mp3");
-  const transcription = await audioClient.transcribe(audioFilePath);
+  const audioRequest = new Request()
+    .addItem(Item.audioFromUri(audioFilePath))
+    .setOptions({ additionalOptions: { language: "en" } });
+  const audioResponse = await audioSession.processRequest(audioRequest);
+  const transcription = audioResponse.output.find((item) => item.type === "speechResult");
+  if (!transcription) {
+    throw new Error("The audio model returned no transcription.");
+  }
   console.log("You said:", transcription.text);
 
   // --- Step 2: Analyze with chat model ---
   console.log("\n=== Step 2: AI Analysis ===");
-  const chatClient = chatModel.createChatClient();
-  chatClient.settings.temperature = 0.7;
-  chatClient.settings.maxTokens = 500;
+  const chatSession = new ChatSession(chatModel);
 
   // Summarize the transcription
   console.log("Generating summary...\n");
-  for await (const chunk of chatClient.completeStreamingChat([
-    {
-      role: "system",
-      content:
-        "You are a helpful assistant. Summarize the following transcribed audio and extract key themes and action items.",
-    },
-    { role: "user", content: transcription.text },
-  ])) {
-    const content = chunk.choices?.[0]?.delta?.content;
-    if (content) {
-      process.stdout.write(content);
+  const chatRequest = new Request()
+    .addItem(Item.systemMessage(
+      "You are a helpful assistant. Summarize the following transcribed audio and extract key themes and action items."
+    ))
+    .addItem(Item.userMessage(transcription.text))
+    .setOptions({ search: { temperature: 0.7, maxOutputTokens: 500 } });
+  const stream = chatSession.processStreamingRequest(chatRequest);
+  for await (const item of stream) {
+    if (item.type === "text" && item.textType === "default") {
+      process.stdout.write(item.text);
     }
   }
+  await stream.response;
   console.log("\n");
 
   // --- Clean up ---
+  chatSession.dispose();
+  audioSession.dispose();
   await chatModel.unload();
   await whisperModel.unload();
   console.log("Done.");

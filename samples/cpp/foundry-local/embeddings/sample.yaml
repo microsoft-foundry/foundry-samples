@@ -1,0 +1,4 @@
+name: Foundry Local C++ embeddings
+description: Generate single and batch text embeddings with a native embeddings session.
+build: cmake -S . -B build
+validate: cmake --build build --config Release --target embeddings

@@ -1,10 +1,8 @@
 // <complete_code>
 // <imports>
 use foundry_local_sdk::{
-    ChatCompletionRequestMessage,
-    ChatCompletionRequestSystemMessage,
-    ChatCompletionRequestUserMessage, FoundryLocalConfig,
-    FoundryLocalManager,
+    ChatSession, FoundryLocalConfig, FoundryLocalManager, Item, Model, Request, RequestOptions,
+    SearchOptions,
 };
 use std::io::{self, Write};
 use std::path::Path;
@@ -12,67 +10,62 @@ use std::{env, fs};
 // </imports>
 
 async fn summarize_file(
-    client: &foundry_local_sdk::openai::ChatClient,
+    model: &Model,
     file_path: &Path,
     system_prompt: &str,
-) -> anyhow::Result<()> {
+) -> Result<(), Box<dyn std::error::Error>> {
     let content = fs::read_to_string(file_path)?;
-    let messages: Vec<ChatCompletionRequestMessage> = vec![
-        ChatCompletionRequestSystemMessage::from(system_prompt)
-            .into(),
-        ChatCompletionRequestUserMessage::from(content.as_str())
-            .into(),
-    ];
+    let session = ChatSession::new(model).await?;
+    session
+        .set_options(RequestOptions {
+            search: SearchOptions {
+                temperature: Some(0.7),
+                max_output_tokens: Some(512),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .await?;
 
-    let response =
-        client.complete_chat(&messages, None).await?;
-    let summary = response.choices[0]
-        .message
-        .content
-        .as_deref()
-        .unwrap_or("");
-    println!("{}", summary);
+    let response = session
+        .process_request(Request::from_items(vec![
+            Item::system_message(vec![Item::text(system_prompt)]),
+            Item::user_message(vec![Item::text(content)]),
+        ]))
+        .await?;
+
+    for item in &response.items {
+        if let Some(message) = item.as_message() {
+            print!("{}", message.text());
+        } else if let Some(text) = item.as_text() {
+            print!("{text}");
+        }
+    }
+    println!();
+    drop(session);
     Ok(())
 }
 
 async fn summarize_directory(
-    client: &foundry_local_sdk::openai::ChatClient,
+    model: &Model,
     directory: &Path,
     system_prompt: &str,
-) -> anyhow::Result<()> {
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut txt_files: Vec<_> = fs::read_dir(directory)?
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| {
-            entry
-                .path()
-                .extension()
-                .map(|ext| ext == "txt")
-                .unwrap_or(false)
-        })
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "txt"))
         .collect();
 
-    txt_files.sort_by_key(|e| e.path());
+    txt_files.sort_by_key(|entry| entry.path());
 
     if txt_files.is_empty() {
-        println!(
-            "No .txt files found in {}",
-            directory.display()
-        );
+        println!("No .txt files found in {}", directory.display());
         return Ok(());
     }
 
     for entry in &txt_files {
-        let file_name = entry.file_name();
-        println!(
-            "--- {} ---",
-            file_name.to_string_lossy()
-        );
-        summarize_file(
-            client,
-            &entry.path(),
-            system_prompt,
-        )
-        .await?;
+        println!("--- {} ---", entry.file_name().to_string_lossy());
+        summarize_file(model, &entry.path(), system_prompt).await?;
         println!();
     }
 
@@ -80,14 +73,11 @@ async fn summarize_directory(
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // <init>
     // Initialize the Foundry Local SDK
-    let manager = FoundryLocalManager::create(
-        FoundryLocalConfig::new("foundry_local_samples"),
-    )?;
+    let manager = FoundryLocalManager::create(FoundryLocalConfig::new("foundry_local_samples"))?;
 
-    // Download and register all execution providers.
     manager
         .download_and_register_eps_with_progress(None, {
             let mut current_ep = String::new();
@@ -98,19 +88,14 @@ async fn main() -> anyhow::Result<()> {
                     }
                     current_ep = ep_name.to_string();
                 }
-                print!("\r  {:<30}  {:5.1}%", ep_name, percent);
+                print!("\r  {ep_name:<30}  {percent:5.1}%");
                 io::stdout().flush().ok();
             }
         })
         .await?;
     println!();
 
-    // Select and load a model from the catalog
-    let model = manager
-        .catalog()
-        .get_model("qwen2.5-0.5b")
-        .await?;
-
+    let model = manager.catalog().get_model("qwen2.5-0.5b").await?;
     if !model.is_cached().await? {
         println!("Downloading model...");
         model
@@ -124,18 +109,11 @@ async fn main() -> anyhow::Result<()> {
 
     model.load().await?;
     println!("Model loaded and ready.\n");
-
-    // Create a chat client
-    let client = model
-        .create_chat_client()
-        .temperature(0.7)
-        .max_tokens(512);
     // </init>
 
     // <summarization>
-    let system_prompt = "Summarize the following document \
-         into concise bullet points. Focus on the key \
-         points and main ideas.";
+    let system_prompt = "Summarize the following document into concise bullet points. Focus on \
+                         the key points and main ideas.";
 
     // <file_reading>
     let target = env::args()
@@ -145,28 +123,17 @@ async fn main() -> anyhow::Result<()> {
     // </file_reading>
 
     if target_path.is_dir() {
-        summarize_directory(
-            &client,
-            target_path,
-            system_prompt,
-        )
-        .await?;
+        summarize_directory(&model, target_path, system_prompt).await?;
     } else {
         let file_name = target_path
             .file_name()
-            .map(|n| n.to_string_lossy().to_string())
+            .map(|name| name.to_string_lossy().to_string())
             .unwrap_or_else(|| target.clone());
-        println!("--- {} ---", file_name);
-        summarize_file(
-            &client,
-            target_path,
-            system_prompt,
-        )
-        .await?;
+        println!("--- {file_name} ---");
+        summarize_file(&model, target_path, system_prompt).await?;
     }
     // </summarization>
 
-    // Clean up
     model.unload().await?;
     println!("\nModel unloaded. Done!");
 

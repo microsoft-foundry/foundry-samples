@@ -5,7 +5,7 @@ Real-time microphone-to-text transcription using the Foundry Local JS SDK with N
 ## Prerequisites
 
 - [Foundry Local](https://github.com/microsoft/Foundry-Local) installed
-- Node.js 18+
+- Node.js 20+
 - A microphone (optional — falls back to synthetic audio)
 
 ## Setup
@@ -27,32 +27,32 @@ Speak into your microphone. Transcription appears in real-time. Press `Ctrl+C` t
 ## How it works
 
 1. Initializes the Foundry Local SDK and loads the Nemotron ASR model
-2. Creates a `LiveAudioTranscriptionSession` with 16kHz/16-bit/mono PCM settings
+2. Creates an `AudioSession`, `ItemQueue`, and streaming `Request` with 16kHz/16-bit/mono PCM settings
 3. Captures microphone audio via `naudiodon2` (or generates synthetic audio as fallback)
-4. Pushes PCM chunks to the SDK via `session.append()`
-5. Reads transcription results via `for await (const result of session.getStream())`
-6. Access text via `result.content[0].text` (OpenAI Realtime ConversationItem pattern)
+4. Pushes PCM chunks to the SDK as `Item.bytes(...)`
+5. Reads `speechSegment` items from `session.processStreamingRequest(...)`
+6. Reads the final `speechResult` from the stream's terminal response
 
 ## API
 
 ```javascript
-const audioClient = model.createAudioClient();
-const session = audioClient.createLiveTranscriptionSession();
-session.settings.sampleRate = 16000;
-session.settings.channels = 1;
-session.settings.language = 'en';
-
-await session.start();
+const session = new AudioSession(model);
+const queue = new ItemQueue();
+const request = new Request()
+    .addItem(Item.audioDescriptor('pcm', 16000, 1))
+    .addItem(queue)
+    .setOptions({ additionalOptions: { language: 'en' } });
+const stream = session.processStreamingRequest(request);
 
 // Push audio
-await session.append(pcmBytes);
+queue.push(Item.bytes(pcmBytes));
+queue.markFinished();
 
 // Read results
-for await (const result of session.getStream()) {
-    console.log(result.content[0].text);       // transcribed text
-    console.log(result.content[0].transcript); // alias (OpenAI compat)
-    console.log(result.is_final);              // true for final results
+for await (const item of stream) {
+    if (item.type === 'speechSegment') {
+        console.log(item.text);
+    }
 }
-
-await session.stop();
+const response = await stream.response;
 ```

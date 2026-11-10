@@ -13,3 +13,7 @@ members = [
     "verify-winml",
 ]
 resolver = "2"
+
+[workspace.dependencies]
+foundry-local-sdk = "=2.2.1"
+url = "2"

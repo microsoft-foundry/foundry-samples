@@ -13,6 +13,7 @@
 /.azure-pipelines/hosted-agent-tests/python/langgraph/responses/14-middleware/ @microsoft-foundry/hosted-agents @herohua
 
 # Foundry Local samples — replace @microsoft-foundry/foundry-local with the actual team slug once created.
+/samples/cpp/foundry-local/        @microsoft-foundry/foundry-local
 /samples/csharp/foundry-local/     @microsoft-foundry/foundry-local
 /samples/javascript/foundry-local/ @microsoft-foundry/foundry-local
 /samples/python/foundry-local/     @microsoft-foundry/foundry-local
@@ -27,6 +28,9 @@
 /samples/javascript/voice-agents/ @microsoft-foundry/voice-agents-sample
 /samples/python/voice-agents/     @microsoft-foundry/voice-agents-sample
 /samples/typescript/voice-agents/ @microsoft-foundry/voice-agents-sample
+
+#agent controls samples
+/samples/cli/agent-controls/ @microsoft-foundry/agent-controls
 
 #### Partner / external collaborator sample areas #######################################################
 # Partners are outside collaborators (not org members). Each entry is the source of truth for that

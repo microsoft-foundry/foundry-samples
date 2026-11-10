@@ -1,5 +1,5 @@
 name: Embeddings (Python)
-description: Generate single and batch text embeddings using the Foundry Local SDK.
+description: Generate single and batch embeddings with the SDK v2 EmbeddingsSession API.
 
-build: "pip install -r requirements.txt"
-validate: "python -m py_compile $(find . -maxdepth 3 -name '*.py' -not -path './.venv/*')"
+build: "python -m pip install -r requirements.txt"
+validate: "python -m compileall -q src"

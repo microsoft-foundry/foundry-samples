@@ -1,13 +1,14 @@
 # Native Chat Completions (C#)
 
-Initialize the SDK, download a model, and run chat completions.
+Initialize the SDK, download a model, and stream chat completions with the native v2 `ChatSession`, `Request`, and item APIs.
 
 > Part of the [Foundry Local samples for C#](../).
 
 ## Prerequisites
 
-- [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
 - .NET 9 SDK
+
+The unified `Microsoft.AI.Foundry.Local` package includes the local runtime.
 
 ## Run
 

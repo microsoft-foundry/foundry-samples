@@ -1,4 +1,5 @@
-name: Tutorial: Voice to Text (JavaScript)
+name: "Tutorial: Voice to Text (JavaScript)"
 description: Transcribe and summarize audio (tutorial).
 
 build: "npm install --omit=optional --no-audit --no-fund"
+validate: "node --check app.js"

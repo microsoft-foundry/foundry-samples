@@ -1,5 +1,5 @@
 name: Native Chat Completions (Rust)
-description: Non-streaming and streaming chat completions using the native chat client.
+description: Non-streaming and streaming chat completions using the v2 ChatSession API.
 
 build: "cargo build --verbose"
 validate: "cargo check"

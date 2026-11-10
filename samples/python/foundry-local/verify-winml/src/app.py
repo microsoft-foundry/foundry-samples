@@ -1,15 +1,33 @@
 """
-Foundry Local SDK - WinML 2.0 EP Verification Script
+Foundry Local SDK - Windows ML capability verification
 
-Verifies:
+The unified foundry-local-sdk wheel includes Windows ML support on Windows.
+This script verifies:
   1. Execution providers are discovered and registered
-  2. Accelerated models appear in catalog after EP registration
-  3. Streaming chat completions work on an accelerated model
+  2. Accelerated model variants appear after registration
+  3. A native SDK v2 streaming chat session runs on an accelerated model
+
+On non-Windows platforms, the same flow validates the accelerated providers
+available on that machine instead of expecting a Windows ML provider.
 """
 
+import platform
 import sys
 import time
-from foundry_local_sdk import Configuration, FoundryLocalManager
+
+from foundry_local_sdk import (
+    ChatSession,
+    Configuration,
+    DeviceType,
+    FoundryLocalManager,
+    MessageItem,
+    Request,
+    RequestOptions,
+    SearchOptions,
+    TextItem,
+    TextItemType,
+    __version__,
+)
 
 
 PASS = "\033[92m[PASS]\033[0m"
@@ -22,10 +40,10 @@ results = []
 
 def log_result(test_name: str, passed: bool, detail: str = ""):
     status = PASS if passed else FAIL
-    msg = f"{status} {test_name}"
+    message = f"{status} {test_name}"
     if detail:
-        msg += f" - {detail}"
-    print(msg)
+        message += f" - {detail}"
+    print(message)
     results.append((test_name, passed))
 
 
@@ -36,8 +54,11 @@ def print_separator(title: str):
 
 
 def is_accelerated_variant(variant) -> bool:
-    rt = variant.info.runtime
-    return rt is not None and rt.device_type in ("GPU", "NPU")
+    runtime = variant.info.runtime
+    return runtime is not None and runtime.device_type in (
+        DeviceType.GPU,
+        DeviceType.NPU,
+    )
 
 
 def main():
@@ -46,203 +67,186 @@ def main():
     config = Configuration(app_name="verify_winml")
     FoundryLocalManager.initialize(config)
     manager = FoundryLocalManager.instance
-    print(f"{INFO} FoundryLocalManager initialized.")
+    print(f"{INFO} foundry-local-sdk {__version__}")
+    print(f"{INFO} Platform: {platform.system()} {platform.machine()}")
 
-    # ── 1. Discover & Register EPs ────────────────────────────
-    print_separator("Step 1: Discover & Register Execution Providers")
-    eps = []
+    chosen = None
     try:
+        # ── 1. Discover & Register EPs ────────────────────────────
+        print_separator("Step 1: Discover & Register Execution Providers")
         eps = manager.discover_eps()
         print(f"{INFO} Discovered {len(eps)} execution providers:")
         for ep in eps:
             print(f"  - {ep.name:40s}  Registered: {ep.is_registered}")
-        log_result("EP Discovery", True, f"{len(eps)} EP(s) found")
-    except Exception as e:
-        log_result("EP Discovery", False, str(e))
+        log_result("EP Discovery", bool(eps), f"{len(eps)} EP(s) found")
 
-    if not eps:
-        detail = "No execution providers discovered on this machine"
-        log_result("EP Download & Registration", False, detail)
-        print(f"\n{FAIL} {detail}.")
-        _print_summary()
-        return
-
-    try:
-        progress_state = {"ep": None, "percent": -1.0}
-
-        def ep_progress(ep_name: str, percent: float):
-            if progress_state["ep"] is not None and (
-                progress_state["ep"] != ep_name or percent < progress_state["percent"]
-            ):
-                print()
-            progress_state["ep"] = ep_name
-            progress_state["percent"] = percent
-            print(f"\r  Downloading {ep_name}: {percent:.1f}%", end="", flush=True)
-
-        result = manager.download_and_register_eps(progress_callback=ep_progress)
-        if progress_state["ep"] is not None:
-            print()
-
-        print(
-            f"{INFO} EP registration result: success={result.success}, status={result.status}"
-        )
-        if result.registered_eps:
-            print(f"  Registered: {', '.join(result.registered_eps)}")
-        if result.failed_eps:
-            print(f"  Failed:     {', '.join(result.failed_eps)}")
-        download_ok = result.success
-        detail = (
-            f"{len(result.registered_eps)} EP(s) registered"
-            if download_ok and result.registered_eps
-            else result.status
-        )
-        log_result("EP Download & Registration", download_ok, detail)
-        if not download_ok:
+        if not eps:
             _print_summary()
             return
-    except Exception as e:
-        print()
-        log_result("EP Download & Registration", False, str(e))
-        _print_summary()
-        return
 
-    # ── 2. List Models & Find Accelerated Variants ─────────────
-    print_separator("Step 2: Model Catalog - Accelerated Models")
-    catalog = manager.catalog
-    models = catalog.list_models()
-    print(f"{INFO} Total models in catalog: {len(models)}")
+        missing_eps = [ep.name for ep in eps if not ep.is_registered]
+        if missing_eps:
+            progress_state = {"ep": None}
 
-    accelerated_variants = []
+            def ep_progress(ep_name: str, percent: float):
+                if progress_state["ep"] not in (None, ep_name):
+                    print()
+                progress_state["ep"] = ep_name
+                print(
+                    f"\r  Downloading {ep_name}: {percent:.1f}%",
+                    end="",
+                    flush=True,
+                )
 
-    for model in models:
-        for variant in model.variants:
-            if is_accelerated_variant(variant):
-                accelerated_variants.append(variant)
+            result = manager.download_and_register_eps(
+                missing_eps, progress_callback=ep_progress
+            )
+            if progress_state["ep"] is not None:
+                print()
+            log_result(
+                "EP Download & Registration",
+                result.success,
+                f"{len(result.registered_eps)} newly registered",
+            )
+        else:
+            log_result(
+                "EP Download & Registration",
+                True,
+                "All discovered EPs were already registered",
+            )
 
-    print(f"{INFO} Accelerated model variants: {len(accelerated_variants)}")
-    for v in accelerated_variants:
-        rt = v.info.runtime
-        ep = rt.execution_provider if rt else "?"
-        device = rt.device_type if rt else "?"
-        print(f"  - {v.id:50s}  Device: {device:3s}  EP: {ep}")
+        registered_eps = [ep for ep in manager.discover_eps() if ep.is_registered]
+        if platform.system() == "Windows":
+            log_result(
+                "Unified Windows Provider Catalog",
+                bool(registered_eps),
+                ", ".join(ep.name for ep in registered_eps)
+                if registered_eps
+                else "No execution provider registered",
+            )
+        else:
+            print(
+                f"{INFO} Windows ML is Windows-only; validating current-platform "
+                "accelerated providers."
+            )
 
-    log_result(
-        "Catalog - Accelerated models found",
-        len(accelerated_variants) > 0,
-        f"{len(accelerated_variants)} accelerated variant(s)",
-    )
+        # ── 2. List Models & Find Accelerated Variants ─────────────
+        print_separator("Step 2: Model Catalog - Accelerated Models")
+        models = manager.catalog.list_models()
+        accelerated_variants = [
+            variant
+            for model in models
+            for variant in model.variants
+            if is_accelerated_variant(variant)
+        ]
 
-    if not accelerated_variants:
-        print(f"\n{FAIL} No accelerated model variants are available.")
-        print(
-            f"{WARN} Ensure the system has a compatible accelerator and matching model variants installed."
+        print(f"{INFO} Total model aliases: {len(models)}")
+        print(f"{INFO} Accelerated model variants: {len(accelerated_variants)}")
+        for variant in accelerated_variants:
+            runtime = variant.info.runtime
+            print(
+                f"  - {variant.id:50s}  Device: {runtime.device_type.value:3s}  "
+                f"EP: {runtime.execution_provider}"
+            )
+
+        log_result(
+            "Catalog - Accelerated models found",
+            bool(accelerated_variants),
+            f"{len(accelerated_variants)} accelerated variant(s)",
         )
-        _print_summary()
-        return
+        if not accelerated_variants:
+            _print_summary()
+            return
 
-    # ── 3. Download & Load Model ──────────────────────────────
-    print_separator("Step 3: Download & Load Model")
+        # ── 3. Download & Load Model ──────────────────────────────
+        print_separator("Step 3: Download & Load Model")
+        last_load_error = None
+        for candidate in accelerated_variants:
+            runtime = candidate.info.runtime
+            print(
+                f"\n{INFO} Trying model: {candidate.id} "
+                f"(EP: {runtime.execution_provider})"
+            )
+            try:
+                if candidate.is_cached:
+                    print(f"{INFO} Using cached model.")
+                else:
+                    candidate.download(
+                        progress_callback=lambda percent: print(
+                            f"\r  Downloading model: {percent:.1f}%",
+                            end="",
+                            flush=True,
+                        )
+                    )
+                    print()
+                candidate.load()
+                chosen = candidate
+                break
+            except Exception as error:
+                print(f"\n{WARN} Skipping {candidate.id}: {error}")
+                last_load_error = error
 
-    chosen = None
-    downloaded_any = False
-    last_load_error = None
-    for candidate in accelerated_variants:
-        chosen_ep = (
-            candidate.info.runtime.execution_provider
-            if candidate.info.runtime
-            else "unknown"
-        )
-        print(f"\n{INFO} Trying model: {candidate.id} (EP: {chosen_ep})")
-
-        try:
-
-            def dl_progress(percent):
-                print(f"\r  Downloading model: {percent:.1f}%", end="", flush=True)
-
-            candidate.download(progress_callback=dl_progress)
-            print()
-            downloaded_any = True
-        except Exception as e:
-            print()
-            print(f"{WARN} Skipping {candidate.id}: download failed: {e}")
-            last_load_error = e
-            continue
-
-        try:
-            candidate.load()
-            chosen = candidate
-            break
-        except Exception as e:
-            print(f"{WARN} Skipping {candidate.id}: load failed: {e}")
-            last_load_error = e
-
-    log_result(
-        "Model Download",
-        downloaded_any,
-        "At least one accelerated variant downloaded"
-        if downloaded_any
-        else str(last_load_error)
-        if last_load_error
-        else "No accelerated variant could be downloaded",
-    )
-
-    if chosen is None:
         log_result(
             "Model Load",
-            False,
-            str(last_load_error)
-            if last_load_error
-            else "No accelerated variant could be loaded on this machine",
+            chosen is not None,
+            f"Loaded {chosen.id}"
+            if chosen is not None
+            else str(last_load_error or "No accelerated variant could be loaded"),
         )
-        _print_summary()
-        return
+        if chosen is None:
+            _print_summary()
+            return
 
-    log_result("Model Load", True, f"Loaded {chosen.id}")
-
-    # ── 4. Streaming Chat Completions (Native SDK) ────────────
-    print_separator("Step 4: Streaming Chat Completions (Native)")
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "What is 2 + 2? Reply with just the number."},
-    ]
-
-    try:
-        client = chosen.get_chat_client()
-        client.settings.temperature = 0
-        client.settings.max_tokens = 16
+        # ── 4. Streaming Chat Completions (Native SDK v2) ─────────
+        print_separator("Step 4: Streaming Chat (Native SDK v2)")
         response_text = ""
-        start = time.time()
-        for chunk in client.complete_streaming_chat(messages):
-            choices = getattr(chunk, "choices", None)
-            content = choices[0].delta.content if choices and len(choices) > 0 else None
-            if content:
-                response_text += content
-                print(content, end="", flush=True)
-        elapsed = time.time() - start
+        started = time.time()
+        with ChatSession(chosen) as session:
+            session.set_options(
+                RequestOptions(
+                    search=SearchOptions(temperature=0, max_output_tokens=16)
+                )
+            )
+            session.set_streaming(True)
+            with (
+                Request()
+                .add_item(MessageItem.system("You are a helpful assistant."))
+                .add_item(
+                    MessageItem.user("What is 2 + 2? Reply with just the number.")
+                ) as request
+            ):
+                with session.process_streaming_request(request) as stream:
+                    for item in stream:
+                        if (
+                            isinstance(item, TextItem)
+                            and item.type == TextItemType.DEFAULT
+                        ):
+                            response_text += item.text
+                            print(item.text, end="", flush=True)
+        elapsed = time.time() - started
         print()
         log_result(
-            "Streaming Chat (Native)",
-            len(response_text) > 0,
+            "Streaming Chat (Native SDK v2)",
+            bool(response_text),
             f"{len(response_text)} chars in {elapsed:.2f}s",
         )
-    except Exception as e:
-        log_result("Streaming Chat (Native)", False, str(e))
-
-    try:
-        chosen.unload()
-        print(f"{INFO} Model unloaded.")
-    except Exception as e:
-        print(f"{WARN} Failed to unload model: {e}")
+    except Exception as error:
+        log_result("Verification run", False, str(error))
+    finally:
+        if chosen is not None and chosen.is_loaded:
+            chosen.unload()
+            print(f"{INFO} Model unloaded.")
+        manager.close()
 
     _print_summary()
 
 
 def _print_summary():
     print_separator("Summary")
-    passed = sum(1 for _, p in results if p)
+    passed = sum(1 for _, result in results if result)
     total = len(results)
-    for name, p in results:
-        print(f"  {'PASS' if p else 'FAIL'} {name}")
+    for name, result in results:
+        print(f"  {'PASS' if result else 'FAIL'} {name}")
     print(f"\n  {passed}/{total} tests passed")
     if passed < total:
         sys.exit(1)

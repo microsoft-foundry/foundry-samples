@@ -174,6 +174,16 @@ Already built an agent with your own .NET code? The protocol SDKs (`Azure.AI.Age
 | **[Notetaking Agent](bring-your-own/invocations/notetaking-agent/)** | Note-taking agent with the Invocations protocol. |
 | **[Human-in-the-Loop](bring-your-own/invocations/human-in-the-loop/)** | Long-running agent that pauses for human approval before continuing. |
 
+### Activity protocol
+
+These samples use `Azure.AI.AgentServer.Activity` to host native Microsoft 365
+Agents SDK handlers, with direct Teams/M365 channel delivery (no Responses bridge).
+
+| Sample | What it shows |
+|--------|--------------|
+| **[Echo](bring-your-own/activity/echo/)** | Minimal Activity host, message replies, and member welcome messages. No model required. |
+| **[GitHub Copilot](bring-your-own/activity/github-copilot/)** | Copilot SDK with a Foundry model, streaming, persistent tasks, Adaptive Cards, and shared/generated files. |
+
 **Which approach?** Use the protocol SDKs (`Azure.AI.AgentServer.Responses` / `Azure.AI.AgentServer.Invocations`) — they work with any framework and keep you aligned with the platform contract. The **Core adapter** (`Azure.AI.AgentServer.Core`) is available when you need lower-level control without protocol abstractions. The Custom HTTP sample exists as a reference for what the contract looks like under the hood with no SDK at all.
 
 **What's different from Agent Framework samples:** BYO samples handle their own session state and tool wiring. The protocol SDKs give you the HTTP plumbing, but the tradeoff vs. full Agent Framework is that you manage orchestration, tools, and memory in your own code. The Dockerfile, azure.yaml, and `azd up` deployment are the same.
