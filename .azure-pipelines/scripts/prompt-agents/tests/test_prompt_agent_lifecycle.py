@@ -181,12 +181,24 @@ elif is_connection:
         if mode == "collision" or state["deployed"] and not state["connection_deleted"]:
             names.append(state["connection"].upper())
         stdout = "null\n" if mode == "null" else json.dumps([{"name": name} for name in names])
+    elif operation == "create":
+        assert argv == [
+            "azd", "ai", "connection", "create", state["connection"],
+            "--kind", "remote-tool", "--target", state["toolbox_endpoint"],
+            "--auth-type", "project-managed-identity", "--audience", "https://ai.azure.com",
+            "--metadata", "type=toolbox_MCP", "--metadata", f"toolboxName={state['toolbox']}",
+            "--metadata", "toolboxVersion=3", "--force",
+            "--project-endpoint", config["endpoint"], "--no-prompt",
+        ], argv
+        assert state["deployed"]
+        state["connection_auth_type"] = "ProjectManagedIdentity"
     elif operation == "show":
         assert argv == ["azd", "ai", "connection", "show", state["connection"], "--project-endpoint", config["endpoint"], "--output", "json", "--no-prompt"], argv
         assert state["deployed"]
         conn_doc = {
             "name": state["connection"], "target": state["toolbox_endpoint"],
-            "kind": "RemoteTool", "authType": "UserEntraToken",
+            "kind": "RemoteTool", "authType": state.get("connection_auth_type", "UserEntraToken"),
+            "metadata": {"type": "toolbox_MCP", "toolboxName": state["toolbox"], "toolboxVersion": "3"},
         }
         conn_doc.update(config.get("connection_changes", {}))
         stdout = json.dumps(conn_doc)
@@ -249,6 +261,8 @@ elif operation == "show":
             stderr = text
         code = 1
 elif operation == "invoke":
+    if config["managed"] == "toolbox":
+        assert state.get("connection_auth_type") == "ProjectManagedIdentity"
     filename = argv[argv.index("--input-file") + 1]
     expected = ["azd", "ai", "agent", "invoke", config["service"], "--input-file", filename,
                 "--protocol", "responses", "--no-prompt"]
@@ -561,6 +575,8 @@ class PromptShellTests(unittest.TestCase):
         self.assertEqual(list(adopted["services"]), ["project", toolbox, SERVICE])
         self.assertEqual(adopted["services"][SERVICE]["uses"], ["project", toolbox])
         self.assertEqual(self.read_json("toolbox.json")["endpoint"], self.state["toolbox_endpoint"])
+        self.assertEqual(self.read_json("connection.json")["authType"], "ProjectManagedIdentity")
+        self.assertEqual(len(self.operations("create", "connection")), 1)
         self.assertEqual(self.read_json("context.json")["execution_profile"], "managed")
         self.assertLess(self.commands.index(["azd", "deploy", toolbox, "--no-prompt", "--timeout", "20"]),
                         self.commands.index(["azd", "deploy", SERVICE, "--no-prompt", "--timeout", "20"]))

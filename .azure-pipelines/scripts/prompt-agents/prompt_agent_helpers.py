@@ -81,7 +81,7 @@ def _validate_project_endpoint(context: dict) -> str:
     return project_endpoint.rstrip("/")
 
 
-def _expected_connection_name(context: dict) -> tuple[str, str]:
+def _expected_connection_name(context: dict) -> tuple[str, str, str]:
     name = owned_toolbox_name(context)
     project_endpoint = _validate_project_endpoint(context)
     toolbox_endpoint = context.get("toolbox_endpoint")
@@ -97,7 +97,7 @@ def _expected_connection_name(context: dict) -> tuple[str, str]:
     expected = toolbox_connection_name(name, version, toolbox_endpoint)
     if not isinstance(connection_name, str) or connection_name != expected:
         raise LifecycleError("context must identify the owned toolbox connection")
-    return expected, toolbox_endpoint
+    return expected, toolbox_endpoint, version
 
 
 def _extract_skill_frontmatter(content: str) -> tuple[str, str]:
@@ -497,8 +497,13 @@ def verify_adopted(manifest: Path, context: dict, model_deployment: str) -> None
         raise LifecycleError("init changed the requested agent identity, model, or kind")
 
 
-def verify_connection(metadata: Path | None, context: dict) -> None:
-    expected_name, expected_target = _expected_connection_name(context)
+def verify_connection(
+    metadata: Path | None,
+    context: dict,
+    *,
+    allowed_auth_types: tuple[str, ...] = ("userentratoken", "projectmanagedidentity"),
+) -> None:
+    expected_name, expected_target, expected_version = _expected_connection_name(context)
     if metadata is None:
         return
     document = json.loads(metadata.read_text(encoding="utf-8"))
@@ -506,11 +511,22 @@ def verify_connection(metadata: Path | None, context: dict) -> None:
         raise LifecycleError("connection show metadata must be an object")
     kind = document.get("kind")
     auth_type = document.get("authType")
+    conn_meta = document.get("metadata")
+    normalized_allowed = {
+        item.replace("-", "").replace("_", "").casefold()
+        for item in allowed_auth_types
+    }
     if (document.get("name") != expected_name
             or document.get("target") != expected_target
             or not isinstance(kind, str) or kind.casefold() != "remotetool"
             or not isinstance(auth_type, str)
-            or auth_type.replace("-", "").replace("_", "").casefold() != "userentratoken"):
+            or auth_type.replace("-", "").replace("_", "").casefold() not in normalized_allowed
+            or (conn_meta is not None and (
+                not isinstance(conn_meta, dict)
+                or conn_meta.get("type") != "toolbox_MCP"
+                or conn_meta.get("toolboxName") != owned_toolbox_name(context)
+                or str(conn_meta.get("toolboxVersion", "")) != expected_version
+            ))):
         raise LifecycleError("connection show returned unexpected owned name, target, kind, or authType")
 
 
@@ -556,7 +572,7 @@ def verify_deployed(
                     or connection_id != expected_conn
                     or mcp_tools[0]["server_url"] != context.get("toolbox_endpoint")):
                 raise LifecycleError("managed agent toolbox connection ID does not match the owned toolbox endpoint")
-            verify_connection(connection_metadata, context)
+            verify_connection(connection_metadata, context, allowed_auth_types=("userentratoken",))
         else:
             name = owned_skill_name(context)
             skills = definition.get("skills")
@@ -629,7 +645,7 @@ def skill_absent(metadata: Path, context: dict) -> bool:
 
 
 def connection_absent(metadata: Path, context: dict) -> bool:
-    name, _ = _expected_connection_name(context)
+    name, _, _ = _expected_connection_name(context)
     connections = json.loads(metadata.read_text(encoding="utf-8"))
     if connections is None:
         return True
@@ -708,6 +724,7 @@ def main(argv=None) -> int:
     connection = commands.add_parser("verify-connection")
     connection.add_argument("--metadata", type=Path)
     connection.add_argument("--context", type=Path, required=True)
+    connection.add_argument("--auth-type")
     connection_absence = commands.add_parser("connection-absent")
     for verification in (toolbox, toolbox_absence, skill, skill_absence, connection_absence):
         verification.add_argument("--metadata", type=Path, required=True)
@@ -748,7 +765,8 @@ def main(argv=None) -> int:
             elif args.command == "skill-absent":
                 return 0 if skill_absent(args.metadata, context) else 1
             elif args.command == "verify-connection":
-                verify_connection(args.metadata, context)
+                allowed = (args.auth_type,) if args.auth_type else ("userentratoken", "projectmanagedidentity")
+                verify_connection(args.metadata, context, allowed_auth_types=allowed)
             elif args.command == "connection-absent":
                 return 0 if connection_absent(args.metadata, context) else 1
             else:

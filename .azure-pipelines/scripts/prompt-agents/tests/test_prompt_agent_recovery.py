@@ -213,7 +213,7 @@ class RecoveryTests(unittest.TestCase):
         self.context.update(toolbox_endpoint=TOOLBOX_ENDPOINT, connection_name=CONN)
         (self.artifacts / "result.json").write_text('{"status":"failed","evaluation_exit_code":1}', encoding="utf-8")
         before = (self.project / "azure.yaml").read_bytes()
-        self.run_recovery(connection_null=True)
+        self.run_recovery(connection_null=True, connection_changes={"authType": "ProjectManagedIdentity"})
         operations = [cmd[3:6] for cmd in self.state["commands"] if cmd[3] == "ai"]
         self.assertEqual(operations, [["ai", "agent", "show"], ["ai", "agent", "delete"],
                                       ["ai", "agent", "show"], ["ai", "connection", "list"],

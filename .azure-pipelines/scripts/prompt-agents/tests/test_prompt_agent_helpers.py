@@ -115,10 +115,22 @@ class HelperTests(unittest.TestCase):
             conn_doc = {
                 "name": context["connection_name"], "target": endpoint,
                 "kind": "RemoteTool", "authType": "UserEntraToken",
+                "metadata": {"type": "toolbox_MCP", "toolboxName": context["toolbox_name"], "toolboxVersion": "3"},
             }
             path.write_text(json.dumps(conn_doc), encoding="utf-8")
             helpers.verify_connection(path, context)
-            for field, bad_val in (("name", "wrong"), ("target", "https://other.invalid"), ("kind", "ApiKey"), ("authType", "ApiKey")):
+            helpers.verify_connection(path, context, allowed_auth_types=("userentratoken",))
+            with self.assertRaisesRegex(helpers.LifecycleError, "connection show returned"):
+                helpers.verify_connection(path, context, allowed_auth_types=("projectmanagedidentity",))
+            path.write_text(json.dumps({**conn_doc, "authType": "ProjectManagedIdentity"}), encoding="utf-8")
+            helpers.verify_connection(path, context)
+            helpers.verify_connection(path, context, allowed_auth_types=("projectmanagedidentity",))
+            with self.assertRaisesRegex(helpers.LifecycleError, "connection show returned"):
+                helpers.verify_connection(path, context, allowed_auth_types=("userentratoken",))
+            for field, bad_val in (
+                ("name", "wrong"), ("target", "https://other.invalid"), ("kind", "ApiKey"),
+                ("authType", "ApiKey"), ("metadata", {"type": "toolbox_MCP", "toolboxName": context["toolbox_name"], "toolboxVersion": "1"}),
+            ):
                 path.write_text(json.dumps({**conn_doc, field: bad_val}), encoding="utf-8")
                 with self.assertRaisesRegex(helpers.LifecycleError, "connection show returned"):
                     helpers.verify_connection(path, context)
@@ -234,6 +246,26 @@ class HelperTests(unittest.TestCase):
             else:
                 with self.assertRaisesRegex(helpers.LifecycleError, "symlink"):
                     helpers._validate_source_skill_bundle(sample, "travel-guide")
+
+    def test_quickstart_web_research_spec_accepts_streamed_preamble(self):
+        spec = SCRIPT.parents[2] / "prompt-agent-tests/cli/microsoft-copilot-harness/quickstart-web-research/test-spec.yml"
+        plan = helpers.plan_contract(spec, "managed")
+        streamed = (
+            'I\'m checking the official Python release and "What\'s New" pages directly, '
+            'then I\'ll return the requested fields with citations.'
+            'VERSION: Python 3.15.2 - [official Python release page](https://www.python.org/downloads/release/python-3152/)\n'
+            'RELEASE_DATE: October 6, 2026\n'
+            'CHANGE_1: Improved JIT compiler performance\n'
+            'CHANGE_2: Enhanced REPL diagnostics\n'
+            'RELEASE_URL: https://www.python.org/downloads/release/python-3152/\n'
+            'WHATS_NEW_URL: https://docs.python.org/3/whatsnew/3.15.html\n'
+        )
+        for assertion in plan["tests"][0]["turns"][0]["assertions"]:
+            matches = list(helpers.re.finditer(assertion["value"], streamed))
+            if assertion.get("max_matches") == 0:
+                self.assertEqual(matches, [])
+            else:
+                self.assertGreaterEqual(len(matches), 1, assertion["value"])
 
 
 if __name__ == "__main__":

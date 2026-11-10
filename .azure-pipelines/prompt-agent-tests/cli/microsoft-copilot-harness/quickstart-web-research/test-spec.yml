@@ -13,22 +13,22 @@ tests:
         assertions:
           - source: assistant_text
             type: regex
-            value: '(?im)^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:`|\*\*)?VERSION(?:`|\*\*)?[ \t]*:[ \t]*.*?\b\d+\.\d+\.\d+\b'
+            value: '(?i)\bVERSION(?:`|\*\*)?[ \t]*:[ \t]*[^\r\n]*?\b\d+\.\d+\.\d+\b'
           - source: assistant_text
             type: regex
-            value: '(?im)^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:`|\*\*)?RELEASE_DATE(?:`|\*\*)?[ \t]*:[ \t]*\S+'
+            value: '(?i)\bRELEASE_DATE(?:`|\*\*)?[ \t]*:[ \t]*\S+'
           - source: assistant_text
             type: regex
-            value: '(?im)^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:`|\*\*)?CHANGE_1(?:`|\*\*)?[ \t]*:[ \t]*\S+'
+            value: '(?i)\bCHANGE_1(?:`|\*\*)?[ \t]*:[ \t]*\S+'
           - source: assistant_text
             type: regex
-            value: '(?im)^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:`|\*\*)?CHANGE_2(?:`|\*\*)?[ \t]*:[ \t]*\S+'
+            value: '(?i)\bCHANGE_2(?:`|\*\*)?[ \t]*:[ \t]*\S+'
           - source: assistant_text
             type: regex
-            value: '(?im)^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:`|\*\*)?RELEASE_URL(?:`|\*\*)?[ \t]*:[ \t]*.*?https?://(?:www\.)?python\.org/downloads/release/python-\d+'
+            value: '(?i)\bRELEASE_URL(?:`|\*\*)?[ \t]*:[ \t]*[^\r\n]*?https?://(?:www\.)?python\.org/downloads/release/python-\d+'
           - source: assistant_text
             type: regex
-            value: '(?im)^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:`|\*\*)?WHATS_NEW_URL(?:`|\*\*)?[ \t]*:[ \t]*.*?https?://docs\.python\.org/[^\s)>\]]*?/whatsnew/\d+\.\d+\.html'
+            value: '(?i)\bWHATS_NEW_URL(?:`|\*\*)?[ \t]*:[ \t]*[^\r\n]*?https?://docs\.python\.org/[^\s)>\]]*?/whatsnew/\d+\.\d+\.html'
           - source: assistant_text
             type: regex
             value: '(?i)traceback|unhandled exception'

@@ -310,6 +310,17 @@ fi
 run_command "$command_timeout" checked azd ai agent show "$service" --output json --no-prompt
 cp "$last_stdout" "$artifacts/agent.json"
 "$python" "$helper" verify-deployed --metadata "$(native_path "$artifacts/agent.json")" --context "$context" --model-deployment "$model" "${verify_options[@]}"
+if [ -n "$connection" ]; then
+  toolbox_version=$(jq -r .version.version "$(native_path "$artifacts/toolbox.json")")
+  run_command "$command_timeout" checked azd ai connection create "$connection" \
+    --kind remote-tool --target "$toolbox_endpoint" --auth-type project-managed-identity \
+    --audience https://ai.azure.com --metadata "type=toolbox_MCP" \
+    --metadata "toolboxName=$toolbox" --metadata "toolboxVersion=$toolbox_version" \
+    --force --project-endpoint "$project_endpoint" --no-prompt
+  run_command "$command_timeout" checked azd ai connection show "$connection" --project-endpoint "$project_endpoint" --output json --no-prompt
+  cp "$last_stdout" "$artifacts/connection.json"
+  "$python" "$helper" verify-connection --metadata "$(native_path "$artifacts/connection.json")" --context "$context" --auth-type projectmanagedidentity
+fi
 jq -c '.[]' "$(native_path "$artifacts/turns.json")" > "$work/turns.jsonl"
 while IFS= read -r turn; do
   number=$(jq -r .global_turn <<< "$turn")
