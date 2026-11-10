@@ -1,0 +1,20 @@
+# The shared runner does not support CE; hosted-agent-samples-ci-skiplist
+# excludes this sample from its HTTP deployment/execution matrix. The invocations plan validates raw-evidence assertions
+# only. A dedicated CE client must supply equivalent input and wire evidence.
+version: 1
+sample:
+  owner: wujin
+  experiences: [azd]
+tests:
+  - name: streaming-echo-and-independent-turns
+    turns:
+      - input: adapter echo first
+        assertions:
+          - source: raw
+            type: regex
+            value: '"text"\s*:\s*"adapter echo first"'
+      - input: adapter echo second
+        assertions:
+          - source: raw
+            type: regex
+            value: '"text"\s*:\s*"adapter echo second"'

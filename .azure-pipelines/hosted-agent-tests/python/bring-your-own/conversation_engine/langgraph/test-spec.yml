@@ -1,0 +1,20 @@
+# The shared HTTP runner does not support CE. The central deployment skiplist
+# excludes this sample; planning with invocations validates raw assertions only.
+# A dedicated CE client must collect response.output_text.done wire evidence.
+version: 1
+sample:
+  owner: wujin
+  experiences: [azd]
+tests:
+  - name: thirty-word-story-independent-of-input
+    turns:
+      - input: Tell a story.
+        assertions:
+          - source: raw
+            type: contains
+            value: "Once a little rabbit found a lonely star. She carried it up the tallest hill, where friendly fireflies helped it shine again. That night, everyone dreamed of kindness and adventure."
+      - input: /end
+        assertions:
+          - source: raw
+            type: contains
+            value: "Once a little rabbit found a lonely star. She carried it up the tallest hill, where friendly fireflies helped it shine again. That night, everyone dreamed of kindness and adventure."

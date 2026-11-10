@@ -19,6 +19,7 @@ services:
         - Bring Your Own
     project: src/livekit-server
     language: python
+    startupCommand: uv run --no-sync python server.py
     codeConfiguration:
       runtime: python_3_13
       entryPoint: server.py

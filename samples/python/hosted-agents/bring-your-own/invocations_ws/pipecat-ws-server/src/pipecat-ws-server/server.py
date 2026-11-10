@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 
 import uvicorn
 from dotenv import load_dotenv
@@ -11,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 logger = logging.getLogger(__name__)
 
 # Load environment variables
-load_dotenv(override=True)
+load_dotenv(override=False)
 
 from bot_websocket_server import run_bot
 
@@ -56,7 +57,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 async def main():
-    config = uvicorn.Config(app, host="0.0.0.0", port=8088)
+    port = int(os.environ.get("PORT", "8088"))
+    config = uvicorn.Config(app, host="0.0.0.0", port=port)
     server = uvicorn.Server(config)
     await server.serve()
 
