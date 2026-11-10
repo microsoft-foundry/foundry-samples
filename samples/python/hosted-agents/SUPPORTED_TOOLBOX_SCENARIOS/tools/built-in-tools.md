@@ -70,9 +70,9 @@ i. Declare the toolbox and agent together in `azure.yaml`:
    ```yaml
    # azure.yaml
    requiredVersions:
-     azd: '>=1.27.1'
+     azd: '>=1.37.0'
      extensions:
-       azure.ai.agents: '>=1.0.0-beta.9'
+       azure.ai.agents: '>=1.0.0'
    name: my-agent-project
    services:
      agent-tools:
@@ -159,9 +159,9 @@ i. Declare the toolbox and agent together in `azure.yaml`:
    ```yaml
    # azure.yaml
    requiredVersions:
-     azd: '>=1.27.1'
+     azd: '>=1.37.0'
      extensions:
-       azure.ai.agents: '>=1.0.0-beta.9'
+       azure.ai.agents: '>=1.0.0'
    name: my-agent-project
    services:
      agent-tools:
@@ -223,9 +223,9 @@ i. Declare the toolbox and agent together in `azure.yaml`:
    ```yaml
    # azure.yaml
    requiredVersions:
-     azd: '>=1.27.1'
+     azd: '>=1.37.0'
      extensions:
-       azure.ai.agents: '>=1.0.0-beta.9'
+       azure.ai.agents: '>=1.0.0'
    name: my-agent-project
    services:
      agent-tools:
@@ -288,9 +288,9 @@ i. Declare the toolbox and agent together in `azure.yaml`:
    ```yaml
    # azure.yaml
    requiredVersions:
-     azd: '>=1.27.1'
+     azd: '>=1.37.0'
      extensions:
-       azure.ai.agents: '>=1.0.0-beta.9'
+       azure.ai.agents: '>=1.0.0'
    name: my-agent-project
    services:
      agent-tools:
@@ -407,9 +407,9 @@ i. Declare the toolbox and agent together in `azure.yaml`:
    ```yaml
    # azure.yaml
    requiredVersions:
-     azd: '>=1.27.1'
+     azd: '>=1.37.0'
      extensions:
-       azure.ai.agents: '>=1.0.0-beta.9'
+       azure.ai.agents: '>=1.0.0'
    name: my-agent-project
    services:
      agent-tools:
@@ -519,9 +519,9 @@ i. Declare the toolbox and agent together in `azure.yaml`:
    ```yaml
    # azure.yaml
    requiredVersions:
-     azd: '>=1.27.1'
+     azd: '>=1.37.0'
      extensions:
-       azure.ai.agents: '>=1.0.0-beta.9'
+       azure.ai.agents: '>=1.0.0'
    name: my-agent-project
    services:
      agent-tools:
@@ -554,6 +554,6 @@ endpoint (`wss://browser.playwright.microsoft.com/ws?...`) the agent drives.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `azd ai connection create` fails with `Error when parsing request; unable to deserialize request body` | The beta CLI may reject the `playwright-workspace` kind | Create the `PlaywrightWorkspace` connection from the **Foundry portal** or **VS Code Foundry Toolkit** instead — set auth to **project managed identity** and audience `https://management.core.windows.net`. The toolbox references it the same way. |
+| `azd ai connection create` fails with `Error when parsing request; unable to deserialize request body` | The CLI may reject the `playwright-workspace` kind | Create the `PlaywrightWorkspace` connection from the **Foundry portal** or **VS Code Foundry Toolkit** instead — set auth to **project managed identity** and audience `https://management.core.windows.net`. The toolbox references it the same way. |
 | `403` on `create_session` | The project managed identity lacks a role on the workspace | Grant it **Playwright Workspace Contributor** (see the role grant above). |
 | Connection-resolution error about a missing audience | The connection's audience isn't set | Set `--audience "https://management.core.windows.net"` on the connection. |

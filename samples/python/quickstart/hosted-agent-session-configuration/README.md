@@ -22,7 +22,7 @@ When users interact with a hosted agent, each conversation runs in a **session**
 |----------|-------------------|
 | Quick Q&A agents | 300s (5 min) — saves resources |
 | Interactive coding assistants | 1800s (30 min) — avoids mid-task resets |
-| Long-running data analysis | 3600s (60 min) — maximum allowed |
+| Long-running data analysis | 14400s (4 hours) — maximum allowed |
 
 ## Key configuration
 
@@ -42,15 +42,15 @@ services:
 
 | Property | Min | Default | Max |
 |----------|-----|---------|-----|
-| `idleTimeoutSeconds` | 300 | 900 | 3600 |
+| `idleTimeoutSeconds` | 120 | 900 | 14400 |
 
 Values outside this range are rejected during provisioning/deployment.
 
 ## Prerequisites
 
 1. **Azure Developer CLI (`azd`)**
-   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.25 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
-   - This sample requires the **`azure.ai.agents` extension `>=1.0.0-beta.11`** (declared in [`azure.yaml`](azure.yaml) under `requiredVersions`)
+   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.37.0 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
+   - This sample requires the **`azure.ai.agents` extension `>=1.0.0`** (declared in [`azure.yaml`](azure.yaml) under `requiredVersions`)
    - Authenticated: `azd auth login`
 2. **Azure CLI** — installed and authenticated: `az login`
 3. **Python 3.10 or higher** — verify with `python --version`

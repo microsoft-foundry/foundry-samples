@@ -30,7 +30,7 @@ access but no private feed credentials, local packages, or SDK source checkout.
 - For local chat: Node.js and [Microsoft 365 Agents Playground](https://learn.microsoft.com/microsoftteams/platform/toolkit/debug-your-agents-playground).
 - For deployment: an Azure subscription in a
   [hosted-agent supported region](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agents),
-  Azure CLI, and Azure Developer CLI (`azd`) 1.27.1 or later.
+  Azure CLI, and Azure Developer CLI (`azd`) 1.37.0 or later.
 - Deployment permissions: Owner, or Contributor plus User Access Administrator,
   at the target scope so the tooling can create resources and role assignments.
   Your organization must allow custom Teams apps to sideload the generated app.
@@ -40,7 +40,7 @@ access but no private feed credentials, local packages, or SDK source checkout.
 Run from this sample directory (which already contains [azure.yaml](azure.yaml)):
 
 ```powershell
-azd extension install azure.ai.agents
+azd extension install microsoft.foundry
 az login
 azd auth login
 azd env new my-dotnet-echo

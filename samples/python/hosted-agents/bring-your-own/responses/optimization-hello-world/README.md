@@ -40,9 +40,9 @@ This means the agent works identically with or without optimization — no featu
 
 ### Prerequisites
 
-1. **Azure Developer CLI (`azd`)** v1.25.3+
+1. **Azure Developer CLI (`azd`)** v1.37.0+
    - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
-   - Install the agent optimizer extension: `azd ext install azure.ai.agents`
+   - Install the Foundry extension: `azd ext install microsoft.foundry`
    - Authenticate: `azd auth login`
 
 2. **Azure CLI**
@@ -122,12 +122,14 @@ Run **Foundry Toolkit: Deploy Hosted Agent** and follow the wizard.
 
 ## Running Optimization
 
-This sample ships with `eval.yaml` and `eval.jsonl` — everything needed to optimize out of the box.
+The GA CLI does not read the bundled legacy `eval.yaml`; pass the existing dataset and evaluator explicitly.
 
 ### Run optimization
 
+From the project directory containing `azure.yaml`:
+
 ```bash
-azd ai agent optimize
+azd ai agent optimize --dataset src/optimization-hello-world-python-responses/eval.jsonl --evaluator builtin.task_adherence
 ```
 
 The interactive flow prompts you to select:
@@ -162,7 +164,7 @@ azd ai agent invoke "Hello! What can you help me with?"
 | `azure.yaml` | Template manifest for `azd ai agent init` |
 | `Dockerfile` | Container image build |
 | `pyproject.toml` / `uv.lock` | Python dependencies and reproducible lock (includes optimization wheel) |
-| `eval.yaml` | Agent optimizer configuration (dataset, evaluators, models) |
+| `eval.yaml` | Legacy evaluation settings (reference only; not read by the GA CLI) |
 | `eval.jsonl` | Evaluation dataset with tasks and criteria |
 | `.agent_configs/baseline/` | Baseline agent config (instructions, model, metadata) |
 | `.env.example` | Environment variable documentation |

@@ -48,7 +48,7 @@ performing arithmetic itself.
 - Python 3.13+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
   installed and available on `PATH`
-- Azure Developer CLI (`azd`) 1.25 or later
+- Azure Developer CLI (`azd`) 1.37.0 or later
 - The Microsoft Foundry `azd` extension
 - An Azure subscription where you can create Foundry resources
 

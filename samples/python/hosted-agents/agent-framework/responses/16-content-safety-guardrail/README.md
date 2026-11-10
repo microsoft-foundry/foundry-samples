@@ -43,7 +43,7 @@ For a conceptual overview, see [Add a content safety guardrail to a hosted agent
 1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd), then install the AI agent extension and authenticate:
 
    ```bash
-   azd ext install azure.ai.agents
+   azd ext install microsoft.foundry
    azd auth login
    ```
 

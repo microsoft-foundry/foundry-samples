@@ -50,10 +50,14 @@ history mutation, or hosted-agent handoff.
 
 ## Prerequisites
 
+Voice support remains preview in the GA extension. Before running `azd`, set
+`AZD_ALPHA_ENABLE_AGENTS_VOICE=true` in that shell (`export AZD_ALPHA_ENABLE_AGENTS_VOICE=true`
+in Bash or `$env:AZD_ALPHA_ENABLE_AGENTS_VOICE = "true"` in PowerShell).
+
 1. Python 3.13 or later.
 2. [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
    installed and available on `PATH`.
-3. Azure Developer CLI (`azd`) 1.27.1 or later with the Foundry extension.
+3. Azure Developer CLI (`azd`) 1.37.0 or later with the Foundry extension.
 4. Azure CLI authentication for local model access.
 5. A Foundry project and model deployment, or permission for `azd provision` to create them.
 

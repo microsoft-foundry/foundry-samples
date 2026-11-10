@@ -75,7 +75,7 @@ The other protocols require their own setup and invocation flow:
 #### Prerequisites
 
 1. **Azure Developer CLI (`azd`)**
-   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.25 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
+   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.37.0 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
    - Authenticated: `azd auth login`
 
 2. **Azure Subscription**

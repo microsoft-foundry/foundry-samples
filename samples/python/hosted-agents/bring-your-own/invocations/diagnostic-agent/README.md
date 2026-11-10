@@ -42,9 +42,9 @@ This sample is designed for **Bring Your Own** (BYO) infrastructure scenarios wh
 
 - An existing **Azure Foundry project** (account + project already created)
 - An existing **container registry** (if deploying in container mode)
-- **Azure CLI** with `azure.ai.agents` extension installed:
+- **Azure Developer CLI (`azd`) 1.37.0 or later** with the GA Foundry extension installed:
   ```bash
-  azd config set ai.agents.version 0.1.22-preview
+  azd ext install microsoft.foundry
   ```
 
 ### Deployment

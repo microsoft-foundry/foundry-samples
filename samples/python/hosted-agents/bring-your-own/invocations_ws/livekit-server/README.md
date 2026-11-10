@@ -61,6 +61,10 @@ theft, service abuse, or data exposure.
 
 ## Prerequisites
 
+Voice support remains preview in the GA extension. Before running `azd`, set
+`AZD_ALPHA_ENABLE_AGENTS_VOICE=true` in that shell (`export AZD_ALPHA_ENABLE_AGENTS_VOICE=true`
+in Bash or `$env:AZD_ALPHA_ENABLE_AGENTS_VOICE = "true"` in PowerShell).
+
 - A **LiveKit Cloud** project (https://cloud.livekit.io) — copy the
   WebSocket URL, API key, and secret. LiveKit is the media broker
   between browser and agent and is the only piece that has to run

@@ -1,8 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 
 requiredVersions:
+  azd: '>=1.37.0'
   extensions:
-    azure.ai.agents: '>=1.0.0-beta.11'
+    azure.ai.agents: '>=1.0.0'
 name: hosted-agent-session-configuration
 services:
   ai-project:
@@ -40,9 +41,9 @@ services:
         version: 2.0.0
     # Controls how long a session stays alive after the last user interaction
     # before it is automatically terminated.
-    #   Minimum: 300  (5 minutes)
+    #   Minimum: 120  (2 minutes)
     #   Default: 900  (15 minutes)
-    #   Maximum: 3600 (60 minutes)
+    #   Maximum: 14400 (240 minutes)
     sessionConfiguration:
       idleTimeoutSeconds: 1800  # 30 minutes
     environmentVariables:

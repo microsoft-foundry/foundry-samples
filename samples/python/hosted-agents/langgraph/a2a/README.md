@@ -114,8 +114,9 @@ Invoke-RestMethod -Uri "$ep/agents/math-expert/endpoint/protocols/a2a/agentCard/
 
 ## Requirements
 
-- azd `azure.ai.agents` extension **>= 0.1.30** (declarative `agent_endpoint` /
-  `agent_card`). Validated with **0.1.37-preview**.
+- Azure Developer CLI (`azd`) **1.37.0 or later** with the `azure.ai.agents`
+  extension **1.0.0 or later** (declarative `agent_endpoint` / `agent_card`).
+  Earlier validation used **0.1.37-preview**.
 - A region with Foundry hosted agents + Responses (e.g. `northcentralus`).
 
 ## A2A protocol version

@@ -59,7 +59,7 @@ The agent is hosted using the [Azure AI AgentServer Responses SDK](https://pypi.
 Before running this sample, ensure you have:
 
 1. **Azure Developer CLI (`azd`)**
-   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.25 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
+   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.37.0 or later) and the unified Foundry CLI extension: `azd ext install microsoft.foundry`
    - Authenticated: `azd auth login`
 
 1. **Azure CLI**

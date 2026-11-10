@@ -70,7 +70,7 @@ samples/python/hosted-agents/bring-your-own/responses/openai-computer-tool/
 ## Prerequisites
 
 - An Azure AI Foundry / Microsoft Foundry **project** with a model deployment that supports the **OpenAI Computer Tool** (`{"type": "computer"}`, such as `gpt-5.4`)
-- **Azure CLI** (`az login`) and **Azure Developer CLI** (`azd >= 1.27.1`) with the `azure.ai.agents` extension
+- **Azure CLI** (`az login`) and **Azure Developer CLI** (`azd >= 1.37.0`) with the `azure.ai.agents` extension (`>=1.0.0`)
 - Python 3.12 or later
 - `uv 0.11.7` or later (or `pip` + `venv`)
 

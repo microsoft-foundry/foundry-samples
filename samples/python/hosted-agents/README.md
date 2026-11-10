@@ -15,7 +15,9 @@ Pick the tool that matches your workflow — both deploy the same sample image t
 
 #### Deploy with the Azure Developer CLI (`azd`)
 
-> **Prerequisites:** Install Azure Developer CLI (`azd`) 1.27.1 or later with the Foundry AI extension. For service environment variables in the `env:` map, follow the setup guidance for `azure.ai.agents` 1.0.0-beta.9 or later, even when a manifest declares an older minimum. See [Set up azd for hosted agents](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent?pivots=azd) if you haven't already.
+> **Prerequisites:** Install Azure Developer CLI (`azd`) 1.37.0 or later with the Foundry AI extension (`azure.ai.agents` 1.0.0 or later). See [Set up azd for hosted agents](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent?pivots=azd) if you haven't already.
+
+Install the GA bundle with `azd ext install microsoft.foundry`, or update an existing installation with `azd ext upgrade microsoft.foundry`.
 
 ```bash
 mkdir my-agent && cd my-agent
@@ -320,7 +322,7 @@ Here is a hosted agent sample with Invocations protocol that is compatible with 
 
 - **Azure subscription** with access to Microsoft Foundry
 - **One of the following deploy tools:**
-  - **Azure Developer CLI (`azd`) 1.27.1 or later** — [install](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent?pivots=azd), or
+  - **Azure Developer CLI (`azd`) 1.37.0 or later** — [install](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent?pivots=azd), or
   - **Foundry Toolkit VS Code Extension** — [install](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent?pivots=vscode)
 - **Python 3.12+**
 

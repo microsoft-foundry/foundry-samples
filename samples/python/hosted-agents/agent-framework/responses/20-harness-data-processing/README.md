@@ -33,7 +33,7 @@ For container deployment, the deploying identity needs permission to build or pu
 
 ### Prerequisites
 
-1. **Azure Developer CLI (`azd`) 1.25.3 or later** — [Install azd](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd).
+1. **Azure Developer CLI (`azd`) 1.37.0 or later** — [Install azd](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd).
 2. Install the Foundry extension:
 
    ```bash

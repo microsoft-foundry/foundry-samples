@@ -36,7 +36,7 @@ See [main.py](src/agent-framework-agent-with-foundry-toolbox-responses/main.py) 
 
 #### Prerequisites
 
-1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.32.0 or later)
+1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.37.0 or later)
 2. Install the unified Foundry CLI extension bundle (provides `azd ai agent`, `connection`, `inspector`, `project`, `routine`, `skill`, and `toolbox`):
    ```bash
    # If you previously installed individual extensions, uninstall them first:

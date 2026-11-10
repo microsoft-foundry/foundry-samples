@@ -72,7 +72,7 @@ is not required.
 
 #### Azure Developer CLI (`azd`)
 
-Install [Azure Developer CLI 1.27.1 or later](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
+Install [Azure Developer CLI 1.37.0 or later](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
 and the Foundry extension, then authenticate:
 
 ```bash
@@ -80,7 +80,7 @@ azd ext install microsoft.foundry
 azd auth login
 ```
 
-The manifest requires `azure.ai.agents` extension version `1.0.0-beta.9` or
+The manifest requires `azure.ai.agents` extension version `1.0.0` or
 later. To initialize a new workspace from the sample:
 
 ```bash

@@ -66,7 +66,7 @@ See [main.py](src/toolbox-langgraph/main.py) for the full implementation.
 
 ### Prerequisites
 
-1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.27.1 or later)
+1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.37.0 or later)
 2. Install the Foundry extension:
 
    ```bash

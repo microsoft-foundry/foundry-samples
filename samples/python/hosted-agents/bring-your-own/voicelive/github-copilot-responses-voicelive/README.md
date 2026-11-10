@@ -60,7 +60,7 @@ If both modes are configured, the Foundry BYOK model takes precedence.
 ### Prerequisites
 
 1. [Azure Developer CLI (`azd`)](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
-   1.27.1 or later.
+   1.37.0 or later.
 2. Install the Foundry extension:
 
    ```bash

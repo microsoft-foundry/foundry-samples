@@ -95,6 +95,10 @@ version selects the Hosted Agent ingress contract; the two version numbers are u
 
 ## Run a sample
 
+Voice support remains preview in the GA extension. Before running `azd`, set
+`AZD_ALPHA_ENABLE_AGENTS_VOICE=true` in that shell (`export AZD_ALPHA_ENABLE_AGENTS_VOICE=true`
+in Bash or `$env:AZD_ALPHA_ENABLE_AGENTS_VOICE = "true"` in PowerShell).
+
 Choose a sample from the table above and follow its README for prerequisites, local setup,
 deployment, protocol smoke testing, and troubleshooting. For example, initialize the Python sample
 from its public manifest with the Azure Developer CLI:

@@ -50,7 +50,7 @@ agent_card:
 ```
 
 `azd deploy` applies both at agent **create** time (requires azd `azure.ai.agents`
-extension >= 0.1.30) — no out-of-band PATCH or setup script is needed. After
+extension >= 1.0.0) — no out-of-band PATCH or setup script is needed. After
 deploy, the agent card is served at:
 
 ```

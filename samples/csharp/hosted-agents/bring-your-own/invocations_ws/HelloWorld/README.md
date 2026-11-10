@@ -61,6 +61,10 @@ shuttle audio bytes and control events.
 
 ## Prerequisites
 
+Voice support remains preview in the GA extension. Before running `azd`, set
+`AZD_ALPHA_ENABLE_AGENTS_VOICE=true` in that shell (`export AZD_ALPHA_ENABLE_AGENTS_VOICE=true`
+in Bash or `$env:AZD_ALPHA_ENABLE_AGENTS_VOICE = "true"` in PowerShell).
+
 1. **.NET 10.0 SDK or later**
    - Verify your version: `dotnet --version`
    - Download from [https://dotnet.microsoft.com/download](https://dotnet.microsoft.com/download)

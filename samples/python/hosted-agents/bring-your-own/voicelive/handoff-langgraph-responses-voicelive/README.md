@@ -7,7 +7,7 @@ Multi-agent customer support handoff demo using LangGraph, served as a hosted ag
 1. Python 3.12 or later.
 2. [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later,
    installed and available on `PATH`.
-3. Azure Developer CLI (`azd`) 1.27.1 or later with the Foundry extension for
+3. Azure Developer CLI (`azd`) 1.37.0 or later with the Foundry extension for
    the `azd` workflow.
 4. Azure CLI authentication (`az login`) for local model access.
 

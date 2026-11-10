@@ -102,7 +102,7 @@ This allows you to send structured data or UI cards to the client alongside spee
 Before running this sample, ensure you have:
 
 1. **Azure Developer CLI (`azd`)**
-	 - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) and the AI agent extension: `azd ext install azure.ai.agents`
+	 - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.37.0 or later) and the Foundry extension: `azd ext install microsoft.foundry`
 	 - Authenticated: `azd auth login`
 2. **Python 3.12 or later**
 	 - Verify your version: `python --version`

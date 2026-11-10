@@ -65,7 +65,7 @@ with `az login` during local development.
    - [Install uv](https://docs.astral.sh/uv/getting-started/installation/) and verify it is available on `PATH`: `uv --version`
 
 3. **Azure Developer CLI (`azd`)**
-   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) and the AI agent extension: `azd ext install azure.ai.agents`
+   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.37.0 or later) and the Foundry extension: `azd ext install microsoft.foundry`
    - Authenticated: `azd auth login`
 
 4. **Azure Subscription**

@@ -92,14 +92,14 @@ For a conceptual overview, see [Add a content safety guardrail to a hosted agent
    /subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.CognitiveServices/accounts/<account>/raiPolicies/<policy-name>
    ```
 
-1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd), then install the AI agent extension and authenticate:
+1. **Azure Developer CLI (`azd`) 1.37.0 or later** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd), then install the Foundry extension and authenticate:
 
    ```bash
-   azd ext install azure.ai.agents
+   azd ext install microsoft.foundry
    azd auth login
    ```
 
-   `invocationsModeration` requires **azure.ai.agents 1.0.0-beta.12 or later**. Earlier versions reject the block as an unknown field.
+   This sample requires **azure.ai.agents 1.0.0 or later**, which supports `invocationsModeration`.
 
 ## Configure the guardrail
 

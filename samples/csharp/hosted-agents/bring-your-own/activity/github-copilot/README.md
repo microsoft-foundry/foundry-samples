@@ -78,7 +78,7 @@ Pending and shared files need a retention/cleanup policy for production use.
   - `FOUNDRY_PROJECT_ENDPOINT`: `https://<account>.services.ai.azure.com/api/projects/<project>`.
   - `AZURE_AI_MODEL_DEPLOYMENT_NAME`: your deployment name, for example `gpt-5-mini`.
 - Node.js for the optional local Playground client.
-- For deployment: azd 1.27.1+, Azure CLI, a supported hosted-agent region,
+- For deployment: azd 1.37.0+, Azure CLI, a supported hosted-agent region,
   and Contributor plus User Access Administrator (or Owner) at the deployment
   scope. Your Teams policy must allow sideloading the app.
 - The optional Dockerfile includes Python and document libraries for
@@ -91,7 +91,7 @@ Pending and shared files need a retention/cleanup policy for production use.
 From this sample directory:
 
 ```powershell
-azd extension install azure.ai.agents
+azd extension install microsoft.foundry
 az login
 azd auth login
 azd env new my-dotnet-copilot

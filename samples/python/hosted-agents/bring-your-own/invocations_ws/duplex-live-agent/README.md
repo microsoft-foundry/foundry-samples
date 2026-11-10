@@ -75,6 +75,10 @@ A sample for building real-time voice agents that maintain two parallel tracks s
 
 ## Prerequisites
 
+Voice support remains preview in the GA extension. Before running `azd`, set
+`AZD_ALPHA_ENABLE_AGENTS_VOICE=true` in that shell (`export AZD_ALPHA_ENABLE_AGENTS_VOICE=true`
+in Bash or `$env:AZD_ALPHA_ENABLE_AGENTS_VOICE = "true"` in PowerShell).
+
 1. Python 3.12 or later.
 2. [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.11.7 or later.
 3. Azure CLI logged in (`az login`).

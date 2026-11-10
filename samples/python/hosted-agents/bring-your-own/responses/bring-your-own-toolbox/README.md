@@ -64,7 +64,7 @@ The hosted agent can be developed and deployed to Microsoft Foundry using the [A
 Before running this sample, ensure you have:
 
 1. **Azure Developer CLI (`azd`)**
-   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.32.0 or later) and the unified Foundry CLI extension bundle: `azd ext install microsoft.foundry` (if you previously installed `azure.ai.agents` or `azure.ai.toolboxes`, run `azd ext uninstall <name>` first).
+   - [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.37.0 or later) and the unified Foundry CLI extension bundle: `azd ext install microsoft.foundry` (if you previously installed `azure.ai.agents` or `azure.ai.toolboxes`, run `azd ext uninstall <name>` first).
    - Authenticated: `azd auth login`
 
 2. **Azure CLI**

@@ -48,7 +48,7 @@ It also sets `MEMORY_STORE_NAME` for you.
 
 **Python 3.13 or later** and [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment are required by the memory-store provisioning hook.
 
-1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.25 or later)
+1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.37.0 or later)
 2. Install the unified Foundry CLI extension bundle:
    ```bash
    azd ext install microsoft.foundry
