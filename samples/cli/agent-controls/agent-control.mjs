@@ -109,6 +109,11 @@ export function verifyEvaluation(result, context, config) {
       result.verdict.decision === "deny",
     "The aggregate verdict does not preserve a policy deny",
   );
+  assert(
+    !receipt.evaluatedPolicyLayers.some((layer) => layer.decision === "transform") ||
+      result.verdict.decision !== "allow",
+    "The aggregate verdict does not preserve a policy transform",
+  );
   const primary = receipt.evaluatedPolicyLayers.filter((layer) => layer.kind === "namedPolicy");
   assert(
     primary.length === 1 && sameResource(primary[0].policyResourceId, config.policyId),
