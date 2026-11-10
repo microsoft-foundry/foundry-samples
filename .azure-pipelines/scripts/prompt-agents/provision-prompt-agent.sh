@@ -48,12 +48,21 @@ from pathlib import Path
 import shutil
 import yaml
 
-sample = Path(os.environ['SAMPLE'])
+samples = Path(os.environ['SAMPLE'])
 work = Path(os.environ['WORK'])
-doc = yaml.safe_load((sample / 'azure.yaml').read_text(encoding='utf-8'))
+doc = yaml.safe_load((samples / 'azure.yaml').read_text(encoding='utf-8'))
 services = doc.get('services') if isinstance(doc, dict) else None
-if not isinstance(doc, dict) or doc.get('infra') != {'provider': 'microsoft.foundry'}:
+infra = doc.get('infra') if isinstance(doc, dict) else None
+if not isinstance(doc, dict) or not isinstance(infra, dict) or infra.get('provider') != 'microsoft.foundry' or set(infra) - {'provider', 'path'}:
     raise SystemExit('Disposable provisioning requires only the microsoft.foundry provider')
+if 'path' in infra:
+    infra_path = str(infra['path']).replace('\\', '/').strip('/')
+    if not infra_path or any(part in ('', '.', '..') for part in infra_path.split('/')):
+        raise SystemExit('Invalid infra.path')
+    infra_dir = samples / infra_path
+    if infra_dir.exists() and any(p.suffix.lower() in ('.bicep', '.bicepparam', '.tf', '.tfvars', '.json') for p in infra_dir.rglob('*') if p.is_file()):
+        raise SystemExit('Custom IaC files under infra.path are forbidden for disposable provisioning')
+doc['infra'] = {'provider': 'microsoft.foundry'}
 projects = [s for s in services.values() if isinstance(s, dict) and s.get('host') == 'azure.ai.project'] if isinstance(services, dict) else []
 if len(projects) != 1 or len(projects[0].get('deployments', [])) != 1:
     raise SystemExit('Exactly one project with one declared model deployment is required')
@@ -65,10 +74,12 @@ if 'hooks' in doc or any('hooks' in s for s in services.values()):
 deployment = projects[0]['deployments'][0]
 if not isinstance(deployment, dict) or not isinstance(deployment.get('name'), str) or not deployment['name']:
     raise SystemExit('Model deployment must have a name')
-shutil.copytree(sample, work / 'input', ignore=shutil.ignore_patterns('.azure', '.env', '.env.*', '.git', '.venv', '__pycache__'))
+shutil.copytree(samples, work / 'input', ignore=shutil.ignore_patterns('.azure', '.env', '.env.*', '.git', '.venv', '__pycache__'))
+(work / 'input' / 'azure.yaml').write_text(yaml.safe_dump(doc, sort_keys=False), encoding='utf-8')
 PY
 
 cd "$work"
+export AZD_ALPHA_ENABLE_AGENTS_MANAGED_HARNESS=true
 AZURE_SUBSCRIPTION_ID="$subscription" AZURE_LOCATION="$location" \
   azd ai agent init -m "$(native_path "$work/input/azure.yaml")" --src project \
     --no-prompt --environment "$environment"

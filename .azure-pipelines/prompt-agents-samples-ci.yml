@@ -150,7 +150,7 @@ stages:
         jobs:
           - job: Validate
             timeoutInMinutes: 210
-            cancelTimeoutInMinutes: 65
+            cancelTimeoutInMinutes: 75
             strategy:
               matrix: $[ stageDependencies.Discover.Discover.outputs['matrix.matrix_${{ profile }}'] ]
               maxParallel: 1
