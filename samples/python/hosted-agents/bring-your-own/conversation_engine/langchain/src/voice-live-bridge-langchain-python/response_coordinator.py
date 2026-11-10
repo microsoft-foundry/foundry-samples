@@ -381,6 +381,8 @@ class ResponseCoordinator:
                 *(asyncio.shield(task) for task in tuple(self._detached_tasks)),
                 return_exceptions=True,
             )
+            # gather() can finish synchronously; let ownership-release callbacks run.
+            await asyncio.sleep(0)
 
     def schedule_none(
         self, session: Session, state: SessionState, input_item_id: str,

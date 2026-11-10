@@ -2,7 +2,9 @@
 
 ## Overview
 
-A two-agent architecture where the **Router** handles all user interaction (fast, always responsive) and the **Worker** executes tool-calling loops in the background (async, cancelable).
+A two-agent architecture where the **Router** handles user interaction using an asynchronous
+Chat Completions call, and the **Worker** retains the background Responses/tool loop.
+Hosted ingress is now the CE WebSocket protocol, not the Responses HTTP protocol.
 
 ## Router Agent
 
@@ -19,7 +21,7 @@ A two-agent architecture where the **Router** handles all user interaction (fast
 
 ## Worker Agent
 
-- Runs asynchronously via `asyncio.create_task` (fire-and-forget).
+- Runs in an independently retained `asyncio.create_task`.
 - Executes a multi-round tool-calling loop (up to 5 rounds) using domain tools:
   - `search_site_specs` — site specification lookup
   - `search_work_iq` — Teams/Outlook/People search
@@ -27,16 +29,22 @@ A two-agent architecture where the **Router** handles all user interaction (fast
   - `analyze_document` — document understanding and extraction
 - Writes results into the shared `Task` object (never talks to the user directly).
 - Supports cancellation between rounds via `cancel_event`.
-- Resilient to client disconnection — keeps running in background.
+- Survives foreground interruption within a connection. Session end/disconnect requests
+  cooperative cancellation; shutdown joins retained Workers after their in-flight call settles.
 
 ## Task Store
 
 - In-memory registry tracking task lifecycle: `QUEUED → RUNNING → COMPLETED → DELIVERED`.
-- `collect_completed()` atomically collects finished results and marks them delivered (exactly-once delivery).
+- Explicit task IDs (including paraphrases) are marked delivered after a successful CE
+  `response.done` send, not during result collection or by substring matching.
 - `delivered_tasks()` exposes history so the Router can recall past results on follow-up questions.
 
 ## Streaming & Wait Behavior
 
 - Handler streams: acknowledgment → wait for active tasks → deliver results.
-- While waiting, periodic LLM-generated status updates are streamed (every ~8s, up to 5 times) in the user's language.
-- If cancel signal fires mid-wait, the SSE closes but workers continue — results are delivered next turn.
+- While waiting, optional status updates run every five seconds, up to five times, with a
+  one-second model deadline. A newly ready result takes precedence over optional status speech.
+- Foreground cancellation stops that CE response. Workers continue until they finish or the
+  business task/session requests cancellation; another turn on the same connection can deliver results.
+- Task state and bounded caller-heard history are isolated per connection; they are not durable
+  or resumed across disconnected sockets.

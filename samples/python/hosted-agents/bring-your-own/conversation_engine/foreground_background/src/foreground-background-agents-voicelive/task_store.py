@@ -30,18 +30,21 @@ class Task:
     result: str | None = None
     cancel_event: asyncio.Event = field(default_factory=asyncio.Event)
     created_at: float = field(default_factory=time.time)
+    finished_at: float | None = None
 
 
 class TaskStore:
-    """In-memory task registry. One instance shared across the app."""
+    """In-memory task registry. One instance per physical CE connection."""
 
     def __init__(self):
         self._tasks: dict[str, Task] = {}
+        self._latest_task_id: str | None = None
 
     def create_task(self, query: str) -> Task:
         task_id = uuid.uuid4().hex[:8]
         task = Task(task_id=task_id, query=query)
         self._tasks[task_id] = task
+        self._latest_task_id = task_id
         return task
 
     def get(self, task_id: str) -> Task | None:
@@ -57,41 +60,40 @@ class TaskStore:
         return False
 
     def active_tasks(self) -> list[Task]:
-        return [t for t in self._tasks.values()
-                if t.status in (TaskStatus.QUEUED, TaskStatus.RUNNING)]
+        return [
+            t for t in self._tasks.values() if t.status in (TaskStatus.QUEUED, TaskStatus.RUNNING)
+        ]
 
     def completed_tasks(self) -> list[Task]:
-        return [t for t in self._tasks.values()
-                if t.status == TaskStatus.COMPLETED]
+        return [t for t in self._tasks.values() if t.status == TaskStatus.COMPLETED]
 
     def delivered_tasks(self) -> list[Task]:
         """Return tasks that have been delivered to the user (for context recall)."""
-        return [t for t in self._tasks.values()
-                if t.status == TaskStatus.DELIVERED]
+        return [t for t in self._tasks.values() if t.status == TaskStatus.DELIVERED]
 
-    def collect_completed(self) -> list[Task]:
-        """Return all completed tasks and mark them as delivered.
-
-        This ensures each result is delivered to the user exactly once.
-        """
-        ready = [t for t in self._tasks.values() if t.status == TaskStatus.COMPLETED]
-        for t in ready:
-            t.status = TaskStatus.DELIVERED
-        return ready
+    def terminal_tasks(self) -> list[Task]:
+        """Expose sanitized failure/cancellation status to subsequent Router turns."""
+        return [
+            task
+            for task in self._tasks.values()
+            if task.status in (TaskStatus.FAILED, TaskStatus.CANCELLED)
+        ]
 
     def cleanup(self):
-        """Remove delivered/cancelled/failed tasks older than 5 minutes."""
+        """Retain terminal outcomes for five minutes after Worker completion."""
         import time as _time
+
         cutoff = _time.time() - 300
         to_remove = [
-            tid for tid, t in self._tasks.items()
+            tid
+            for tid, t in self._tasks.items()
             if t.status in (TaskStatus.DELIVERED, TaskStatus.CANCELLED, TaskStatus.FAILED)
-            and t.created_at < cutoff
+            and t.finished_at is not None
+            and t.finished_at < cutoff
         ]
         for tid in to_remove:
             del self._tasks[tid]
 
     def _get_latest(self) -> Task | None:
-        if not self._tasks:
-            return None
-        return list(self._tasks.values())[-1]
+        # An expired latest reference must not silently return an older task.
+        return self._tasks.get(self._latest_task_id)

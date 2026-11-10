@@ -13,12 +13,12 @@ Tools:
 import json
 import logging
 
-from task_store import Task, TaskStore, TaskStatus
+from task_store import Task, TaskStatus, TaskStore
 
 logger = logging.getLogger(__name__)
 
 # ── Router Tools ──────────────────────────────────────────────────────────────
-# tool_choice: "required" means the model MUST call exactly one of these.
+# The caller also sets parallel_tool_calls=False and validates exactly one call.
 
 ROUTER_TOOLS = [
     {
@@ -35,6 +35,14 @@ ROUTER_TOOLS = [
                 "message": {
                     "type": "string",
                     "description": "The spoken response to the user. Keep concise for voice.",
+                },
+                "delivered_task_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": (
+                        "IDs of completed tasks whose results this message conveys, including p"
+                        "araphrases and translations. Empty for unrelated chat."
+                    ),
                 },
             },
             "required": ["message"],
@@ -57,7 +65,10 @@ ROUTER_TOOLS = [
                 },
                 "ack_message": {
                     "type": "string",
-                    "description": "Very short spoken acknowledgment, max 5-6 words (e.g. 'Looking that up.' or 'On it.')",
+                    "description": (
+                        "Very short spoken acknowledgment, max 5-6 words (e.g. 'Looking that up"
+                        ".' or 'On it.')"
+                    ),
                 },
             },
             "required": ["request_summary", "ack_message"],
@@ -127,43 +138,59 @@ ROUTER_TOOLS = [
 # Force the model to always call a tool (no free-text path)
 ROUTER_TOOL_CHOICE = "required"
 
-ROUTER_SYSTEM_PROMPT = """You are the front-desk assistant for field operations technicians at Microsoft data centers.
-
-You MUST call exactly one function per turn. You cannot respond with plain text.
-
-FUNCTION SELECTION:
-- respond_directly: greetings, chat, clarifications, capability questions, delivering completed results, acknowledging user, answering from conversation history, ANY question unrelated to field-ops
-- start_task: user provides a COMPLETE, ACTIONABLE field-ops request (they've given enough info to act on)
-- check_task_status: user asks about progress of a running task
-- cancel_task: user wants to stop a task
-- get_task_result: retrieve a finished task's result that hasn't been shown yet
-
-WHEN TO USE start_task vs respond_directly:
-- "Analyze document 12345" → start_task (actionable: document ID is provided)
-- "Can you analyze a document?" → respond_directly (capability question, no document specified)
-- "Search site specs for Quincy North" → start_task (actionable: site name provided)
-- "Can you look stuff up?" → respond_directly (no specific request)
-- "How old are you?" / "What's the weather?" → respond_directly (unrelated to field-ops)
-- "Great" / "Thanks" → respond_directly (acknowledgment)
-
-RULES:
-1. For greetings/chat/thanks/acknowledgments ("Great", "OK", "Thank you", "Got it", "Perfect", etc.) → ALWAYS call respond_directly. NEVER re-trigger a task for these.
-2. For questions UNRELATED to field operations (personal questions, general knowledge, small talk) → ALWAYS call respond_directly, regardless of any running tasks.
-3. Only call start_task when the user provides a SPECIFIC, ACTIONABLE request with enough parameters to execute (e.g., a document ID, a site name, a procedure type). If key information is missing, call respond_directly to ask for it.
-4. Do NOT call start_task if a running task already covers the same request (check "Running tasks" context).
-5. Do NOT call start_task if the user is referring to a result that was ALREADY delivered. If the result is in conversation history or in "Recently delivered" context, call respond_directly and re-state it.
-6. If "Recently completed" results exist in context, call respond_directly and include those results naturally in your message.
-7. If the user asks to recall/replay/repeat a previous result, look at conversation history or "Recently delivered" context and call respond_directly with that information.
-8. Match the user's language. Keep messages concise (voice-enabled, hands-free).
-9. When the user's message has BOTH chat and a NEW actionable field-ops request, call start_task (the ack_message handles the conversational part).
-
-IMPORTANT: A message like "Great", "Thanks", "OK" after a delivered result is just the user acknowledging — respond with something brief and friendly. Do NOT re-run the task.
-IMPORTANT: If there is a running task and the user says something UNRELATED, just respond with respond_directly. Do NOT create a new task.
-
-STYLE: concise, helpful, technical when needed. The technician is working hands-free."""
+ROUTER_SYSTEM_PROMPT = (
+    "You are the front-desk assistant for field operations technicians at M"
+    "icrosoft data centers.\n\nYou MUST call exactly one function per turn. Y"
+    "ou cannot respond with plain text.\nWhen respond_directly conveys compl"
+    "eted results, include their exact task IDs in\ndelivered_task_ids. Incl"
+    "ude only results actually conveyed in message; use [] for\nunrelated ch"
+    "at, acknowledgments, or status-only replies.\n\nFUNCTION SELECTION:\n- re"
+    "spond_directly: greetings, chat, clarifications, capability questions,"
+    " delivering completed results, acknowledging user, answering from conv"
+    "ersation history, ANY question unrelated to field-ops\n- start_task: us"
+    "er provides a COMPLETE, ACTIONABLE field-ops request (they've given en"
+    "ough info to act on)\n- check_task_status: user asks about progress of "
+    "a running task\n- cancel_task: user wants to stop a task\n- get_task_res"
+    "ult: retrieve a finished task's result that hasn't been shown yet\n\nWHE"
+    'N TO USE start_task vs respond_directly:\n- "Analyze document 12345" → '
+    'start_task (actionable: document ID is provided)\n- "Can you analyze a '
+    'document?" → respond_directly (capability question, no document specif'
+    'ied)\n- "Search site specs for Quincy North" → start_task (actionable: '
+    'site name provided)\n- "Can you look stuff up?" → respond_directly (no '
+    'specific request)\n- "How old are you?" / "What\'s the weather?" → respo'
+    'nd_directly (unrelated to field-ops)\n- "Great" / "Thanks" → respond_di'
+    "rectly (acknowledgment)\n\nRULES:\n1. For greetings/chat/thanks/acknowled"
+    'gments ("Great", "OK", "Thank you", "Got it", "Perfect", etc.) → ALWAY'
+    "S call respond_directly. NEVER re-trigger a task for these.\n2. For que"
+    "stions UNRELATED to field operations (personal questions, general know"
+    "ledge, small talk) → ALWAYS call respond_directly, regardless of any r"
+    "unning tasks.\n3. Only call start_task when the user provides a SPECIFI"
+    "C, ACTIONABLE request with enough parameters to execute (e.g., a docum"
+    "ent ID, a site name, a procedure type). If key information is missing,"
+    " call respond_directly to ask for it.\n4. Do NOT call start_task if a r"
+    'unning task already covers the same request (check "Running tasks" con'
+    "text).\n5. Do NOT call start_task if the user is referring to a result "
+    "that was ALREADY delivered. If the result is in conversation history o"
+    'r in "Recently delivered" context, call respond_directly and re-state '
+    'it.\n6. If "Recently completed" results exist in context, call respond_'
+    "directly and include those results naturally in your message.\n7. If th"
+    "e user asks to recall/replay/repeat a previous result, look at convers"
+    'ation history or "Recently delivered" context and call respond_directl'
+    "y with that information.\n8. Match the user's language. Keep messages c"
+    "oncise (voice-enabled, hands-free).\n9. When the user's message has BOT"
+    "H chat and a NEW actionable field-ops request, call start_task (the ac"
+    "k_message handles the conversational part).\n\nIMPORTANT: A message like"
+    ' "Great", "Thanks", "OK" after a delivered result is just the user ack'
+    "nowledging — respond with something brief and friendly. Do NOT re-run "
+    "the task.\nIMPORTANT: If there is a running task and the user says some"
+    "thing UNRELATED, just respond with respond_directly. Do NOT create a n"
+    "ew task.\n\nSTYLE: concise, helpful, technical when needed. The technici"
+    "an is working hands-free."
+)
 
 
 # ── Router Tool Execution ─────────────────────────────────────────────────────
+
 
 def execute_router_tool(name: str, arguments: dict, store: TaskStore) -> tuple[str, Task | None]:
     """Execute a router meta-tool. Returns (result_json, new_task_or_none).
@@ -178,12 +205,14 @@ def execute_router_tool(name: str, arguments: dict, store: TaskStore) -> tuple[s
         active = store.active_tasks()
         if active:
             existing = active[-1]  # most recent active task
-            return json.dumps({
-                "task_id": existing.task_id,
-                "status": existing.status.value,
-                "note": "Task already running — not creating duplicate",
-                "query": existing.query,
-            }), None  # Return None → no new worker spawned
+            return json.dumps(
+                {
+                    "task_id": existing.task_id,
+                    "status": existing.status.value,
+                    "note": "Task already running — not creating duplicate",
+                    "query": existing.query,
+                }
+            ), None  # Return None → no new worker spawned
         task = store.create_task(arguments["request_summary"])
         return json.dumps({"task_id": task.task_id, "status": "queued"}), task
 
@@ -191,21 +220,25 @@ def execute_router_tool(name: str, arguments: dict, store: TaskStore) -> tuple[s
         task = store.get(arguments["task_id"])
         if not task:
             return json.dumps({"error": "No task found"}), None
-        return json.dumps({
-            "task_id": task.task_id,
-            "status": task.status.value,
-            "current_tool": task.current_tool,
-            "rounds_completed": task.rounds_completed,
-            "query": task.query,
-        }), None
+        return json.dumps(
+            {
+                "task_id": task.task_id,
+                "status": task.status.value,
+                "current_tool": task.current_tool,
+                "rounds_completed": task.rounds_completed,
+                "query": task.query,
+            }
+        ), None
 
     if name == "cancel_task":
         success = store.cancel(arguments["task_id"])
         task = store.get(arguments["task_id"])
-        return json.dumps({
-            "cancelled": success,
-            "task_id": task.task_id if task else None,
-        }), None
+        return json.dumps(
+            {
+                "cancelled": success,
+                "task_id": task.task_id if task else None,
+            }
+        ), None
 
     if name == "get_task_result":
         task = store.get(arguments["task_id"])
@@ -213,11 +246,13 @@ def execute_router_tool(name: str, arguments: dict, store: TaskStore) -> tuple[s
             return json.dumps({"error": "No task found"}), None
         if task.status in (TaskStatus.COMPLETED, TaskStatus.DELIVERED):
             return json.dumps({"task_id": task.task_id, "result": task.result}), None
-        return json.dumps({
-            "error": "Task not completed yet",
-            "task_id": task.task_id,
-            "status": task.status.value,
-        }), None
+        return json.dumps(
+            {
+                "error": "Task not completed yet",
+                "task_id": task.task_id,
+                "status": task.status.value,
+            }
+        ), None
 
     return json.dumps({"error": f"Unknown router tool: {name}"}), None
 
