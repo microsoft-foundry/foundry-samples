@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 logger = logging.getLogger(__name__)
 
 # Load environment variables
-load_dotenv(override=True)
+load_dotenv(override=False)
 
 from bot_websocket_server import run_bot
 
