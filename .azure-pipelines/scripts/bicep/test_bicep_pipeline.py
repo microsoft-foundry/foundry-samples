@@ -101,6 +101,29 @@ class BicepPipelineTests(unittest.TestCase):
                     self.assertIn(f"bicep build --file {SAMPLE_ROOT}/{expected}/main.bicep", calls)
                     (repo / "calls.txt").unlink()
 
+    def test_connection_samples_select_self_contained_fixtures(self):
+        script = self.pipeline["stages"][2]["jobs"][0]["steps"][1]["inputs"]["inlineScript"]
+        start = script.index('if [ -n "${{ parameters.samplePath }}" ]; then')
+        selection = script[start:script.index("deploy_with_location() {")]
+        selection = selection.replace("${{ parameters.samplePath }}", "")
+        selection = selection.replace("${{ parameters.validateAll }}", "false")
+        selection = selection.replace("$(BICEP_ROOT)", SAMPLE_ROOT)
+        for sample in ("apim-secret-headers", "foundry-model-connection"):
+            directory = f"{SAMPLE_ROOT}/01-connections/{sample}"
+            with self.subTest(sample=sample):
+                result = subprocess.run(
+                    [
+                        "bash", "-c",
+                        "set -euo pipefail\nbase_ref=origin/main\n"
+                        f"git() {{ printf '%s\\n' '{directory}/main.bicep' '{directory}/tests/deploy.bicep'; }}\n"
+                        + selection
+                        + '\nprintf "%s\\n" "${deployment_files[@]}"\n',
+                    ],
+                    cwd=ROOT, capture_output=True, text=True,
+                )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(f"{directory}/main.bicepparam\n", result.stdout)
+
     def test_manual_sample_paths_are_normalized_and_contained(self):
         bash = shutil.which("bash")
         self.assertIsNotNone(bash, "Bash is required for pipeline selection checks")
