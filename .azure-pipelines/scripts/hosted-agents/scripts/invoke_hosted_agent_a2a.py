@@ -13,6 +13,10 @@ from typing import Any, Callable, Mapping, Sequence
 from uuid import uuid4
 
 
+class ServiceError(ValueError):
+    """A valid JSON-RPC error, distinct from a malformed envelope."""
+
+
 def _run(arguments: Sequence[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         arguments,
@@ -48,8 +52,17 @@ def task_text(body: str, request_id: str) -> str:
         raise ValueError("A2A response must be a JSON-RPC 2.0 object")
     if response.get("id") != request_id:
         raise ValueError("A2A response ID does not match the request")
+    if "result" in response and response.get("error") is not None:
+        raise ValueError("A2A response cannot contain both result and error")
     if response.get("error") is not None:
-        raise ValueError(f"A2A JSON-RPC error: {json.dumps(response['error'])}")
+        error = response["error"]
+        if (
+            not isinstance(error, dict)
+            or type(error.get("code")) is not int
+            or not isinstance(error.get("message"), str)
+        ):
+            raise ValueError("Malformed A2A JSON-RPC error")
+        raise ServiceError(f"A2A JSON-RPC error: {json.dumps(error)}")
     result = response.get("result")
     task = result.get("task") if isinstance(result, dict) else None
     if (
@@ -179,6 +192,15 @@ def invoke_turn(
             body = response_body(body)
             text = task_text(body, request_id)
             exit_code = 0
+    except ServiceError as exc:
+        error = str(exc)
+        terminal = not bool(
+            re.search(
+                r"session_not_ready|session[_ ]quota|quota[_ ]exceeded|throttl|rate[_ ]limit|HTTP 429",
+                error,
+                re.IGNORECASE,
+            )
+        )
     except (ValueError, OSError, subprocess.TimeoutExpired) as exc:
         error = str(exc)
         terminal = True

@@ -50,6 +50,22 @@ def completed(request_id):
 
 
 class A2AInvocationTests(unittest.TestCase):
+    def test_http_success_retryable_jsonrpc_errors_reach_retry_classifiers(self):
+        for message in (
+            "session_not_ready",
+            "session_quota_exceeded",
+            "Model rate limit exceeded",
+        ):
+            outcome, _, _ = self.run_turn(
+                lambda response: {
+                    "jsonrpc": "2.0",
+                    "id": response["id"],
+                    "error": {"code": -32603, "message": message},
+                }
+            )
+            self.assertEqual(outcome["turn_exit"], 1)
+            self.assertFalse(outcome["approval_terminal_error"])
+
     def run_turn(
         self, change=None, *, status=200, cli_exit=0, raw_json=False, stderr=""
     ):
@@ -209,6 +225,40 @@ class A2AInvocationTests(unittest.TestCase):
 
 
 class A2APreparationTests(unittest.TestCase):
+    def test_each_planner_keeps_its_own_specialist_version_bindings(self):
+        root = ROOT / SAMPLE / "travel-planner-web-search"
+        original = yaml.safe_load((root / "azure.yaml").read_text())
+        spec = load_spec(ROOT / FIXTURE / "travel-planner-web-search/test-spec.yml")
+        observed = []
+        with tempfile.TemporaryDirectory() as directory:
+            for build, version in (("a", "3"), ("b", "4")):
+                path = Path(directory) / f"{build}.yaml"
+                path.write_text(
+                    yaml.safe_dump(
+                        prepare.prepare(original, spec["sample"], root, "ci-travel")
+                    )
+                )
+
+                def command(args, **kwargs):
+                    observed.append(args)
+                    return subprocess.CompletedProcess(
+                        args, 0, json.dumps({"version": version}), ""
+                    )
+
+                prepare.deploy_dependencies(path, "ci-travel", command=command)
+            first = yaml.safe_load((Path(directory) / "a.yaml").read_text())[
+                "services"
+            ]["ci-travel"]["env"]
+            second = yaml.safe_load((Path(directory) / "b.yaml").read_text())[
+                "services"
+            ]["ci-travel"]["env"]
+            for key in ("FLIGHT_AGENT_VERSION", "HOTEL_AGENT_VERSION"):
+                self.assertEqual(first[key], "3")
+                self.assertEqual(second[key], "4")
+            self.assertFalse(
+                any(args[:3] == ["azd", "deploy", "ci-travel"] for args in observed)
+            )
+
     def test_travel_preserves_three_agents_and_binds_their_own_endpoints(self):
         root = ROOT / SAMPLE / "travel-planner-web-search"
         original = yaml.safe_load((root / "azure.yaml").read_text())

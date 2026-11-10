@@ -42,9 +42,15 @@ async def connect(
     stack: AsyncExitStack,
     credential: DefaultAzureCredential | ManagedIdentityCredential,
     platform_headers: dict[str, str],
+    *,
+    version: str | None = None,
 ) -> tuple[AgentCard, Client]:
     project = os.environ["FOUNDRY_PROJECT_ENDPOINT"].rstrip("/")
     trusted_url(endpoint, project)
+    if version is not None and (
+        not version.isascii() or not version.isdigit() or int(version) < 1
+    ):
+        raise ValueError("Specialist version must be a positive integer")
     endpoint = urlunsplit(urlsplit(endpoint)._replace(query="")).rstrip("/")
     started = perf_counter()
     request_span = trace.get_current_span().get_span_context()
@@ -55,6 +61,8 @@ async def connect(
             token = await credential.get_token("https://ai.azure.com/.default")
             request.headers["Authorization"] = "Bearer " + token.token
             request.headers.update(platform_headers)
+            if version is not None:
+                request.headers["x-agent-version-override"] = version
         request.headers["A2A-Version"] = "1.0"
         propagate.inject(request.headers)
         request.extensions["a2a_started_at"] = perf_counter()

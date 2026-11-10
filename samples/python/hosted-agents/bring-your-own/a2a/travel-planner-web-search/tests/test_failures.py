@@ -6,6 +6,8 @@ import ast
 import json
 import sys
 import unittest
+import os
+from contextlib import AsyncExitStack
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -37,6 +39,66 @@ def load(name, runtime, filename="main.py"):
 
 
 class FailureTests(unittest.IsolatedAsyncioTestCase):
+    async def test_pinned_specialist_version_is_sent_on_discovery_and_invocation(self):
+        module = load("version_agents", "travel-agent", "agents.py")
+        observed = []
+        project = "https://example.test/api/projects/demo"
+        endpoint = project + "/agents/flight/endpoint/protocols/a2a"
+        real_client = module.httpx.AsyncClient
+
+        def transport(request):
+            observed.append(request.headers["x-agent-version-override"])
+            return module.httpx.Response(200, json={})
+
+        class Resolver:
+            def __init__(self, http, base):
+                self.http = http
+
+            async def get_agent_card(self, **kwargs):
+                await self.http.get(endpoint + "/agentCard/v1.0?api-version=v1")
+                from a2a.types import AgentCard, AgentInterface, AgentSkill
+
+                return AgentCard(
+                    name="Flight",
+                    skills=[AgentSkill(id="flight")],
+                    supported_interfaces=[
+                        AgentInterface(
+                            protocol_binding="JSONRPC",
+                            protocol_version="1.0",
+                            url=endpoint,
+                        )
+                    ],
+                )
+
+        async def create(card, config):
+            await config.httpx_client.post(endpoint)
+            return SimpleNamespace(close=AsyncMock())
+
+        with patch.dict(
+            os.environ, {"FOUNDRY_PROJECT_ENDPOINT": project}
+        ), patch.object(
+            module.httpx,
+            "AsyncClient",
+            side_effect=lambda **kwargs: real_client(
+                **kwargs, transport=module.httpx.MockTransport(transport)
+            ),
+        ), patch.object(
+            module, "A2ACardResolver", Resolver
+        ), patch.object(
+            module, "create_client", create
+        ):
+            async with AsyncExitStack() as stack:
+                await module.connect(
+                    endpoint,
+                    stack,
+                    SimpleNamespace(
+                        get_token=AsyncMock(return_value=SimpleNamespace(token="test"))
+                    ),
+                    {},
+                    version="3",
+                )
+        self.assertEqual(observed, ["3", "3"])
+
     def test_runtime_card_metadata_matches_manifest(self):
         manifest = (ROOT / "azure.yaml").read_text()
         for runtime in ("travel-agent", "flight-agent", "hotel-agent"):
@@ -97,6 +159,14 @@ class FailureTests(unittest.IsolatedAsyncioTestCase):
                 client = ModuleType("client")
 
                 async def fail(*args, **kwargs):
+                    if "receipts" in kwargs:
+                        kwargs["receipts"].append(
+                            {
+                                "tool": "web_search",
+                                "success": False,
+                                "source_urls": [],
+                            }
+                        )
                     if "evidence" in kwargs:
                         kwargs["evidence"]["state_store"]["operations"].append(
                             {
@@ -137,6 +207,12 @@ class FailureTests(unittest.IsolatedAsyncioTestCase):
                     )
                 updater.failed.assert_awaited_once()
                 updater.complete.assert_not_awaited()
+                if runtime != "travel-agent":
+                    artifact = updater.add_artifact.await_args.kwargs
+                    self.assertEqual(artifact["name"], "web-search")
+                    self.assertFalse(
+                        json.loads(artifact["parts"][0].text)[0]["success"]
+                    )
                 if runtime == "travel-agent":
                     artifacts = {
                         call.kwargs.get("name"): call.kwargs["parts"][0].text

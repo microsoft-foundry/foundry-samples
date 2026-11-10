@@ -76,6 +76,22 @@ REQUIREMENTS = {
 
 
 class PlanResearchTests(unittest.IsolatedAsyncioTestCase):
+    async def test_saved_plan_a_cannot_cover_unsaved_research_for_plan_b(self):
+        self.complete()
+        await self.save(self.plan)
+        other = await self.invoke("create_plan", requirements=REQUIREMENTS)
+        self.operations.pop()
+        await self.invoke("get_plan", plan_id=other["plan_id"])
+        self.complete(other)
+        with self.assertRaisesRegex(RuntimeError, "no current plan"):
+            store_module.validate_completion(self.operations, self.calls)
+
+    async def test_additional_calls_for_saved_version_do_not_fail_completion(self):
+        self.complete()
+        self.complete()
+        await self.save(self.plan)
+        store_module.validate_completion(self.operations, self.calls)
+
     async def test_metadata_only_edit_of_existing_draft_does_not_force_research(self):
         self.operations.clear()
         updated = await self.invoke(
@@ -419,7 +435,18 @@ class SearchEvidenceTests(unittest.IsolatedAsyncioTestCase):
                 return_value=SimpleNamespace(platform_headers=lambda: {}),
             ),
         ):
-            answer, calls = await module.ask("Public research", "SFO SEA")
+            receipts = []
+            try:
+                answer, calls = await module.ask(
+                    "Public research", "SFO SEA", receipts=receipts
+                )
+            except RuntimeError:
+                self.assertEqual(len(receipts), len(results))
+                for receipt, (success, content) in zip(receipts, results):
+                    self.assertEqual(
+                        receipt["success"], success and "https://" in content
+                    )
+                raise
         limit = configuration["hooks"]["on_pre_tool_use"]
         self.assertEqual(
             [limit({}, {})["permissionDecision"] for _ in range(3)],

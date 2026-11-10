@@ -6,6 +6,7 @@ from __future__ import annotations
 import copy
 import json
 import sys
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,42 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / ".github" / "scripts"))
 from hosted_agent_test_spec import load_spec
+
+
+def deploy_dependencies(path: Path, selected: str, *, command=subprocess.run) -> None:
+    manifest = yaml.safe_load(path.read_text(encoding="utf-8"))
+    services = manifest["services"]
+    if selected not in services:
+        raise ValueError("Selected CI planner service is missing")
+    specialists = [
+        key
+        for key, service in services.items()
+        if service.get("host") == "azure.ai.agent" and key != selected
+    ]
+    for key, service in services.items():
+        if service.get("host") == "azure.ai.toolbox":
+            command(["azd", "deploy", key, "--no-prompt"], check=True)
+    for key in specialists:
+        command(["azd", "deploy", key, "--no-prompt"], check=True)
+        metadata = command(
+            ["azd", "ai", "agent", "show", key, "--output", "json", "--no-prompt"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        version = str(json.loads(metadata.stdout)["version"])
+        if not version.isascii() or not version.isdigit() or int(version) < 1:
+            raise ValueError("Deployed specialist version must be a positive integer")
+        for variable, value in list(services[selected].get("env", {}).items()):
+            if (
+                variable.endswith("_ENDPOINT")
+                and isinstance(value, str)
+                and f"/agents/{key}/" in value
+            ):
+                services[selected]["env"][
+                    variable.replace("_ENDPOINT", "_VERSION")
+                ] = version
+    path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
 
 
 def prepare(
@@ -110,6 +147,9 @@ def prepare(
 
 
 def main(argv: list[str]) -> int:
+    if len(argv) == 3 and argv[0] == "--deploy-dependencies":
+        deploy_dependencies(Path(argv[1]), argv[2])
+        return 0
     if len(argv) != 4:
         raise ValueError(
             "Expected manifest, fixture spec, sample directory and CI agent name"

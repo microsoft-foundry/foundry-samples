@@ -150,7 +150,17 @@ def validate_completion(
             "Saved requirements need a completed refresh; pending plan IDs: "
             + ", ".join(pending)
         )
-    if calls and not any(op["action"] == "recommendation_saved" for op in operations):
+    unsaved = [
+        call
+        for call in calls
+        if not any(
+            op["action"] == "recommendation_saved"
+            and op["plan"]["plan_id"] == call.get("plan_id")
+            and str(op["plan"]["version"] - 1) == call.get("plan_version")
+            for op in operations
+        )
+    ]
+    if unsaved:
         raise RuntimeError(
             "Specialists ran, but no current plan recommendation was saved"
         )

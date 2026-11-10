@@ -55,9 +55,10 @@ class HotelExecutor(AgentExecutor):
         await event_queue.enqueue_event(task)
         updater = TaskUpdater(event_queue, task.id, task.context_id)
         await updater.start_work()
+        searches: list[dict] = []
         try:
             answer, searches = await ask(
-                INSTRUCTIONS, get_message_text(context.message)
+                INSTRUCTIONS, get_message_text(context.message), receipts=searches
             )
             await updater.add_artifact(
                 parts=[new_text_part(answer, media_type="text/plain")]
@@ -74,6 +75,12 @@ class HotelExecutor(AgentExecutor):
                 "Hotel agent failed: task_id=%s error_type=%s",
                 task.id,
                 type(error).__name__,
+            )
+            await updater.add_artifact(
+                parts=[
+                    new_text_part(json.dumps(searches), media_type="application/json")
+                ],
+                name="web-search",
             )
             await updater.failed(
                 new_text_message(

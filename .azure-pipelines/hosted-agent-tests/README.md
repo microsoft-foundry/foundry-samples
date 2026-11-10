@@ -212,6 +212,13 @@ the planner. The selected CI project must support native A2A and have the
 sample's declared model deployment. Offline harness tests do not establish that
 these cloud prerequisites are available.
 
+Native A2A deployment publishes the cell's toolbox and specialists before its
+planner. It reads each deployed specialist version from the local azd environment
+and writes `FLIGHT_AGENT_VERSION`/`HOTEL_AGENT_VERSION` into the job-local planner
+configuration. The planner applies `x-agent-version-override` to both specialist
+Card discovery and subsequent A2A requests, so overlapping builds using stable
+agent names cannot switch each other's specialist code or toolbox dependencies.
+
 For multi-agent A2A fixtures, the deployment phase checks the selected planner's
 instance identity for project-scoped Foundry Agent Consumer access and creates
 an assignment only when needed. The CI identity must have permission to manage

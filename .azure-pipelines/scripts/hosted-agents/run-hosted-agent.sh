@@ -995,8 +995,15 @@ max_attempts=3
 while : ; do
   attempt=$((attempt+1))
   echo "─── Deploy attempt $attempt/$max_attempts ───"
-  azd deploy --no-prompt 2>&1 | tee /tmp/azd-deploy.log
-  azd_exit=${PIPESTATUS[0]}
+  if [ "$PROTOCOL" = "a2a" ]; then
+    python3 "$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/prepare_hosted_agent_a2a.py" \
+      --deploy-dependencies azure.yaml "$FOUNDRY_AGENT_NAME" || exit 1
+    azd deploy "$FOUNDRY_AGENT_NAME" --no-prompt 2>&1 | tee /tmp/azd-deploy.log
+    azd_exit=${PIPESTATUS[0]}
+  else
+    azd deploy --no-prompt 2>&1 | tee /tmp/azd-deploy.log
+    azd_exit=${PIPESTATUS[0]}
+  fi
   if [ $azd_exit -eq 0 ]; then
     echo "Deploy succeeded"
     break

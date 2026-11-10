@@ -381,6 +381,16 @@ The earlier hosted-run evidence predates this dependency update.
 
 ## Troubleshooting
 
+When pinning specialist deployments, set optional `FLIGHT_AGENT_VERSION` and
+`HOTEL_AGENT_VERSION` on the planner alongside their endpoint settings and
+redeploy it. Positive integer versions apply to both Card discovery and A2A
+invocation; unset values retain latest-version routing. CI sets these values
+from the specialist versions deployed by its own job.
+
+Failed specialist Tasks retain the `web-search` artifact, including unsuccessful
+attempts and any returned URLs. A failed search is not treated as grounded
+evidence merely because its receipt is available.
+
 - **Failed research:** the response is a `TASK_STATE_FAILED` Task, not a successful
   recommendation. Its status message, actual Task ID and compact partial receipts
   remain available. `specialist-failures` records failed attempts separately from

@@ -60,7 +60,13 @@ async def ask(instructions: str, message: str, *, evidence: dict) -> tuple[str, 
                 )
             )
         agents = [
-            await connect(os.environ[setting], stack, direct_credential, headers)
+            await connect(
+                os.environ[setting],
+                stack,
+                direct_credential,
+                headers,
+                version=os.environ.get(setting.replace("_ENDPOINT", "_VERSION")),
+            )
             for setting in ("FLIGHT_AGENT_ENDPOINT", "HOTEL_AGENT_ENDPOINT")
         ]
         tools = build_tools(

@@ -52,7 +52,9 @@ def validate_toolbox_endpoint(endpoint: str, project: str) -> None:
         )
 
 
-async def ask(instructions: str, message: str) -> tuple[str, list[dict]]:
+async def ask(
+    instructions: str, message: str, *, receipts: list[dict] | None = None
+) -> tuple[str, list[dict]]:
     endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"].rstrip("/")
     if urlsplit(endpoint).scheme != "https":
         raise ValueError("FOUNDRY_PROJECT_ENDPOINT must use HTTPS")
@@ -90,6 +92,8 @@ async def ask(instructions: str, message: str) -> tuple[str, list[dict]]:
                 "success": False,
                 "source_urls": [],
             }
+            if receipts is not None:
+                receipts.append(calls[data.tool_call_id])
         elif isinstance(data, ToolExecutionCompleteData) and data.tool_call_id in calls:
             result = data.result.content if data.result is not None else ""
             urls = sorted(set(re.findall(r'https?://[^\s<>"\\)]+', result)))
