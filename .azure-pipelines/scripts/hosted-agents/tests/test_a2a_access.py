@@ -1,4 +1,4 @@
-"""Job-owned runtime role assignment lifecycle tests; no Azure operations."""
+"""Stable runtime role assignment lifecycle tests; no Azure operations."""
 
 import importlib.util
 import json
@@ -22,7 +22,7 @@ class AccessTests(unittest.TestCase):
     def test_existing_assignment_is_never_owned_or_deleted(self):
         self.lifecycle(True)
 
-    def test_new_assignment_is_owned_then_deleted_by_exact_id(self):
+    def test_new_assignment_survives_job_cleanup(self):
         self.lifecycle(False)
 
     def lifecycle(self, existing):
@@ -46,15 +46,45 @@ class AccessTests(unittest.TestCase):
                 return_value=subprocess.CompletedProcess([], 0, SCOPE, ""),
             ):
                 module.manage("grant", state, "planner", command=command)
-            owned = json.loads(state.read_text())
-            self.assertEqual(len(owned), 0 if existing else 1)
+            saved = json.loads(state.read_text())
+            self.assertEqual(saved["lifecycle"], "persistent")
+            self.assertEqual(saved["created"], not existing)
             module.manage("cleanup", state, "planner", command=command)
             deletes = [
                 args
                 for args in commands
                 if args[:4] == ["az", "role", "assignment", "delete"]
             ]
-            self.assertEqual(len(deletes), 0 if existing else 1)
-            if not existing:
-                self.assertEqual(deletes[0][-1], owned[0])
-            self.assertEqual(json.loads(state.read_text()), [])
+            self.assertEqual(deletes, [])
+            self.assertEqual(json.loads(state.read_text()), saved)
+
+    def test_overlapping_builds_converge_without_revoking_access(self):
+        creates = []
+        present = False
+
+        def command(args):
+            if args[:4] == ["azd", "ai", "agent", "show"]:
+                return {"instance_identity": {"principal_id": "planner-principal"}}
+            if args[3] == "list":
+                return (
+                    [{"roleDefinitionId": "/roles/" + module.ROLE}] if present else []
+                )
+            self.assertEqual(args[3], "create")
+            creates.append(args[args.index("--name") + 1])
+            return {}
+
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            module.subprocess,
+            "run",
+            return_value=subprocess.CompletedProcess([], 0, SCOPE, ""),
+        ):
+            first = Path(directory) / "job-a.json"
+            second = Path(directory) / "job-b.json"
+            module.manage("grant", first, "planner", command=command)
+            module.manage("grant", second, "planner", command=command)
+            self.assertEqual(creates[0], creates[1])
+            present = True
+            module.manage("cleanup", first, "planner", command=command)
+            module.manage("grant", second, "planner", command=command)
+            self.assertFalse(json.loads(second.read_text())["created"])
+            self.assertEqual(len(creates), 2)

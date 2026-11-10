@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Grant only the CI planner runtime access; remove only job-owned assignments."""
+"""Ensure stable CI planner access without revoking concurrent builds' grants."""
 
 import json
 import subprocess
 import sys
 from pathlib import Path
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid5
 
 ROLE = "eed3b665-ab3a-47b6-8f48-c9382fb1dad6"
 
@@ -20,18 +20,10 @@ def run(arguments):
 
 def manage(action: str, state: Path, agent: str, *, command=run) -> None:
     if action == "cleanup":
-        if not state.exists():
-            return
-        owned = json.loads(state.read_text(encoding="utf-8"))
-        for assignment in list(owned):
-            command(["az", "role", "assignment", "delete", "--ids", assignment])
-            owned.remove(assignment)
-            state.write_text(json.dumps(owned), encoding="utf-8")
+        # Agent identities are reused by overlapping builds; access must outlive jobs.
         return
     if action != "grant":
         raise ValueError("Expected grant or cleanup")
-    if state.exists():
-        raise ValueError("Access ownership state already exists; refusing to overwrite")
     metadata = command(
         ["azd", "ai", "agent", "show", agent, "--output", "json", "--no-prompt"]
     )
@@ -64,13 +56,13 @@ def manage(action: str, state: Path, agent: str, *, command=run) -> None:
         ]
     )
     state.parent.mkdir(parents=True, exist_ok=True)
-    state.write_text("[]", encoding="utf-8")
     if any(item["roleDefinitionId"].lower().endswith("/" + ROLE) for item in existing):
+        state.write_text(
+            json.dumps({"lifecycle": "persistent", "created": False}), encoding="utf-8"
+        )
         return
-    name = str(uuid4())
+    name = str(uuid5(NAMESPACE_URL, f"{scope.lower()}:{principal.lower()}:{ROLE}"))
     assignment = scope + "/providers/Microsoft.Authorization/roleAssignments/" + name
-    # Persist ownership before creating so interrupted requests remain cleanable.
-    state.write_text(json.dumps([assignment]), encoding="utf-8")
     command(
         [
             "az",
@@ -90,6 +82,12 @@ def manage(action: str, state: Path, agent: str, *, command=run) -> None:
             "--output",
             "json",
         ]
+    )
+    state.write_text(
+        json.dumps(
+            {"lifecycle": "persistent", "assignment": assignment, "created": True}
+        ),
+        encoding="utf-8",
     )
 
 

@@ -215,9 +215,15 @@ these cloud prerequisites are available.
 For multi-agent A2A fixtures, the deployment phase checks the selected planner's
 instance identity for project-scoped Foundry Agent Consumer access and creates
 an assignment only when needed. The CI identity must have permission to manage
-role assignments at that scope. Job-owned assignment IDs are recorded before
-creation and removed in the always-run toolbox cleanup phase; existing grants
-are never deleted. CI waits briefly for propagation before invoking.
+role assignments at that scope. This is a persistent CI runtime grant, not a
+job-owned temporary resource: builds reuse planner identities, so deleting a
+grant at job cleanup could break another active build. Creation uses a
+deterministic assignment ID for the principal/project/role; concurrent builds
+converge on the same assignment. Existing grants are never deleted.
+The local access result is retained for diagnostics; toolbox cleanup does not
+revoke runtime access. CI waits briefly for propagation before invoking.
+When retiring CI agents, an administrator must review and remove their runtime
+assignments only after all builds using those identities have finished.
 | test | `name` | Required non-empty string, unique within the file. |
 | test | `when` | Optional mapping. `toolbox_label` is its only supported field. |
 | test | `turns` | Required non-empty sequence. |
