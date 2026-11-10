@@ -1,0 +1,10 @@
+{
+  "spec": "agent-hooks/0.1",
+  "interception_point": "output",
+  "timestamp": "2026-11-04T12:00:00Z",
+  "sequence": 1,
+  "agent": { "id": "support-agent", "framework": "custom" },
+  "session": { "id": "sample-output" },
+  "output": { "content": "Refund requests are evaluated after the order is reviewed." },
+  "target": { "content": "Refund requests are evaluated after the order is reviewed." }
+}

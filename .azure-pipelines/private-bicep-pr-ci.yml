@@ -190,8 +190,19 @@ stages:
                 rg_prefix="rg-template-ci-$(Build.BuildId)-$(System.JobAttempt)"
                 deployment_prefix="template-ci-$(Build.BuildId)"
                 cleanup_groups=()
+                cleanup_files=()
+                cleanup_certificate_dirs=()
 
                 cleanup() {
+                  for file in "${cleanup_files[@]:-}"; do
+                    [ -n "$file" ] || continue
+                    rm -f "$file"
+                  done
+                  for cert_dir in "${cleanup_certificate_dirs[@]:-}"; do
+                    [ -n "$cert_dir" ] || continue
+                    rm -f "$cert_dir"/{ca.key,ca.crt,ca.srl,server.key,server.csr,server.crt,server.ext,fullchain.crt,cert.b64,key.b64,certversion.txt}
+                    rmdir "$cert_dir" || true
+                  done
                   for rg_name in "${cleanup_groups[@]:-}"; do
                     [ -n "$rg_name" ] || continue
                     echo "Scheduling cleanup for $rg_name"
@@ -318,6 +329,7 @@ stages:
                   extension="${base##*.}"
                   template_file="$deployment_file"
                   temp_param="$dir/.ci.$base"
+                  cleanup_files+=("$temp_param")
                   safe_name="$(basename "$dir" | tr -cd '[:alnum:]-' | cut -c1-24)"
                   safe_base="$(basename "$base" ".$extension" | tr -cd '[:alnum:]-' | cut -c1-16)"
                   safe_location="$(printf '%s' "$location" | tr -cd '[:alnum:]' | cut -c1-8)"
@@ -385,6 +397,40 @@ stages:
                     fi
                   }
 
+                  prepare_ci_gateway_certificate() {
+                    if [ "$dir" != "$(BICEP_ROOT)/48-bring-own-model-private-ca" ]; then
+                      return
+                    fi
+
+                    local cert_dir
+                    cert_dir="$(mktemp -d "${AGENT_TEMPDIRECTORY:-${TMPDIR:-/tmp}}/bicep-ci-cert.XXXXXX")" || return 1
+                    cleanup_certificate_dirs+=("$cert_dir")
+                    pwsh -NoProfile -File "$dir/bootstrap-cert.ps1" \
+                      -Subscription "$(AZURE_SUBSCRIPTION_ID)" \
+                      -ResourceGroup "$rg_name" \
+                      -Location "$location" \
+                      -KeyVaultName "$unique_key_vault_name" \
+                      -CustomDomainFqdn gateway.byomca.internal \
+                      -PrincipalType ServicePrincipal \
+                      -OutDir "$cert_dir" || return 1
+
+                    local cert_b64 key_b64 cert_version
+                    cert_b64="$(cat "$cert_dir/cert.b64")" || return 1
+                    key_b64="$(cat "$cert_dir/key.b64")" || return 1
+                    cert_version="$(cat "$cert_dir/certversion.txt")" || return 1
+                    if [ -z "$cert_b64" ] || [ -z "$key_b64" ] || [ -z "$cert_version" ]; then
+                      echo "##vso[task.logissue type=error]Private CA bootstrap did not produce certificate material."
+                      return 1
+                    fi
+                    add_parameter_override gatewayCertPemB64 "$cert_b64"
+                    add_parameter_override gatewayKeyPemB64 "$key_b64"
+                    add_parameter_override gatewayCaSecretVersion "$cert_version"
+                    add_parameter_override cosmosLocation "$location"
+                    add_parameter_override searchLocation "$location"
+                    add_parameter_override foundryModelName "$ci_model_name"
+                    add_parameter_override foundryModelVersion "$ci_model_version"
+                  }
+
                   echo "Creating resource group $rg_name in $location"
                   az group create \
                     --name "$rg_name" \
@@ -421,6 +467,7 @@ stages:
                     add_parameter_override keyVersion "$ci_key_version"
                     add_parameter_override modelName "$ci_model_name"
                     add_parameter_override modelVersion "$ci_model_version"
+                    prepare_ci_gateway_certificate || return 1
 
                     az deployment group create \
                       --resource-group "$rg_name" \
@@ -454,6 +501,7 @@ stages:
                     add_parameter_override keyVersion "$ci_key_version"
                     add_parameter_override modelName "$ci_model_name"
                     add_parameter_override modelVersion "$ci_model_version"
+                    prepare_ci_gateway_certificate || return 1
 
                     az deployment group create "${deployment_args[@]}" || return 1
                   fi

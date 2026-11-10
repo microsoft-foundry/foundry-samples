@@ -159,6 +159,13 @@ deploys temporary resource groups. Pipeline/diagnostic-only changes select
 `00-basic` as a smoke template. A primary-region deployment failure remains a
 failure even if fallback-region diagnostics succeed.
 
+For Bicep sample `48-bring-own-model-private-ca`, CI runs the certificate
+bootstrap before deployment, creates the per-attempt Key Vault, and supplies
+the generated gateway certificate/key as secure parameters. The service
+connection needs permission to assign `Key Vault Secrets Officer` to itself.
+CI uses the attempt's region for Cosmos DB and Search and the configured CI
+model. Temporary certificate material and parameter files are removed on exit.
+
 ### Temporary Bicep deployment exclusions
 
 The following samples are temporarily excluded from live deployment pending
