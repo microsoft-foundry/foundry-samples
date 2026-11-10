@@ -156,7 +156,7 @@ def validate_completion(
         if not any(
             op["action"] == "recommendation_saved"
             and op["plan"]["plan_id"] == call.get("plan_id")
-            and str(op["plan"]["version"] - 1) == call.get("plan_version")
+            and 0 < int(call.get("plan_version", "0")) < op["plan"]["version"]
             for op in operations
         )
     ]
