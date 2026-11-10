@@ -1,0 +1,17 @@
+name: Voice Live Bridge Basic .NET
+description: A hosted .NET text agent implementing Voice Live Bridge Protocol 1.0.
+
+build: >-
+  dotnet restore src/voice-live-bridge-basic-dotnet/VoiceLiveBridgeBasic.csproj &&
+  dotnet restore src/voice-live-bridge-basic-dotnet/tests/VoiceHostedAgent.Tests.csproj &&
+  dotnet restore src/voice-live-bridge-basic-dotnet/smoke/VoiceLiveBridgeBasic.SmokeTest.csproj &&
+  dotnet build src/voice-live-bridge-basic-dotnet/VoiceLiveBridgeBasic.csproj
+  --no-restore --configuration Release &&
+  dotnet build src/voice-live-bridge-basic-dotnet/smoke/VoiceLiveBridgeBasic.SmokeTest.csproj
+  --no-restore --configuration Release
+validate: >-
+  dotnet format src/voice-live-bridge-basic-dotnet/VoiceLiveBridgeBasic.csproj
+  --verify-no-changes --no-restore
+test: >-
+  dotnet test src/voice-live-bridge-basic-dotnet/tests/VoiceHostedAgent.Tests.csproj
+  --no-restore --configuration Release
