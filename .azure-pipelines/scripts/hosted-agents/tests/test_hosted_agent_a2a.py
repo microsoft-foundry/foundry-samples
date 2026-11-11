@@ -160,6 +160,9 @@ class A2AInvocationTests(unittest.TestCase):
             )
             text = (work / "invoke-response-1.txt").read_text()
             raw = (work / "invoke-raw-1.json").read_text()
+            diagnostics = (work / "invoke-diagnostics-1.txt").read_text()
+            if outcome["turn_exit"] == 0:
+                self.assertEqual(diagnostics, "")
             if cli_exit and stderr:
                 self.assertIn(stderr, (work / "invoke-out-1.txt").read_text())
                 self.assertNotIn(stderr, raw)
@@ -385,6 +388,91 @@ class A2APreparationTests(unittest.TestCase):
     "Linux runner integration",
 )
 class A2ARunnerTests(unittest.TestCase):
+    def test_dependency_deployment_failures_use_existing_bounded_retries(self):
+        runner = (SCRIPTS.parent / "run-hosted-agent.sh").read_text()
+        body = re.search(
+            r"3<<'STEP_DEPLOY_AGENT'\n(.*?)\nSTEP_DEPLOY_AGENT",
+            runner,
+            re.DOTALL,
+        )[1].split('if [ "$PROTOCOL" = "a2a" ]; then\n  fixture_relative')[0]
+        body = body.replace("/tmp/azd-deploy.log", "deploy.log")
+        for service in ("toolbox", "flights", "hotels", "planner"):
+            for failure, recover, expected in (
+                ("BlobNotFound", True, 0),
+                ("toomanyrequests", True, 0),
+                ("BlobNotFound", False, 1),
+                ("Invalid deployment configuration", False, 1),
+            ):
+                with self.subTest(
+                    service=service, failure=failure, recover=recover
+                ), tempfile.TemporaryDirectory() as directory:
+                    work = Path(directory)
+                    manifest = {
+                        "services": {
+                            "toolbox": {"host": "azure.ai.toolbox"},
+                            "flights": {"host": "azure.ai.agent"},
+                            "hotels": {"host": "azure.ai.agent"},
+                            "planner": {"host": "azure.ai.agent", "env": {}},
+                        }
+                    }
+                    (work / "azure.yaml").write_text(yaml.safe_dump(manifest))
+                    azd = work / "azd"
+                    azd.write_text(
+                        f"#!{sys.executable}\n"
+                        "import json, sys\nfrom pathlib import Path\n"
+                        "args = sys.argv[1:]\n"
+                        "if args[0] == 'deploy':\n"
+                        "    name = args[1]\n"
+                        "    log = Path('deployments')\n"
+                        "    prior = log.read_text().splitlines() if log.exists() else []\n"
+                        "    with log.open('a') as stream: stream.write(name + '\\n')\n"
+                        f"    if name == {service!r} and (not {recover!r} or name not in prior):\n"
+                        f"        print({failure!r}, file=sys.stderr)\n"
+                        "        raise SystemExit(1)\n"
+                        "elif args[:3] == ['ai', 'agent', 'show']:\n"
+                        "    print(json.dumps({'version':'2'}))\n"
+                        "else: raise AssertionError(args)\n"
+                    )
+                    azd.chmod(0o700)
+                    sleep = work / "sleep"
+                    sleep.write_text(
+                        "#!/usr/bin/env bash\nprintf '%s\\n' \"$1\" >> delays\n"
+                    )
+                    sleep.chmod(0o700)
+                    result = subprocess.run(
+                        ["bash", "-c", body],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        check=False,
+                        env={
+                            **os.environ,
+                            "PATH": str(work) + os.pathsep + os.environ["PATH"],
+                            "WORK_DIR": str(work),
+                            "REPO_ROOT": str(ROOT),
+                            "PROTOCOL": "a2a",
+                            "FOUNDRY_AGENT_NAME": "planner",
+                        },
+                    )
+                    self.assertEqual(
+                        result.returncode, expected, result.stdout + result.stderr
+                    )
+                    attempts = (work / "deployments").read_text().splitlines()
+                    retries = 2 if recover else (3 if failure == "BlobNotFound" else 1)
+                    self.assertEqual(attempts.count(service), retries)
+                    if not recover and service != "planner":
+                        self.assertNotIn("planner", attempts)
+                    self.assertIn(
+                        failure,
+                        (
+                            (work / "deploy.log").read_text()
+                            if not recover
+                            else result.stdout
+                        ),
+                    )
+                    if recover:
+                        self.assertEqual(attempts[-1], "planner")
+
     @unittest.skipUnless(shutil.which("yq"), "Structure validation needs yq")
     def test_structure_checks_every_agent_project(self):
         runner = (SCRIPTS.parent / "run-hosted-agent.sh").read_text()
@@ -499,17 +587,69 @@ class A2ARunnerTests(unittest.TestCase):
 
     def test_real_runner_does_not_retry_permanent_failed_task_diagnostics(self):
         self.run_invoke(True, diagnostic="No cited search results")
+        self.run_invoke(True, diagnostic="Invalid request", mode="jsonrpc")
+        self.run_invoke(
+            True, diagnostic="Model deployment rate limit exceeded", mode="malformed"
+        )
+
+    def test_successful_artifacts_are_not_retry_or_error_diagnostics(self):
+        for text in (
+            "Error calling model: Error code: 429",
+            "Error calling model: Error code: 503 - server_error",
+            '{"error":{"code":"server_error"}}',
+            "session_quota_exceeded invalid_payload internal server error occurred",
+            "Traceback Please retry I cannot access real-time information",
+            "Retryable model error: rate_limit_exceeded.",
+        ):
+            with self.subTest(text=text):
+                self.run_invoke(False, answer="Echo: hello " + text, toolbox=True)
+
+    def test_real_runner_bounds_persistent_throttle_and_transient_failures(self):
+        self.run_invoke(
+            True,
+            diagnostic="Model deployment rate limit exceeded",
+            persist=True,
+            expected_attempts=4,
+        )
+        self.run_invoke(
+            True,
+            diagnostic="Error calling model: Error code: 503 - server_error",
+            persist=True,
+            expected_attempts=4,
+        )
+
+    def test_real_runner_retries_transport_and_jsonrpc_failures(self):
+        for mode, diagnostic in (
+            ("cli", "session_not_ready"),
+            ("http", "HTTP/2.0 429 Too Many Requests"),
+            ("jsonrpc", "session_not_ready"),
+            ("jsonrpc", "session_quota_exceeded"),
+        ):
+            with self.subTest(mode=mode):
+                self.run_invoke(False, diagnostic=diagnostic, mode=mode)
 
     def test_real_runner_retries_transient_failed_task_and_keeps_evidence(self):
         for diagnostic in (
             "Model deployment rate limit exceeded",
             "Error calling model: Error code: 503 - server_error",
             "The model is currently experiencing high demand that exceeds the maximum usage size allowed during peak load.",
+            "Retryable model error: rate_limit_exceeded.",
+            "Retryable model error: server_error.",
         ):
             with self.subTest(diagnostic=diagnostic):
                 self.run_invoke(False, diagnostic=diagnostic)
 
-    def run_invoke(self, fail, *, diagnostic=None):
+    def run_invoke(
+        self,
+        fail,
+        *,
+        diagnostic=None,
+        answer="Echo: hello",
+        toolbox=False,
+        persist=False,
+        expected_attempts=None,
+        mode="task",
+    ):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
             azd = work / "azd"
@@ -530,9 +670,19 @@ class A2ARunnerTests(unittest.TestCase):
                 "    counter.write_text(str(attempt))\n"
                 f"    state = {'TASK_STATE_FAILED' if fail else 'TASK_STATE_COMPLETED'!r}\n"
                 "    body = {'jsonrpc':'2.0','id':req['id'],'result':{'task':{'id':'task-1','status':{'state':state},'artifacts':[{'parts':[{'text':'Echo: hello'}]}]}}}\n"
+                f"    body['result']['task']['artifacts'][0]['parts'][0]['text'] = {answer!r}\n"
                 f"    diagnostic = {diagnostic!r}\n"
-                "    if diagnostic and attempt == 1:\n"
+                f"    if diagnostic and (attempt == 1 or {persist!r}):\n"
+                f"        mode = {mode!r}\n"
+                "        if mode == 'cli':\n"
+                "            print(diagnostic, file=sys.stderr)\n"
+                "            raise SystemExit(1)\n"
+                "        if mode == 'http':\n"
+                "            print(diagnostic + '\\nContent-Type: application/json\\n\\n{}')\n"
+                "            raise SystemExit(0)\n"
                 "        body['result']['task']['status'] = {'state':'TASK_STATE_FAILED','message':{'parts':[{'text':diagnostic}]}}\n"
+                "        if mode == 'jsonrpc': body = {'jsonrpc':'2.0','id':req['id'],'error':{'code':-32603,'message':diagnostic}}\n"
+                "        if mode == 'malformed': body['id'] = 'mismatched-id'\n"
                 "    print('HTTP/2.0 200 OK\\nContent-Type: application/json\\n\\n' + json.dumps(body))\n"
                 "else:\n"
                 "    raise AssertionError(args)\n",
@@ -568,7 +718,7 @@ class A2ARunnerTests(unittest.TestCase):
                     "PROTOCOL": "a2a",
                     "TOOLBOX_LABEL": "",
                     "TOOLBOX_QUERY": "",
-                    "IS_TOOLBOX": "false",
+                    "IS_TOOLBOX": str(toolbox).lower(),
                     "CI_AGENT_SESSION_ID": "cell-session",
                     "FOUNDRY_AGENT_NAME": "cell-agent",
                 },
@@ -580,12 +730,14 @@ class A2ARunnerTests(unittest.TestCase):
             self.assertEqual(status["exit_code"], int(fail))
             self.assertEqual(status["protocol"], "a2a")
             self.assertEqual(
-                status["final_attempt"], 2 if diagnostic and not fail else 1
+                status["final_attempt"],
+                expected_attempts or (2 if diagnostic and not fail else 1),
             )
             if diagnostic:
                 first = (evidence / "turn-1-attempt-1-a2a-response.txt").read_text()
-                self.assertIn("TASK_STATE_FAILED", first)
-                self.assertIn(diagnostic, first)
+                if mode == "task":
+                    self.assertIn("TASK_STATE_FAILED", first)
+                    self.assertIn(diagnostic, first)
             plan = build_plan(
                 load_spec(ROOT / FIXTURE / "echo/test-spec.yml"), protocol="a2a"
             )

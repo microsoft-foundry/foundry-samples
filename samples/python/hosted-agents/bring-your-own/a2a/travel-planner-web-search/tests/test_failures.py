@@ -1,12 +1,14 @@
 # Copyright (c) Microsoft. All rights reserved.
 """Failure receipts, terminal Task reporting and retry recovery regressions."""
 
-import importlib.util
 import ast
+import importlib.util
 import json
-import sys
-import unittest
 import os
+import subprocess
+import sys
+import tempfile
+import unittest
 from contextlib import AsyncExitStack
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -22,8 +24,10 @@ from a2a.types import (
     ListTasksRequest,
     Role,
     SendMessageRequest,
+    Task,
     TaskState,
 )
+from google.protobuf.json_format import MessageToDict
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -39,6 +43,323 @@ def load(name, runtime, filename="main.py"):
 
 
 class FailureTests(unittest.IsolatedAsyncioTestCase):
+    async def test_real_planner_client_keeps_pending_specialist_codes(self):
+        store_module = load("planner_failure_store", "travel-agent", "plan_store.py")
+        tools_module = load("planner_failure_tools", "travel-agent", "tools.py")
+        agents_module = load("planner_failure_agents", "travel-agent", "agents.py")
+        with patch.dict(
+            sys.modules,
+            {
+                "plan_store": store_module,
+                "tools": tools_module,
+                "agents": agents_module,
+            },
+        ):
+            module = load("planner_failure_client", "travel-agent", "client.py")
+        for reply_raises, permanent in (
+            (False, False),
+            (True, False),
+            (False, True),
+            (True, True),
+        ):
+            with self.subTest(reply_raises=reply_raises, permanent=permanent):
+                configuration = {}
+
+                class Specialist:
+                    async def send_message(self, request):
+                        from a2a.types import TaskStatus
+
+                        yield SimpleNamespace(
+                            HasField=lambda name: name == "task",
+                            task=Task(
+                                id="failed-task",
+                                status=TaskStatus(
+                                    state=TaskState.TASK_STATE_FAILED,
+                                    message=new_text_message(
+                                        "Retryable model error: rate_limit_exceeded.",
+                                        role=Role.ROLE_AGENT,
+                                    ),
+                                ),
+                            ),
+                        )
+
+                class Session:
+                    async def send_and_wait(
+                        self,
+                        message,
+                        timeout,
+                        reply_raises=reply_raises,
+                        configuration=configuration,
+                    ):
+                        try:
+                            await configuration["tools"][0].handler(
+                                SimpleNamespace(
+                                    arguments={"message": "Public trip"},
+                                    tool_call_id="failed-call",
+                                )
+                            )
+                        except RuntimeError:
+                            if reply_raises:
+                                raise
+                        return SimpleNamespace(
+                            data=SimpleNamespace(content="No research available")
+                        )
+
+                    async def disconnect(self):
+                        pass
+
+                async def create_session(configuration=configuration, **kwargs):
+                    configuration.update(kwargs)
+                    return Session()
+
+                def store_tools(*args, permanent=permanent, **kwargs):
+                    kwargs["research_context"].update(
+                        plan_id="plan-a", plan_version="1"
+                    )
+                    if permanent:
+                        args[3].append("save_plan_recommendation")
+                    return []
+
+                credential = AsyncMock()
+                credential.__aenter__.return_value = credential
+                credential.get_token.return_value = SimpleNamespace(token="offline")
+                store = AsyncMock()
+                store.__aenter__.return_value = store
+                store.get.return_value = SimpleNamespace(user_isolation=True)
+                copilot = SimpleNamespace(
+                    start=AsyncMock(), stop=AsyncMock(), create_session=create_session
+                )
+                evidence = {}
+                with (
+                    patch.dict(
+                        os.environ,
+                        {
+                            "FOUNDRY_PROJECT_ENDPOINT": "https://example.test/api/projects/demo",
+                            "AZURE_AI_MODEL_DEPLOYMENT_NAME": "test",
+                            "FLIGHT_AGENT_ENDPOINT": "https://example.test/flights",
+                            "HOTEL_AGENT_ENDPOINT": "https://example.test/hotels",
+                        },
+                        clear=True,
+                    ),
+                    patch.object(
+                        module, "DefaultAzureCredential", return_value=credential
+                    ),
+                    patch.object(module, "CopilotClient", return_value=copilot),
+                    patch.object(
+                        module,
+                        "connect",
+                        AsyncMock(
+                            return_value=(
+                                SimpleNamespace(
+                                    name="Flight", description="Research", skills=[]
+                                ),
+                                Specialist(),
+                            )
+                        ),
+                    ),
+                    patch.object(
+                        module,
+                        "FoundryStateStore",
+                        SimpleNamespace(get_or_create=AsyncMock(return_value=store)),
+                    ),
+                    patch.object(module, "build_store_tools", side_effect=store_tools),
+                    patch.object(
+                        module,
+                        "get_request_context",
+                        return_value=SimpleNamespace(
+                            platform_headers=dict,
+                            user_id=None,
+                            call_id=None,
+                        ),
+                    ),
+                    self.assertRaisesRegex(
+                        RuntimeError, "Planner tools failed"
+                    ) as raised,
+                ):
+                    await module.ask("Research", "Public trip", evidence=evidence)
+                self.assertEqual(
+                    "Retryable model error:" in str(raised.exception), not permanent
+                )
+                self.assertEqual(
+                    evidence["specialist_failures"][0]["error_code"],
+                    "rate_limit_exceeded",
+                )
+
+    async def test_specialist_failures_preserve_safe_codes_through_planner_and_ci(self):
+        tools_module = load("failure_chain_tools", "travel-agent", "tools.py")
+        store_module = load("failure_chain_store", "travel-agent", "plan_store.py")
+        repo = next(
+            parent for parent in ROOT.parents if (parent / ".azure-pipelines").is_dir()
+        )
+        spec = importlib.util.spec_from_file_location(
+            "failure_chain_ci",
+            repo
+            / ".azure-pipelines"
+            / "scripts"
+            / "hosted-agents"
+            / "scripts"
+            / "invoke_hosted_agent_a2a.py",
+        )
+        assert spec and spec.loader
+        ci = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ci)
+        for runtime, executor in (
+            ("flight-agent", "FlightExecutor"),
+            ("hotel-agent", "HotelExecutor"),
+        ):
+            for diagnostic, code in (
+                (
+                    "Error calling model: Error code: 429 private-diagnostic",
+                    "rate_limit_exceeded",
+                ),
+                (
+                    "Error calling model: Error code: 503 private-diagnostic",
+                    "server_error",
+                ),
+                (
+                    "The model is currently experiencing high demand that exceeds the maximum usage size allowed during peak load. private-diagnostic",
+                    "rate_limit_exceeded",
+                ),
+                ("No cited search results private-diagnostic", ""),
+                ("Invalid credentials private-diagnostic", ""),
+            ):
+                with self.subTest(runtime=runtime, code=code, diagnostic=diagnostic):
+                    client = ModuleType("client")
+                    client.ask = AsyncMock(side_effect=RuntimeError(diagnostic))
+                    with patch.dict(sys.modules, {"client": client}):
+                        specialist = load("failure_chain_" + runtime, runtime)
+                    handler = DefaultRequestHandler(
+                        getattr(specialist, executor)(),
+                        InMemoryTaskStore(),
+                        AgentCard(name="Test", version="1.0.0"),
+                    )
+                    sent = await handler.on_message_send(
+                        SendMessageRequest(
+                            message=new_text_message("Public trip", role=Role.ROLE_USER)
+                        ),
+                        ServerCallContext(),
+                    )
+                    self.assertEqual(sent.status.state, TaskState.TASK_STATE_FAILED)
+                    self.assertNotIn("private-diagnostic", str(sent.status.message))
+                    if code:
+                        self.assertIn(
+                            f"Retryable model error: {code}.", str(sent.status.message)
+                        )
+
+                    class Specialist:
+                        async def send_message(self, request, task=sent):
+                            yield SimpleNamespace(
+                                task=task, HasField=lambda name: name == "task"
+                            )
+
+                    calls, failures, failed_calls = [], [], []
+                    tool = tools_module.build_tools(
+                        [
+                            (
+                                SimpleNamespace(
+                                    name="Specialist", description="Research", skills=[]
+                                ),
+                                Specialist(),
+                            )
+                        ],
+                        calls,
+                        failures,
+                        research_context={"plan_id": "plan-a", "plan_version": "1"},
+                        failed_calls=failed_calls,
+                    )[0]
+                    with self.assertRaises(RuntimeError):
+                        await tool.handler(
+                            SimpleNamespace(
+                                arguments={"message": "Public trip"},
+                                tool_call_id="failed-call",
+                            )
+                        )
+                    self.assertEqual(calls, [])
+                    self.assertEqual(failed_calls[0].get("error_code", ""), code)
+                    message = store_module.failure_message(failures, [], failed_calls)
+                    self.assertEqual("Retryable model error:" in message, bool(code))
+
+                    async def planner_failure(
+                        *args, failed_calls=failed_calls, message=message, **kwargs
+                    ):
+                        kwargs["evidence"]["specialist_failures"].extend(failed_calls)
+                        raise RuntimeError(message)
+
+                    planner_client = ModuleType("client")
+                    planner_client.ask = planner_failure
+                    with patch.dict(sys.modules, {"client": planner_client}):
+                        planner = load("failure_chain_planner", "travel-agent")
+                    planner_handler = DefaultRequestHandler(
+                        planner.TravelExecutor(),
+                        InMemoryTaskStore(),
+                        AgentCard(name="Planner", version="1.0.0"),
+                    )
+                    planned = await planner_handler.on_message_send(
+                        SendMessageRequest(
+                            message=new_text_message("Public trip", role=Role.ROLE_USER)
+                        ),
+                        ServerCallContext(),
+                    )
+                    self.assertEqual(planned.status.state, TaskState.TASK_STATE_FAILED)
+                    with tempfile.TemporaryDirectory() as directory:
+                        work = Path(directory)
+                        (work / "input.txt").write_text("Public trip")
+                        (work / "turn.json").write_text("{}")
+
+                        def transport(arguments, work=work, planned=planned):
+                            request = json.loads((work / "req-1.json").read_text())
+                            body = {
+                                "jsonrpc": "2.0",
+                                "id": request["id"],
+                                "result": {"task": MessageToDict(planned)},
+                            }
+                            return subprocess.CompletedProcess(
+                                arguments, 0, json.dumps(body), ""
+                            )
+
+                        outcome = ci.invoke_turn(
+                            1,
+                            work / "input.txt",
+                            work / "turn.json",
+                            work / "evidence",
+                            1,
+                            environment={
+                                "CI_AGENT_SESSION_ID": "test",
+                                "FOUNDRY_AGENT_NAME": "planner",
+                            },
+                            transport=transport,
+                            temp_dir=work,
+                        )
+                        self.assertEqual(outcome["turn_exit"], 1)
+                        self.assertEqual(
+                            outcome["approval_terminal_error"], not bool(code)
+                        )
+                        self.assertEqual(
+                            (work / "invoke-response-1.txt").read_text(), ""
+                        )
+
+    def test_only_current_allowlisted_unresolved_failure_codes_are_retryable(self):
+        store = load("failure_codes_store", "travel-agent", "plan_store.py")
+        receipts = [{"tool": "one", "error_code": "rate_limit_exceeded"}]
+        self.assertIn(
+            "Retryable model error:", store.failure_message(["one"], [], receipts)
+        )
+        self.assertNotIn(
+            "Retryable model error:",
+            store.failure_message(["one", "two"], [], receipts),
+        )
+        self.assertNotIn(
+            "Retryable model error:", store.failure_message([], [], receipts)
+        )
+        receipts.append({"tool": "one", "error_type": "ValueError"})
+        self.assertNotIn(
+            "Retryable model error:", store.failure_message(["one"], [], receipts)
+        )
+        receipts.append({"tool": "one", "error_code": "untrusted"})
+        self.assertNotIn(
+            "Retryable model error:", store.failure_message(["one"], [], receipts)
+        )
+
     async def test_pinned_specialist_version_is_sent_on_discovery_and_invocation(self):
         module = load("version_agents", "travel-agent", "agents.py")
         observed = []
@@ -74,18 +395,17 @@ class FailureTests(unittest.IsolatedAsyncioTestCase):
             await config.httpx_client.post(endpoint)
             return SimpleNamespace(close=AsyncMock())
 
-        with patch.dict(
-            os.environ, {"FOUNDRY_PROJECT_ENDPOINT": project}
-        ), patch.object(
-            module.httpx,
-            "AsyncClient",
-            side_effect=lambda **kwargs: real_client(
-                **kwargs, transport=module.httpx.MockTransport(transport)
+        with (
+            patch.dict(os.environ, {"FOUNDRY_PROJECT_ENDPOINT": project}),
+            patch.object(
+                module.httpx,
+                "AsyncClient",
+                side_effect=lambda **kwargs: real_client(
+                    **kwargs, transport=module.httpx.MockTransport(transport)
+                ),
             ),
-        ), patch.object(
-            module, "A2ACardResolver", Resolver
-        ), patch.object(
-            module, "create_client", create
+            patch.object(module, "A2ACardResolver", Resolver),
+            patch.object(module, "create_client", create),
         ):
             async with AsyncExitStack() as stack:
                 await module.connect(

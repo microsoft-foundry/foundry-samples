@@ -4,6 +4,7 @@
 import json
 import logging
 import os
+import re
 
 os.environ.setdefault("OTEL_INSTRUMENTATION_A2A_SDK_ENABLED", "false")
 
@@ -70,6 +71,26 @@ class FlightExecutor(AgentExecutor):
             )
             await updater.complete()
         except Exception as error:
+            diagnostic = str(error)
+            code = ""
+            if getattr(error, "status_code", None) == 429 or re.search(
+                r"Error code:\s*429\b|rate_limit_exceeded|TooManyRequests|Model deployment rate limit exceeded"
+                r"|currently experiencing high demand.*exceeds the maximum usage size allowed during peak load",
+                diagnostic,
+                re.IGNORECASE | re.DOTALL,
+            ):
+                code = "rate_limit_exceeded"
+            elif getattr(error, "status_code", None) in {
+                500,
+                502,
+                503,
+                504,
+            } or re.search(
+                r"Error code:\s*(?:500|502|503|504)\b|Error calling model:.*server_error",
+                diagnostic,
+                re.IGNORECASE | re.DOTALL,
+            ):
+                code = "server_error"
             logger.error(
                 "Flight agent failed: task_id=%s error_type=%s",
                 task.id,
@@ -83,7 +104,8 @@ class FlightExecutor(AgentExecutor):
             )
             await updater.failed(
                 new_text_message(
-                    f"Flight research failed ({type(error).__name__}); no grounded result is available.",
+                    f"Flight research failed ({type(error).__name__}); no grounded result is available."
+                    + (f" Retryable model error: {code}." if code else ""),
                     role=Role.ROLE_AGENT,
                 )
             )

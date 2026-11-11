@@ -166,7 +166,11 @@ def validate_completion(
         )
 
 
-def failure_message(failures: list[str], operations: list[dict[str, Any]]) -> str:
+def failure_message(
+    failures: list[str],
+    operations: list[dict[str, Any]],
+    failed_calls: list[dict[str, str]] | None = None,
+) -> str:
     records = {
         operation["plan"]["plan_id"]: operation["plan"]
         for operation in operations
@@ -178,6 +182,13 @@ def failure_message(failures: list[str], operations: list[dict[str, Any]]) -> st
             f"{record['plan_id']} version {record['version']} ({record['status']})"
             for record in records.values()
         )
+    latest = {call["tool"]: call.get("error_code", "") for call in failed_calls or []}
+    codes = {latest.get(tool, "") for tool in failures}
+    if codes and codes <= {"rate_limit_exceeded", "server_error"}:
+        code = (
+            "rate_limit_exceeded" if "rate_limit_exceeded" in codes else "server_error"
+        )
+        message += f". Retryable model error: {code}."
     return message
 
 

@@ -128,13 +128,16 @@ async def ask(instructions: str, message: str, *, evidence: dict) -> tuple[str, 
                 try:
                     reply = await session.send_and_wait(message, timeout=600)
                 except Exception as error:
-                    raise RuntimeError(
-                        str(error)
-                        + ". "
-                        + failure_message([type(error).__name__], operations)
-                    ) from error
+                    summary = failure_message(
+                        failures or [type(error).__name__], operations, failed_calls
+                    )
+                    if not failures:
+                        summary = str(error) + ". " + summary
+                    raise RuntimeError(summary) from error
                 if failures:
-                    raise RuntimeError(failure_message(failures, operations))
+                    raise RuntimeError(
+                        failure_message(failures, operations, failed_calls)
+                    )
                 if reply is None or not reply.data.content:
                     raise RuntimeError("Copilot SDK returned no answer")
                 validate_completion(operations, calls)

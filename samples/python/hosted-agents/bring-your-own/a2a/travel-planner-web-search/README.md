@@ -390,6 +390,13 @@ from the specialist versions deployed by its own job.
 Failed specialist Tasks retain the `web-search` artifact, including unsuccessful
 attempts and any returned URLs. A failed search is not treated as grounded
 evidence merely because its receipt is available.
+For explicitly reported model throttling or transient model server errors,
+specialists expose only an allowlisted retryable code, not the original error
+body. That code survives in `specialist-failures` receipts and the Planner's
+failed Task status so CI can apply its bounded retries. Missing citations,
+invalid inputs and authorization failures remain nonretryable. Historical
+receipts for recovered calls do not make a later unrelated failure retryable.
+The agents do not add their own unbounded retry loop or expand the search budget.
 
 - **Failed research:** the response is a `TASK_STATE_FAILED` Task, not a successful
   recommendation. Its status message, actual Task ID and compact partial receipts

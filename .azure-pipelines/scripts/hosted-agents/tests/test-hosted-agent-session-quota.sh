@@ -61,15 +61,16 @@ assert_throttle_error "$work/responses-deployment-throttle"
 assert_not_throttle_error "$work/server-error"
 assert_not_throttle_error "$work/assistant-prose-about-throttling"
 
-printf '%s\n' '{"jsonrpc":"2.0","result":{"task":{"status":{"state":"TASK_STATE_FAILED","message":{"parts":[{"text":"Model deployment rate limit exceeded"}]}}}}}' \
+printf '%s\n' 'A2A Task failed: Model deployment rate limit exceeded' \
   > "$work/a2a-throttle"
-printf '%s\n' '{"jsonrpc":"2.0","result":{"task":{"status":{"state":"TASK_STATE_FAILED","message":{"parts":[{"text":"The model is currently experiencing high demand that exceeds the maximum usage size allowed during peak load."}]}}}}}' \
+printf '%s\n' 'A2A Task failed: The model is currently experiencing high demand that exceeds the maximum usage size allowed during peak load.' \
   > "$work/a2a-high-demand"
-printf '%s\n' '{"jsonrpc":"2.0","result":{"task":{"status":{"state":"TASK_STATE_FAILED","message":{"parts":[{"text":"Error calling model: Error code: 503 - server_error"}]}}}}}' \
+printf '%s\n' 'A2A Task failed: Error calling model: Error code: 503 - server_error' \
   > "$work/a2a-transient"
-printf '%s\n' '{"jsonrpc":"2.0","result":{"task":{"status":{"state":"TASK_STATE_FAILED","message":{"parts":[{"text":"No cited search results"}]}}}}}' \
+printf '%s\n' 'A2A Task failed: No cited search results' \
   > "$work/a2a-permanent"
-printf '%s\n' '{"result":{"task":{"status":{"state":"TASK_STATE_COMPLETED"},"artifacts":[{"parts":[{"text":"Model deployment rate limit exceeded"}]}]}}}' \
+# Successful A2A invocations produce empty diagnostics; raw artifacts are evidence only.
+printf '' \
   > "$work/a2a-prose"
 
 assert_throttle_error "$work/a2a-throttle"

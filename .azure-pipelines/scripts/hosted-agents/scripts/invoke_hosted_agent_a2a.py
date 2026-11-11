@@ -21,7 +21,7 @@ RETRYABLE_SERVICE_ERROR = re.compile(
     r"session_not_ready|session[_ ]quota|quota[_ ]exceeded|throttl|rate[_ ]limit|HTTP 429"
     r"|Error calling model:.*(?:Error code:\s*(?:500|502|503|504)\b|server_error)"
     r"|currently experiencing high demand.*exceeds the maximum usage size allowed during peak load"
-    r"|internal server error occurred",
+    r"|internal server error occurred|Retryable model error:\s*server_error\.",
     re.IGNORECASE | re.DOTALL,
 )
 
@@ -169,6 +169,7 @@ def invoke_turn(
     exit_code = 1
     terminal = False
     diagnostic = ""
+    retry_diagnostics = ""
     try:
         result = transport(
             [
@@ -208,14 +209,17 @@ def invoke_turn(
             http_code = match[1]
         if result.returncode:
             error = f"A2A invoke failed with exit code {result.returncode}"
+            retry_diagnostics = raw + "\n" + diagnostic
         elif http_code and http_code not in {"200", "201"}:
             error = f"A2A invoke failed with HTTP {http_code}"
+            retry_diagnostics = raw
         else:
             body = response_body(body)
             text = task_text(body, request_id)
             exit_code = 0
     except ServiceError as exc:
         error = str(exc)
+        retry_diagnostics = error
         terminal = RETRYABLE_SERVICE_ERROR.search(error) is None
     except (ValueError, OSError, subprocess.TimeoutExpired) as exc:
         error = str(exc)
@@ -232,12 +236,14 @@ def invoke_turn(
         ("raw", body),
         ("headers", headers),
         ("response", text),
+        ("diagnostics", retry_diagnostics),
     ):
         extension = "json" if suffix == "raw" else "txt"
         (temp_dir / f"invoke-{suffix}-{turn}.{extension}").write_text(
             content, encoding="utf-8"
         )
     Path(f"{prefix}-response.txt").write_text(raw, encoding="utf-8")
+    Path(f"{prefix}-diagnostics.txt").write_text(retry_diagnostics, encoding="utf-8")
     outcome = {
         "turn_exit": exit_code,
         "http_code": http_code,

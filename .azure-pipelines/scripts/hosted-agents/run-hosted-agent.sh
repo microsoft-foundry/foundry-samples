@@ -1003,9 +1003,12 @@ while : ; do
   echo "─── Deploy attempt $attempt/$max_attempts ───"
   if [ "$PROTOCOL" = "a2a" ]; then
     python3 "$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/prepare_hosted_agent_a2a.py" \
-      --deploy-dependencies azure.yaml "$FOUNDRY_AGENT_NAME" || exit 1
-    azd deploy "$FOUNDRY_AGENT_NAME" --no-prompt 2>&1 | tee /tmp/azd-deploy.log
+      --deploy-dependencies azure.yaml "$FOUNDRY_AGENT_NAME" 2>&1 | tee /tmp/azd-deploy.log
     azd_exit=${PIPESTATUS[0]}
+    if [ $azd_exit -eq 0 ]; then
+      azd deploy "$FOUNDRY_AGENT_NAME" --no-prompt 2>&1 | tee -a /tmp/azd-deploy.log
+      azd_exit=${PIPESTATUS[0]}
+    fi
   else
     azd deploy --no-prompt 2>&1 | tee /tmp/azd-deploy.log
     azd_exit=${PIPESTATUS[0]}
@@ -1494,7 +1497,11 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
       break
     fi
     quota_error_files=(/tmp/invoke-out-${turn}.txt)
-    if [ "$PROTOCOL" = "responses" ] || [ "$PROTOCOL" = "a2a" ]; then
+    if [ "$PROTOCOL" = "a2a" ]; then
+      # The helper separates validated service/transport diagnostics from
+      # artifacts, which may legitimately contain error-like text.
+      quota_error_files=(/tmp/invoke-diagnostics-${turn}.txt /tmp/invoke-headers-${turn}.txt)
+    elif [ "$PROTOCOL" = "responses" ]; then
       quota_error_files+=(/tmp/invoke-headers-${turn}.txt /tmp/invoke-raw-${turn}.json)
     fi
     if [ $turn_exit -ne 0 ] && hosted_agent_is_session_quota_error "${quota_error_files[@]}"; then
@@ -1527,6 +1534,9 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
       continue
     fi
     if [ $turn_exit -eq 0 ]; then
+      # Native A2A success is already validated structurally. Its artifacts
+      # are checked by the behavior contract, not generic error heuristics.
+      [ "$PROTOCOL" != "a2a" ] || break
       # Even on HTTP 200, the response may contain a transient
       # platform error (status:failed + error.code:server_error)
       # or a model hallucination (the toolbox tool was not
@@ -1674,7 +1684,9 @@ fi
 #   plus natural-language failure phrases.
 # Skipped for the github-copilot sample — its non-deterministic
 # output may legitimately match these.
-if [[ "$SAMPLE_PATH" != *"github-copilot"* ]]; then
+if [ "$PROTOCOL" = "a2a" ]; then
+  echo "A2A Task validated by the native helper; artifacts are behavior-contract evidence."
+elif [[ "$SAMPLE_PATH" != *"github-copilot"* ]]; then
   if echo "$response" | grep -qiE '("error"[[:space:]]*:[[:space:]]*("|\{)|"errors"[[:space:]]*:[[:space:]]*\[|'\''error'\''[[:space:]]*:[[:space:]]*["{\[]|\bTraceback\b|^ERROR:|^\#\#\[error\]|Error calling model:|invalid_request_error|I encountered an error|request was cancelled|unhandled errors|Please retry|Failed to process request)'; then
     echo "##vso[task.logissue type=error]Agent returned an error response"
     echo "--- response ---"; echo "$response"; echo "--- end response ---"
@@ -1688,7 +1700,7 @@ fi
 # answers from training data without invoking the toolbox we get
 # phrases like "I don't have access to real-time". These mean the
 # toolbox tool was not actually called and the job should fail.
-if [ "$IS_TOOLBOX" = "true" ]; then
+if [ "$IS_TOOLBOX" = "true" ] && [ "$PROTOCOL" != "a2a" ]; then
   if echo "$response" | grep -qiE "(I don.t have access to real|I cannot access|I don.t have real-time|unable to retrieve|couldn.t retrieve|I do not have access to real|wasn.t able to retrieve|was not able to retrieve|temporary issue accessing|appears there was a temporary issue|please upload|if you have a document or file|fictional (company|organization)|is not a real (company|organization)|likely because the repository is private|don.t have permission to view)"; then
     echo "##vso[task.logissue type=error]Agent did not call the toolbox tool (hallucinated answer from training data)"
     echo "--- response ---"; echo "$response"; echo "--- end response ---"

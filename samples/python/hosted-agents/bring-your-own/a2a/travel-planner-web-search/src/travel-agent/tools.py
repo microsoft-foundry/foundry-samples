@@ -3,10 +3,11 @@
 
 import json
 import logging
+import re
 from time import perf_counter
 
 from a2a.client import Client
-from a2a.helpers import get_artifact_text, new_text_message
+from a2a.helpers import get_artifact_text, get_message_text, new_text_message
 from a2a.types import AgentCard, Role, SendMessageRequest, TaskState
 from copilot import Tool, ToolInvocation, ToolResult
 from opentelemetry import context, trace
@@ -28,6 +29,7 @@ def build_tools(
     def tool(name: str, card: AgentCard, client: Client) -> Tool:
         async def handler(invocation: ToolInvocation) -> ToolResult:
             started = perf_counter()
+            error_code = ""
             try:
                 binding = dict(research_context)
                 if not binding:
@@ -94,8 +96,23 @@ def build_tools(
                         len(tasks) != 1
                         or tasks[0].status.state != TaskState.TASK_STATE_COMPLETED
                     ):
+                        if (
+                            len(tasks) == 1
+                            and tasks[0].status.state == TaskState.TASK_STATE_FAILED
+                        ):
+                            match = re.search(
+                                r"Retryable model error: (rate_limit_exceeded|server_error)\.",
+                                get_message_text(tasks[0].status.message),
+                            )
+                            if match:
+                                error_code = match[1]
                         raise RuntimeError(
                             f"{card.name} did not return one completed A2A Task"
+                            + (
+                                f". Retryable model error: {error_code}."
+                                if error_code
+                                else ""
+                            )
                         )
                     task = tasks[0]
                     answer = "\n".join(
@@ -133,6 +150,7 @@ def build_tools(
                             "tool_call_id": invocation.tool_call_id,
                             "status": "failed",
                             "error_type": type(error).__name__,
+                            **({"error_code": error_code} if error_code else {}),
                         }
                     )
                 logger.error(

@@ -64,32 +64,14 @@ hosted_agent_quota_retry_delay() {
   printf '%s\n' "$((50 + RANDOM % 21))"
 }
 
-hosted_agent_a2a_error_messages() {
-  # Transport logs need not be JSON. Only failed Task status messages are
-  # diagnostics; artifacts and successful assistant messages are not.
-  local file
-  for file in "$@"; do
-    jq -Rsc '
-      fromjson? | select(type == "object") |
-      .result.task.status? | select(.state == "TASK_STATE_FAILED") |
-      .message.parts? | select(type == "array") | .[] |
-      select(type == "object") | select(.text | type == "string") |
-      {error: {message: .text}}
-    ' "$file" 2>/dev/null
-  done
-}
-
 hosted_agent_is_transient_error() {
   [ "$#" -gt 0 ] || return 1
-  grep -qiE "session_not_ready|status[ _]?code[: ]+424|HTTP 424|readiness|PermissionDenied|Principal does not have access|still being provisioned|version is still being|\"status\"[[:space:]]*:[[:space:]]*\"failed\"|\"code\"[[:space:]]*:[[:space:]]*\"server_error\"|invalid_payload|internal server error occurred|401 Unauthorized|stream error.*CANCEL|received from peer|connection reset by peer|EOF while reading response|Error calling model:.*(Error code:[[:space:]]*(500|502|503|504)|server_error)" \
-    "$@" <(hosted_agent_a2a_error_messages "$@") 2>/dev/null
+  grep -qiE "session_not_ready|status[ _]?code[: ]+424|HTTP 424|readiness|PermissionDenied|Principal does not have access|still being provisioned|version is still being|\"status\"[[:space:]]*:[[:space:]]*\"failed\"|\"code\"[[:space:]]*:[[:space:]]*\"server_error\"|invalid_payload|internal server error occurred|401 Unauthorized|stream error.*CANCEL|received from peer|connection reset by peer|EOF while reading response|Error calling model:.*(Error code:[[:space:]]*(500|502|503|504)|server_error)|Retryable model error:[[:space:]]*server_error\\." \
+    "$@" 2>/dev/null
 }
 
 hosted_agent_is_model_throttle_error() {
   [ "$#" -gt 0 ] || return 1
-  local a2a_errors
-  a2a_errors=$(hosted_agent_a2a_error_messages "$@")
-
   # Match explicit transport/model error shapes, not assistant prose that may
   # legitimately discuss rate limiting.
   #
@@ -99,21 +81,18 @@ hosted_agent_is_model_throttle_error() {
   # model:" prefix. Keying on the `message` field keeps assistant output (which
   # lands under output[].content[].text) from matching.
   if grep -qihE \
-      "^HTTP[/0-9.]*[[:space:]]+429([[:space:]]|$)|Error calling model:.*(Error code:[[:space:]]*429|rate_limit_exceeded|TooManyRequests|Model deployment rate limit exceeded)|['\"]message['\"][[:space:]]*:[[:space:]]*['\"][^'\"]*Model deployment rate limit exceeded|['\"]code['\"][[:space:]]*:[[:space:]]*['\"](rate_limit_exceeded|TooManyRequests)['\"]|['\"]status_code['\"][[:space:]]*:[[:space:]]*429" \
-      "$@" <(printf '%s\n' "$a2a_errors") 2>/dev/null; then
+      "^HTTP[/0-9.]*[[:space:]]+429([[:space:]]|$)|Error calling model:.*(Error code:[[:space:]]*429|rate_limit_exceeded|TooManyRequests|Model deployment rate limit exceeded)|['\"]message['\"][[:space:]]*:[[:space:]]*['\"][^'\"]*Model deployment rate limit exceeded|['\"]code['\"][[:space:]]*:[[:space:]]*['\"](rate_limit_exceeded|TooManyRequests)['\"]|['\"]status_code['\"][[:space:]]*:[[:space:]]*429|Retryable model error:[[:space:]]*rate_limit_exceeded\\.|^A2A Task failed:.*Model deployment rate limit exceeded" \
+      "$@" 2>/dev/null; then
     return 0
   fi
 
   local file
   for file in "$@"; do
     if grep -qiE 'currently experiencing high demand.*exceeds the maximum usage size allowed during peak load' "$file" 2>/dev/null && \
-        grep -qiE "\"status\"[[:space:]]*:[[:space:]]*\"failed\"|['\"]error['\"][[:space:]]*:|Error calling model:" "$file" 2>/dev/null; then
+        grep -qiE "\"status\"[[:space:]]*:[[:space:]]*\"failed\"|['\"]error['\"][[:space:]]*:|Error calling model:|^A2A Task failed:" "$file" 2>/dev/null; then
       return 0
     fi
   done
-  if grep -qiE 'currently experiencing high demand.*exceeds the maximum usage size allowed during peak load' <<< "$a2a_errors"; then
-    return 0
-  fi
   return 1
 }
 
