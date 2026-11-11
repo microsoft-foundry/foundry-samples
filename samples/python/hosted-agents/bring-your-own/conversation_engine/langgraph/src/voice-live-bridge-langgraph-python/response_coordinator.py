@@ -29,6 +29,7 @@ from azure.ai.agentserver.invocations.voice import (
 
 from response_telemetry import ResponseTelemetry
 from state import (
+    MAX_OUTPUT_BYTES,
     MAX_PENDING_PROACTIVE,
     MAX_TERMINAL_SENDS,
     ApplicationTurn,
@@ -40,7 +41,6 @@ from state import (
 )
 
 logger = logging.getLogger("voice_live_bridge")
-MAX_OUTPUT_BYTES = 512 * 1024
 MAX_OUTPUT_CHUNKS = 4096
 
 class ResponseCoordinator:

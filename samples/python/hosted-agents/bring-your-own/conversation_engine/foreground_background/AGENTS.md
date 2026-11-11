@@ -12,6 +12,8 @@ This is the model-backed CE counterpart to the retained Responses sample. It use
 - `conversation_runtime.py` adapts business output to the existing native CE lifecycle.
 - History and task stores are per physical connection. Record history after successful sends
   and reconcile `heard_text`; do not commit generated-but-unsent text.
+- Keep `heard_text` within the response output budget, not the user-input character limit;
+  history must use the same bounded value as playback state without splitting Unicode characters.
 - Track delivered task IDs explicitly, including paraphrases, and commit only after
   `response.done` sends successfully. Do not infer delivery from text substrings.
 - Validate Router delivery claims against complete result bodies in its request snapshot,

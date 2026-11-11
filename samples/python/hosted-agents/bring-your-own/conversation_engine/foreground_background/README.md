@@ -65,6 +65,9 @@ Tasks and the last 20 history entries belong to one physical connection, not a p
 store. History advances after successful text sends; `heard_text` updates replace an interrupted
 assistant entry before a later Router request uses it. Queued turns build history when they
 actually start, not when they are enqueued.
+Caller-heard prefixes use the existing 512 KiB UTF-8 response budget, not the user-input
+character limit. History and playback state use the same bounded prefix; over-budget values
+are cut only at complete Unicode characters. This does not expand the model-history budget.
 Router requests and new Workers share a recent-history snapshot capped at 16,000 content
 characters. Oldest entries are dropped whole until the remaining chronological suffix fits;
 individual entries are never clipped and the recorded history is unchanged. Current input and

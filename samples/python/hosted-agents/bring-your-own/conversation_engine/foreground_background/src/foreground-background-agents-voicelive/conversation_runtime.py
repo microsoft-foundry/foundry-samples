@@ -136,6 +136,7 @@ class ConversationRuntime(VoiceRuntime):
         state = self._state_for(session)
         conversation = self.conversations.get(session)
         if state and conversation and response_id in state.heard_text_by_response:
+            state.record_heard_text(response_id, heard_text)
             operation = state.responses.get(response_id)
             pending_first_send = (
                 operation is not None
@@ -143,7 +144,8 @@ class ConversationRuntime(VoiceRuntime):
                 and operation.session.first_text_pending
             )
             conversation.reconcile(
-                response_id, heard_text[:MAX_MESSAGE_CHARACTERS], allow_append=pending_first_send,
+                response_id, state.heard_text_by_response[response_id],
+                allow_append=pending_first_send,
             )
 
     async def on_user_barge_in(self, session: Session, event: UserBargeIn) -> None:
