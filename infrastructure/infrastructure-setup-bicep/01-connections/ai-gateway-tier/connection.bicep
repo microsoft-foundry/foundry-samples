@@ -13,7 +13,7 @@
   once from the hub (it is intentionally NOT emitted as a deployment output):
 
     az rest --method post \
-      --url "https://management.azure.com<hub-gateway-resource-id>/apiKeys/default/listSecrets?api-version=2025-09-01-preview" \
+      --url "https://management.azure.com<hub-gateway-resource-id>/apiKeys/default/listSecrets?api-version=2026-09-01-preview" \
       --query primaryKey -o tsv
 
   Verified against the same connection shape as the all-in-one AI Gateway tier
@@ -26,7 +26,7 @@ targetScope = 'resourceGroup'
 @description('Resource ID of the EXISTING spoke project to attach (from golden-path steps 1-2). The account and project must live in THIS resource group.')
 param projectResourceId string
 
-@description('Hub gateway OpenAI base URL — the hub deployment output gatewayModelsBaseUrl (e.g. https://<gw>.azure-api.net/default/models/openai/v1).')
+@description('Hub gateway OpenAI base URL — the hub deployment output gatewayModelsBaseUrl (e.g. https://<gateway-hostname>/default/models/openai/v1).')
 param gatewayModelsBaseUrl string
 
 @description('Runtime key for the hub gateway. Retrieve it from the hub gateway (listSecrets on its apiKeys/default) and pass it here; works cross-subscription.')

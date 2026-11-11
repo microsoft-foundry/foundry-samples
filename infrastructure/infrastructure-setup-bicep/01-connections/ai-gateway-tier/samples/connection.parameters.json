@@ -6,7 +6,7 @@
       "value": "/subscriptions/<spoke-sub>/resourceGroups/<spoke-rg>/providers/Microsoft.CognitiveServices/accounts/<account>/projects/<project>"
     },
     "gatewayModelsBaseUrl": {
-      "value": "https://<gateway>.azure-api.net/default/models/openai/v1"
+      "value": "https://<gateway-hostname>/default/models/openai/v1"
     },
     "connectionName": { "value": "ai-gateway" },
     "modelName": { "value": "gpt-5.4" },
