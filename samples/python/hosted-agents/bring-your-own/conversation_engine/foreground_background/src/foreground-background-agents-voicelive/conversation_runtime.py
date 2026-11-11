@@ -11,6 +11,7 @@ from azure.ai.agentserver.invocations.voice import (
     ResponseCancelled,
     ResponseDone,
     ResponseOutputTextDelta,
+    ResponseOutputTextDone,
     Session,
     SessionEnd,
     SessionStart,
@@ -24,7 +25,7 @@ from azure.ai.agentserver.invocations.voice import (
 from agent_logic import Conversation, ForegroundBackgroundAgent, HistoryEntry, Turn
 from state import MAX_MESSAGE_CHARACTERS, InputOrigin, OperationOutcome, SessionState
 from task_store import TaskStatus
-from voice_runtime import VoiceRuntime
+from voice_runtime import IDLE_REMINDER_TEXT, VoiceRuntime
 
 
 class HistorySession:
@@ -42,21 +43,24 @@ class HistorySession:
         self.conversation = conversation
         self.turn = turn
         self._sent_text = False
-        self.first_delta_pending = False
+        self.first_text_pending = False
 
     async def send(self, message: Any) -> None:
         is_delta = isinstance(message, ResponseOutputTextDelta)
-        self.first_delta_pending = is_delta and not self._sent_text
+        record_text = is_delta or (
+            isinstance(message, ResponseOutputTextDone) and not self._sent_text
+        )
+        self.first_text_pending = record_text and not self._sent_text
         try:
             await self.session.send(message)
         finally:
-            self.first_delta_pending = False
-        if is_delta:
+            self.first_text_pending = False
+        if record_text:
             self._sent_text = True
         operation = self.state.responses.get(self.turn.response_id)
         if not self.state.active or (operation and operation.cancellation_requested):
             return
-        if isinstance(message, ResponseOutputTextDelta):
+        if record_text:
             entry = next(
                 (
                     entry
@@ -68,7 +72,7 @@ class HistorySession:
             if entry is None:
                 entry = HistoryEntry("assistant", "", self.turn.response_id)
                 self.conversation.history.append(entry)
-            entry.content += message.delta
+            entry.content += message.delta if is_delta else message.text
         elif isinstance(message, ResponseDone):
             for task_id in self.turn.delivered_task_ids:
                 task = self.conversation.tasks.get(task_id)
@@ -136,7 +140,7 @@ class ConversationRuntime(VoiceRuntime):
             pending_first_send = (
                 operation is not None
                 and isinstance(operation.session, HistorySession)
-                and operation.session.first_delta_pending
+                and operation.session.first_text_pending
             )
             conversation.reconcile(
                 response_id, heard_text[:MAX_MESSAGE_CHARACTERS], allow_append=pending_first_send,
@@ -156,21 +160,31 @@ class ConversationRuntime(VoiceRuntime):
             conversation.cancel_workers()
 
     async def on_user_no_input(self, session: Session, event: UserNoInput) -> None:
+        state = self._state_for(session)
+        if state is None:
+            return
+        if not await self._claim_input(session, state, event.item_id, InputOrigin.NO_INPUT):
+            if not state.active:
+                self._detach(session)
+            return
         if event.count >= 3:
-            state = self._state_for(session)
-            if state is None:
-                return
-            if not await self._claim_input(session, state, event.item_id, InputOrigin.NO_INPUT):
-                if not state.active:
-                    self._detach(session)
-                return
             self._detach(session)
             self._coordinator.detach_terminating_state(state, OperationOutcome.END_CALL)
             self._coordinator.schedule_end_call(session, state, InputOrigin.NO_INPUT)
             return
-        await super().on_user_no_input(session, event)
-        if self._state_for(session) is None:
-            self._detach(session)
+        if not state.can_start_response():
+            self._coordinator.schedule_none(
+                session, state, event.item_id, InputOrigin.NO_INPUT, reason="capacity_exceeded",
+            )
+            if not state.active:
+                self._detach(session)
+            return
+        conversation = self.conversations.setdefault(session, Conversation())
+        turn = Turn(new_response_id())
+        self._coordinator.start_response(
+            HistorySession(session, state, conversation, turn), state, event.item_id,
+            text=IDLE_REMINDER_TEXT, streaming=False, response_id=turn.response_id,
+        )
 
     async def on_session_end(self, session: Session, event: SessionEnd) -> None:
         self._detach(session)

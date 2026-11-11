@@ -25,6 +25,7 @@ from worker_agent import run_worker
 logger = logging.getLogger(__name__)
 STATUS_INTERVAL = 5.0
 STATUS_TIMEOUT = 1.0
+MAX_TASK_CONTEXT_CHARACTERS = 8_000
 
 
 @dataclass
@@ -141,15 +142,31 @@ class ForegroundBackgroundAgent:
         active = store.active_tasks()
         context_parts = [
             build_task_context(store),
-            build_delivered_context(store),
             "\n".join(
-                f'Completed task {task.task_id} "{task.query}": {task.result}' for task in completed
+                f'Completed task {task.task_id} "{task.query}": {task.result}'
+                for task in reversed(completed)
             ),
             "\n".join(
                 f"Task {task.task_id}: {task_message(task)}" for task in store.terminal_tasks()
             ),
+            build_delivered_context(store),
         ]
         context = "\n\n".join(part for part in context_parts if part)
+        if len(context) > MAX_TASK_CONTEXT_CHARACTERS:
+            # Do not present a clipped result as a complete, deliverable answer.
+            tasks = (
+                active + list(reversed(completed))
+                + store.terminal_tasks() + store.delivered_tasks()
+            )
+            context = "\n".join(
+                f'{task.status.value.upper()} task {task.task_id}: "{task.query[:200]}"'
+                for task in tasks
+            )
+            notice = (
+                "\n[Result bodies omitted to fit task context. Use get_task_result for full "
+                "retained results; do not guess or deliver partial results from this index.]"
+            )
+            context = context[:MAX_TASK_CONTEXT_CHARACTERS - len(notice)] + notice
         messages = [{"role": "system", "content": ROUTER_SYSTEM_PROMPT}]
         messages.extend({"role": item["role"], "content": item["content"]} for item in input_items)
         if context:
@@ -177,13 +194,17 @@ class ForegroundBackgroundAgent:
         if call.name == "respond_directly":
             message = arguments.get("message", "")
             reported = arguments.get("delivered_task_ids")
+            known_result_ids = {
+                task.task_id for task in store.completed_tasks() + store.delivered_tasks()
+            }
             if (
                 not isinstance(reported, list)
                 or any(not isinstance(task_id, str) for task_id in reported)
-                or not set(reported).issubset({task.task_id for task in completed})
+                or not set(reported).issubset(known_result_ids)
             ):
                 raise ValueError("Router returned invalid delivered task IDs")
             turn.delivered_task_ids.update(reported)
+            active = [task for task in active if task.task_id not in turn.delivered_task_ids]
         else:
             result, new_task = execute_router_tool(call.name, arguments, store)
             data = json.loads(result)

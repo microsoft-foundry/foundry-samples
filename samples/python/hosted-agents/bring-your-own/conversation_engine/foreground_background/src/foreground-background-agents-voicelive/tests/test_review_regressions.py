@@ -99,7 +99,8 @@ async def test_missing_task_is_not_reported_as_running(route: str, expired: bool
     text = "".join(
         [part async for part in agent.respond(conversation, Turn("r_missing"), "Status?")]
     )
-    assert text == "No task found"
+    assert text.startswith("No task found")
+    assert "expired" in text and "evicted" in text
     assert conversation.tasks.get("latest") is None
     assert not agent.workers
     assert (
@@ -262,7 +263,7 @@ async def test_first_inflight_send_retains_heard_text(callback: str) -> None:
         await asyncio.wait_for(entered.wait(), 1)
         response_id = next(iter(state.responses))
         history_session = state.responses[response_id].session
-        assert history_session.first_delta_pending
+        assert history_session.first_text_pending
         await getattr(runtime, callback)(
             session,
             SimpleNamespace(response_id=response_id, heard_text="Already heard."),
@@ -275,7 +276,7 @@ async def test_first_inflight_send_retains_heard_text(callback: str) -> None:
             SimpleNamespace(item_id="in_next", content=[InputTextPart(text="Next")]),
         )
         await asyncio.wait_for(finished.wait(), 1)
-        assert not history_session.first_delta_pending
+        assert not history_session.first_text_pending
         assert {"role": "assistant", "content": "Already heard."} in chat.requests[-1]["messages"]
         assert "Unheard suffix" not in repr(chat.requests[-1]["messages"])
     finally:
@@ -288,7 +289,7 @@ async def test_only_first_delta_can_authorize_missing_history_insertion() -> Non
 
     class InspectSession(RecordingSession):
         async def send(self, message: Any) -> None:
-            flags.append(session.first_delta_pending)
+            flags.append(session.first_text_pending)
 
     state = SessionState()
     state.try_begin_start()
@@ -302,7 +303,7 @@ async def test_only_first_delta_can_authorize_missing_history_insertion() -> Non
                 delta=text,
             )
         )
-        assert not session.first_delta_pending
+        assert not session.first_text_pending
     assert flags == [True, False]
 
 

@@ -11,7 +11,7 @@ import json
 import logging
 import time
 
-from task_store import Task, TaskStatus
+from task_store import MAX_TASK_RESULT_CHARACTERS, Task, TaskStatus
 
 logger = logging.getLogger(__name__)
 
@@ -336,4 +336,11 @@ async def run_worker(task: Task, input_items: list[dict], responses_client, mode
         task.status = TaskStatus.FAILED
         task.result = "The background work failed."
     finally:
+        # Include final answers that arrive after cooperative cancellation was requested.
+        if (
+            task.status is TaskStatus.COMPLETED
+            and len(task.result or "") > MAX_TASK_RESULT_CHARACTERS
+        ):
+            task.status = TaskStatus.FAILED
+            task.result = "The background result exceeded this sample's size limit."
         task.finished_at = time.time()

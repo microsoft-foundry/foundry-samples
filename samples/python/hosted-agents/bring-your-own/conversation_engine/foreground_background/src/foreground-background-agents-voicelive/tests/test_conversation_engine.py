@@ -317,7 +317,7 @@ async def test_failed_send_does_not_commit_history_or_delivery() -> None:
     with pytest.raises(RuntimeError):
         await session.send(ResponseDone(response_id=turn.response_id))
     assert not conversation.history
-    assert not session.first_delta_pending
+    assert not session.first_text_pending
     assert task.status is TaskStatus.COMPLETED
 
 

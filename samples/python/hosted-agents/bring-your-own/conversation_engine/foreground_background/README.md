@@ -67,6 +67,8 @@ assistant entry before a later Router request uses it. Queued turns build histor
 actually start, not when they are enqueued.
 Playback corrections for entries already outside that history window do not reinsert old speech
 as the newest reply. A correction can add a missing entry only during its first text send.
+The first two no-input reminders use the same recorder, including their non-streaming
+`response.output_text.done` text and caller-heard corrections. Streamed text is not counted twice.
 
 Barge-in or a response timeout stops foreground speech/waiting without cancelling the business
 Worker. Its result can be delivered by a later turn on the same connection. Session end,
@@ -82,8 +84,22 @@ The Router identifies paraphrased/translated results explicitly through required
 `delivered_task_ids` (an empty array for unrelated chat). Invalid or missing IDs fail the turn
 before speech rather than silently losing delivery bookkeeping.
 Direct result/status paths also track the task ID. Text-substring matching is not used.
+Retained `COMPLETED` and `DELIVERED` IDs are both valid for repetition or translation;
+replaying a delivered result does not reset or repeat its delivery-state transition.
 This is transport-level delivery, not proof that all audio was heard. Playback corrections still
 update history. Failure messages sent to the caller and Router context are sanitized.
+
+Task retention is deliberately small: at most 16 tasks per connection, with queries and final
+results limited to 8,000 characters each. An oversized query is rejected before task admission;
+an oversized Worker result fails instead of being silently truncated or retained. At each Router
+turn/task admission, terminal tasks (including undelivered results) older than five minutes
+after completion are removed. Capacity eviction removes the oldest terminal outcome, never an
+active Worker. Expired/evicted lookups explicitly report that the result is unavailable; `latest`
+does not silently select an older task, and eviction never marks a result delivered.
+The Router's task-context block is capped at 8,000 characters. If full results do not fit, it
+receives a compact task index and must use `get_task_result` for a full retained result rather
+than treat a clipped answer as complete. These are local limits and existing on-access cleanup,
+not a background cleanup service or a promise to retain every result for the entire call.
 
 State is in memory and is not restored across a disconnected/reconnected socket, host restart,
 or replacement container. Use an application-owned durable store if that is required.

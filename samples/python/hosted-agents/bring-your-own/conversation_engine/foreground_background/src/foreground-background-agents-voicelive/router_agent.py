@@ -16,6 +16,7 @@ import logging
 from task_store import Task, TaskStatus, TaskStore
 
 logger = logging.getLogger(__name__)
+TASK_UNAVAILABLE_MESSAGE = "No task found (it may have expired or been evicted)."
 
 # ── Router Tools ──────────────────────────────────────────────────────────────
 # The caller also sets parallel_tool_calls=False and validates exactly one call.
@@ -40,8 +41,9 @@ ROUTER_TOOLS = [
                     "type": "array",
                     "items": {"type": "string"},
                     "description": (
-                        "IDs of completed tasks whose results this message conveys, including p"
-                        "araphrases and translations. Empty for unrelated chat."
+                        "IDs of retained completed or already-delivered tasks whose results this "
+                        "message conveys, including paraphrases and translations. "
+                        "Empty for unrelated chat."
                     ),
                 },
             },
@@ -219,7 +221,7 @@ def execute_router_tool(name: str, arguments: dict, store: TaskStore) -> tuple[s
     if name == "check_task_status":
         task = store.get(arguments["task_id"])
         if not task:
-            return json.dumps({"error": "No task found"}), None
+            return json.dumps({"error": TASK_UNAVAILABLE_MESSAGE}), None
         return json.dumps(
             {
                 "task_id": task.task_id,
@@ -243,7 +245,7 @@ def execute_router_tool(name: str, arguments: dict, store: TaskStore) -> tuple[s
     if name == "get_task_result":
         task = store.get(arguments["task_id"])
         if not task:
-            return json.dumps({"error": "No task found"}), None
+            return json.dumps({"error": TASK_UNAVAILABLE_MESSAGE}), None
         if task.status in (TaskStatus.COMPLETED, TaskStatus.DELIVERED):
             return json.dumps({"task_id": task.task_id, "result": task.result}), None
         return json.dumps(
