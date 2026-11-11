@@ -451,25 +451,57 @@ async def test_small_task_context_keeps_complete_results() -> None:
     assert turn.delivered_task_ids == {task.task_id}
 
 
-async def test_result_becoming_ready_during_routing_can_be_conveyed_once_by_id() -> None:
+@pytest.mark.parametrize("mixed_claim", [False, True], ids=["unseen-only", "visible-and-unseen"])
+async def test_unseen_result_claim_is_rejected_atomically_then_can_be_retrieved(
+    mixed_claim: bool,
+) -> None:
     conversation = Conversation()
+    visible = conversation.tasks.create_task("Earlier work")
+    visible.status, visible.result = TaskStatus.COMPLETED, "Earlier result"
     task = conversation.tasks.create_task("Find panels")
     task.status = TaskStatus.RUNNING
 
     async def finish_and_report(kwargs: dict) -> Any:
+        request = repr(kwargs["messages"])
+        assert visible.result in request and "Panel result" not in request
         await asyncio.sleep(0)
         task.status, task.result, task.finished_at = (
             TaskStatus.COMPLETED,
             "Panel result",
             time.time(),
         )
-        return tool("respond_directly", message="Panel summary", delivered_task_ids=[task.task_id])
+        reported = [visible.task_id, task.task_id] if mixed_claim else [task.task_id]
+        return tool("respond_directly", message="Still checking.", delivered_task_ids=reported)
 
-    agent = ForegroundBackgroundAgent(Chat(finish_and_report), Responses(), "test")
-    turn = Turn("r_became_ready")
-    assert (
-        "".join([part async for part in agent.respond(conversation, turn, "Status?")])
-        == "Panel summary"
+    agent = ForegroundBackgroundAgent(
+        Chat(finish_and_report, tool("get_task_result", task_id=task.task_id)), Responses(), "test"
     )
-    assert turn.delivered_task_ids == {task.task_id}
+    turn = Turn("r_became_ready")
+    with pytest.raises(ValueError):
+        await anext(agent.respond(conversation, turn, "Status?"))
+    assert not turn.delivered_task_ids
+    assert task.status is visible.status is TaskStatus.COMPLETED
+    assert all(entry.role == "user" for entry in conversation.history)
+    retry = Turn("r_retrieved")
+    assert (
+        "".join([part async for part in agent.respond(conversation, retry, "Read the result")])
+        == task.result
+    )
+    assert retry.delivered_task_ids == {task.task_id}
     assert task.status is TaskStatus.COMPLETED
+    state = SessionState()
+    state.try_begin_start()
+    state.activate()
+    session = HistorySession(RecordingSession(), state, conversation, retry)
+    await session.send(
+        ResponseOutputTextDelta(
+            response_id=retry.response_id,
+            item_id="out_result",
+            delta=task.result,
+        )
+    )
+    assert task.status is TaskStatus.COMPLETED
+    await session.send(ResponseDone(response_id=retry.response_id))
+    assert conversation.history[-1].content == task.result
+    assert task.status is TaskStatus.DELIVERED
+    assert visible.status is TaskStatus.COMPLETED

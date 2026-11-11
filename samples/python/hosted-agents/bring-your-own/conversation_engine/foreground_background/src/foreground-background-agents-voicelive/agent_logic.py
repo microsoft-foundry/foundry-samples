@@ -160,8 +160,14 @@ class ForegroundBackgroundAgent:
             build_delivered_context(store),
         ]
         context = "\n\n".join(part for part in context_parts if part)
+        # Only complete result bodies in this request authorize Router delivery claims.
+        # Do not let Worker completion during Router I/O grant that authority retroactively.
+        visible_result_ids = {
+            task.task_id for task in completed + store.delivered_tasks()
+        }
         if len(context) > MAX_TASK_CONTEXT_CHARACTERS:
             # Do not present a clipped result as a complete, deliverable answer.
+            visible_result_ids.clear()
             tasks = (
                 active + list(reversed(completed))
                 + store.terminal_tasks() + store.delivered_tasks()
@@ -202,13 +208,10 @@ class ForegroundBackgroundAgent:
         if call.name == "respond_directly":
             message = arguments.get("message", "")
             reported = arguments.get("delivered_task_ids")
-            known_result_ids = {
-                task.task_id for task in store.completed_tasks() + store.delivered_tasks()
-            }
             if (
                 not isinstance(reported, list)
                 or any(not isinstance(task_id, str) for task_id in reported)
-                or not set(reported).issubset(known_result_ids)
+                or not set(reported).issubset(visible_result_ids)
             ):
                 raise ValueError("Router returned invalid delivered task IDs")
             if not isinstance(message, str) or (reported and not message.strip()):

@@ -14,6 +14,9 @@ This is the model-backed CE counterpart to the retained Responses sample. It use
   and reconcile `heard_text`; do not commit generated-but-unsent text.
 - Track delivered task IDs explicitly, including paraphrases, and commit only after
   `response.done` sends successfully. Do not infer delivery from text substrings.
+- Validate Router delivery claims against complete result bodies in its request snapshot,
+  never task-store state after model I/O. Index-only results require explicit retrieval;
+  concurrent Worker completion must still use an actual result-output path.
 - Response interruption leaves business Workers running within the connection. End/disconnect
   requests cooperative cancellation; shutdown retains and drains in-flight Workers before
   closing clients. Do not cancel only an executor wrapper and call that drained cleanup.

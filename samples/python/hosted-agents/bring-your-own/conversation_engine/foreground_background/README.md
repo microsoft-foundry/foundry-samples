@@ -95,6 +95,10 @@ The Router identifies paraphrased/translated results explicitly through required
 `delivered_task_ids` (an empty array for unrelated chat). Invalid or missing IDs fail the turn
 before speech rather than silently losing delivery bookkeeping. Nonempty delivery IDs also
 require a nonblank spoken message before the turn can claim any results.
+Delivery claims are checked against complete result bodies included in that Router request,
+not the task store after model I/O. Results that finish during routing remain available through
+the direct result/status or automatic Worker-result output paths. Index-only results require
+`get_task_result`; their IDs alone cannot authorize a delivery claim, even when history remains.
 Direct result/status paths also track the task ID. Text-substring matching is not used.
 Retained `COMPLETED` and `DELIVERED` IDs are both valid for repetition or translation;
 replaying a delivered result does not reset or repeat its delivery-state transition.
