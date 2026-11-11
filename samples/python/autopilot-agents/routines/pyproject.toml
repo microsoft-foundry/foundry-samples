@@ -1,0 +1,30 @@
+[project]
+name = "agent"
+version = "0.1.0"
+description = "Microsoft 365 Autopilot sample for model-directed timers and recurring reminders in a personal Teams chat."
+authors = [{ name = "Microsoft", email = "support@microsoft.com" }]
+requires-python = ">=3.11"
+dependencies = [
+    "azure-ai-agentserver-activity==1.0.0b3",
+    "azure-ai-agentserver-core==2.2.0b1",
+    "microsoft-agents-hosting-core",
+    "microsoft-agents-activity",
+    "aiohttp>=3.10",
+    "azure-ai-projects==2.5.0",
+    "azure-identity>=1.19",
+    "httpx>=0.28.1",
+    "tzdata>=2026.2",
+]
+
+[project.scripts]
+agent = "agent.__main__:main"
+
+[tool.uv]
+prerelease = "allow"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agent"]
