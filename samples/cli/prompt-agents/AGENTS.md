@@ -26,7 +26,7 @@ Every non-excluded sample under `samples/cli/prompt-agents/` must either:
    exposes only terminal assistant text, and contract validation rejects
    unsupported sources even on filtered-out tests.
 2. Or, if the sample requires capabilities outside the prompt CI adapter (such as
-   client-executed function tools, file-based skills, connections, extra Azure
+   client-executed function tools, connections, extra Azure
    resources like Azure AI Search, or lifecycle hooks), add an entry with a
    non-empty reason in
    [`.azure-pipelines/scripts/prompt-agents/blacklist.json`](../../../.azure-pipelines/scripts/prompt-agents/blacklist.json).

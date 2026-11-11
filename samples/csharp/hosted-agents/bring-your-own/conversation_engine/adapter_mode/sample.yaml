@@ -1,0 +1,17 @@
+name: Voice Live Adapter Mode .NET
+description: A CE-only streaming HTTP Echo adapter.
+
+build: >-
+  dotnet restore src/voice-live-adapter-dotnet/VoiceLiveAdapter.csproj &&
+  dotnet restore src/voice-live-adapter-dotnet/tests/VoiceHostedAgent.Tests.csproj &&
+  dotnet restore src/voice-live-adapter-dotnet/smoke/VoiceLiveAdapter.SmokeTest.csproj &&
+  dotnet build src/voice-live-adapter-dotnet/VoiceLiveAdapter.csproj
+  --no-restore --configuration Release &&
+  dotnet build src/voice-live-adapter-dotnet/smoke/VoiceLiveAdapter.SmokeTest.csproj
+  --no-restore --configuration Release
+validate: >-
+  dotnet format src/voice-live-adapter-dotnet/VoiceLiveAdapter.csproj
+  --verify-no-changes --no-restore
+test: >-
+  dotnet test src/voice-live-adapter-dotnet/tests/VoiceHostedAgent.Tests.csproj
+  --no-restore --configuration Release

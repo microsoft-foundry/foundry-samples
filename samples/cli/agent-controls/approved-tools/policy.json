@@ -1,0 +1,27 @@
+{
+  "properties": {
+    "format": "ACS",
+    "acs": {
+      "agent_control_specification_version": "0.4.0-alpha.1",
+      "metadata": { "name": "approved-tools" },
+      "policies": {
+        "approved-tools": { "type": "rego", "query": "data.approved_tools.verdict" }
+      },
+      "intervention_points": {
+        "pre_tool_call": {
+          "policy_target": "$snap.tool_call.args",
+          "policy_target_kind": "tool_args",
+          "tool_name_from": "$snap.tool_call.name",
+          "policy": { "id": "approved-tools" }
+        }
+      },
+      "tools": {
+        "search_catalog": { "type": "read", "security_labels": ["readonly"] },
+        "get_order": { "type": "read", "security_labels": ["readonly"] }
+      }
+    },
+    "acsRegos": [
+      { "regoName": "approved-tools" }
+    ]
+  }
+}

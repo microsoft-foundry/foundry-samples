@@ -1,0 +1,13 @@
+[project]
+name = "agent-framework-agent-custom-store-responses"
+version = "0.1.0"
+description = "An Agent Framework Responses agent with custom Redis-backed stores."
+requires-python = ">=3.13"
+dependencies = [
+    "agent-framework-foundry",
+    "agent-framework-foundry-hosting>=1.0.0b260813",
+    "debugpy",
+    "python-dotenv",
+    "redis>=5.0",
+    "redis-entraid>=1.2,<2",
+]

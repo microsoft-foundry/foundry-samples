@@ -1,0 +1,148 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.48.1.52935",
+      "templateHash": "9763819720263725144"
+    }
+  },
+  "parameters": {
+    "accountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Existing Foundry account in THIS deployment resource group."
+      }
+    },
+    "projectName": {
+      "type": "string",
+      "metadata": {
+        "description": "Existing project under accountName. The project must have a managed identity."
+      }
+    },
+    "targetUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Existing APIM model API base URL, without a trailing slash. Use the actual endpoint for your cloud."
+      }
+    },
+    "audience": {
+      "type": "string",
+      "metadata": {
+        "description": "Entra token audience accepted by the gateway, for example its api:// application ID URI. This is separate from the subscription key."
+      }
+    },
+    "modelDeploymentName": {
+      "type": "string",
+      "metadata": {
+        "description": "Existing deployment name exposed by the gateway."
+      }
+    },
+    "modelName": {
+      "type": "string",
+      "metadata": {
+        "description": "Underlying model name, which may differ from the deployment name."
+      }
+    },
+    "modelVersion": {
+      "type": "string",
+      "metadata": {
+        "description": "Underlying model version exposed by the gateway."
+      }
+    },
+    "connectionName": {
+      "type": "string",
+      "defaultValue": "apim-private-header",
+      "metadata": {
+        "description": "Model connection name. Agents reference <connectionName>/<modelDeploymentName>."
+      }
+    },
+    "headerName": {
+      "type": "string",
+      "defaultValue": "Ocp-Apim-Subscription-Key",
+      "metadata": {
+        "description": "Header whose value is stored as a secret in the companion connection."
+      }
+    },
+    "subscriptionKey": {
+      "type": "securestring",
+      "minLength": 1,
+      "metadata": {
+        "description": "Gateway subscription key. Supply securely, preferably through an ARM Key Vault parameter reference. Never place the value in metadata or outputs."
+      }
+    },
+    "inferenceAPIVersion": {
+      "type": "string",
+      "defaultValue": "2025-04-01-preview",
+      "metadata": {
+        "description": "Inference API version forwarded through the gateway."
+      }
+    }
+  },
+  "variables": {
+    "companionName": "[format('secret-headers-{0}', uniqueString(resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('accountName'), parameters('projectName')), parameters('connectionName')))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2026-07-01",
+      "name": "[format('{0}/{1}/{2}', parameters('accountName'), parameters('projectName'), variables('companionName'))]",
+      "properties": {
+        "category": "CustomKeys",
+        "authType": "CustomKeys",
+        "target": "[parameters('targetUrl')]",
+        "isSharedToAll": false,
+        "credentials": {
+          "keys": {
+            "header0": "[parameters('subscriptionKey')]"
+          }
+        },
+        "metadata": {
+          "secretHeadersFor": "[parameters('connectionName')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2026-07-01",
+      "name": "[format('{0}/{1}/{2}', parameters('accountName'), parameters('projectName'), parameters('connectionName'))]",
+      "properties": {
+        "category": "ApiManagement",
+        "authType": "ProjectManagedIdentity",
+        "audience": "[parameters('audience')]",
+        "target": "[parameters('targetUrl')]",
+        "isSharedToAll": false,
+        "credentials": {},
+        "metadata": {
+          "deploymentInPath": "true",
+          "inferenceAPIVersion": "[parameters('inferenceAPIVersion')]",
+          "customHeaders": "{}",
+          "models": "[string(createArray(createObject('name', parameters('modelDeploymentName'), 'properties', createObject('model', createObject('name', parameters('modelName'), 'version', parameters('modelVersion'), 'format', 'OpenAI')))))]",
+          "secretHeaders": "[string(createObject(format('{0}', parameters('headerName')), createObject('connection', variables('companionName'), 'key', 'header0')))]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', parameters('accountName'), parameters('projectName'), variables('companionName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "connectionId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', parameters('accountName'), parameters('projectName'), parameters('connectionName'))]"
+    },
+    "connectionName": {
+      "type": "string",
+      "value": "[parameters('connectionName')]"
+    },
+    "secretHeaderConnectionId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', parameters('accountName'), parameters('projectName'), variables('companionName'))]"
+    },
+    "modelReference": {
+      "type": "string",
+      "value": "[format('{0}/{1}', parameters('connectionName'), parameters('modelDeploymentName'))]"
+    }
+  }
+}
