@@ -65,6 +65,12 @@ Tasks and the last 20 history entries belong to one physical connection, not a p
 store. History advances after successful text sends; `heard_text` updates replace an interrupted
 assistant entry before a later Router request uses it. Queued turns build history when they
 actually start, not when they are enqueued.
+Router requests and new Workers share a recent-history snapshot capped at 16,000 content
+characters. Oldest entries are dropped whole until the remaining chronological suffix fits;
+individual entries are never clipped and the recorded history is unchanged. Current input and
+system instructions are retained separately; task context has its own 8,000-character budget.
+These are character limits, not model-token estimates or a guarantee for every deployment's
+context window. Worker tool-round continuation is separate from this initial-history budget.
 Playback corrections for entries already outside that history window do not reinsert old speech
 as the newest reply. A correction can add a missing entry only during its first text send.
 The first two no-input reminders use the same recorder, including their non-streaming
@@ -78,11 +84,17 @@ call. Shutdown retains and joins Workers before closing clients; an already-runn
 settle first. Model requests use a 30-second timeout without automatic retries.
 Cancellation is checked when queued model/tool calls actually start; calls already executing
 are still drained cooperatively.
+The Worker makes at most five model calls. If the fifth call still requires tools rather than
+providing a final answer, it records a sanitized failure, not a successful placeholder result.
+Failed/incomplete API responses, structured model refusals, and empty or whitespace-only final
+answers also remain unsuccessful. A real final answer returned by an already-running call can
+still be saved after cooperative cancellation; refusals and blank answers cannot.
 
 Completed results are marked `DELIVERED` only after a successful CE `response.done` send.
 The Router identifies paraphrased/translated results explicitly through required
 `delivered_task_ids` (an empty array for unrelated chat). Invalid or missing IDs fail the turn
-before speech rather than silently losing delivery bookkeeping.
+before speech rather than silently losing delivery bookkeeping. Nonempty delivery IDs also
+require a nonblank spoken message before the turn can claim any results.
 Direct result/status paths also track the task ID. Text-substring matching is not used.
 Retained `COMPLETED` and `DELIVERED` IDs are both valid for repetition or translation;
 replaying a delivered result does not reset or repeat its delivery-state transition.
@@ -96,7 +108,8 @@ turn/task admission, terminal tasks (including undelivered results) older than f
 after completion are removed. Capacity eviction removes the oldest terminal outcome, never an
 active Worker. Expired/evicted lookups explicitly report that the result is unavailable; `latest`
 does not silently select an older task, and eviction never marks a result delivered.
-The Router's task-context block is capped at 8,000 characters. If full results do not fit, it
+The Router's task-context block is capped at 8,000 characters. Delivered results are included
+in full, without an unmarked preview, even after their speech leaves history. If results do not fit, it
 receives a compact task index and must use `get_task_result` for a full retained result rather
 than treat a clipped answer as complete. These are local limits and existing on-access cleanup,
 not a background cleanup service or a promise to retain every result for the entire call.

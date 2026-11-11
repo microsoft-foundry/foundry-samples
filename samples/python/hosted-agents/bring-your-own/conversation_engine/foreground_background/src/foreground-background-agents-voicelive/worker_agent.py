@@ -259,13 +259,20 @@ async def run_worker(task: Task, input_items: list[dict], responses_client, mode
             if getattr(response, "status", None) != "completed":
                 raise ValueError("Worker response did not complete successfully")
 
+            tool_calls = [
+                item for item in response.output if getattr(item, "type", None) == "function_call"
+            ]
+            refused = any(
+                part.type == "refusal"
+                for item in response.output if item.type == "message"
+                for part in item.content
+            )
+            text = response.output_text
+
             # Check cancel after LLM completes
             if task.cancel_event.is_set():
-                # LLM finished — save partial result if it's a final answer
-                text = response.output_text
-                if text and not [
-                    i for i in response.output if getattr(i, "type", None) == "function_call"
-                ]:
+                # Preserve a genuine final answer, not a refusal or empty placeholder.
+                if text.strip() and not tool_calls and not refused:
                     task.status = TaskStatus.COMPLETED
                     task.result = text
                 else:
@@ -273,14 +280,14 @@ async def run_worker(task: Task, input_items: list[dict], responses_client, mode
                     task.result = "(Cancelled by user)"
                 return
 
-            tool_calls = [
-                item for item in response.output if getattr(item, "type", None) == "function_call"
-            ]
-
+            if refused:
+                raise ValueError("Worker response refused the request")
             # No tool calls → model produced final answer
             if not tool_calls:
+                if not text.strip():
+                    raise ValueError("Worker response contained no answer")
                 task.status = TaskStatus.COMPLETED
-                task.result = response.output_text or "(No response)"
+                task.result = text
                 return
 
             # Replay the complete model output, including reasoning, before tool results.
@@ -327,9 +334,8 @@ async def run_worker(task: Task, input_items: list[dict], responses_client, mode
 
             task.current_tool = None
 
-        # Exhausted all rounds
-        task.status = TaskStatus.COMPLETED
-        task.result = "(Reached maximum tool call rounds)"
+        # Keep the five-call bound; tool outputs without a final answer are not success.
+        raise ValueError("Worker exhausted its tool-round budget without a final answer")
 
     except Exception as e:
         logger.error("Worker failed; error_type=%s", type(e).__name__)

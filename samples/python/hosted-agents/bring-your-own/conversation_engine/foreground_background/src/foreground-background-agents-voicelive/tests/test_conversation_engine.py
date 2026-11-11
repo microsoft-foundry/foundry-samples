@@ -6,6 +6,7 @@ import asyncio
 import json
 import threading
 import uuid
+from collections.abc import Callable
 from types import SimpleNamespace
 from typing import Any
 
@@ -115,6 +116,19 @@ def output(frames: list[dict]) -> str:
     )
 
 
+def wait_for_server(client: TestClient, predicate: Callable[[], bool]) -> None:
+    # Client receipt can precede the server's post-send bookkeeping continuation.
+    async def wait() -> None:
+        async with asyncio.timeout(2):
+            for _ in range(200):
+                if predicate():
+                    return
+                await asyncio.sleep(0.01)
+            assert predicate(), "Server bookkeeping did not settle"
+
+    client.portal.call(wait)
+
+
 @pytest.mark.parametrize("route", ["/voice_conversation_engine", "/invocations_ws"])
 def test_direct_router_response_and_history(route: str) -> None:
     chat = Chat(
@@ -197,7 +211,9 @@ def test_real_worker_executes_domain_tool_and_delivers(monkeypatch: pytest.Monke
         frames = until(ws)
         assert output(frames) == "On it.\n\nUse OS2 on panel 1."
         conversation = next(iter(app.state.voice_runtime.conversations.values()))
-        assert conversation.tasks.get("latest").status is TaskStatus.DELIVERED
+        wait_for_server(
+            client, lambda: conversation.tasks.get("latest").status is TaskStatus.DELIVERED
+        )
     assert seen == [("search_site_specs", {"site_name": "Quincy"})]
     assert len(responses.requests) == 2
 
@@ -603,7 +619,9 @@ def test_real_worker_finishing_during_router_is_delivered_in_same_turn() -> None
             assert all(item.get("response_id") != first["response_id"] for item in frames)
             assert sum(item["type"] == "response.done" for item in frames) == 1
             conversation = next(iter(app.state.voice_runtime.conversations.values()))
-            assert conversation.tasks.get("latest").status is TaskStatus.DELIVERED
+            wait_for_server(
+                client, lambda: conversation.tasks.get("latest").status is TaskStatus.DELIVERED
+            )
             send(ws, "in_thanks", "Thanks")
             assert output(until(ws)) == "You're welcome."
             assert {"role": "assistant", "content": expected} in chat.requests[2]["messages"]

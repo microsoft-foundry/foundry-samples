@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 STATUS_INTERVAL = 5.0
 STATUS_TIMEOUT = 1.0
 MAX_TASK_CONTEXT_CHARACTERS = 8_000
+MAX_MODEL_HISTORY_CHARACTERS = 16_000
 
 
 @dataclass
@@ -128,11 +129,18 @@ class ForegroundBackgroundAgent:
     ) -> AsyncIterator[str]:
         # Evaluated only after the CE generation gate opens. Queued inputs do not
         # retain old history snapshots that can miss later heard_text corrections.
-        history = [
-            {"type": "message", "role": entry.role, "content": entry.content}
-            for entry in conversation.history
-            if entry.content
-        ]
+        # Share one bounded, chronological snapshot with Router and new Workers.
+        # Drop whole older entries, never silently clip technical instructions.
+        history = []
+        remaining = MAX_MODEL_HISTORY_CHARACTERS
+        for entry in reversed(conversation.history):
+            if not entry.content:
+                continue
+            if len(entry.content) > remaining:
+                break
+            history.append({"type": "message", "role": entry.role, "content": entry.content})
+            remaining -= len(entry.content)
+        history.reverse()
         conversation.history.append(HistoryEntry("user", user_input))
         input_items = [*history, {"type": "message", "role": "user", "content": user_input}]
         store = conversation.tasks
@@ -203,6 +211,8 @@ class ForegroundBackgroundAgent:
                 or not set(reported).issubset(known_result_ids)
             ):
                 raise ValueError("Router returned invalid delivered task IDs")
+            if not isinstance(message, str) or (reported and not message.strip()):
+                raise ValueError("Router delivery claims require a nonblank spoken message")
             turn.delivered_task_ids.update(reported)
             active = [task for task in active if task.task_id not in turn.delivered_task_ids]
         else:
