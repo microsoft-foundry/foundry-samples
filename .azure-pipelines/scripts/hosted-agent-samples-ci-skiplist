@@ -6,6 +6,10 @@ samples/csharp/hosted-agents/agent-framework/a2a/01-delegation/caller
 samples/python/hosted-agents/agent-framework/a2a/01-delegation/caller
 samples/python/hosted-agents/langgraph/a2a/a2a-caller
 
+# Native A2A needs JSON-RPC/card handling, ordered C then A/B deployment and
+# separate real-user sign-ins. Its sample-owned runners provide the test contract.
+samples/python/hosted-agents/bring-your-own/a2a/session-routing
+
 # Activity and WebSocket protocols need dedicated orchestration/clients.
 samples/csharp/hosted-agents/bring-your-own/activity/echo
 samples/csharp/hosted-agents/bring-your-own/activity/github-copilot

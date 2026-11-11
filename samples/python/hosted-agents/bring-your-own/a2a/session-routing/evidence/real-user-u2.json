@@ -1,0 +1,24 @@
+{
+  "provenance": "Selected fields from independently signed-in U2 output supplied by the tester; no tokens or call identifiers",
+  "timestamp": "2026-11-10T17:51:03Z",
+  "task_id": "06fe958c-660f-4379-8580-d41fb995af19",
+  "receipt": {
+    "agent": "B",
+    "user_fingerprint": "8c98f58254de5d698ab0",
+    "hosted_session_id": "0c2c31178841191500EqYqX29WD2pZTyxD9Nm3sRgz5whhrMLE",
+    "downstream": {
+      "receipt": {
+        "agent": "C",
+        "task_id": "1a038aa4-9078-4ae0-bfca-158514e1b296",
+        "context_id": "two-real-users-nov9-test01",
+        "hosted_session_id": "f6a0aac7845d438e7db4ad8745900a43892360d6620c1dfb34fbb839e3ed49f",
+        "user_fingerprint": "8c98f58254de5d698ab0",
+        "marker": "U2-via-B-nov9-test01",
+        "sequence": 1,
+        "prior_session_messages": [],
+        "prior_context_messages": [],
+        "caller_agent": "B"
+      }
+    }
+  }
+}
