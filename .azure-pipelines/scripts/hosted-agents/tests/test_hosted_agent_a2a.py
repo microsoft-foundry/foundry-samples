@@ -600,6 +600,7 @@ class A2ARunnerTests(unittest.TestCase):
             "session_quota_exceeded invalid_payload internal server error occurred",
             "Traceback Please retry I cannot access real-time information",
             "Retryable model error: rate_limit_exceeded.",
+            "HTTP 429 Too Many Requests",
         ):
             with self.subTest(text=text):
                 self.run_invoke(False, answer="Echo: hello " + text, toolbox=True)
@@ -638,6 +639,20 @@ class A2ARunnerTests(unittest.TestCase):
         ):
             with self.subTest(diagnostic=diagnostic):
                 self.run_invoke(False, diagnostic=diagnostic)
+
+    def test_real_runner_retries_validated_a2a_http_429_diagnostics(self):
+        for mode in ("task", "jsonrpc"):
+            with self.subTest(mode=mode):
+                self.run_invoke(
+                    False, diagnostic="HTTP 429 Too Many Requests", mode=mode
+                )
+                self.run_invoke(
+                    True,
+                    diagnostic="HTTP 429 Too Many Requests",
+                    mode=mode,
+                    persist=True,
+                    expected_attempts=4,
+                )
 
     def run_invoke(
         self,

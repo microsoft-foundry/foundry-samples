@@ -72,6 +72,11 @@ hosted_agent_is_transient_error() {
 
 hosted_agent_is_model_throttle_error() {
   [ "$#" -gt 0 ] || return 1
+  if grep -qihE \
+      '^A2A (Task failed:|JSON-RPC error:).*HTTP[/0-9.]*[[:space:]]+429([^[:alnum:]_]|$)' \
+      "$@" 2>/dev/null; then
+    return 0
+  fi
   # Match explicit transport/model error shapes, not assistant prose that may
   # legitimately discuss rate limiting.
   #

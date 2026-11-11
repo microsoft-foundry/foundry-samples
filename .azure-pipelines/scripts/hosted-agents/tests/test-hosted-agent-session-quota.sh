@@ -75,6 +75,20 @@ printf '' \
 
 assert_throttle_error "$work/a2a-throttle"
 assert_throttle_error "$work/a2a-high-demand"
+for diagnostic in \
+  'A2A Task failed: HTTP 429 Too Many Requests' \
+  'A2A JSON-RPC error: {"code":-32603,"message":"HTTP 429"}'; do
+  printf '%s\n' "$diagnostic" > "$work/a2a-http-429"
+  assert_throttle_error "$work/a2a-http-429"
+done
+for diagnostic in \
+  'Echo: HTTP 429 Too Many Requests' \
+  'A2A Task failed: HTTP 4290' \
+  'A2A Task failed: HTTP 429abc' \
+  'A2A Task failed: HTTP 403 Forbidden'; do
+  printf '%s\n' "$diagnostic" > "$work/not-a2a-http-429"
+  assert_not_throttle_error "$work/not-a2a-http-429"
+done
 assert_not_throttle_error "$work/a2a-prose"
 assert_not_throttle_error "$work/a2a-permanent"
 hosted_agent_is_transient_error "$work/a2a-transient" || fail "A2A model 503 must be transient"

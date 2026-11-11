@@ -15,6 +15,8 @@ nonretryable failures remain terminal, and each attempt's raw A2A response is
 retained even if a later attempt succeeds.
 Native A2A retries inspect only the helper's separate transport/service
 diagnostics and HTTP headers, never successful artifact text. Validated A2A
+service-error diagnostics containing HTTP 429 use the bounded model-throttle
+retries, including failed-Task and JSON-RPC error messages. Validated A2A
 artifacts are evaluated by the behavior contract rather than generic CLI error
 or toolbox-prose heuristics. Dependency deployments participate in the same
 three-attempt transient deployment retry loop as the selected planner; the
