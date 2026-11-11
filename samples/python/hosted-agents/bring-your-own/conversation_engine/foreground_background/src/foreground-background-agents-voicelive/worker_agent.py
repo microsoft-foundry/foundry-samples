@@ -11,7 +11,7 @@ import json
 import logging
 import time
 
-from task_store import Task, TaskStatus
+from task_store import MAX_TASK_RESULT_CHARACTERS, Task, TaskStatus
 
 logger = logging.getLogger(__name__)
 
@@ -248,6 +248,7 @@ async def run_worker(task: Task, input_items: list[dict], responses_client, mode
                     input=input_items,
                     tools=DOMAIN_TOOLS,
                     store=False,
+                    include=["reasoning.encrypted_content"],
                 )
 
             response = await loop.run_in_executor(None, create_response)
@@ -258,13 +259,20 @@ async def run_worker(task: Task, input_items: list[dict], responses_client, mode
             if getattr(response, "status", None) != "completed":
                 raise ValueError("Worker response did not complete successfully")
 
+            tool_calls = [
+                item for item in response.output if getattr(item, "type", None) == "function_call"
+            ]
+            refused = any(
+                part.type == "refusal"
+                for item in response.output if item.type == "message"
+                for part in item.content
+            )
+            text = response.output_text
+
             # Check cancel after LLM completes
             if task.cancel_event.is_set():
-                # LLM finished — save partial result if it's a final answer
-                text = response.output_text
-                if text and not [
-                    i for i in response.output if getattr(i, "type", None) == "function_call"
-                ]:
+                # Preserve a genuine final answer, not a refusal or empty placeholder.
+                if text.strip() and not tool_calls and not refused:
                     task.status = TaskStatus.COMPLETED
                     task.result = text
                 else:
@@ -272,15 +280,18 @@ async def run_worker(task: Task, input_items: list[dict], responses_client, mode
                     task.result = "(Cancelled by user)"
                 return
 
-            tool_calls = [
-                item for item in response.output if getattr(item, "type", None) == "function_call"
-            ]
-
+            if refused:
+                raise ValueError("Worker response refused the request")
             # No tool calls → model produced final answer
             if not tool_calls:
+                if not text.strip():
+                    raise ValueError("Worker response contained no answer")
                 task.status = TaskStatus.COMPLETED
-                task.result = response.output_text or "(No response)"
+                task.result = text
                 return
+
+            # Replay the complete model output, including reasoning, before tool results.
+            input_items.extend(response.output)
 
             # ── Execute each tool call ──
             for tc in tool_calls:
@@ -290,27 +301,23 @@ async def run_worker(task: Task, input_items: list[dict], responses_client, mode
                     arguments = (
                         json.loads(tc.arguments) if isinstance(tc.arguments, str) else tc.arguments
                     )
-                    result_text = await loop.run_in_executor(
-                        None, _execute_tool, tc.name, arguments
-                    )
+
+                    def execute_tool(name=tc.name, tool_arguments=arguments):
+                        # Like model calls, queued tools must check cancellation at entry.
+                        if task.cancel_event.is_set():
+                            return None
+                        return _execute_tool(name, tool_arguments)
+
+                    result_text = await loop.run_in_executor(None, execute_tool)
+                    if result_text is None:
+                        task.status = TaskStatus.CANCELLED
+                        task.result = "(Cancelled by user)"
+                        return
                     logger.info("Tool '%s' returned %d chars", tc.name, len(result_text))
                 except Exception as e:
                     logger.error("Tool failed; error_type=%s", type(e).__name__)
                     result_text = "The tool failed. Try another available source."
 
-                input_items.append(
-                    {
-                        "type": "function_call",
-                        "id": tc.id,
-                        "call_id": tc.call_id,
-                        "name": tc.name,
-                        "arguments": (
-                            tc.arguments
-                            if isinstance(tc.arguments, str)
-                            else json.dumps(tc.arguments)
-                        ),
-                    }
-                )
                 input_items.append(
                     {
                         "type": "function_call_output",
@@ -327,13 +334,19 @@ async def run_worker(task: Task, input_items: list[dict], responses_client, mode
 
             task.current_tool = None
 
-        # Exhausted all rounds
-        task.status = TaskStatus.COMPLETED
-        task.result = "(Reached maximum tool call rounds)"
+        # Keep the five-call bound; tool outputs without a final answer are not success.
+        raise ValueError("Worker exhausted its tool-round budget without a final answer")
 
     except Exception as e:
         logger.error("Worker failed; error_type=%s", type(e).__name__)
         task.status = TaskStatus.FAILED
         task.result = "The background work failed."
     finally:
+        # Include final answers that arrive after cooperative cancellation was requested.
+        if (
+            task.status is TaskStatus.COMPLETED
+            and len(task.result or "") > MAX_TASK_RESULT_CHARACTERS
+        ):
+            task.status = TaskStatus.FAILED
+            task.result = "The background result exceeded this sample's size limit."
         task.finished_at = time.time()

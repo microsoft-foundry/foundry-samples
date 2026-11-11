@@ -16,6 +16,7 @@ import logging
 from task_store import Task, TaskStatus, TaskStore
 
 logger = logging.getLogger(__name__)
+TASK_UNAVAILABLE_MESSAGE = "No task found (it may have expired or been evicted)."
 
 # ── Router Tools ──────────────────────────────────────────────────────────────
 # The caller also sets parallel_tool_calls=False and validates exactly one call.
@@ -40,12 +41,13 @@ ROUTER_TOOLS = [
                     "type": "array",
                     "items": {"type": "string"},
                     "description": (
-                        "IDs of completed tasks whose results this message conveys, including p"
-                        "araphrases and translations. Empty for unrelated chat."
+                        "IDs of retained completed or already-delivered tasks whose results this "
+                        "message conveys, including paraphrases and translations. "
+                        "Empty for unrelated chat."
                     ),
                 },
             },
-            "required": ["message"],
+            "required": ["message", "delivered_task_ids"],
         },
     },
     {
@@ -172,11 +174,13 @@ ROUTER_SYSTEM_PROMPT = (
     "text).\n5. Do NOT call start_task if the user is referring to a result "
     "that was ALREADY delivered. If the result is in conversation history o"
     'r in "Recently delivered" context, call respond_directly and re-state '
-    'it.\n6. If "Recently completed" results exist in context, call respond_'
+    'it. If result bodies were omitted, use get_task_result instead.\n6. If "Recently completed" '
+    "results exist in context, call respond_"
     "directly and include those results naturally in your message.\n7. If th"
     "e user asks to recall/replay/repeat a previous result, look at convers"
     'ation history or "Recently delivered" context and call respond_directl'
-    "y with that information.\n8. Match the user's language. Keep messages c"
+    "y with that information. If only a task index is available, use get_task_result; "
+    "never infer missing result details.\n8. Match the user's language. Keep messages c"
     "oncise (voice-enabled, hands-free).\n9. When the user's message has BOT"
     "H chat and a NEW actionable field-ops request, call start_task (the ac"
     "k_message handles the conversational part).\n\nIMPORTANT: A message like"
@@ -219,7 +223,7 @@ def execute_router_tool(name: str, arguments: dict, store: TaskStore) -> tuple[s
     if name == "check_task_status":
         task = store.get(arguments["task_id"])
         if not task:
-            return json.dumps({"error": "No task found"}), None
+            return json.dumps({"error": TASK_UNAVAILABLE_MESSAGE}), None
         return json.dumps(
             {
                 "task_id": task.task_id,
@@ -243,7 +247,7 @@ def execute_router_tool(name: str, arguments: dict, store: TaskStore) -> tuple[s
     if name == "get_task_result":
         task = store.get(arguments["task_id"])
         if not task:
-            return json.dumps({"error": "No task found"}), None
+            return json.dumps({"error": TASK_UNAVAILABLE_MESSAGE}), None
         if task.status in (TaskStatus.COMPLETED, TaskStatus.DELIVERED):
             return json.dumps({"task_id": task.task_id, "result": task.result}), None
         return json.dumps(
@@ -276,6 +280,6 @@ def build_delivered_context(store: TaskStore) -> str | None:
     """
     lines = []
     for t in store.delivered_tasks():
-        result_preview = (t.result or "")[:300]
-        lines.append(f"DELIVERED: task {t.task_id} — '{t.query}' → {result_preview}")
+        # The caller budgets the entire task context and requests lookup if it does not fit.
+        lines.append(f"DELIVERED: task {t.task_id} — '{t.query}' → {t.result or ''}")
     return "\n".join(lines) if lines else None

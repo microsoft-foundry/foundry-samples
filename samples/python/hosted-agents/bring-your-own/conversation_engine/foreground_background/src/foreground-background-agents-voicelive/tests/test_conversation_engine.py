@@ -6,6 +6,7 @@ import asyncio
 import json
 import threading
 import uuid
+from collections.abc import Callable
 from types import SimpleNamespace
 from typing import Any
 
@@ -16,14 +17,16 @@ from azure.ai.agentserver.invocations.voice import (
 )
 from starlette.testclient import TestClient
 
-from agent_logic import Conversation, ForegroundBackgroundAgent, Turn
+from agent_logic import Conversation, ForegroundBackgroundAgent, Turn, text_chunks
 from conversation_runtime import ConversationRuntime, HistorySession, create_app
 from scripts.smoke_test import run as run_smoke
-from state import SessionState
+from state import MAX_TERMINAL_SENDS, SessionState
 from task_store import TaskStatus
 
 
 def tool(name: str, **arguments: Any) -> Any:
+    if name == "respond_directly":
+        arguments.setdefault("delivered_task_ids", [])
     return SimpleNamespace(
         choices=[
             SimpleNamespace(
@@ -113,6 +116,19 @@ def output(frames: list[dict]) -> str:
     )
 
 
+def wait_for_server(client: TestClient, predicate: Callable[[], bool]) -> None:
+    # Client receipt can precede the server's post-send bookkeeping continuation.
+    async def wait() -> None:
+        async with asyncio.timeout(2):
+            for _ in range(200):
+                if predicate():
+                    return
+                await asyncio.sleep(0.01)
+            assert predicate(), "Server bookkeeping did not settle"
+
+    client.portal.call(wait)
+
+
 @pytest.mark.parametrize("route", ["/voice_conversation_engine", "/invocations_ws"])
 def test_direct_router_response_and_history(route: str) -> None:
     chat = Chat(
@@ -193,9 +209,11 @@ def test_real_worker_executes_domain_tool_and_delivers(monkeypatch: pytest.Monke
         start(ws)
         send(ws, "in_task", "Find Quincy panels")
         frames = until(ws)
-        assert output(frames) == "On it.Use OS2 on panel 1."
+        assert output(frames) == "On it.\n\nUse OS2 on panel 1."
         conversation = next(iter(app.state.voice_runtime.conversations.values()))
-        assert conversation.tasks.get("latest").status is TaskStatus.DELIVERED
+        wait_for_server(
+            client, lambda: conversation.tasks.get("latest").status is TaskStatus.DELIVERED
+        )
     assert seen == [("search_site_specs", {"site_name": "Quincy"})]
     assert len(responses.requests) == 2
 
@@ -315,6 +333,7 @@ async def test_failed_send_does_not_commit_history_or_delivery() -> None:
     with pytest.raises(RuntimeError):
         await session.send(ResponseDone(response_id=turn.response_id))
     assert not conversation.history
+    assert not session.first_text_pending
     assert task.status is TaskStatus.COMPLETED
 
 
@@ -400,7 +419,7 @@ def test_worker_survives_barge_in_and_result_is_delivered_next_turn() -> None:
             assert not conversation.tasks.get("latest").cancel_event.is_set()
             release.set()
             frames = until(ws)
-            assert output(frames) == "Worker result"
+            assert output(frames) == "\n\nWorker result"
             assert all(item.get("response_id") != created["response_id"] for item in frames)
     finally:
         release.set()
@@ -461,6 +480,243 @@ async def test_duplicate_no_input_does_not_cancel_business_work() -> None:
     await runtime.close()
 
 
+async def test_terminal_capacity_cancels_worker_before_backpressured_end_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from azure.ai.agentserver.invocations.voice import EndCall, InputTextPart, UserMessage
+
+    import worker_agent
+
+    entered = threading.Event()
+    release = threading.Event()
+    transport_gate = asyncio.Event()
+    end_call_started = asyncio.Event()
+    end_calls = []
+    tools = []
+
+    def blocked_model() -> Any:
+        entered.set()
+        assert release.wait(5)
+        call = SimpleNamespace(type="function_call", name="search_site_specs")
+        return answer("", output=[call])
+
+    class BackpressuredSession(RecordingSession):
+        async def send(self, message: Any) -> None:
+            if isinstance(message, EndCall):
+                end_calls.append(message)
+                end_call_started.set()
+            await transport_gate.wait()
+
+    monkeypatch.setattr(worker_agent, "_execute_tool", lambda *args: tools.append(args))
+    responses = Responses(blocked_model)
+    agent = ForegroundBackgroundAgent(Chat(), responses, "test")
+    runtime = ConversationRuntime(agent)
+    session = BackpressuredSession()
+    state = runtime._store.get_or_create(session)
+    state.try_begin_start()
+    state.activate()
+    conversation = Conversation()
+    runtime.conversations[session] = conversation
+    task = conversation.tasks.create_task("Find panels")
+    agent.start_worker(task, [])
+    try:
+        assert await asyncio.to_thread(entered.wait, 2)
+        for index in range(MAX_TERMINAL_SENDS):
+            await runtime.on_user_message(
+                session,
+                UserMessage(
+                    id=f"m_{index}",
+                    ts="2026-11-10T00:00:00Z",
+                    item_id=f"in_{index}",
+                    content=(InputTextPart(text=" "),),
+                ),
+            )
+        assert state.active
+        assert state.terminal_send_count == MAX_TERMINAL_SENDS
+        assert runtime.conversations[session] is conversation
+        assert not task.cancel_event.is_set()
+
+        await asyncio.wait_for(
+            runtime.on_user_message(
+                session,
+                UserMessage(
+                    id="m_overflow",
+                    ts="2026-11-10T00:00:00Z",
+                    item_id="in_overflow",
+                    content=(InputTextPart(text=" "),),
+                ),
+            ),
+            1,
+        )
+        assert not state.active
+        assert session not in runtime.conversations
+        assert task.cancel_event.is_set()
+        await asyncio.wait_for(end_call_started.wait(), 1)
+        assert not transport_gate.is_set()
+
+        release.set()
+        await asyncio.wait_for(asyncio.gather(*tuple(agent.workers)), 2)
+        assert task.status is TaskStatus.CANCELLED
+        assert not tools
+        assert len(responses.requests) == 1
+        await runtime.on_user_message(
+            session,
+            UserMessage(
+                id="m_late",
+                ts="2026-11-10T00:00:00Z",
+                item_id="in_late",
+                content=(InputTextPart(text="More work"),),
+            ),
+        )
+        assert not agent.chat.requests
+        assert len(end_calls) == 1
+    finally:
+        release.set()
+        transport_gate.set()
+        await asyncio.wait_for(runtime.close(), 2)
+    assert not agent.workers
+    assert not runtime._coordinator._detached_tasks
+
+
+def test_real_worker_finishing_during_router_is_delivered_in_same_turn() -> None:
+    entered = threading.Event()
+    release = threading.Event()
+
+    def blocked_model() -> Any:
+        entered.set()
+        assert release.wait(5)
+        return answer("Use OS2 on panel 1.")
+
+    async def finish_during_routing(kwargs: dict) -> Any:
+        assert "RUNNING:" in repr(kwargs["messages"])
+        assert agent.workers
+        release.set()
+        await asyncio.wait_for(asyncio.gather(*tuple(agent.workers)), 2)
+        return tool("respond_directly", message="Checking.")
+
+    chat = Chat(
+        tool("start_task", request_summary="Find panels", ack_message="Looking."),
+        finish_during_routing,
+        tool("respond_directly", message="You're welcome."),
+    )
+    agent = ForegroundBackgroundAgent(chat, Responses(blocked_model), "test")
+    app = create_app(agent, configure_observability=None)
+    with TestClient(app) as client, client.websocket_connect("/voice_conversation_engine") as ws:
+        try:
+            start(ws)
+            send(ws, "in_work", "Find panels")
+            first = ws.receive_json()
+            assert ws.receive_json()["delta"] == "Looking."
+            assert entered.wait(2)
+            ws.send_json(
+                frame("user.barge_in", response_id=first["response_id"], heard_text="Looking.")
+            )
+            send(ws, "in_status", "Status?")
+            frames = until(ws)
+            expected = "Checking.\n\nUse OS2 on panel 1."
+            assert output(frames) == expected
+            assert frames[0]["in_reply_to"] == ["in_status"]
+            assert all(item.get("response_id") != first["response_id"] for item in frames)
+            assert sum(item["type"] == "response.done" for item in frames) == 1
+            conversation = next(iter(app.state.voice_runtime.conversations.values()))
+            wait_for_server(
+                client, lambda: conversation.tasks.get("latest").status is TaskStatus.DELIVERED
+            )
+            send(ws, "in_thanks", "Thanks")
+            assert output(until(ws)) == "You're welcome."
+            assert {"role": "assistant", "content": expected} in chat.requests[2]["messages"]
+        finally:
+            release.set()
+    assert not agent.workers
+
+
+@pytest.mark.parametrize("route", ["respond_directly", "check_task_status", "get_task_result"])
+async def test_result_completed_during_router_is_delivered_once(route: str) -> None:
+    conversation = Conversation()
+    task = conversation.tasks.create_task("Find panels")
+    task.status = TaskStatus.RUNNING
+
+    async def finish_during_routing(kwargs: dict) -> Any:
+        assert "RUNNING:" in repr(kwargs["messages"])
+        await asyncio.sleep(0)
+        task.result = "Use OS2 on panel 1."
+        task.status = TaskStatus.COMPLETED
+        if route == "respond_directly":
+            return tool(route, message="Checking.")
+        return tool(route, task_id=task.task_id, ack_message="Checking.")
+
+    chat = Chat(finish_during_routing, tool("respond_directly", message="You're welcome."))
+    agent = ForegroundBackgroundAgent(chat, Responses(), "test")
+    turn = Turn("r_finished_during_router")
+    chunks = [chunk async for chunk in agent.respond(conversation, turn, "Status?")]
+    expected = (
+        "Checking.\n\nUse OS2 on panel 1."
+        if route == "respond_directly"
+        else "Use OS2 on panel 1."
+    )
+    assert "".join(chunks) == expected
+    assert turn.delivered_task_ids == {task.task_id}
+    assert task.status is TaskStatus.COMPLETED
+
+    state = SessionState()
+    state.try_begin_start()
+    state.activate()
+    session = HistorySession(RecordingSession(), state, conversation, turn)
+    for chunk in chunks:
+        await session.send(
+            ResponseOutputTextDelta(response_id=turn.response_id, item_id="out", delta=chunk)
+        )
+    assert conversation.history[-1].content == expected
+    await session.send(ResponseDone(response_id=turn.response_id))
+    assert task.status is TaskStatus.DELIVERED
+    next_turn = Turn("r_after_delivery")
+    assert "".join(
+        [chunk async for chunk in agent.respond(conversation, next_turn, "Thanks")]
+    ) == "You're welcome."
+    assert not next_turn.delivered_task_ids
+
+
+@pytest.mark.parametrize(
+    "ack",
+    ["", "Checking panel specifications and the latest site records."],
+    ids=["empty-ack", "chunked-ack"],
+)
+async def test_separators_only_between_nonempty_utterances(
+    monkeypatch: pytest.MonkeyPatch,
+    ack: str,
+) -> None:
+    import agent_logic
+
+    monkeypatch.setattr(agent_logic, "STATUS_INTERVAL", 0)
+    conversation = Conversation()
+    task = conversation.tasks.create_task("Find panels")
+    task.status = TaskStatus.RUNNING
+    status = "Checking the current fiber specifications and recent site updates."
+    result = "Use OS2 on panel 1, and verify the current fiber map before proceeding."
+
+    async def finish(kwargs: dict) -> Any:
+        task.result = result
+        task.status = TaskStatus.COMPLETED
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="Stale"))])
+
+    chat = Chat(
+        tool("respond_directly", message=ack),
+        SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=""))]),
+        SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=status))]),
+        finish,
+    )
+    agent = ForegroundBackgroundAgent(chat, Responses(), "test")
+    chunks = [chunk async for chunk in agent.respond(conversation, Turn("r_segments"), "Status?")]
+    utterances = [text for text in (ack, status, result) if text]
+    expected_chunks = []
+    for text in utterances:
+        if expected_chunks:
+            expected_chunks.append("\n\n")
+        expected_chunks.extend(text_chunks(text))
+    assert chunks == expected_chunks
+    assert "".join(chunks) == "\n\n".join(utterances)
+
+
 async def test_router_paraphrase_tracks_completed_task_by_id() -> None:
     conversation = Conversation()
     task = conversation.tasks.create_task("Specifications")
@@ -502,10 +758,10 @@ def test_expired_latest_task_does_not_select_an_older_result() -> None:
     assert conversation.tasks.get("latest") is None
 
 
-def test_heard_text_is_retained_when_send_has_not_recorded_an_entry() -> None:
+def test_missing_history_is_not_appended_without_a_pending_first_send() -> None:
     conversation = Conversation()
     conversation.reconcile("r_pending_send", "Already heard")
-    assert conversation.history[-1].content == "Already heard"
+    assert not conversation.history
 
 
 async def test_real_model_client_factories_can_close_without_network(

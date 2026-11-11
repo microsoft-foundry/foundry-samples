@@ -10,6 +10,11 @@ import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 
+MAX_RETAINED_TASKS = 16
+MAX_TASK_QUERY_CHARACTERS = 8_000
+MAX_TASK_RESULT_CHARACTERS = 8_000
+TASK_RETENTION_SECONDS = 300
+
 
 class TaskStatus(Enum):
     QUEUED = "queued"
@@ -41,8 +46,21 @@ class TaskStore:
         self._latest_task_id: str | None = None
 
     def create_task(self, query: str) -> Task:
+        if len(query) > MAX_TASK_QUERY_CHARACTERS:
+            raise ValueError("Task query exceeds the sample's size limit")
         task_id = uuid.uuid4().hex[:8]
         task = Task(task_id=task_id, query=query)
+        self.cleanup()
+        if len(self._tasks) >= MAX_RETAINED_TASKS:
+            oldest = min(
+                (t for t in self._tasks.values()
+                 if t.status not in (TaskStatus.QUEUED, TaskStatus.RUNNING)),
+                key=lambda t: t.finished_at if t.finished_at is not None else t.created_at,
+                default=None,
+            )
+            if oldest is None:
+                raise ValueError("Task store is full of active work")
+            del self._tasks[oldest.task_id]
         self._tasks[task_id] = task
         self._latest_task_id = task_id
         return task
@@ -80,16 +98,13 @@ class TaskStore:
         ]
 
     def cleanup(self):
-        """Retain terminal outcomes for five minutes after Worker completion."""
-        import time as _time
-
-        cutoff = _time.time() - 300
+        """Prune terminal outcomes, including undelivered results, at turn/admission time."""
+        cutoff = time.time() - TASK_RETENTION_SECONDS
         to_remove = [
             tid
             for tid, t in self._tasks.items()
-            if t.status in (TaskStatus.DELIVERED, TaskStatus.CANCELLED, TaskStatus.FAILED)
-            and t.finished_at is not None
-            and t.finished_at < cutoff
+            if t.status not in (TaskStatus.QUEUED, TaskStatus.RUNNING)
+            and (t.finished_at if t.finished_at is not None else t.created_at) < cutoff
         ]
         for tid in to_remove:
             del self._tasks[tid]
