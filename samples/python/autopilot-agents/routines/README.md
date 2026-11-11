@@ -33,6 +33,11 @@ running may finish. `status` reports the stored message and UTC timer instant
 or raw cron and timezone. Recurring confirmations instead use a short
 model-written description followed by the stored timezone.
 
+Timers whose due time has passed are excluded from active status and stop
+discovery, even if their stored definition is enabled. This does not prove
+delivery completed. Stop before the deadline; disabling cannot recall a
+delivery already in flight.
+
 `UTC` and `Etc/UTC` use the same `UTC` name for new schedules and displayed
 timezone metadata. An identical existing reminder is reused with its original
 name and stored values, including older `Etc/UTC` records; no records are
@@ -41,6 +46,9 @@ existing `UTC` record is preferred. Two active records still require resolving
 the conflict. Other timezones and literal reminder text are unchanged.
 
 Each message is a fresh request, with no pending confirmation or queued action.
+Within one process, authenticated requests for the same chat wait for the prior
+request's interpretation, operation and reply. Other chats remain independent;
+this is not timestamp ordering or coordination across hosted replicas.
 If details are missing, resend the complete request rather than just `yes`,
 `tomorrow`, or `every 10 minutes`:
 

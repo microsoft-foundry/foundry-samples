@@ -56,6 +56,7 @@ class StartOutcome(str, Enum):
     CREATED_AFTER_RECONCILIATION = "created_after_reconciliation"
     ALREADY_ENABLED = "already_enabled"
     REENABLED = "reenabled"
+    DIFFERENT_ACTIVE = "different_active"
     CONFLICT = "conflict"
     FAILED = "failed"
     UNCERTAIN = "uncertain"
@@ -382,6 +383,8 @@ async def ensure_only_started(
         return StartOutcome.FAILED
     if state.conflict or len(state.active) > 1:
         return StartOutcome.CONFLICT
+    if state.active and not same_routine_request(state.active[0], spec):
+        return StartOutcome.DIFFERENT_ACTIVE
     existing = state.active[0] if state.active else state.matching_disabled
     if existing is not None:
         if not same_routine_request(existing, spec):

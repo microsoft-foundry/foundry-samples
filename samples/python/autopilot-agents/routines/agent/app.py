@@ -48,7 +48,6 @@ from .routines import (
     ensure_only_started,
     ensure_scope_stopped,
     list_owned_routines,
-    same_routine_request,
 )
 
 logger = logging.getLogger(__name__)
@@ -211,54 +210,53 @@ async def handle_model_message(context: TurnContext, project: AIProjectClient) -
         )
         return
 
-    if text.strip().casefold() == "status":
-        async with _scope_lock(scope.scope_hash):
-            state = await list_owned_routines(project.beta.routines, scope, logger=logger)
-        await _send_activity(context, _teams_plain_text_activity(status_result_message(state)))
-        return
-
-    requested_at = _activity_request_timestamp(context)
-    if requested_at is None:
-        logger.warning("Rejected message without an aware Activity timestamp.")
-        await _send_activity(
-            context,
-            "I couldn't read a stable timestamp for this message. No routine was changed."
-        )
-        return
-
-    try:
-        async with project.get_openai_client(max_retries=0) as model:
-            response = await model.responses.parse(
-                model=os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"],
-                instructions=MODEL_INSTRUCTIONS,
-                input=json.dumps(
-                    {
-                        "user_text": text,
-                        "requested_at": requested_at.isoformat(),
-                        "activity_time_zone": _activity_time_zone(context),
-                    },
-                    ensure_ascii=False,
-                    separators=(",", ":"),
-                ),
-                text_format=ModelResult,
-                max_output_tokens=MODEL_OUTPUT_MAX_TOKENS,
-            )
-        if not isinstance(response.output_parsed, ModelResult):
-            raise ValueError("The model returned no typed result.")
-        result = response.output_parsed.result
-    except (OpenAIError, ValidationError, ValueError) as error:
-        logger.error("Routine interpretation failed (%s, HTTP %s).", type(error).__name__, getattr(error, "status_code", None))
-        await _send_activity(
-            context,
-            "I couldn't interpret that message. No routine operation was requested. "
-            "Please try again later."
-        )
-        return
-
-    if isinstance(result, Else):
-        await _send_activity(context, _teams_plain_text_activity(result.answer))
-        return
     async with _scope_lock(scope.scope_hash):
+        if text.strip().casefold() == "status":
+            state = await list_owned_routines(project.beta.routines, scope, logger=logger)
+            await _send_activity(context, _teams_plain_text_activity(status_result_message(state)))
+            return
+
+        requested_at = _activity_request_timestamp(context)
+        if requested_at is None:
+            logger.warning("Rejected message without an aware Activity timestamp.")
+            await _send_activity(
+                context,
+                "I couldn't read a stable timestamp for this message. No routine was changed."
+            )
+            return
+
+        try:
+            async with project.get_openai_client(max_retries=0) as model:
+                response = await model.responses.parse(
+                    model=os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"],
+                    instructions=MODEL_INSTRUCTIONS,
+                    input=json.dumps(
+                        {
+                            "user_text": text,
+                            "requested_at": requested_at.isoformat(),
+                            "activity_time_zone": _activity_time_zone(context),
+                        },
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    ),
+                    text_format=ModelResult,
+                    max_output_tokens=MODEL_OUTPUT_MAX_TOKENS,
+                )
+            if not isinstance(response.output_parsed, ModelResult):
+                raise ValueError("The model returned no typed result.")
+            result = response.output_parsed.result
+        except (OpenAIError, ValidationError, ValueError) as error:
+            logger.error("Routine interpretation failed (%s, HTTP %s).", type(error).__name__, getattr(error, "status_code", None))
+            await _send_activity(
+                context,
+                "I couldn't interpret that message. No routine operation was requested. "
+                "Please try again later."
+            )
+            return
+
+        if isinstance(result, Else):
+            await _send_activity(context, _teams_plain_text_activity(result.answer))
+            return
         if isinstance(result, Stop):
             stopped = await ensure_scope_stopped(project.beta.routines, scope, logger=logger)
             reply = stop_result_message(stopped)
@@ -279,25 +277,14 @@ async def handle_model_message(context: TurnContext, project: AIProjectClient) -
                     time_zone=result.time_zone,
                     message_text=result.message,
                 )
-            state = await list_owned_routines(project.beta.routines, scope, logger=logger)
-            if state.failed:
-                reply = "I couldn't check the current routine, so I didn't change it."
-            elif state.conflict or len(state.active) > 1:
-                reply = "I found conflicting scoped routine state, so I didn't change it."
-            elif state.active and not same_routine_request(state.active[0], spec):
-                reply = (
-                    "A different routine is already active. Stop it first with "
-                    '"stop routine", then send the new request. I kept it unchanged.'
-                )
-            else:
-                started = await ensure_only_started(
-                    project.beta.routines, spec, scope=scope, logger=logger
-                )
-                reply = schedule_result_message(
-                    started, spec,
-                    schedule_summary=result.summary if isinstance(result, Schedule) else None,
-                )
-    await _send_activity(context, _teams_plain_text_activity(reply))
+            started = await ensure_only_started(
+                project.beta.routines, spec, scope=scope, logger=logger
+            )
+            reply = schedule_result_message(
+                started, spec,
+                schedule_summary=result.summary if isinstance(result, Schedule) else None,
+            )
+        await _send_activity(context, _teams_plain_text_activity(reply))
 
 
 async def handle_non_personal_message(context: TurnContext) -> None:
@@ -385,6 +372,11 @@ def schedule_result_message(
         return (
             f'{prefix} to send "{spec.message_text}" {description}. '
             'Say "stop routine" to disable it.'
+        )
+    if outcome is StartOutcome.DIFFERENT_ACTIVE:
+        return (
+            "A different routine is already active. Stop it first with "
+            '"stop routine", then send the new request. I kept it unchanged.'
         )
     if outcome is StartOutcome.CONFLICT:
         return (
