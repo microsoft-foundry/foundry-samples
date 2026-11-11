@@ -4,7 +4,7 @@ $wheels = Join-Path $source 'wheelhouse'
 $packages = Join-Path $source 'packages'
 $feed = 'https://pkgs.dev.azure.com/azure-sdk/public/_packaging/azure-sdk-for-python/pypi/simple/'
 $dependencies = Get-Content -LiteralPath (Join-Path $source 'requirements.txt') |
-    Where-Object { $_ -and -not $_.StartsWith('--') }
+    Where-Object { $_ -notmatch '^\s*(#|--|$)' }
 
 python -m pip download --dest $wheels --no-deps --index-url $feed `
     'azure-ai-agentserver-a2a==1.0.0a20261029006' `
