@@ -81,7 +81,7 @@ hosted_agent_is_model_throttle_error() {
   # model:" prefix. Keying on the `message` field keeps assistant output (which
   # lands under output[].content[].text) from matching.
   if grep -qihE \
-      "^HTTP[/0-9.]*[[:space:]]+429([[:space:]]|$)|Error calling model:.*(Error code:[[:space:]]*429|rate_limit_exceeded|TooManyRequests|Model deployment rate limit exceeded)|['\"]message['\"][[:space:]]*:[[:space:]]*['\"][^'\"]*Model deployment rate limit exceeded|['\"]code['\"][[:space:]]*:[[:space:]]*['\"](rate_limit_exceeded|TooManyRequests)['\"]|['\"]status_code['\"][[:space:]]*:[[:space:]]*429|Retryable model error:[[:space:]]*rate_limit_exceeded\\.|^A2A Task failed:.*Model deployment rate limit exceeded" \
+      "^HTTP[/0-9.]*[[:space:]]+429([[:space:]]|$)|Error calling model:.*(Error code:[[:space:]]*429|rate_limit_exceeded|TooManyRequests|Model deployment rate limit exceeded)|['\"]message['\"][[:space:]]*:[[:space:]]*['\"][^'\"]*Model deployment rate limit exceeded|['\"]code['\"][[:space:]]*:[[:space:]]*['\"](rate_limit_exceeded|TooManyRequests)['\"]|['\"]status_code['\"][[:space:]]*:[[:space:]]*429|Retryable model error:[[:space:]]*rate_limit_exceeded\\.|^A2A (Task failed:|JSON-RPC error:).*Model (deployment )?rate limit exceeded" \
       "$@" 2>/dev/null; then
     return 0
   fi
