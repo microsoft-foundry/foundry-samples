@@ -28,7 +28,13 @@
   $AzureContainerRegistryEndpoint = $env:AZURE_CONTAINER_REGISTRY_ENDPOINT
   $MAIBName = $env:MAIB_NAME
 
-  $environmentVariables = @{}
+  # Message content stays off unless the azd environment opts in.
+  $azdEnvironmentArgs = if ($env:AZURE_ENV_NAME) { @("-e", $env:AZURE_ENV_NAME) } else { @() }
+  $captureMessageContent = & azd env get-value OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT @azdEnvironmentArgs 2>$null
+  $captureMessageContent = if ($LASTEXITCODE -eq 0 -and "$captureMessageContent".Trim() -eq "true") { "true" } else { "false" }
+  $environmentVariables = @{
+      "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT" = $captureMessageContent
+  }
   if (-not [string]::IsNullOrWhiteSpace($env:DIRECT_MESSAGE_ALLOWLIST_TABLE_SERVICE_URI)) {
       $environmentVariables.DirectMessageAllowListTableServiceUri = $env:DIRECT_MESSAGE_ALLOWLIST_TABLE_SERVICE_URI
   }
