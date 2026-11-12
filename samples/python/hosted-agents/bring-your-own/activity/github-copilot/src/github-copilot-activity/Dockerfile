@@ -2,10 +2,12 @@ FROM python:3.13-slim
 
 ENV PYTHONNOUSERSITE=1
 
-WORKDIR /app
-COPY . user_agent/
 WORKDIR /app/user_agent
-RUN if [ -f requirements.txt ]; then pip install --no-input -r requirements.txt; fi
+# Install dependencies before copying the source so code-only edits reuse the
+# cached dependency layer on rebuild.
+COPY requirements.txt ./
+RUN pip install --no-input --no-cache-dir -r requirements.txt
+COPY . .
 EXPOSE 8088
 
 ENV PORT=8088
