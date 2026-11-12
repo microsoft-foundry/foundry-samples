@@ -10,7 +10,7 @@ from typing import Any
 
 from azure.ai.agentserver.invocations.voice import VoiceAgentServerHost
 
-from model_client import AzureOpenAIResponsesClient
+from echo_client import EchoClient
 from model_contract import StreamingModelClient
 from voice_runtime import create_app as create_voice_app
 
@@ -21,7 +21,7 @@ def create_app(
 ) -> VoiceAgentServerHost:
     """Create the Voice Live Bridge application."""
     return create_voice_app(
-        model_client or AzureOpenAIResponsesClient.from_environment(),
+        model_client if model_client is not None else EchoClient(),
         **host_options,
     )
 

@@ -12,15 +12,17 @@ control events.
 
 ## Key files
 
-- `azure.yaml` — Foundry project, model, hosted-agent metadata, and protocol declaration
+- `azure.yaml` — Foundry project, hosted-agent metadata, and legacy protocol declaration (no model)
 - `src/voice-live-bridge-basic-python/main.py` — server entry point
+- `src/voice-live-bridge-basic-python/echo_client.py` — default local streaming echo backend
 - `src/voice-live-bridge-basic-python/voice_runtime.py` — thin Bridge callbacks and command dispatch
 - `src/voice-live-bridge-basic-python/response_coordinator.py` — response execution, terminal
   sequencing, cancellation, and detached-task cleanup
 - `src/voice-live-bridge-basic-python/state.py` — bounded connection state and session store
 - `src/voice-live-bridge-basic-python/model_contract.py` — model backend protocol shared without
   circular imports
-- `src/voice-live-bridge-basic-python/model_client.py` — Foundry Responses model adapter
+- `src/voice-live-bridge-basic-python/model_client.py` — retained original model adapter, unused by
+  the echo entry point; preserve the historical dependencies/tests for this comparison branch
 - `src/voice-live-bridge-basic-python/pyproject.toml` — runtime and development dependencies
 - `src/voice-live-bridge-basic-python/uv.lock` — fully pinned dependency graph
 - `sample.yaml` — repository build-readiness validation
@@ -49,6 +51,10 @@ Voice Live Bridge WebSocket events; use `scripts/smoke_test.py` for the local pr
 
 ## Protocol constraints
 
+- Ordinary inputs echo the latest parsed text; preserve the original command and whitespace
+  normalization. Do not initialize a model client or provision a model deployment by default.
+- Keep the legacy coordinator, cancellation, timeout, history/heard-text synchronization, ID
+  correlation and cleanup unchanged. This branch tests old `invocations_ws`, not CE migration.
 - Keep `bridgeProtocolVersion: "1.0"`, `voiceLiveCompatible: "true"`, and `invocations_ws` aligned.
 - The application explicitly sends `session.ready` or `session.rejected` and owns response IDs,
   background tasks, cancellation, and conversation state.
