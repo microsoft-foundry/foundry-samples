@@ -1,0 +1,4 @@
+name: AIProjectClient synthetic conversations (current)
+description: Isolated current SDK examples for synthetic conversations.
+build: "python -m pip install -r requirements.txt"
+validate: "python -m unittest discover -p 'test_*.py'"

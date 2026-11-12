@@ -1,0 +1,4 @@
+name: AIProjectClient 06 files (framework)
+description: Isolated framework SDK examples for 06 files.
+build: "python -m pip install -r requirements.txt"
+validate: "python -m unittest discover -p 'test_*.py'"

@@ -237,22 +237,22 @@ def runtime_root_for_input(
     services: Mapping[PurePosixPath, ServiceRoot],
     files: set[PurePosixPath],
 ) -> PurePosixPath | None:
+    owns_artifact = path.parent / REQUIREMENTS_ARTIFACT in files or (
+        path.parent / UV_LOCK in files and path.parent / UV_MANIFEST in files
+    )
     service = closest_service(path, services)
     if service is not None:
         # A nested project is independently installable only when that directory
         # owns a supported lock artifact. Tests and vendored pyprojects otherwise
         # remain part of the declared service runtime.
-        nested_requirements = path.parent / REQUIREMENTS_ARTIFACT
-        nested_uv_lock = path.parent / UV_LOCK
-        nested_uv_manifest = path.parent / UV_MANIFEST
-        if path.parent != service and (
-            nested_requirements in files
-            or (nested_uv_lock in files and nested_uv_manifest in files)
-        ):
+        if path.parent != service and owns_artifact:
             return path.parent
         return service
     sample_services = closest_manifest_sample(path, services)
     if len(sample_services) == 1:
+        sample = services[sample_services[0]].manifest.parent
+        if path.parent != sample and owns_artifact:
+            return path.parent
         return sample_services[0]
     return None
 

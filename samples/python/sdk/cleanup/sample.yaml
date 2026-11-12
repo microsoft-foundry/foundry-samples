@@ -1,0 +1,4 @@
+name: AIProjectClient current resource cleanup
+description: Explicit cleanup for resources created by documentation examples.
+build: "python -m pip install -r requirements.txt"
+validate: "python -m unittest discover -p 'test_*.py'"

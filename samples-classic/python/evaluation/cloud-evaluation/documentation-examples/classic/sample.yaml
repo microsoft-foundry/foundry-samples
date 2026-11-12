@@ -1,0 +1,4 @@
+name: AIProjectClient cloud evaluation (classic)
+description: Isolated classic SDK examples for cloud evaluation.
+build: "python -m pip install -r requirements.txt"
+validate: "python -m unittest discover -p 'test_*.py'"

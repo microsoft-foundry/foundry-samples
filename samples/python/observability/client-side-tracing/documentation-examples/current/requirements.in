@@ -1,0 +1,4 @@
+azure-ai-projects==2.9.0
+azure-identity==1.27.0
+azure-monitor-opentelemetry==1.8.11
+openai==3.35.1
