@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/PromptAgent.yaml
+
+kind: prompt
+name: prompt-agent-azure-ai-search
+description: A prompt agent that grounds answers in an Azure AI Search index.
+model: gpt-5.4-mini
+tool_choice: auto
+
+tools:
+  - type: azure_ai_search
+    name: knowledge-base
+    description: Search the product knowledge base index.
+    azure_ai_search:
+      indexes:
+        - index_name: ${AZURE_SEARCH_INDEX_NAME}
+          project_connection_id: aisearch-conn
+
+connections:
+  - name: aisearch-conn
+    category: CognitiveSearch
+    target: ${AZURE_SEARCH_ENDPOINT}
+    authType: Entra

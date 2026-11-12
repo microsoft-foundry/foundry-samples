@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/PromptAgent.yaml
+
+kind: prompt
+name: prompt-agent-tools
+description: A prompt agent that emits client-executed function tool calls.
+model: gpt-5.4-mini
+tool_choice: auto
+
+tools:
+  - type: function
+    name: get_weather
+    description: Get the current weather for a city.
+    parameters:
+      type: object
+      properties:
+        city:
+          type: string
+          description: City name, for example "Seattle".
+        unit:
+          type: string
+          enum: [celsius, fahrenheit]
+          description: Temperature unit to report.
+      required: [city]
+    strict: true
+  - type: function
+    name: convert_currency
+    description: Convert an amount from one currency to another.
+    parameters:
+      type: object
+      properties:
+        amount:
+          type: number
+          description: The amount to convert.
+        from_currency:
+          type: string
+          description: ISO 4217 code, for example "USD".
+        to_currency:
+          type: string
+          description: ISO 4217 code, for example "EUR".
+      required: [amount, from_currency, to_currency]
+    strict: true

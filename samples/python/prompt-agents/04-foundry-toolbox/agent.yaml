@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/PromptAgent.yaml
+
+kind: prompt
+name: prompt-agent-toolbox
+description: A prompt agent that uses a curated Foundry Toolbox.
+model: gpt-5.4-mini
+tool_choice: auto
+
+toolbox:
+  name: ${TOOLBOX_NAME}
+tools:
+  - type: toolbox_search_preview
