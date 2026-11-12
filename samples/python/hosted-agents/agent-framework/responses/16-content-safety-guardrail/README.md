@@ -134,12 +134,36 @@ A prompt that passes the policy returns `HTTP 200` with the agent's response. A 
 ```json
 {
   "error": {
+    "type": "content_safety_error",
     "code": "content_filter",
-    "message": "The request was blocked due to content safety policy violation at input stage.",
-    "type": "content_safety_error"
+    "message": "The request was blocked due to content safety policy violation at input stage. [Request ID: <request-id>]",
+    "param": null,
+    "details": [
+      {
+        "type": "content_safety_error",
+        "code": "content_filter",
+        "param": "violence",
+        "message": "Content was filtered for category 'violence' (severity: medium)."
+      }
+    ],
+    "additionalInfo": {
+      "request_id": "<request-id>",
+      "content_filters": [
+        {
+          "blocked": true,
+          "source_type": "prompt",
+          "content_filter_results": {
+            "violence": { "filtered": true, "severity": "medium" },
+            "hate": { "filtered": false, "severity": "safe" }
+          }
+        }
+      ]
+    }
   }
 }
 ```
+
+The `details` and `additionalInfo.content_filters` fields explain why the request was blocked: `details` has one entry per blocked category, and `content_filters` carries the per-category results (`filtered` reflects each category's own setting, not the overall verdict). Both fields are optional, so clients must not depend on them being present, and the service never includes PII text.
 
 If a violating prompt isn't blocked, check in this order:
 

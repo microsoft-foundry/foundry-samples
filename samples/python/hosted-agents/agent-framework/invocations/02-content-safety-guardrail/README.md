@@ -194,12 +194,36 @@ Send a prompt that violates your policy. The platform screens it before the agen
 ```json
 {
   "error": {
+    "type": "content_safety_error",
     "code": "content_filter",
     "message": "The request was blocked due to content safety policy violation at input stage. [Request ID: <request-id>]",
-    "type": "content_safety_error"
+    "param": null,
+    "details": [
+      {
+        "type": "content_safety_error",
+        "code": "content_filter",
+        "param": "violence",
+        "message": "Content was filtered for category 'violence' (severity: medium)."
+      }
+    ],
+    "additionalInfo": {
+      "request_id": "<request-id>",
+      "content_filters": [
+        {
+          "blocked": true,
+          "source_type": "prompt",
+          "content_filter_results": {
+            "violence": { "filtered": true, "severity": "medium" },
+            "hate": { "filtered": false, "severity": "safe" }
+          }
+        }
+      ]
+    }
   }
 }
 ```
+
+The `details` and `additionalInfo.content_filters` fields explain why the request was blocked: `details` has one entry per blocked category, and `content_filters` carries the per-category results (`filtered` reflects each category's own setting, not the overall verdict). Both fields are optional, so clients must not depend on them being present, and the service never includes PII text. The buffered output block and the streamed `error` event carry the same fields.
 
 A prompt that passes the policy returns `HTTP 200` with the agent's response.
 
@@ -212,9 +236,30 @@ A blocked **buffered** response also returns `HTTP 400`, with a message naming t
 ```json
 {
   "error": {
+    "type": "content_safety_error",
     "code": "content_filter",
     "message": "The response was blocked due to content safety policy violation at output stage.",
-    "type": "content_safety_error"
+    "param": null,
+    "details": [
+      {
+        "type": "content_safety_error",
+        "code": "content_filter",
+        "param": "violence",
+        "message": "Content was filtered for category 'violence' (severity: medium)."
+      }
+    ],
+    "additionalInfo": {
+      "content_filters": [
+        {
+          "blocked": true,
+          "source_type": "response",
+          "content_filter_results": {
+            "violence": { "filtered": true, "severity": "medium" },
+            "hate": { "filtered": false, "severity": "safe" }
+          }
+        }
+      ]
+    }
   }
 }
 ```
@@ -223,7 +268,7 @@ A blocked **streamed** response is different. Response headers are already sent 
 
 ```text
 event: error
-data: {"type":"error","code":"content_filter","message":"The response was blocked due to content safety policy violation."}
+data: {"type":"error","code":"content_filter","message":"The response was blocked due to content safety policy violation.","details":[{"type":"content_safety_error","code":"content_filter","param":"violence","message":"Content was filtered for category 'violence' (severity: medium)."}],"additionalInfo":{"content_filters":[{"blocked":true,"source_type":"response","content_filter_results":{"violence":{"filtered":true,"severity":"medium"}}}]}}
 ```
 
 Handle this event in your client and treat it as terminal. **A `200` status alone doesn't mean the response passed the policy.**
