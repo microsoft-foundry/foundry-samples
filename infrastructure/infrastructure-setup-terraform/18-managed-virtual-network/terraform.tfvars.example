@@ -2,7 +2,7 @@
 # Copy this file to terraform.tfvars and update with your values
 subscription_id     = "%subscription_id%"
 resource_group_name = "foundry-mvnet-rg"
-location            = "eastus2"
+location            = "uaenorth" # Choose a supported region with sufficient quota
 foundry_identifier = "foundry-v1"  # Avoid issues with soft delete, helps make the resource unique
 
 # Tags to apply to all resources

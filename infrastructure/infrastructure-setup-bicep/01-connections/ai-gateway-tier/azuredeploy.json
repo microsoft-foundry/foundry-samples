@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.46.1.21595",
-      "templateHash": "2257742962386746331"
+      "version": "0.48.1.52935",
+      "templateHash": "15436091536606832386"
     }
   },
   "parameters": {
@@ -40,9 +40,9 @@
     },
     "location": {
       "type": "string",
-      "defaultValue": "eastus2",
+      "defaultValue": "[resourceGroup().location]",
       "metadata": {
-        "description": "Region for the account, project, and model. Defaults to eastus2; can differ from gatewayLocation (e.g. a CI region)."
+        "description": "Region for the account, project, and model. Defaults to the resource group location; can differ from gatewayLocation."
       }
     },
     "gatewayLocation": {

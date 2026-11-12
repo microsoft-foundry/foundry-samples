@@ -53,7 +53,7 @@ This sample covers **steps 4 and 5** of the non-VNet golden path. See the
 |-----------|----------|-------------|
 | `projectResourceId` | Yes | Resource ID of the existing Foundry project the BYOM connection is added to. |
 | `backendAccountName` | Yes | Name of the existing backend Foundry account (in this resource group) hosting the models. |
-| `backendRegion` | No | Region of the backend account (trace header only). Defaults to the resource group location. |
+| `backendRegion` | No | Region of the backend account (trace header only). Defaults to the resource group location; override it if the account is in another region. |
 | `projectMiClientId` | Yes | Application (client) ID of the project managed identity. |
 | `assignBackendRole` | No | Create the APIM MI → `Cognitive Services User` role assignment on the backend account (default `true`). Requires `roleAssignments/write` (Owner / User Access Administrator). Set `false` if you deploy as Contributor and arrange the role assignment separately. |
 | `apimName` | No | Globally unique APIM name. Auto-generated if empty. |

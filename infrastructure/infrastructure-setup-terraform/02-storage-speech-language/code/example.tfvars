@@ -1,7 +1,7 @@
 # Example configuration for storage-speech-language
 
 # Azure region
-location = "eastus2"
+location = "westus3"
 
 # AI Foundry account name
 ai_foundry_name = "foundry-storage"

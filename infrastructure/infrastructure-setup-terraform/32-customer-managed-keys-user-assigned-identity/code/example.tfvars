@@ -1,7 +1,7 @@
 # Example configuration for customer-managed keys with user-assigned identity
 
 # Azure region
-location = "eastus2"
+location = "swedencentral"
 
 # AI Foundry configuration
 ai_foundry_name = "foundry-cmk-uai"

@@ -54,14 +54,17 @@ Before deploying this solution, ensure you have:
 If you don't have the prerequisites, you can create them:
 
 ```powershell
+# Choose a region with the required Foundry features and quota.
+$location = "<azure-region>"
+
 # Create resource group
-az group create --name rg-ai-foundry-cmk --location eastus2
+az group create --name rg-ai-foundry-cmk --location $location
 
 # Create user-assigned managed identity
 az identity create --name uai-ai-foundry --resource-group rg-ai-foundry-cmk
 
 # Create Key Vault
-az keyvault create --name kv-ai-foundry-cmk --resource-group rg-ai-foundry-cmk --location eastus2
+az keyvault create --name kv-ai-foundry-cmk --resource-group rg-ai-foundry-cmk --location $location
 
 # Get your user account for RBAC permissions
 $USER_EMAIL = az account show --query user.name -o tsv
@@ -87,7 +90,7 @@ The template constructs the Key Vault URI automatically from `keyVaultName` usin
 | Parameter | Description | Example |
 |-----------|-------------|---------|
 | `aiFoundryName` | Name of the AI Foundry account | `ai-foundry-prod` |
-| `location` | Azure region | `eastus2` |
+| `location` | Azure region; defaults to the resource group's region | `<azure-region>` |
 | `keyVaultName` | Name of existing Key Vault | `kv-ai-foundry-cmk` |
 | `keyName` | Name of the CMK key | `cmk-key` |
 | `keyVersion` | Version of the CMK key | `abc123...` |

@@ -5,13 +5,13 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "1473442548359709863"
+      "templateHash": "16001671320325172750"
     }
   },
   "parameters": {
     "location": {
       "type": "string",
-      "defaultValue": "eastus2",
+      "defaultValue": "swedencentral",
       "allowedValues": [
         "westus",
         "westus2",

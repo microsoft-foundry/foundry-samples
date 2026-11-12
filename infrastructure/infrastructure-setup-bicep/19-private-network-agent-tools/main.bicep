@@ -46,7 +46,7 @@ Architecture:
   'switzerlandnorth'
   'norwayeast'
 ])
-param location string = 'eastus2'
+param location string = 'swedencentral'
 
 @description('Name prefix for your AI Services (Cognitive Services) resource. Lowercase alphanumeric only; a 4-character random suffix will be appended.')
 @minLength(2)

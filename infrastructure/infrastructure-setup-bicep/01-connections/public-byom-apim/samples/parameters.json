@@ -6,7 +6,6 @@
       "value": "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-RG/providers/Microsoft.CognitiveServices/accounts/YOUR-FOUNDRY-ACCOUNT-NAME/projects/YOUR-PROJECT-NAME"
     },
     "backendAccountName": { "value": "YOUR-BACKEND-FOUNDRY-ACCOUNT-NAME" },
-    "backendRegion": { "value": "eastus2" },
     "projectMiClientId": { "value": "00000000-0000-0000-0000-000000000000" },
 
     "apimName": { "value": "apim-aigw-byom-public" },

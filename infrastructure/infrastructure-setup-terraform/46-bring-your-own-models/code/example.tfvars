@@ -10,7 +10,7 @@ development_subscription_id = "11111111-1111-1111-1111-111111111111"
 tenant_id = "33333333-3333-3333-3333-333333333333"
 
 # --- Common ---
-location    = "eastus2"
+location    = "swedencentral"
 name_prefix = "contoso-byom"
 
 # --- APIM publisher metadata (required by APIM at create time) ---

@@ -1,7 +1,7 @@
 variable "location" {
   description = "The Azure region where resources will be deployed"
   type        = string
-  default     = "eastus2"
+  default     = "westus3"
 }
 
 variable "ai_services_name" {

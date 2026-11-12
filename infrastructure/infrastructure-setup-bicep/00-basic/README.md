@@ -13,6 +13,9 @@ languages:
 
 This Azure AI Foundry template is built on Azure Cognitive Services as a resource provider. This template deploys an Azure AI Foundry resource and project. This allows you to access AI Foundry capabilities like Agents, Evaluations, Tracing, etc.
 
+The `location` parameter defaults to the resource group's region. Choose a region
+with the required Foundry features and quota, or override `location` at deployment.
+
 If you are new to Azure AI Foundry, see:
 
 - [Azure AI Foundry](https://learn.microsoft.com/azure/ai-foundry/)

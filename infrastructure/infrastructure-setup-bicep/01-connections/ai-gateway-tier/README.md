@@ -43,10 +43,11 @@ Foundry projects/subscriptions.
 
 ```powershell
 $rg  = "<hub-rg>"
-$loc = "eastus2"                 # eastus2 or swedencentral (AIGateway preview regions)
+$loc = "<azure-region>"          # Region for the Foundry account and model
+$gatewayLoc = "swedencentral"   # AIGateway preview region, if enabled for your subscription
 
 az group create --name $rg --location $loc
-az deployment group create --resource-group $rg --template-file main.bicep --parameters "@samples/parameters.json"
+az deployment group create --resource-group $rg --template-file main.bicep --parameters "@samples/parameters.json" gatewayLocation=$gatewayLoc
 ```
 
 Capture the outputs the spoke connection needs:
@@ -93,7 +94,7 @@ at the spoke project endpoint (the connection deployment's `projectEndpoint` out
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `location` | `eastus2` | Region for the account, project, and model. Any region; can differ from `gatewayLocation`. |
+| `location` | Resource group location | Region for the account, project, and model; can differ from `gatewayLocation`. Choose a region with model availability and quota. |
 | `gatewayLocation` | `eastus2` | Region for the AI Gateway tier (`AIGateway` SKU) — `eastus2` or `swedencentral`. |
 | `aiServicesName` | `hub` | Base name for the hub account (a unique suffix is appended). |
 | `projectName` | `hub-project` | Hub project (admin workspace) created under the account. |

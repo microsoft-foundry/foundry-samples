@@ -3,7 +3,6 @@ using './main.bicep'
 // -----------------------------------------------------------------------------
 // Foundry account & project
 // -----------------------------------------------------------------------------
-param location = 'eastus2'
 param aiServices = 'contoso'           // 2-40 lowercase chars; a 4-char suffix is appended
 param firstProjectName = 'project'
 param projectDescription = 'A project for the AI Foundry account with network secured deployed Agent'

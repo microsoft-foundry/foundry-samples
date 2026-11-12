@@ -15,7 +15,7 @@ variable "tenant_id" {
 variable "location" {
   description = "Azure region for all resources. Avoid uksouth for this sample: the account trustedCertificates property has a known silent-discard bug there. eastus2 and swedencentral are validated."
   type        = string
-  default     = "eastus2"
+  default     = "swedencentral"
 }
 
 variable "existing_resource_group_name" {

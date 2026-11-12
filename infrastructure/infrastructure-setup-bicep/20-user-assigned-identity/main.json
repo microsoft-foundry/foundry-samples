@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.46.1.21595",
-      "templateHash": "7883696456086450703"
+      "version": "0.48.1.52935",
+      "templateHash": "11573456314664454779"
     }
   },
   "parameters": {
@@ -18,7 +18,7 @@
     },
     "location": {
       "type": "string",
-      "defaultValue": "eastus2",
+      "defaultValue": "[resourceGroup().location]",
       "metadata": {
         "description": "Location for all resources."
       }

@@ -77,7 +77,7 @@ Foundry project ──connected model──▶ single-tenant data proxy ──TL
 | `deploy.ps1` | Deploy wrapper. Reads `.gateway\` and passes the cert/key as secure params. `-Verify` flips to the trust-registered phase. |
 | `roll-gateway-cert.ps1` | Optional negative test. Replaces only the gateway certificate with one signed by an unregistered CA, then restores the original certificate. |
 | `main.bicep` | Everything else, at resource-group scope. |
-| `main.bicepparam` | Parameter values (edit `location`, custom domain, etc.). |
+| `main.bicepparam` | Parameter values (override `location`, custom domain, etc. as needed). |
 | `.gitignore` | Excludes `.gateway\` (contains the private key). |
 | `metadata.json` | Sample metadata. |
 

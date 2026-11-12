@@ -41,11 +41,7 @@ This infrastructure-as-code (IaC) solution deploys Microsoft Foundry with public
 
 ### Variables
 
-The variables listed below [must be provided](https://developer.hashicorp.com/terraform/language/values/variables#variable-definition-precedence) when performing deploying the templates. The file example.tfvars provides a sample Terraform variables file that can be used.
-
-- **location** - The Azure region the resources will be deployed to. This must be the same region where the pre-existing virtual network has been deployed to.
-
-The variables listed below are optional and if not specified will use the defaults as included in the variables.tf file.
+Provide `subscription_id` using a [Terraform variable definition](https://developer.hashicorp.com/terraform/language/values/variables#variable-definition-precedence). The `location` variable has a default, but can be overridden in `example.tfvars` or at deployment. Choose a region with the required features, model availability, and quota.
 
 ## Deploy the Terraform template
 

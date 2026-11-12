@@ -206,7 +206,7 @@ Note: If not provided, the following resources will be created automatically for
 
 | Parameter | Description | Default | Required |
 |-----------|-------------|---------|----------|
-| `location` | Azure region for deployment | `eastus2` | Yes |
+| `location` | Azure region for deployment; choose a supported region with sufficient quota | `swedencentral` | Yes |
 | `aiServices` | Base name for the AI Services resource (2-40 lowercase chars) | `contoso` | No |
 | `firstProjectName` | Name for the Foundry project | `project` | No |
 | `modelName` | Model to deploy | `gpt-4o-mini` | No |

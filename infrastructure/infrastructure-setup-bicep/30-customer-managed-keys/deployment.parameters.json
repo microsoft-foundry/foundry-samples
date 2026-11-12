@@ -5,9 +5,6 @@
         "aiFoundryName": {
             "value": "<your-foundry-name>"
         },
-        "location": {
-            "value": "eastus2"
-        },
         "keyVaultName": {
             "value": "<your-keyvault-name>"
         },

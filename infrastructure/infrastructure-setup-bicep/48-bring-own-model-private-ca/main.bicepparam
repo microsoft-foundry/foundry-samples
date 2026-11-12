@@ -1,10 +1,7 @@
 using './main.bicep'
 
-// Region for the sample resources.
-param location = 'eastus2'
-
-// Override when Azure AI Search lacks capacity in the primary region.
-param searchLocation = 'eastus2'
+// Location and searchLocation default to the resource group location.
+// Override searchLocation when Azure AI Search lacks capacity in the primary region.
 
 param namePrefix = 'byomca'
 

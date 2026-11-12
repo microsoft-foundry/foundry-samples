@@ -50,8 +50,8 @@ param projectDescription string = 'AI Gateway tier hub: owns the model behind th
 @description('Hub project display name.')
 param projectDisplayName string = 'AI Gateway tier hub'
 
-@description('Region for the account, project, and model. Defaults to eastus2; can differ from gatewayLocation (e.g. a CI region).')
-param location string = 'eastus2'
+@description('Region for the account, project, and model. Defaults to the resource group location; can differ from gatewayLocation.')
+param location string = resourceGroup().location
 
 @allowed([
   'eastus2'
