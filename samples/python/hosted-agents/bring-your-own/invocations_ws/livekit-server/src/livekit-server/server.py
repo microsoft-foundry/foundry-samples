@@ -38,9 +38,12 @@ from livekit import api
 from livekit.protocol.agent_dispatch import RoomAgentDispatch
 from livekit.protocol.room import RoomConfiguration
 from loguru import logger
+from telemetry import configure_telemetry
 
 _HERE = Path(__file__).resolve().parent
 load_dotenv(_HERE / ".env", override=True)
+
+configure_telemetry()
 
 
 app = FastAPI()

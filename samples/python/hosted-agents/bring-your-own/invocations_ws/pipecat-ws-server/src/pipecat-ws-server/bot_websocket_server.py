@@ -209,7 +209,7 @@ class ZavaTTSAgent(LLMAgent):
             agent (str): The agent to transfer to (e.g. 'greeter', 'check_order').
             reason (str): Why the user is being transferred.
         """
-        logger.info(f"Agent '{self.name}': transferring to '{agent}' ({reason})")
+        logger.info("Agent '{}' transferring to '{}'", self.name, agent)
         await self.handoff_to(
             agent,
             messages=[
@@ -231,7 +231,7 @@ class ZavaTTSAgent(LLMAgent):
         Args:
             reason (str): Why the conversation is ending.
         """
-        logger.info(f"Agent '{self.name}': ending conversation ({reason})")
+        logger.info("Agent '{}' ending conversation", self.name)
         await self.end(
             reason=reason,
             messages=[{"role": "developer", "content": reason}],

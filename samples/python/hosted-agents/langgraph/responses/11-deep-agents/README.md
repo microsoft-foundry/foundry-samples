@@ -10,7 +10,7 @@ This sample adapts LangChain's official [Build a deep research agent](https://do
 - Producing a structured report with consolidated inline citations.
 - Hosting the compiled Deep Agents graph through `ResponsesHostServer`.
 - Persisting LangGraph checkpoints with `FoundryCheckpointSaver`.
-- Publishing saved reports as private Azure Blob snapshots with read-only download links.
+- Publishing saved reports as private Azure Blob snapshots downloaded with Microsoft Entra ID.
 
 ## How it works
 
@@ -21,7 +21,8 @@ The agent uses a model deployed in the Foundry project. Its coordinator and rese
 The coordinator also has `publish_report(report_name)`, adapted from the
 [SDK sample's Blob publication tool](https://github.com/langchain-ai/langchain-azure/blob/c480d810ca96e77860db64ba3403c3bf13d5dfcf/samples/hosting/langgraph-hosted-agents/responses/12_deep_agents/report_export.py).
 It reads the selected saved virtual file, uploads a separate private Blob, and
-returns its SHA256 and a one-hour, read-only HTTPS user-delegation SAS. Working
+returns its SHA256, Blob name, and unsigned HTTPS Blob URL. Both uploads and
+downloads use Microsoft Entra ID; it never generates a SAS or uses account keys. Working
 files remain in the existing checkpoint-backed state for later edits; Blob is
 an export destination, not a new filesystem or checkpointer.
 
@@ -35,6 +36,7 @@ src/langgraph-deep-agents/
 ├── agent.py
 ├── utils.py
 ├── report_export.py
+├── download_report.py
 └── research_agent/
     ├── __init__.py
     ├── prompts.py
@@ -45,6 +47,7 @@ src/langgraph-deep-agents/
 - `agent.py` composes the coordinator, research subagent, and planning middleware.
 - `utils.py` constructs the Foundry-backed chat model.
 - `report_export.py` publishes a saved report without changing its working copy.
+- `download_report.py` downloads with the caller's Entra identity and verifies SHA256 before saving.
 - `research_agent/prompts.py` contains the research workflow and delegation instructions.
 - `research_agent/tools.py` loads the tools exposed by the Foundry Toolbox.
 
@@ -92,7 +95,6 @@ azd env set AZURE_STORAGE_CONTAINER_NAME "$REPORT_STORAGE_CONTAINER"
 REPORT_STORAGE_ID=$(az storage account show --subscription "$SUBSCRIPTION_ID" --resource-group "$REPORT_RESOURCE_GROUP" --name "$REPORT_STORAGE_ACCOUNT" --query id -o tsv)
 REPORT_CONTAINER_SCOPE="$REPORT_STORAGE_ID/blobServices/default/containers/$REPORT_STORAGE_CONTAINER"
 az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$DEVELOPER_PRINCIPAL_ID" --assignee-principal-type User --role "Storage Blob Data Contributor" --scope "$REPORT_CONTAINER_SCOPE"
-az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$DEVELOPER_PRINCIPAL_ID" --assignee-principal-type User --role "Storage Blob Delegator" --scope "$REPORT_STORAGE_ID"
 ```
 
 With existing Storage, skip the three resource-creation commands. Grant the
@@ -100,8 +102,19 @@ identity actually used by `DefaultAzureCredential`, not necessarily the
 administrator running the commands. For an interactive developer, find its ID
 with `az ad signed-in-user show --query id -o tsv`; for a service principal, use
 its object ID and change `--assignee-principal-type` to `ServicePrincipal`.
-The account-level delegation role is required to sign links; container-only data
-access is insufficient. Allow time for RBAC propagation.
+The uploading identity needs only container-scoped data access; no
+`Storage Blob Delegator` role is required. Give download-only users
+`Storage Blob Data Reader` on the report container. Allow time for RBAC propagation.
+For a separate download-only user, have the Storage administrator run:
+
+```bash
+REPORT_READER_PRINCIPAL_ID="<download-user-object-id>"
+az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$REPORT_READER_PRINCIPAL_ID" --assignee-principal-type User --role "Storage Blob Data Reader" --scope "$REPORT_CONTAINER_SCOPE"
+```
+
+This grants access to all reports in that container, not per-user report isolation;
+use separate containers or an independently authorized download service if users
+must be isolated from one another.
 
 PowerShell equivalent for existing private Storage:
 
@@ -116,7 +129,6 @@ azd env set AZURE_STORAGE_CONTAINER_NAME $REPORT_STORAGE_CONTAINER
 $REPORT_STORAGE_ID = az storage account show --subscription $SUBSCRIPTION_ID --resource-group $REPORT_RESOURCE_GROUP --name $REPORT_STORAGE_ACCOUNT --query id -o tsv
 $REPORT_CONTAINER_SCOPE = "$REPORT_STORAGE_ID/blobServices/default/containers/$REPORT_STORAGE_CONTAINER"
 az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $DEVELOPER_PRINCIPAL_ID --assignee-principal-type User --role "Storage Blob Data Contributor" --scope $REPORT_CONTAINER_SCOPE
-az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $DEVELOPER_PRINCIPAL_ID --assignee-principal-type User --role "Storage Blob Delegator" --scope $REPORT_STORAGE_ID
 ```
 
 Then provision and deploy the existing Foundry services:
@@ -153,19 +165,17 @@ the developer's separate Blob permissions.
 azd deploy
 ```
 
-Before hosted invocation, have the Storage administrator assign the same two
-roles to the deployed agent's **instance identity**, separately from the developer:
+Before hosted invocation, have the Storage administrator assign the data role
+to the deployed agent's **instance identity**, separately from the developer:
 
 ```bash
 AGENT_PRINCIPAL_ID=$(azd ai agent show langgraph-deep-agents -o json | python -c 'import json,sys; print(json.load(sys.stdin)["instance_identity"]["principal_id"])')
 az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$AGENT_PRINCIPAL_ID" --assignee-principal-type ServicePrincipal --role "Storage Blob Data Contributor" --scope "$REPORT_CONTAINER_SCOPE"
-az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$AGENT_PRINCIPAL_ID" --assignee-principal-type ServicePrincipal --role "Storage Blob Delegator" --scope "$REPORT_STORAGE_ID"
 ```
 
 ```powershell
 $AGENT_PRINCIPAL_ID = (azd ai agent show langgraph-deep-agents -o json | ConvertFrom-Json).instance_identity.principal_id
 az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $AGENT_PRINCIPAL_ID --assignee-principal-type ServicePrincipal --role "Storage Blob Data Contributor" --scope $REPORT_CONTAINER_SCOPE
-az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $AGENT_PRINCIPAL_ID --assignee-principal-type ServicePrincipal --role "Storage Blob Delegator" --scope $REPORT_STORAGE_ID
 ```
 
 Do not grant the project's identity or blueprint instead. `azd deploy` does not
@@ -187,29 +197,57 @@ before F5. The Toolkit does not grant external Storage permissions.
 
 ## Download and update reports
 
-Open the returned URL in a browser, or download outside this checkout:
+Publication checks that the report container is private and refuses anonymous
+container access. The returned `blob_url` contains no SAS token. Opening it directly
+in a browser does not automatically authenticate. Sign in with `az login` as a
+user with `Storage Blob Data Reader` on the report container, then run the
+included downloader from `src/langgraph-deep-agents`:
 
 ```bash
-curl --fail --location "<download_url>" --output "/path/outside/repository/report.md"
+uv run --frozen python download_report.py --blob-url "<blob_url>" --sha256 "<sha256>" --output "/path/outside/repository/report-v1.md"
 ```
 
-Compare the downloaded file's SHA256 with the value returned by `publish_report`.
+The downloader uses `DefaultAzureCredential` and your own Entra identity. It
+rejects SAS URLs and verifies the returned SHA256 before writing a file. For an
+Azure CLI download, use the `blob_name` returned by `publish_report`:
+
+```bash
+az storage blob download --account-name "$REPORT_STORAGE_ACCOUNT" --container-name "$REPORT_STORAGE_CONTAINER" --name "<blob_name>" --file "/path/outside/repository/report-v1.md" --auth-mode login
+```
+
+Unlike the included downloader, the Azure CLI command does not compare SHA256;
+check the downloaded digest separately. Do not supply account keys or SAS tokens.
+
 In the same conversation, ask the agent to read `/report-v1.md`, copy it to
 `/report-v2.md`, and make the requested edits only to that copy. Ask it to read
-both saved files and return clearly labeled download links for both versions.
-Download both, compare each SHA256, and confirm the original file and its earlier
-download remain unchanged. When calling the Responses API directly, carry the
-latest response ID and the hosted session ID. Each publication creates a new
-Blob; neither revising the copy nor publishing it overwrites the original.
+both saved files and return clearly labeled Blob URLs and digests for both.
+Download both with your own Entra identity and confirm the original saved file
+and earlier Blob remain unchanged. When calling the Responses API directly,
+carry the latest response ID and the hosted session ID.
 
-Publication failures return no link and leave the saved report editable. Anyone
-holding a valid SAS URL can read its snapshot until expiry. Expiry does **not**
-delete the Blob; delete your test exports explicitly, and remove separately created
-Storage resources when no longer needed. `azd down` does not own those resources.
+Publication failures leave the saved report editable and return no URL. Download
+access is evaluated using the downloader's Entra identity and current Blob RBAC,
+not possession of a link. Reports have no automatic expiry: delete your test
+exports explicitly, and remove separately created Storage resources when no
+longer needed. `azd down` does not own those resources. Do not remove shared CI
+grants just because this sample no longer requires the delegation role.
 
-Tool results now contain bearer download URLs. The sample therefore defaults both
-telemetry content-capture flags to `false` before hosting. Keep URLs, transcripts,
-and downloaded reports private; opting in to content capture can record them.
+## Telemetry and logging
+
+Application diagnostics are enabled at INFO by default, including startup and
+successful report publication events. The stock `ResponsesHostServer` owns
+OpenTelemetry instrumentation and export; do not add a second LangChain
+instrumentor or Azure Monitor configuration to this host. Connect Application
+Insights to the Foundry project for hosted export; for local export, set
+`APPLICATIONINSIGHTS_CONNECTION_STRING` in your local environment. Existing OTLP
+configuration is also supported by the host.
+
+Logs and tracing remain enabled while both message/tool-content capture flags
+in `.env.example` and `azure.yaml` default to `false`. Those flags control
+sensitive content, not the telemetry pipeline. Publication logs include the
+report filename and byte count, not report bodies, credentials, or access tokens.
+Keep reports and conversations private; opt-in content recording can expose
+sensitive data. See [the shared telemetry guidance](../../../README.md#telemetry-and-logging).
 
 ## Validate Blob publication
 
@@ -220,7 +258,8 @@ uv sync --frozen
 uv run --frozen python -m unittest discover -s tests -v
 ```
 
-The tests cover the added tool, credential lifetime, unchanged researcher tools,
+The tests cover Entra-only downloads and digest checks, the publication tool,
+credential lifetime, unchanged researcher tools,
 report preservation, and native JSON/SSE publication success/failure. They use
 the real `FoundryCheckpointSaver` with its local filesystem State Store backend,
 including checkpoints created in the same second. SDK 1.2.12 or later is required
@@ -228,11 +267,12 @@ for checkpoint-ID ordering; `uv.lock` includes this fix. External model and Blob
 boundaries are simulated; the original model helper and research tools are unchanged.
 
 The cloud contract checks research, publication, revision of a separate saved copy,
-and reading both versions using the existing test-spec schema. It does not download
-the files. For full
-acceptance, run against the deployed agent, download the original and revised
-snapshots, compare their returned digests and contents, and re-download the old
-URL to confirm it is unchanged. Schema/offline success is not cloud acceptance.
-CI's deployed instance needs the same Blob roles; missing permission must fail,
+and reading both versions, plus sample-owned INFO log events and absence of SAS
+parameters, using the existing test-spec schema. It does not download the files.
+For full acceptance, download both snapshots with a Blob-authorized Entra user,
+compare their digests and saved-file contents, and re-download the original Blob.
+Also verify unauthenticated requests and an Entra user without Blob data access
+are denied and create no local output. Schema/offline success is not cloud acceptance.
+CI's deployed instance needs the Blob data role; missing permission must fail,
 not be bypassed with account keys. Retain shared CI grants until the identity is
 retired and no other version or run needs them.

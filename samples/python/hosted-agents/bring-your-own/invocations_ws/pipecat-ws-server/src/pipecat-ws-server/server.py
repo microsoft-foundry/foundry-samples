@@ -8,11 +8,14 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from telemetry import configure_telemetry
 
 logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv(override=False)
+
+configure_telemetry()
 
 from bot_websocket_server import run_bot
 

@@ -37,11 +37,14 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
+from telemetry import configure_telemetry
 
 # Load .env from the same directory as this file BEFORE importing the bot.
 load_dotenv(
     Path(__file__).resolve().parent / ".env", override=False
 )
+
+configure_telemetry()
 
 from bot_webrtc_server import run_bot  # noqa: E402
 from pipecat.transports.smallwebrtc.connection import (  # noqa: E402
