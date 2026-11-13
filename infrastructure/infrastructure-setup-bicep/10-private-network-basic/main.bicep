@@ -58,7 +58,7 @@ param peSubnetName string = 'pe-subnet'
 */ 
 resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: aiFoundryName
-  location: resourceGroup().location
+  location: location
   identity: {
     type: 'SystemAssigned'
   }

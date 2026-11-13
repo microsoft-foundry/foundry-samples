@@ -28,7 +28,7 @@ resource "azurerm_resource_group" "rg" {
 resource "azapi_resource" "ai_foundry" {
   type      = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
   name      = local.account_name
-  location  = azurerm_resource_group.rg.location
+  location  = coalesce(var.foundry_location, azurerm_resource_group.rg.location)
   parent_id = azurerm_resource_group.rg.id
 
   identity {
@@ -78,7 +78,7 @@ resource "azapi_resource" "model_deployment" {
 resource "azapi_resource" "ai_project" {
   type      = "Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview"
   name      = var.project_name
-  location  = var.location
+  location  = azapi_resource.ai_foundry.location
   parent_id = azapi_resource.ai_foundry.id
 
   identity {

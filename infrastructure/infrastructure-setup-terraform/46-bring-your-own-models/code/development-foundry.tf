@@ -8,7 +8,7 @@ resource "azapi_resource" "foundry_agent_account" {
   provider  = azapi.development
   type      = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
   name      = local.foundry_agent_account_name
-  location  = azurerm_resource_group.development.location
+  location  = coalesce(var.foundry_location, azurerm_resource_group.development.location)
   parent_id = azurerm_resource_group.development.id
 
   identity {

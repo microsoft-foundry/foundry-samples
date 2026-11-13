@@ -10,7 +10,7 @@ data "azurerm_resource_group" "hub" {
 resource "azapi_resource" "foundry_model_account" {
   type      = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
   name      = local.foundry_model_account_name
-  location  = data.azurerm_resource_group.hub.location
+  location  = coalesce(var.foundry_location, data.azurerm_resource_group.hub.location)
   parent_id = local.hub_rg_id
 
   identity {

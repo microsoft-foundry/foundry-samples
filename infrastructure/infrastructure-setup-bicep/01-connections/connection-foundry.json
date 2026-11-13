@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "14155744296600836147"
+      "templateHash": "10842231687547934134"
     }
   },
   "parameters": {
@@ -16,6 +16,43 @@
     "connectedResourceName": {
       "type": "string",
       "defaultValue": "[format('foundry-{0}', parameters('aiFoundryName'))]"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "allowedValues": [
+        "australiaeast",
+        "brazilsouth",
+        "canadacentral",
+        "canadaeast",
+        "centralindia",
+        "centralus",
+        "eastasia",
+        "eastus",
+        "francecentral",
+        "germanywestcentral",
+        "italynorth",
+        "japaneast",
+        "koreacentral",
+        "northcentralus",
+        "northeurope",
+        "norwayeast",
+        "qatarcentral",
+        "southafricanorth",
+        "southcentralus",
+        "southindia",
+        "southeastasia",
+        "spaincentral",
+        "swedencentral",
+        "switzerlandnorth",
+        "uaenorth",
+        "uksouth",
+        "westeurope",
+        "westus",
+        "westus3",
+        "usgovarizona",
+        "usgovvirginia"
+      ]
     },
     "newOrExisting": {
       "type": "string",
@@ -44,7 +81,7 @@
       "type": "Microsoft.CognitiveServices/accounts",
       "apiVersion": "2025-04-01-preview",
       "name": "[parameters('connectedResourceName')]",
-      "location": "[resourceGroup().location]",
+      "location": "[parameters('location')]",
       "kind": "AIServices",
       "sku": {
         "name": "S0"

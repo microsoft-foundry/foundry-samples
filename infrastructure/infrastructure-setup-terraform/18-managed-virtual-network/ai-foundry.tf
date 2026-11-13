@@ -2,7 +2,7 @@
 resource "azapi_resource" "cognitive_account" {
   type      = "Microsoft.CognitiveServices/accounts@2025-10-01-preview"
   name      = local.foundry_name
-  location  = azurerm_resource_group.main.location
+  location  = coalesce(var.foundry_location, azurerm_resource_group.main.location)
   parent_id = azurerm_resource_group.main.id
 
   schema_validation_enabled = false
@@ -259,7 +259,7 @@ resource "azapi_resource" "a365_frontdoor_outbound_rule" {
 resource "azapi_resource" "ai_foundry_project" {
   type      = "Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview"
   name      = "firstProject"
-  location  = var.location
+  location  = azapi_resource.cognitive_account.location
   parent_id = azapi_resource.cognitive_account.id
 
   schema_validation_enabled = false

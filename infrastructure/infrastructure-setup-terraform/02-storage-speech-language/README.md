@@ -24,6 +24,7 @@ These examples can be adapted and integrated into your Terraform configurations.
 
 This folder now includes a full Terraform sample with:
 - Microsoft Foundry account configured for user-owned storage
+- Microsoft Foundry project under the account
 - Optional Speech and Language resource deployment switches
 - Storage RBAC wiring for the account identity
 

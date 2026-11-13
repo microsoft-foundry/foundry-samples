@@ -84,7 +84,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' =  {
 */
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: aiFoundryName
-  location: resourceGroup().location
+  location: location
   identity: {
     type: 'SystemAssigned'
   }

@@ -181,7 +181,7 @@ resource "azapi_resource" "ai_foundry" {
   type                      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name                      = "aifoundry${random_string.unique.result}"
   parent_id                 = azurerm_resource_group.rg.id
-  location                  = azurerm_resource_group.rg.location
+  location                  = coalesce(var.foundry_location, azurerm_resource_group.rg.location)
   schema_validation_enabled = false
 
   body = {
@@ -501,7 +501,7 @@ resource "azapi_resource" "ai_foundry_project" {
   type                      = "Microsoft.CognitiveServices/accounts/projects@2025-06-01"
   name                      = "project${random_string.unique.result}"
   parent_id                 = azapi_resource.ai_foundry.id
-  location                  = var.location
+  location                  = azapi_resource.ai_foundry.location
   schema_validation_enabled = false
 
   body = {

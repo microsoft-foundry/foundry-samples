@@ -80,7 +80,7 @@ resource existingAoaiResource 'Microsoft.CognitiveServices/accounts@2023-05-01' 
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   #disable-next-line use-stable-resource-identifiers
   name: accountName
-  location: resourceGroup().location
+  location: location
   sku: {
     name: 'S0'
   }

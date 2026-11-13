@@ -7,7 +7,7 @@ resource "azapi_resource" "project_alpha" {
   provider  = azapi.development
   type      = "Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview"
   name      = "alpha"
-  location  = var.location
+  location  = azapi_resource.foundry_agent_account.location
   parent_id = azapi_resource.foundry_agent_account.id
 
   identity {
@@ -26,7 +26,7 @@ resource "azapi_resource" "project_beta" {
   provider  = azapi.development
   type      = "Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview"
   name      = "beta"
-  location  = var.location
+  location  = azapi_resource.foundry_agent_account.location
   parent_id = azapi_resource.foundry_agent_account.id
 
   identity {

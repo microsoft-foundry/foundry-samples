@@ -68,7 +68,7 @@ var keyVaultUri = 'https://${keyVaultName}.vault.azure.net/'
 */ 
 resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: aiFoundryName
-  location: resourceGroup().location
+  location: location
   identity: {
     type: 'SystemAssigned'
   }

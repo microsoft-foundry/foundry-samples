@@ -40,7 +40,7 @@ param location string = any(resourceGroup().location)
 */ 
 resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: aiFoundryName
-  location: resourceGroup().location
+  location: location
   identity: {
     type: 'SystemAssigned'
   }

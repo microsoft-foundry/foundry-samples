@@ -69,7 +69,7 @@ module aiFoundryAccount './modules/foundry-account.bicep' = {
   name: 'foundryAccount'
   params: {
     aiFoundryName: aiFoundryName
-    location: resourceGroup().location
+    location: location
     userAssignedIdentityId: userAssignedIdentityId
   }
 }

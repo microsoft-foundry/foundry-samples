@@ -15,7 +15,7 @@ data "azurerm_resource_group" "spoke" {
 resource "azapi_resource" "foundry_agent_account" {
   type      = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
   name      = local.foundry_agent_account_name
-  location  = data.azurerm_resource_group.spoke.location
+  location  = coalesce(var.foundry_location, data.azurerm_resource_group.spoke.location)
   parent_id = local.spoke_rg_id
   tags      = local.common_tags
 

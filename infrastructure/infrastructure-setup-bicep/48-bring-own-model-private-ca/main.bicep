@@ -392,7 +392,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
 // ----------------------------------------------------------------------------
 resource modelAccount 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: foundryModelAccountName
-  location: resourceGroup().location
+  location: location
   kind: 'AIServices'
   tags: commonTags
   sku: {
@@ -616,7 +616,7 @@ var trustedCertificateSourcesProperty = enablePrivateCaTrust ? {
 
 resource agentAccount 'Microsoft.CognitiveServices/accounts@2026-11-15-preview' = {
   name: foundryAgentAccountName
-  location: resourceGroup().location
+  location: location
   kind: 'AIServices'
   tags: commonTags
   sku: {

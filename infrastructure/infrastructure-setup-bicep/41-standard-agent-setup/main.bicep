@@ -156,7 +156,7 @@ module aiAccount 'modules-standard/ai-account-identity.bicep' = {
   name: 'ai-${accountName}-${uniqueSuffix}-deployment'
   params: {
     accountName: accountName
-    location: resourceGroup().location
+    location: location
     modelName: modelName
     modelFormat: modelFormat
     modelVersion: modelVersion

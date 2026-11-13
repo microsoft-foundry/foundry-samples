@@ -66,7 +66,7 @@ module aiAccount 'modules/ai-account-keys.bicep' = {
   params: {
     // workspace organization
     account_name: account_name
-    location: resourceGroup().location
+    location: location
 
     modelName: modelName
     modelFormat: modelFormat

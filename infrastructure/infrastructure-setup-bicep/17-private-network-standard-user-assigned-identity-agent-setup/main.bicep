@@ -218,7 +218,7 @@ module aiAccount 'modules-network-secured/ai-account-identity.bicep' = {
   params: {
     // workspace organization
     accountName: accountName
-    location: resourceGroup().location
+    location: location
     modelName: modelName
     modelFormat: modelFormat
     modelVersion: modelVersion

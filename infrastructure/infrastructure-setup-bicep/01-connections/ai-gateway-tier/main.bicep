@@ -138,7 +138,7 @@ var accountName = toLower('${aiServicesName}${uniqueSuffix}')
 // ===========================================================================
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: accountName
-  location: resourceGroup().location
+  location: location
   sku: {
     name: 'S0'
   }

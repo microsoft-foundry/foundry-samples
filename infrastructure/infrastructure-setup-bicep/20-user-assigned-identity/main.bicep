@@ -99,7 +99,7 @@ var userAssignedIdentityPrincipalId = useExistingUserAssignedIdentity ? existing
 */ 
 resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: aiFoundryName
-  location: resourceGroup().location
+  location: location
   identity: {
     type: 'UserAssigned' // Select 'UserAssigned' or 'SystemAssigned,UserAssigned' during creation as this cannot be updated.
     userAssignedIdentities: {

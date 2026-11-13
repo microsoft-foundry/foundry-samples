@@ -63,7 +63,7 @@ targetScope = 'resourceGroup'
   'swedencentral'
 ])
 @description('Region for resources that require the AI Gateway tier and its co-regional VNet.')
-param region string = 'swedencentral'
+param region string = any(resourceGroup().location)
 
 // ===========================================================================
 // Foundation inputs (template 16 standard network-secured agent)
@@ -258,7 +258,7 @@ module aiAccount '../../modules-network-secured/ai-account-identity.bicep' = {
   name: 'ai-${accountName}-${uniqueSuffix}-deployment'
   params: {
     accountName: accountName
-    location: resourceGroup().location
+    location: region
     modelName: modelName
     modelFormat: modelFormat
     modelVersion: modelVersion
@@ -574,7 +574,7 @@ resource apimOutboundSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-0
 // ===========================================================================
 resource hubAccount 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: hubName
-  location: resourceGroup().location
+  location: region
   sku: {
     name: 'S0'
   }

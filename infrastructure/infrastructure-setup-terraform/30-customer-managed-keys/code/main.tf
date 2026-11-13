@@ -54,7 +54,7 @@ resource "azurerm_key_vault_key" "cmk" {
 resource "azapi_resource" "ai_foundry" {
   type      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name      = var.ai_foundry_name
-  location  = azurerm_resource_group.rg.location
+  location  = coalesce(var.foundry_location, azurerm_resource_group.rg.location)
   parent_id = azurerm_resource_group.rg.id
 
   identity {
@@ -113,7 +113,7 @@ resource "azapi_update_resource" "ai_foundry_cmk" {
 resource "azapi_resource" "ai_project" {
   type      = "Microsoft.CognitiveServices/accounts/projects@2025-06-01"
   name      = coalesce(var.ai_project_name, "${var.ai_foundry_name}-proj")
-  location  = var.location
+  location  = azapi_resource.ai_foundry.location
   parent_id = azapi_resource.ai_foundry.id
 
   identity {

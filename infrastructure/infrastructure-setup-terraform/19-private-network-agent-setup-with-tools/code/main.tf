@@ -211,7 +211,7 @@ resource "azapi_resource" "ai_foundry" {
   type                      = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
   name                      = local.account_name
   parent_id                 = local.rg_id
-  location                  = local.rg_location
+  location                  = coalesce(var.foundry_location, local.rg_location)
   schema_validation_enabled = false
 
   identity {
@@ -524,7 +524,7 @@ resource "azapi_resource" "ai_project" {
   ]
   type                      = "Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview"
   name                      = var.project_name
-  location                  = var.location
+  location                  = azapi_resource.ai_foundry.location
   parent_id                 = azapi_resource.ai_foundry.id
   schema_validation_enabled = false
 

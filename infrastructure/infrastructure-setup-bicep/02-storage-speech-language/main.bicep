@@ -5,6 +5,9 @@
 @description('Name of the Azure AI Foundry account')
 param aiFoundryName string
 
+@description('Name of the first project under the Azure AI Foundry account')
+param aiProjectName string = '${aiFoundryName}-proj'
+
 @description('Location for the resource')
 @allowed([
   'australiaeast'
@@ -121,7 +124,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = if (!us
 // ====================================================================
 resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-07-01-preview' = {
   name: aiFoundryName
-  location: resourceGroup().location
+  location: location
   sku: {
     name: 'S0'
   }
@@ -138,6 +141,16 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-07-01-preview' = {
         resourceId: useExistingStorageAccount ? userOwnedStorageResourceId : '/subscriptions/${targetStorageSubscriptionId}/resourceGroups/${resourceGroup().name}/providers/Microsoft.Storage/storageAccounts/${storageAccountName}'
     }]
   }
+}
+
+resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
+  name: aiProjectName
+  parent: aiFoundry
+  location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {}
 }
 
 // ====================================================================
