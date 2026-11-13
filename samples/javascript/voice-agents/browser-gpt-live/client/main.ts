@@ -47,6 +47,7 @@ let currentUserLine: HTMLLIElement | undefined;
 let currentAgentLine: HTMLLIElement | undefined;
 let cachedToken: { token: string; expiresOnTimestamp: number } | undefined;
 let disconnecting = false;
+let microphoneBusy = false;
 
 /** Gets a Foundry access token from the loopback Vite token bridge (Azure CLI credential). */
 const credential = {
@@ -72,7 +73,7 @@ function setStatus(text: string, state: "offline" | "busy" | "live" | "error"): 
 function setConnected(connected: boolean): void {
   connectButton.disabled = connected;
   disconnectButton.disabled = !connected;
-  micButton.disabled = !connected;
+  micButton.disabled = !connected || microphoneBusy;
   textInput.disabled = !connected;
   textForm.querySelector("button")!.disabled = !connected;
   for (const input of [endpointInput, agentNameInput, createAgentInput, modelInput, voiceInput]) {
@@ -182,6 +183,8 @@ async function connect(): Promise<void> {
   micButton.disabled = true;
   textInput.disabled = true;
   textForm.querySelector("button")!.disabled = true;
+  currentUserLine = undefined;
+  currentAgentLine = undefined;
   transcriptList.replaceChildren();
   eventLog.textContent = "";
   try {
@@ -249,28 +252,36 @@ function sendAudio(audio: Uint8Array): void {
 }
 
 async function toggleMicrophone(): Promise<void> {
-  if (microphone.active) {
-    await microphone.stop();
-    levelMeter.style.setProperty("--level", "0");
-    micButton.textContent = "Start microphone";
-    startSilence();
+  if (microphoneBusy || !session) {
     return;
   }
+  microphoneBusy = true;
+  micButton.disabled = true;
   try {
-    stopSilence();
-    await microphone.start(
-      sendAudio,
-      (level) => levelMeter.style.setProperty("--level", level.toFixed(3)),
-    );
-    if (!session) {
-      // The session ended while the browser was waiting for microphone permission.
+    if (microphone.active) {
       await microphone.stop();
-      return;
+      levelMeter.style.setProperty("--level", "0");
+      micButton.textContent = "Start microphone";
+      startSilence();
+    } else {
+      stopSilence();
+      await microphone.start(
+        sendAudio,
+        (level) => levelMeter.style.setProperty("--level", level.toFixed(3)),
+      );
+      if (!session) {
+        // The session ended while the browser was waiting for microphone permission.
+        await microphone.stop();
+        return;
+      }
+      micButton.textContent = "Mute microphone";
     }
-    micButton.textContent = "Mute microphone";
   } catch (error) {
     startSilence();
     setStatus(`Microphone unavailable: ${error instanceof Error ? error.message : error}`, "error");
+  } finally {
+    microphoneBusy = false;
+    micButton.disabled = !session;
   }
 }
 

@@ -93,6 +93,12 @@ async function main(): Promise<void> {
           throw new Error(`${event.error.code ?? "voice_agent_error"}: ${event.error.message}`);
         } else if (event.type === "response.done") {
           console.log(`\nResponse status: ${event.response.status}`);
+          if (event.response.status !== "completed") {
+            const details = event.response.status_details;
+            throw new Error(
+              `Configuration check response ${event.response.status}: ${details?.error?.message ?? details?.reason ?? "No further details"}`,
+            );
+          }
           break;
         }
       }

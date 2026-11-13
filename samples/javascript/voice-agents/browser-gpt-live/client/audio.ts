@@ -9,53 +9,76 @@ export class MicrophoneCapture {
   private processor?: ScriptProcessorNode;
   private source?: MediaStreamAudioSourceNode;
   private silentOutput?: GainNode;
+  private generation = 0;
+  private starting = false;
 
   public async start(
     onAudio: (audio: Uint8Array) => void,
     onLevel: (level: number) => void,
   ): Promise<void> {
-    if (this.processor) {
+    if (this.processor || this.starting) {
       return;
     }
 
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        channelCount: 1,
-        sampleRate: targetSampleRate,
-        echoCancellation: true,
-        noiseSuppression: true,
-      },
-    });
-    this.context = createCaptureAudioContext();
-    await this.context.resume();
-    this.source = this.context.createMediaStreamSource(this.stream);
-    this.processor = this.context.createScriptProcessor(4096, 1, 1);
-    this.silentOutput = this.context.createGain();
-    this.silentOutput.gain.value = 0;
+    const generation = ++this.generation;
+    this.starting = true;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          sampleRate: targetSampleRate,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      });
+      if (generation !== this.generation) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      this.stream = stream;
+      this.context = createCaptureAudioContext();
+      await this.context.resume();
+      if (generation !== this.generation) {
+        await this.stop();
+        return;
+      }
+      this.source = this.context.createMediaStreamSource(this.stream);
+      this.processor = this.context.createScriptProcessor(4096, 1, 1);
+      this.silentOutput = this.context.createGain();
+      this.silentOutput.gain.value = 0;
 
-    this.processor.onaudioprocess = (event) => {
-      const input = event.inputBuffer.getChannelData(0);
-      onLevel(calculateLevel(input));
-      const resampled = resample(input, this.context!.sampleRate, targetSampleRate);
-      onAudio(toPcm16(resampled));
-    };
+      this.processor.onaudioprocess = (event) => {
+        const input = event.inputBuffer.getChannelData(0);
+        onLevel(calculateLevel(input));
+        const resampled = resample(input, this.context!.sampleRate, targetSampleRate);
+        onAudio(toPcm16(resampled));
+      };
 
-    this.source.connect(this.processor);
-    this.processor.connect(this.silentOutput);
-    this.silentOutput.connect(this.context.destination);
+      this.source.connect(this.processor);
+      this.processor.connect(this.silentOutput);
+      this.silentOutput.connect(this.context.destination);
+    } catch (error) {
+      await this.stop();
+      throw error;
+    } finally {
+      this.starting = false;
+    }
   }
 
   public async stop(): Promise<void> {
+    this.generation++;
     this.processor?.disconnect();
     this.source?.disconnect();
     this.silentOutput?.disconnect();
-    this.stream?.getTracks().forEach((track) => track.stop());
-    await this.context?.close();
+    const stream = this.stream;
+    const context = this.context;
     this.processor = undefined;
     this.source = undefined;
     this.silentOutput = undefined;
     this.stream = undefined;
     this.context = undefined;
+    stream?.getTracks().forEach((track) => track.stop());
+    await context?.close();
   }
 
   public get active(): boolean {

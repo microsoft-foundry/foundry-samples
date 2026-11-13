@@ -14,7 +14,6 @@ function isLoopbackHost(hostname: string): boolean {
 function validateLocalRequest(request: IncomingMessage): void {
   const remoteAddress = request.socket.remoteAddress;
   if (
-    remoteAddress &&
     remoteAddress !== "127.0.0.1" &&
     remoteAddress !== "::1" &&
     remoteAddress !== "::ffff:127.0.0.1"
@@ -22,12 +21,26 @@ function validateLocalRequest(request: IncomingMessage): void {
     throw new Error("Local Azure development routes accept loopback requests only.");
   }
 
+  const host = request.headers.host;
+  if (!host) {
+    throw new Error("Local Azure development requests must include a loopback Host header.");
+  }
+  let hostUrl: URL;
+  try {
+    hostUrl = new URL(`http://${host}`);
+  } catch {
+    throw new Error("Local Azure development requests must use a valid loopback Host header.");
+  }
+  if (!isLoopbackHost(hostUrl.hostname) || hostUrl.host.toLowerCase() !== host.toLowerCase()) {
+    throw new Error("Local Azure development requests must use a loopback Host header.");
+  }
+
   const origin = request.headers.origin;
   if (!origin) {
     return;
   }
   const originUrl = new URL(origin);
-  if (!isLoopbackHost(originUrl.hostname) || originUrl.host !== request.headers.host) {
+  if (!isLoopbackHost(originUrl.hostname) || originUrl.host !== host) {
     throw new Error("Local Azure development requests must use this Vite server's origin.");
   }
 }
