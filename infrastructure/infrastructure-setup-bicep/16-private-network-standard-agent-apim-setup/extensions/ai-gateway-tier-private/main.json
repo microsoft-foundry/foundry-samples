@@ -1267,7 +1267,7 @@
             "value": "[variables('accountName')]"
           },
           "location": {
-            "value": "[resourceGroup().location]"
+            "value": "[parameters('region')]"
           },
           "modelName": {
             "value": "[parameters('modelName')]"
