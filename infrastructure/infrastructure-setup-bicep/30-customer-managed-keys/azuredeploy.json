@@ -87,7 +87,7 @@
       "type": "Microsoft.CognitiveServices/accounts",
       "apiVersion": "2025-06-01",
       "name": "[parameters('aiFoundryName')]",
-      "location": "[resourceGroup().location]",
+      "location": "[parameters('location')]",
       "identity": {
         "type": "SystemAssigned"
       },
