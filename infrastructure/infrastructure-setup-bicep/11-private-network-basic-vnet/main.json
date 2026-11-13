@@ -911,6 +911,9 @@
           "accountName": {
             "value": "[variables('accountName')]"
           },
+          "location": {
+            "value": "[parameters('location')]"
+          },
           "modelName": {
             "value": "[parameters('modelName')]"
           },
@@ -944,6 +947,9 @@
             "accountName": {
               "type": "string"
             },
+            "location": {
+              "type": "string"
+            },
             "modelName": {
               "type": "string"
             },
@@ -972,7 +978,7 @@
               "type": "Microsoft.CognitiveServices/accounts",
               "apiVersion": "2025-04-01-preview",
               "name": "[parameters('accountName')]",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('location')]",
               "sku": {
                 "name": "S0"
               },
