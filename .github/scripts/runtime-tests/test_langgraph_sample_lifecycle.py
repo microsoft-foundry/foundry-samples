@@ -1,7 +1,7 @@
 """Local sample lifecycle regressions using runtime dependencies, not Azure access.
 
-Run with the sample's frozen runtime dependencies:
-    python .github/scripts/run_hosted_agent_runtime_tests.py
+Run from the repository root in the sample's frozen runtime environment:
+    python .github/scripts/runtime-tests/test_langgraph_sample_lifecycle.py
 """
 
 from __future__ import annotations
