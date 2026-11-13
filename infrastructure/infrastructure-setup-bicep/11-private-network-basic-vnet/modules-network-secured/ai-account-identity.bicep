@@ -1,5 +1,4 @@
 param accountName string
-param location string
 param modelName string
 param modelFormat string
 param modelVersion string
@@ -11,7 +10,7 @@ param networkInjection string = 'true'
 #disable-next-line BCP036
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: accountName
-  location: location
+  location: resourceGroup().location
   sku: {
     name: 'S0'
   }

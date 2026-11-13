@@ -5,13 +5,46 @@
     "_generator": {
       "name": "bicep",
       "version": "0.46.1.21595",
-      "templateHash": "4680182353959664514"
+      "templateHash": "444853625905726767"
     }
   },
   "parameters": {
     "location": {
       "type": "string",
       "defaultValue": "[resourceGroup().location]",
+      "allowedValues": [
+        "australiaeast",
+        "brazilsouth",
+        "canadacentral",
+        "canadaeast",
+        "centralindia",
+        "centralus",
+        "eastasia",
+        "eastus",
+        "francecentral",
+        "germanywestcentral",
+        "italynorth",
+        "japaneast",
+        "koreacentral",
+        "northcentralus",
+        "northeurope",
+        "norwayeast",
+        "qatarcentral",
+        "southafricanorth",
+        "southcentralus",
+        "southindia",
+        "southeastasia",
+        "spaincentral",
+        "swedencentral",
+        "switzerlandnorth",
+        "uaenorth",
+        "uksouth",
+        "westeurope",
+        "westus",
+        "westus3",
+        "usgovarizona",
+        "usgovvirginia"
+      ],
       "metadata": {
         "description": "Location for all resources. Defaults to the resource group location."
       }
@@ -736,7 +769,7 @@
             "value": "[variables('accountName')]"
           },
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[resourceGroup().location]"
           },
           "modelName": {
             "value": "[parameters('modelName')]"
@@ -761,7 +794,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.46.1.21595",
-              "templateHash": "15908440120408802045"
+              "templateHash": "16980511502916134372"
             }
           },
           "parameters": {
@@ -1532,7 +1565,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.46.1.21595",
-              "templateHash": "4721773589020153145"
+              "templateHash": "15999961836015539705"
             }
           },
           "parameters": {
@@ -1738,10 +1771,10 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Network/privateEndpoints', format('ampls-pe-{0}', parameters('suffix')))]",
-                "[resourceId('Microsoft.Network/privateDnsZones', variables('amplsDnsZones')[0])]",
                 "[resourceId('Microsoft.Network/privateDnsZones', variables('amplsDnsZones')[1])]",
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('amplsDnsZones')[2])]",
                 "[resourceId('Microsoft.Network/privateDnsZones', variables('amplsDnsZones')[3])]",
-                "[resourceId('Microsoft.Network/privateDnsZones', variables('amplsDnsZones')[2])]"
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('amplsDnsZones')[0])]"
               ]
             }
           ],

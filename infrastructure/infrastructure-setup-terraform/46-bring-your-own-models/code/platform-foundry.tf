@@ -5,7 +5,7 @@ resource "azapi_resource" "foundry_model_account" {
   provider  = azapi.platform
   type      = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
   name      = local.foundry_model_account_name
-  location  = var.location
+  location  = azurerm_resource_group.platform.location
   parent_id = azurerm_resource_group.platform.id
 
   identity {

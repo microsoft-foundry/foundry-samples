@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.46.1.21595",
-      "templateHash": "9097858196024894984"
+      "templateHash": "2291527954509146527"
     }
   },
   "parameters": {
@@ -13,11 +13,10 @@
       "type": "string",
       "defaultValue": "swedencentral",
       "allowedValues": [
-        "eastus2",
         "swedencentral"
       ],
       "metadata": {
-        "description": "Region for every resource in this sample. The AIGateway SKU is a release-gated preview available only in East US 2 / Sweden Central, and its outbound integration needs a co-regional VNet, so the whole sample deploys in one of these regions."
+        "description": "Region for resources that require the AI Gateway tier and its co-regional VNet."
       }
     },
     "aiServices": {
@@ -378,7 +377,7 @@
       "type": "Microsoft.CognitiveServices/accounts",
       "apiVersion": "2025-04-01-preview",
       "name": "[variables('hubName')]",
-      "location": "[parameters('region')]",
+      "location": "[resourceGroup().location]",
       "sku": {
         "name": "S0"
       },
@@ -1268,7 +1267,7 @@
             "value": "[variables('accountName')]"
           },
           "location": {
-            "value": "[parameters('region')]"
+            "value": "[resourceGroup().location]"
           },
           "modelName": {
             "value": "[parameters('modelName')]"

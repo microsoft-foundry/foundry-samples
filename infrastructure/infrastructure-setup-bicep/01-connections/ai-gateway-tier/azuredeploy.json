@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.46.1.21595",
-      "templateHash": "2257742962386746331"
+      "templateHash": "10260295346214143128"
     }
   },
   "parameters": {
@@ -40,9 +40,42 @@
     },
     "location": {
       "type": "string",
-      "defaultValue": "eastus2",
+      "defaultValue": "[resourceGroup().location]",
+      "allowedValues": [
+        "australiaeast",
+        "brazilsouth",
+        "canadacentral",
+        "canadaeast",
+        "centralindia",
+        "centralus",
+        "eastasia",
+        "eastus",
+        "francecentral",
+        "germanywestcentral",
+        "italynorth",
+        "japaneast",
+        "koreacentral",
+        "northcentralus",
+        "northeurope",
+        "norwayeast",
+        "qatarcentral",
+        "southafricanorth",
+        "southcentralus",
+        "southindia",
+        "southeastasia",
+        "spaincentral",
+        "swedencentral",
+        "switzerlandnorth",
+        "uaenorth",
+        "uksouth",
+        "westeurope",
+        "westus",
+        "westus3",
+        "usgovarizona",
+        "usgovvirginia"
+      ],
       "metadata": {
-        "description": "Region for the account, project, and model. Defaults to eastus2; can differ from gatewayLocation (e.g. a CI region)."
+        "description": "Region for the account, project, and model. Defaults to the resource-group location and can differ from gatewayLocation."
       }
     },
     "gatewayLocation": {
@@ -131,7 +164,7 @@
       "type": "Microsoft.CognitiveServices/accounts",
       "apiVersion": "2025-04-01-preview",
       "name": "[variables('accountName')]",
-      "location": "[parameters('location')]",
+      "location": "[resourceGroup().location]",
       "sku": {
         "name": "S0"
       },

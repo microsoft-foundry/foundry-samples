@@ -4,33 +4,40 @@ Standard Setup Network Secured Steps for main.bicep
 */
 @description('Location for all resources.')
 @allowed([
-  'westus'
-  'eastus'
-  'eastus2'
-  'japaneast'
-  'francecentral'
-  'spaincentral'
-  'uaenorth'
-  'southcentralus'
-  'italynorth'
-  'germanywestcentral'
-  'brazilsouth'
-  'southafricanorth'
   'australiaeast'
-  'swedencentral'
-  'canadaeast'
+  'brazilsouth'
   'westeurope'
-  'westus3'
-  'uksouth'
-  'southindia'
-
-  //only class B and C
+  'canadaeast'
+  'canadacentral'
+  'centralindia'
+  'centralus'
+  'eastasia'
+  'eastus'
+  'francecentral'
+  'germanywestcentral'
+  'italynorth'
+  'japaneast'
   'koreacentral'
-  'polandcentral'
-  'switzerlandnorth'
+  'northcentralus'
+  'northeurope'
   'norwayeast'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
+  'southindia'
+  'southeastasia'
+  'spaincentral'
+  'swedencentral'
+  'switzerlandnorth'
+  'uaenorth'
+  'uksouth'
+  'westeurope'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
 ])
-param location string = 'eastus'
+param location string = any(resourceGroup().location)
 
 @description('Name for your AI Services resource.')
 param aiServices string = 'aiservices'
@@ -211,7 +218,7 @@ module aiAccount 'modules-network-secured/ai-account-identity.bicep' = {
   params: {
     // workspace organization
     accountName: accountName
-    location: location
+    location: resourceGroup().location
     modelName: modelName
     modelFormat: modelFormat
     modelVersion: modelVersion

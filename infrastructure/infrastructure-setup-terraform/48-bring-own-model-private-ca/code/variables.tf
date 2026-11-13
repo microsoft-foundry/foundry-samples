@@ -13,9 +13,20 @@ variable "tenant_id" {
 }
 
 variable "location" {
-  description = "Azure region for all resources. Avoid uksouth for this sample: the account trustedCertificates property has a known silent-discard bug there. eastus2 and swedencentral are validated."
+  description = "Azure region for all resources. Avoid uksouth for this sample: the account trustedCertificates property has a known silent-discard bug there."
   type        = string
-  default     = "eastus2"
+  default     = "swedencentral"
+
+  validation {
+    condition = contains([
+      "australiaeast", "brazilsouth", "canadacentral", "canadaeast", "centralindia", "centralus",
+      "eastasia", "eastus", "francecentral", "germanywestcentral", "italynorth", "japaneast",
+      "koreacentral", "northcentralus", "northeurope", "norwayeast", "qatarcentral", "southafricanorth",
+      "southcentralus", "southindia", "southeastasia", "spaincentral", "swedencentral", "switzerlandnorth",
+      "uaenorth", "uksouth", "usgovarizona", "usgovvirginia", "westeurope", "westus", "westus3",
+    ], var.location)
+    error_message = "The location must be a supported Microsoft Foundry region."
+  }
 }
 
 variable "existing_resource_group_name" {

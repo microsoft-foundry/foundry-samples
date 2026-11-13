@@ -5,39 +5,45 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "1473442548359709863"
+      "templateHash": "3585277827732430552"
     }
   },
   "parameters": {
     "location": {
       "type": "string",
-      "defaultValue": "eastus2",
+      "defaultValue": "[resourceGroup().location]",
       "allowedValues": [
-        "westus",
-        "westus2",
-        "eastus",
-        "eastus2",
-        "japaneast",
-        "francecentral",
-        "spaincentral",
-        "uaenorth",
-        "southcentralus",
-        "italynorth",
-        "germanywestcentral",
-        "brazilsouth",
-        "southafricanorth",
         "australiaeast",
-        "swedencentral",
-        "canadaeast",
+        "brazilsouth",
         "canadacentral",
-        "westeurope",
-        "westus3",
-        "uksouth",
-        "southindia",
+        "canadaeast",
+        "centralindia",
+        "centralus",
+        "eastasia",
+        "eastus",
+        "francecentral",
+        "germanywestcentral",
+        "italynorth",
+        "japaneast",
         "koreacentral",
-        "polandcentral",
+        "northcentralus",
+        "northeurope",
+        "norwayeast",
+        "qatarcentral",
+        "southafricanorth",
+        "southcentralus",
+        "southindia",
+        "southeastasia",
+        "spaincentral",
+        "swedencentral",
         "switzerlandnorth",
-        "norwayeast"
+        "uaenorth",
+        "uksouth",
+        "westeurope",
+        "westus",
+        "westus3",
+        "usgovarizona",
+        "usgovvirginia"
       ],
       "metadata": {
         "description": "Location for all resources."
@@ -1412,7 +1418,7 @@
             "value": "[variables('accountName')]"
           },
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[resourceGroup().location]"
           },
           "modelName": {
             "value": "[parameters('modelName')]"
@@ -1942,7 +1948,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.48.1.52935",
-              "templateHash": "5993399431326858546"
+              "templateHash": "10057605363040481012"
             }
           },
           "parameters": {
@@ -2282,8 +2288,8 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-private-endpoint', parameters('aiAccountName')))]",
-                "[resourceId('Microsoft.Resources/deployments', format('dns-{0}-{1}', replace(variables('dnsZoneEntries')[indexOf(variables('dnsZoneKeys'), variables('cognitiveServicesDnsZoneName'))].key, '.', '-'), parameters('suffix')))]",
                 "[resourceId('Microsoft.Resources/deployments', format('dns-{0}-{1}', replace(variables('dnsZoneEntries')[indexOf(variables('dnsZoneKeys'), variables('openAiDnsZoneName'))].key, '.', '-'), parameters('suffix')))]",
+                "[resourceId('Microsoft.Resources/deployments', format('dns-{0}-{1}', replace(variables('dnsZoneEntries')[indexOf(variables('dnsZoneKeys'), variables('cognitiveServicesDnsZoneName'))].key, '.', '-'), parameters('suffix')))]",
                 "[resourceId('Microsoft.Resources/deployments', format('dns-{0}-{1}', replace(variables('dnsZoneEntries')[indexOf(variables('dnsZoneKeys'), variables('aiServicesDnsZoneName'))].key, '.', '-'), parameters('suffix')))]"
               ]
             },

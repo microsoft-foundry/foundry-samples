@@ -16,6 +16,17 @@ variable "location" {
   description = "Azure region for all hub resources."
   type        = string
   default     = "swedencentral"
+
+  validation {
+    condition = contains([
+      "australiaeast", "brazilsouth", "canadacentral", "canadaeast", "centralindia", "centralus",
+      "eastasia", "eastus", "francecentral", "germanywestcentral", "italynorth", "japaneast",
+      "koreacentral", "northcentralus", "northeurope", "norwayeast", "qatarcentral", "southafricanorth",
+      "southcentralus", "southindia", "southeastasia", "spaincentral", "swedencentral", "switzerlandnorth",
+      "uaenorth", "uksouth", "usgovarizona", "usgovvirginia", "westeurope", "westus", "westus3",
+    ], var.location)
+    error_message = "The location must be a supported Microsoft Foundry region."
+  }
 }
 
 variable "name_prefix" {

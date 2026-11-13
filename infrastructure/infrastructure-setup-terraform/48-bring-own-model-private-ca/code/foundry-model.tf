@@ -10,7 +10,7 @@
 resource "azapi_resource" "foundry_model_account" {
   type      = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
   name      = local.foundry_model_account_name
-  location  = var.location
+  location  = local.create_rg ? azurerm_resource_group.rg[0].location : data.azurerm_resource_group.existing[0].location
   parent_id = local.rg_id
   tags      = local.common_tags
 

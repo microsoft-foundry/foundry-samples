@@ -9,7 +9,40 @@
 param aiFoundryName string = 'entraid-foundry'
 
 @description('Location for all resources.')
-param location string = 'eastus'
+@allowed([
+  'australiaeast'
+  'brazilsouth'
+  'canadacentral'
+  'canadaeast'
+  'centralindia'
+  'centralus'
+  'eastasia'
+  'eastus'
+  'francecentral'
+  'germanywestcentral'
+  'italynorth'
+  'japaneast'
+  'koreacentral'
+  'northcentralus'
+  'northeurope'
+  'norwayeast'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
+  'southindia'
+  'southeastasia'
+  'spaincentral'
+  'swedencentral'
+  'switzerlandnorth'
+  'uaenorth'
+  'uksouth'
+  'westeurope'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
+])
+param location string = any(resourceGroup().location)
 
 @description('Name of the first project')
 param projectName string = '${aiFoundryName}-proj'
@@ -51,7 +84,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' =  {
 */
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: aiFoundryName
-  location: location
+  location: resourceGroup().location
   identity: {
     type: 'SystemAssigned'
   }

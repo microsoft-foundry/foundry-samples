@@ -10,7 +10,7 @@ development_subscription_id = "11111111-1111-1111-1111-111111111111"
 tenant_id = "33333333-3333-3333-3333-333333333333"
 
 # --- Common ---
-location    = "eastus2"
+location    = "eastus"
 name_prefix = "contoso-byom"
 
 # --- APIM publisher metadata (required by APIM at create time) ---
@@ -35,7 +35,7 @@ groq_api_key   = "REPLACE_ME_WITH_GROQ_KEY"
 # groq_alias        = "llama-3-70b"
 
 # --- Governance knobs ---
-quota_tokens_per_minute = 167   # ~10K tokens/hour per project — demo-friendly
+quota_tokens_per_minute = 167 # ~10K tokens/hour per project — demo-friendly
 
 # --- Developer group (Sub B) ---
 # Object ID of the Entra group whose members will get read/use access on

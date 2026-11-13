@@ -15,7 +15,40 @@
 param aiFoundryName string = 'foundry-uai'
 
 @description('Location for all resources.')
-param location string = 'eastus2'
+@allowed([
+  'australiaeast'
+  'brazilsouth'
+  'canadacentral'
+  'canadaeast'
+  'centralindia'
+  'centralus'
+  'eastasia'
+  'eastus'
+  'francecentral'
+  'germanywestcentral'
+  'italynorth'
+  'japaneast'
+  'koreacentral'
+  'northcentralus'
+  'northeurope'
+  'norwayeast'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
+  'southindia'
+  'southeastasia'
+  'spaincentral'
+  'swedencentral'
+  'switzerlandnorth'
+  'uaenorth'
+  'uksouth'
+  'westeurope'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
+])
+param location string = any(resourceGroup().location)
 
 @description('Name of the first project')
 param defaultProjectName string = '${aiFoundryName}-proj'
@@ -66,7 +99,7 @@ var userAssignedIdentityPrincipalId = useExistingUserAssignedIdentity ? existing
 */ 
 resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: aiFoundryName
-  location: location
+  location: resourceGroup().location
   identity: {
     type: 'UserAssigned' // Select 'UserAssigned' or 'SystemAssigned,UserAssigned' during creation as this cannot be updated.
     userAssignedIdentities: {

@@ -45,7 +45,7 @@ resource "azurerm_storage_account" "storage" {
 resource "azapi_resource" "ai_foundry" {
   type      = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
   name      = var.ai_foundry_name
-  location  = var.location
+  location  = azurerm_resource_group.rg.location
   parent_id = azurerm_resource_group.rg.id
 
   identity {

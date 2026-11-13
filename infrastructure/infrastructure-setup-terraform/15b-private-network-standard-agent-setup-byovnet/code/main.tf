@@ -12,6 +12,11 @@ resource "random_string" "unique" {
   upper       = false
 }
 
+data "azurerm_resource_group" "resources" {
+  provider = azurerm.workload_subscription
+  name     = var.resource_group_name_resources
+}
+
 ########## Create resoures required to for agent data storage
 ##########
 
@@ -85,7 +90,7 @@ resource "azapi_resource" "ai_search" {
   type                      = "Microsoft.Search/searchServices@2025-05-01"
   name                      = "aifoundry${random_string.unique.result}search"
   parent_id                 = "/subscriptions/${var.subscription_id_resources}/resourceGroups/${var.resource_group_name_resources}"
-  location                  = var.location
+  location                  = data.azurerm_resource_group.resources.location
   schema_validation_enabled = true
 
   body = {
@@ -132,7 +137,7 @@ resource "azapi_resource" "ai_foundry" {
   type                      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name                      = "aifoundry${random_string.unique.result}"
   parent_id                 = "/subscriptions/${var.subscription_id_resources}/resourceGroups/${var.resource_group_name_resources}"
-  location                  = var.location
+  location                  = data.azurerm_resource_group.resources.location
   schema_validation_enabled = false
 
   body = {

@@ -5,38 +5,45 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "9826847652772805128"
+      "templateHash": "10515888316830505882"
     }
   },
   "parameters": {
     "location": {
       "type": "string",
-      "defaultValue": "eastus",
+      "defaultValue": "[resourceGroup().location]",
       "allowedValues": [
-        "westus",
-        "eastus",
-        "eastus2",
-        "japaneast",
-        "francecentral",
-        "spaincentral",
-        "uaenorth",
-        "southcentralus",
-        "italynorth",
-        "germanywestcentral",
-        "brazilsouth",
-        "southafricanorth",
         "australiaeast",
-        "swedencentral",
-        "canadaeast",
+        "brazilsouth",
         "canadacentral",
-        "westeurope",
-        "westus3",
-        "uksouth",
-        "southindia",
+        "canadaeast",
+        "centralindia",
+        "centralus",
+        "eastasia",
+        "eastus",
+        "francecentral",
+        "germanywestcentral",
+        "italynorth",
+        "japaneast",
         "koreacentral",
-        "polandcentral",
+        "northcentralus",
+        "northeurope",
+        "norwayeast",
+        "qatarcentral",
+        "southafricanorth",
+        "southcentralus",
+        "southindia",
+        "southeastasia",
+        "spaincentral",
+        "swedencentral",
         "switzerlandnorth",
-        "norwayeast"
+        "uaenorth",
+        "uksouth",
+        "westeurope",
+        "westus",
+        "westus3",
+        "usgovarizona",
+        "usgovvirginia"
       ],
       "metadata": {
         "description": "Location for all resources."
@@ -175,6 +182,13 @@
         "description": "Optional. When true, skip the model deployment. Recommended when reusing an existing account that already has the required model deployments."
       }
     },
+    "disableLocalAuth": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Optional. When true (default), disables API-key (local) authentication on the account. Set to false to enable API-key auth."
+      }
+    },
     "enableContainerRegistry": {
       "type": "bool",
       "defaultValue": true,
@@ -193,7 +207,7 @@
       "type": "bool",
       "defaultValue": false,
       "metadata": {
-        "description": "Optional. Create the account-level capability host explicitly. Leave false for fresh deployments (platform auto-creates it via networkInjections). Set true only for a BYO account with no capability host, or to recreate after running deleteCapHost.sh."
+        "description": "Optional. Create the account-level capability host explicitly. Leave false for fresh deployments (the platform auto-creates {account}@aml_aiagentservice via networkInjections.scenario=agent). Set true only for a BYO account with no capability host, or to recreate after running deleteCapHost.sh."
       }
     },
     "aiSearchResourceId": {
@@ -308,7 +322,8 @@
     "vnetResourceGroupName": "[if(variables('existingVnetPassedIn'), variables('vnetParts')[4], resourceGroup().name)]",
     "existingVnetName": "[if(variables('existingVnetPassedIn'), last(variables('vnetParts')), parameters('vnetName'))]",
     "trimVnetName": "[trim(variables('existingVnetName'))]",
-    "normalizedDnsZonesSubscriptionId": "[if(empty(parameters('dnsZonesSubscriptionId')), '', if(startsWith(toLower(parameters('dnsZonesSubscriptionId')), '/subscriptions/'), split(parameters('dnsZonesSubscriptionId'), '/')[2], parameters('dnsZonesSubscriptionId')))]",
+    "trimmedDnsZonesSubscriptionId": "[trim(parameters('dnsZonesSubscriptionId'))]",
+    "normalizedDnsZonesSubscriptionId": "[if(empty(variables('trimmedDnsZonesSubscriptionId')), '', if(startsWith(toLower(variables('trimmedDnsZonesSubscriptionId')), '/subscriptions/'), trim(split(variables('trimmedDnsZonesSubscriptionId'), '/')[2]), variables('trimmedDnsZonesSubscriptionId')))]",
     "resolvedDnsZonesSubscriptionId": "[if(empty(variables('normalizedDnsZonesSubscriptionId')), subscription().subscriptionId, variables('normalizedDnsZonesSubscriptionId'))]"
   },
   "resources": [
@@ -989,7 +1004,7 @@
             "value": "[variables('accountName')]"
           },
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[resourceGroup().location]"
           },
           "modelName": {
             "value": "[parameters('modelName')]"
@@ -1014,6 +1029,9 @@
           },
           "skipModelDeployment": {
             "value": "[parameters('skipModelDeployment')]"
+          },
+          "disableLocalAuth": {
+            "value": "[parameters('disableLocalAuth')]"
           }
         },
         "template": {
@@ -1023,7 +1041,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "16030204193894738620"
+              "templateHash": "11271143357343719419"
             }
           },
           "parameters": {
@@ -1068,6 +1086,13 @@
               "metadata": {
                 "description": "Optional. When true, skip the model deployment. Recommended when reusing an existing account that already has the required model deployments."
               }
+            },
+            "disableLocalAuth": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Optional. When true (default), disables API-key (local) authentication on the account. Set to false to enable API-key auth."
+              }
             }
           },
           "variables": {
@@ -1102,7 +1127,7 @@
                 },
                 "publicNetworkAccess": "Disabled",
                 "networkInjections": "[if(equals(parameters('networkInjection'), 'true'), createArray(createObject('scenario', 'agent', 'subnetArmId', parameters('agentSubnetId'), 'useMicrosoftManagedNetwork', false())), null())]",
-                "disableLocalAuth": false
+                "disableLocalAuth": "[parameters('disableLocalAuth')]"
               }
             },
             {
@@ -1634,6 +1659,9 @@
           "aiAccountName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-{1}-deployment', variables('accountName'), variables('uniqueSuffix'))), '2025-04-01').outputs.accountName.value]"
           },
+          "location": {
+            "value": "[parameters('location')]"
+          },
           "aiSearchName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', format('dependencies-{0}-deployment', variables('uniqueSuffix'))), '2025-04-01').outputs.aiSearchName.value]"
           },
@@ -1690,10 +1718,17 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "698272236681194869"
+              "templateHash": "8364807033973878778"
             }
           },
           "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region for the private endpoints. Defaults to the resource group location for backward compatibility; pass the deployment location so private endpoints are co-located with their target resources when the resource group is in a different region."
+              }
+            },
             "aiAccountName": {
               "type": "string",
               "metadata": {
@@ -1838,7 +1873,7 @@
               "type": "Microsoft.Network/privateEndpoints",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}-private-endpoint', parameters('aiAccountName'))]",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('location')]",
               "properties": {
                 "subnet": {
                   "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', parameters('vnetSubscriptionId'), parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"
@@ -1860,7 +1895,7 @@
               "type": "Microsoft.Network/privateEndpoints",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}-private-endpoint', parameters('aiSearchName'))]",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('location')]",
               "properties": {
                 "subnet": {
                   "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', parameters('vnetSubscriptionId'), parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"
@@ -1882,7 +1917,7 @@
               "type": "Microsoft.Network/privateEndpoints",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}-private-endpoint', parameters('storageName'))]",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('location')]",
               "properties": {
                 "subnet": {
                   "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', parameters('vnetSubscriptionId'), parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"
@@ -1904,7 +1939,7 @@
               "type": "Microsoft.Network/privateEndpoints",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}-private-endpoint', parameters('cosmosDBName'))]",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('location')]",
               "properties": {
                 "subnet": {
                   "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', parameters('vnetSubscriptionId'), parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"

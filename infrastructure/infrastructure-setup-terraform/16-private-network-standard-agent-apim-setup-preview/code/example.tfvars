@@ -1,7 +1,7 @@
 # Example configuration for private network standard agent with API Management
 
 # Azure region
-location = "eastus2"
+location = "eastus"
 
 # AI Foundry configuration
 ai_services_name_prefix = "foundry"

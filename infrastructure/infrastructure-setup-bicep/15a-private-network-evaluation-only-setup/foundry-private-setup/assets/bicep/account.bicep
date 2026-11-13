@@ -1,9 +1,8 @@
-param location string
 param config object
 
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: config.name
-  location: location
+  location: resourceGroup().location
   kind: 'AIServices'
   sku: {
     name: 'S0'

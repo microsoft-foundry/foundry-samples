@@ -12,9 +12,9 @@ resource "random_string" "unique" {
 ## Create a resource group for the resources to be stored in
 ##
 resource "azapi_resource" "rg" {
-  type      = "Microsoft.Resources/resourceGroups@2021-04-01"
-  name      = "tf-319-basic"
-  location  = var.location
+  type     = "Microsoft.Resources/resourceGroups@2021-04-01"
+  name     = "tf-319-basic"
+  location = var.location
 }
 
 ########## Create AI Foundry resource
@@ -26,7 +26,7 @@ resource "azapi_resource" "ai_foundry" {
   type                      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name                      = "aifoundry${random_string.unique.result}"
   parent_id                 = azapi_resource.rg.id
-  location                  = var.location
+  location                  = azapi_resource.rg.location
   schema_validation_enabled = false
 
   body = {

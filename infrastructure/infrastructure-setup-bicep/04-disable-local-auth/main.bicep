@@ -1,13 +1,46 @@
 param aiFoundryName string = 'foundry-disable-localauth'
 param aiProjectName string = '${aiFoundryName}-proj'
-param location string = 'eastus2'
+@allowed([
+  'australiaeast'
+  'brazilsouth'
+  'canadacentral'
+  'canadaeast'
+  'centralindia'
+  'centralus'
+  'eastasia'
+  'eastus'
+  'francecentral'
+  'germanywestcentral'
+  'italynorth'
+  'japaneast'
+  'koreacentral'
+  'northcentralus'
+  'northeurope'
+  'norwayeast'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
+  'southindia'
+  'southeastasia'
+  'spaincentral'
+  'swedencentral'
+  'switzerlandnorth'
+  'uaenorth'
+  'uksouth'
+  'westeurope'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
+])
+param location string = any(resourceGroup().location)
 
 /*
   An AI Foundry resources is a variant of a CognitiveServices/account resource type
 */ 
 resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: aiFoundryName
-  location: location
+  location: resourceGroup().location
   identity: {
     type: 'SystemAssigned'
   }

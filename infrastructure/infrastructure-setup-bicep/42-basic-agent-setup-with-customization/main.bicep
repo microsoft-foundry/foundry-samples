@@ -22,34 +22,41 @@ param projectDescription string = 'some description'
 @description('The display name of your project')
 param projectDisplayName string = 'project_display_name'
 
+@description('The Azure region where your AI Foundry resource and project will be created.')
 @allowed([
   'australiaeast'
+  'brazilsouth'
+  'canadacentral'
   'canadaeast'
+  'centralindia'
+  'centralus'
+  'eastasia'
   'eastus'
-  'eastus2'
   'francecentral'
+  'germanywestcentral'
+  'italynorth'
   'japaneast'
   'koreacentral'
+  'northcentralus'
+  'northeurope'
   'norwayeast'
-  'polandcentral'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
   'southindia'
+  'southeastasia'
+  'spaincentral'
   'swedencentral'
   'switzerlandnorth'
   'uaenorth'
   'uksouth'
-  'westus'
-  'westus2'
-  'westus3'
   'westeurope'
-  'southeastasia'
-  'brazilsouth'
-  'germanywestcentral'
-  'italynorth'
-  'southafricanorth'
-  'southcentralus'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
 ])
-@description('The Azure region where your AI Foundry resource and project will be created.')
-param location string = 'eastus'
+param location string = any(resourceGroup().location)
 
 // TO DO: Update the resource ID to point to an existing Azure OpenAI resource in your subscription
 @description('The resource ID of the existing Azure OpenAI resource.')
@@ -73,7 +80,7 @@ resource existingAoaiResource 'Microsoft.CognitiveServices/accounts@2023-05-01' 
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   #disable-next-line use-stable-resource-identifiers
   name: accountName
-  location: location
+  location: resourceGroup().location
   sku: {
     name: 'S0'
   }

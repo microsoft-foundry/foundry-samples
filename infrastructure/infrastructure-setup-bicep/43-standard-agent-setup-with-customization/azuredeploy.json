@@ -5,38 +5,45 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "11935496515310596833"
+      "templateHash": "16745698417344261316"
     }
   },
   "parameters": {
     "location": {
       "type": "string",
-      "defaultValue": "eastus",
+      "defaultValue": "[resourceGroup().location]",
       "allowedValues": [
         "australiaeast",
+        "brazilsouth",
+        "canadacentral",
         "canadaeast",
+        "centralindia",
+        "centralus",
+        "eastasia",
         "eastus",
-        "eastus2",
         "francecentral",
+        "germanywestcentral",
+        "italynorth",
         "japaneast",
         "koreacentral",
+        "northcentralus",
+        "northeurope",
         "norwayeast",
-        "polandcentral",
+        "qatarcentral",
+        "southafricanorth",
+        "southcentralus",
         "southindia",
+        "southeastasia",
+        "spaincentral",
         "swedencentral",
         "switzerlandnorth",
         "uaenorth",
         "uksouth",
-        "westus",
-        "westus2",
-        "westus3",
         "westeurope",
-        "southeastasia",
-        "brazilsouth",
-        "germanywestcentral",
-        "italynorth",
-        "southafricanorth",
-        "southcentralus"
+        "westus",
+        "westus3",
+        "usgovarizona",
+        "usgovvirginia"
       ],
       "metadata": {
         "description": "The Azure region where your AI Foundry resource and project will be created."
@@ -550,7 +557,7 @@
             "value": "[variables('accountName')]"
           },
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[resourceGroup().location]"
           }
         },
         "template": {

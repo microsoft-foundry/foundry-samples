@@ -5,37 +5,46 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "9994558897589976517"
+      "templateHash": "3569752191722183606"
     }
   },
   "parameters": {
     "location": {
       "type": "string",
-      "defaultValue": "eastus",
+      "defaultValue": "[resourceGroup().location]",
       "allowedValues": [
-        "westus",
-        "eastus",
-        "eastus2",
-        "japaneast",
-        "francecentral",
-        "spaincentral",
-        "uaenorth",
-        "southcentralus",
-        "italynorth",
-        "germanywestcentral",
-        "brazilsouth",
-        "southafricanorth",
         "australiaeast",
-        "swedencentral",
-        "canadaeast",
+        "brazilsouth",
         "westeurope",
-        "westus3",
-        "uksouth",
-        "southindia",
+        "canadaeast",
+        "canadacentral",
+        "centralindia",
+        "centralus",
+        "eastasia",
+        "eastus",
+        "francecentral",
+        "germanywestcentral",
+        "italynorth",
+        "japaneast",
         "koreacentral",
-        "polandcentral",
+        "northcentralus",
+        "northeurope",
+        "norwayeast",
+        "qatarcentral",
+        "southafricanorth",
+        "southcentralus",
+        "southindia",
+        "southeastasia",
+        "spaincentral",
+        "swedencentral",
         "switzerlandnorth",
-        "norwayeast"
+        "uaenorth",
+        "uksouth",
+        "westeurope",
+        "westus",
+        "westus3",
+        "usgovarizona",
+        "usgovvirginia"
       ],
       "metadata": {
         "description": "Location for all resources."
@@ -939,7 +948,7 @@
             "value": "[variables('accountName')]"
           },
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[resourceGroup().location]"
           },
           "modelName": {
             "value": "[parameters('modelName')]"
@@ -967,7 +976,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "2739330245977037380"
+              "templateHash": "11729420280716349512"
             }
           },
           "parameters": {
@@ -998,6 +1007,13 @@
             "networkInjection": {
               "type": "string",
               "defaultValue": "true"
+            },
+            "developerIpCidr": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional caller CIDR for authenticated project SDK access. Leave empty for private-only access."
+              }
             }
           },
           "resources": [
@@ -1019,10 +1035,10 @@
                 "networkAcls": {
                   "defaultAction": "Deny",
                   "virtualNetworkRules": [],
-                  "ipRules": [],
+                  "ipRules": "[if(empty(parameters('developerIpCidr')), createArray(), createArray(createObject('value', if(endsWith(parameters('developerIpCidr'), '/32'), split(parameters('developerIpCidr'), '/')[0], parameters('developerIpCidr')))))]",
                   "bypass": "AzureServices"
                 },
-                "publicNetworkAccess": "Disabled",
+                "publicNetworkAccess": "[if(empty(parameters('developerIpCidr')), 'Disabled', 'Enabled')]",
                 "networkInjections": "[if(equals(parameters('networkInjection'), 'true'), createArray(createObject('scenario', 'agent', 'subnetArmId', parameters('agentSubnetId'), 'useMicrosoftManagedNetwork', false())), null())]",
                 "disableLocalAuth": true
               }
@@ -1575,7 +1591,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "17319375375259513982"
+              "templateHash": "3037675488852350266"
             }
           },
           "parameters": {
@@ -1614,6 +1630,13 @@
               "type": "string",
               "metadata": {
                 "description": "Name of the Vnet"
+              }
+            },
+            "privateEndpointLocation": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region of the VNet and its private endpoints"
               }
             },
             "peSubnetName": {
@@ -1742,7 +1765,7 @@
               "type": "Microsoft.Network/privateEndpoints",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}-private-endpoint', parameters('aiAccountName'))]",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('privateEndpointLocation')]",
               "properties": {
                 "subnet": {
                   "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', parameters('vnetSubscriptionId'), parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"
@@ -1764,7 +1787,7 @@
               "type": "Microsoft.Network/privateEndpoints",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}-private-endpoint', parameters('aiSearchName'))]",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('privateEndpointLocation')]",
               "properties": {
                 "subnet": {
                   "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', parameters('vnetSubscriptionId'), parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"
@@ -1786,7 +1809,7 @@
               "type": "Microsoft.Network/privateEndpoints",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}-private-endpoint', parameters('storageName'))]",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('privateEndpointLocation')]",
               "properties": {
                 "subnet": {
                   "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', parameters('vnetSubscriptionId'), parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"
@@ -1808,7 +1831,7 @@
               "type": "Microsoft.Network/privateEndpoints",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}-private-endpoint', parameters('cosmosDBName'))]",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('privateEndpointLocation')]",
               "properties": {
                 "subnet": {
                   "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', parameters('vnetSubscriptionId'), parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"
@@ -1831,7 +1854,7 @@
               "type": "Microsoft.Network/privateEndpoints",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}-private-endpoint', parameters('apiManagementName'))]",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('privateEndpointLocation')]",
               "properties": {
                 "subnet": {
                   "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', parameters('vnetSubscriptionId'), parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"

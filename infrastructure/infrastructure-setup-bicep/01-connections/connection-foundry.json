@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "8574372845632247592"
+      "templateHash": "14155744296600836147"
     }
   },
   "parameters": {
@@ -16,10 +16,6 @@
     "connectedResourceName": {
       "type": "string",
       "defaultValue": "[format('foundry-{0}', parameters('aiFoundryName'))]"
-    },
-    "location": {
-      "type": "string",
-      "defaultValue": "westus"
     },
     "newOrExisting": {
       "type": "string",
@@ -48,7 +44,7 @@
       "type": "Microsoft.CognitiveServices/accounts",
       "apiVersion": "2025-04-01-preview",
       "name": "[parameters('connectedResourceName')]",
-      "location": "[parameters('location')]",
+      "location": "[resourceGroup().location]",
       "kind": "AIServices",
       "sku": {
         "name": "S0"
@@ -61,14 +57,14 @@
       "name": "[format('{0}/{1}', parameters('aiFoundryName'), format('{0}-foundry', parameters('aiFoundryName')))]",
       "properties": {
         "category": "AIServices",
-        "target": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName')), '2025-04-01-preview').endpoint]",
+        "target": "[if(equals(parameters('newOrExisting'), 'new'), reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName')), '2025-04-01-preview').endpoint, reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName')), '2025-04-01-preview').endpoint)]",
         "authType": "[parameters('authType')]",
         "isSharedToAll": "[parameters('isSharedToAll')]",
-        "credentials": "[if(equals(parameters('authType'), 'ApiKey'), createObject('key', listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName')), '2025-04-01-preview').key1), createObject())]",
+        "credentials": "[if(equals(parameters('authType'), 'ApiKey'), createObject('key', if(equals(parameters('newOrExisting'), 'new'), listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName')), '2025-04-01-preview').key1, listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName')), '2025-04-01-preview').key1)), createObject())]",
         "metadata": {
           "ApiType": "Azure",
-          "ResourceId": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName'))]",
-          "location": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName')), '2025-04-01-preview', 'full').location]"
+          "ResourceId": "[if(equals(parameters('newOrExisting'), 'new'), resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName')), resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName')))]",
+          "location": "[if(equals(parameters('newOrExisting'), 'new'), reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName')), '2025-04-01-preview', 'full').location, reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('connectedResourceName')), '2025-04-01-preview', 'full').location)]"
         }
       },
       "dependsOn": [

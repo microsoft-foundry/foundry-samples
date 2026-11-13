@@ -35,9 +35,9 @@
       - The ModelGateway "Admin-connected models" connection on the project, so an
         agent references the model as <connectionName>/<modelName>.
 
-  Single region: the AIGateway SKU deploys only in East US 2 / Sweden Central, and
-  outbound integration requires the VNet in the SAME region, so the whole sample
-  deploys in one of those regions (default swedencentral). The region parameter is
+  Single region: the AIGateway SKU is release-gated, and outbound integration
+  requires the VNet in the SAME region, so the whole sample deploys in Sweden
+  Central. The region parameter is
   named `region` (not `location`) so generic tooling that rewrites `location`
   cannot relocate an AIGateway sample out of its supported regions.
 
@@ -60,10 +60,9 @@ targetScope = 'resourceGroup'
 // cannot relocate an AIGateway sample out of its supported regions.
 // ---------------------------------------------------------------------------
 @allowed([
-  'eastus2'
   'swedencentral'
 ])
-@description('Region for every resource in this sample. The AIGateway SKU is a release-gated preview available only in East US 2 / Sweden Central, and its outbound integration needs a co-regional VNet, so the whole sample deploys in one of these regions.')
+@description('Region for resources that require the AI Gateway tier and its co-regional VNet.')
 param region string = 'swedencentral'
 
 // ===========================================================================
@@ -259,7 +258,7 @@ module aiAccount '../../modules-network-secured/ai-account-identity.bicep' = {
   name: 'ai-${accountName}-${uniqueSuffix}-deployment'
   params: {
     accountName: accountName
-    location: region
+    location: resourceGroup().location
     modelName: modelName
     modelFormat: modelFormat
     modelVersion: modelVersion
@@ -575,7 +574,7 @@ resource apimOutboundSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-0
 // ===========================================================================
 resource hubAccount 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: hubName
-  location: region
+  location: resourceGroup().location
   sku: {
     name: 'S0'
   }

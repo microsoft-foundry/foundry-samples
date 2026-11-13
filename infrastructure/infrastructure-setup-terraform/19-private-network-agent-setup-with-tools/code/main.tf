@@ -151,7 +151,7 @@ resource "azapi_resource" "ai_search" {
   type                      = "Microsoft.Search/searchServices@2024-06-01-preview"
   name                      = "aifoundry${random_string.unique.result}search"
   parent_id                 = local.rg_id
-  location                  = var.location
+  location                  = local.rg_location
   schema_validation_enabled = false
 
   body = {
@@ -211,7 +211,7 @@ resource "azapi_resource" "ai_foundry" {
   type                      = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
   name                      = local.account_name
   parent_id                 = local.rg_id
-  location                  = var.location
+  location                  = local.rg_location
   schema_validation_enabled = false
 
   identity {

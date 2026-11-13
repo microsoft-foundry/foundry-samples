@@ -3,10 +3,14 @@
 # in snet-pe. Local auth is disabled per H4 so APIM authenticates as its
 # system-assigned MI.
 
+data "azurerm_resource_group" "hub" {
+  name = local.hub_rg_name
+}
+
 resource "azapi_resource" "foundry_model_account" {
   type      = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
   name      = local.foundry_model_account_name
-  location  = local.location
+  location  = data.azurerm_resource_group.hub.location
   parent_id = local.hub_rg_id
 
   identity {

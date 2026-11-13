@@ -18,35 +18,39 @@ Architecture:
 */
 @description('Location for all resources.')
 @allowed([
-  'westus'
-  'westus2'
-  'eastus'
-  'eastus2'
-  'japaneast'
-  'francecentral'
-  'spaincentral'
-  'uaenorth'
-  'southcentralus'
-  'italynorth'
-  'germanywestcentral'
-  'brazilsouth'
-  'southafricanorth'
   'australiaeast'
-  'swedencentral'
-  'canadaeast'
+  'brazilsouth'
   'canadacentral'
-  'westeurope'
-  'westus3'
-  'uksouth'
-  'southindia'
-
-  //only class B and C
+  'canadaeast'
+  'centralindia'
+  'centralus'
+  'eastasia'
+  'eastus'
+  'francecentral'
+  'germanywestcentral'
+  'italynorth'
+  'japaneast'
   'koreacentral'
-  'polandcentral'
-  'switzerlandnorth'
+  'northcentralus'
+  'northeurope'
   'norwayeast'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
+  'southindia'
+  'southeastasia'
+  'spaincentral'
+  'swedencentral'
+  'switzerlandnorth'
+  'uaenorth'
+  'uksouth'
+  'westeurope'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
 ])
-param location string = 'eastus2'
+param location string = any(resourceGroup().location)
 
 @description('Name prefix for your AI Services (Cognitive Services) resource. Lowercase alphanumeric only; a 4-character random suffix will be appended.')
 @minLength(2)
@@ -268,7 +272,7 @@ module aiAccount 'modules-network-secured/ai-account-identity.bicep' = {
   params: {
     // workspace organization
     accountName: accountName
-    location: location
+    location: resourceGroup().location
     modelName: modelName
     modelFormat: modelFormat
     modelVersion: modelVersion

@@ -23,34 +23,41 @@ param deployApplicationInsights bool = true
 
 var appInsightsName = toLower('${uniqueSuffix}appinsights')
 var logAnalyticsName = toLower('${uniqueSuffix}loganalytics')
+@description('The Azure region where your AI Foundry resource and project will be created.')
 @allowed([
   'australiaeast'
+  'brazilsouth'
+  'canadacentral'
   'canadaeast'
+  'centralindia'
+  'centralus'
+  'eastasia'
   'eastus'
-  'eastus2'
   'francecentral'
+  'germanywestcentral'
+  'italynorth'
   'japaneast'
   'koreacentral'
+  'northcentralus'
+  'northeurope'
   'norwayeast'
-  'polandcentral'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
   'southindia'
+  'southeastasia'
+  'spaincentral'
   'swedencentral'
   'switzerlandnorth'
   'uaenorth'
   'uksouth'
-  'westus'
-  'westus2'
-  'westus3'
   'westeurope'
-  'southeastasia'
-  'brazilsouth'
-  'germanywestcentral'
-  'italynorth'
-  'southafricanorth'
-  'southcentralus'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
 ])
-@description('The Azure region where your AI Foundry resource and project will be created.')
-param location string = 'eastus'
+param location string = any(resourceGroup().location)
 
 @description('The name of the OpenAI model you want to deploy')
 param modelName string = 'gpt-4.1'
@@ -69,7 +76,7 @@ param modelCapacity int = 40
 
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: accountName
-  location: location
+  location: resourceGroup().location
   sku: {
     name: 'S0'
   }

@@ -2,7 +2,40 @@ param ai_services string = 'aiServices'
 param project_name string = 'project'
 param description string = 'some description'
 param display_name string = 'project_display_name'
-param location string = 'eastus'
+@allowed([
+  'australiaeast'
+  'brazilsouth'
+  'canadacentral'
+  'canadaeast'
+  'centralindia'
+  'centralus'
+  'eastasia'
+  'eastus'
+  'francecentral'
+  'germanywestcentral'
+  'italynorth'
+  'japaneast'
+  'koreacentral'
+  'northcentralus'
+  'northeurope'
+  'norwayeast'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
+  'southindia'
+  'southeastasia'
+  'spaincentral'
+  'swedencentral'
+  'switzerlandnorth'
+  'uaenorth'
+  'uksouth'
+  'westeurope'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
+])
+param location string = any(resourceGroup().location)
 
 param modelName string = 'gpt-4.1'
 param modelFormat string = 'OpenAI'
@@ -33,7 +66,7 @@ module aiAccount 'modules/ai-account-keys.bicep' = {
   params: {
     // workspace organization
     account_name: account_name
-    location: location
+    location: resourceGroup().location
 
     modelName: modelName
     modelFormat: modelFormat

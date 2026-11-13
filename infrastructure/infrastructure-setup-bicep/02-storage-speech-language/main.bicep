@@ -6,7 +6,40 @@
 param aiFoundryName string
 
 @description('Location for the resource')
-param location string = resourceGroup().location
+@allowed([
+  'australiaeast'
+  'brazilsouth'
+  'canadacentral'
+  'canadaeast'
+  'centralindia'
+  'centralus'
+  'eastasia'
+  'eastus'
+  'francecentral'
+  'germanywestcentral'
+  'italynorth'
+  'japaneast'
+  'koreacentral'
+  'northcentralus'
+  'northeurope'
+  'norwayeast'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
+  'southindia'
+  'southeastasia'
+  'spaincentral'
+  'swedencentral'
+  'switzerlandnorth'
+  'uaenorth'
+  'uksouth'
+  'westeurope'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
+])
+param location string = any(resourceGroup().location)
 
 // Storage Account Parameters
 @description('Azure storage resource ID (leave empty to create a new storage account)')
@@ -88,7 +121,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = if (!us
 // ====================================================================
 resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-07-01-preview' = {
   name: aiFoundryName
-  location: location
+  location: resourceGroup().location
   sku: {
     name: 'S0'
   }
