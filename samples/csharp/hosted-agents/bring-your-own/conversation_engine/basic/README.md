@@ -288,7 +288,9 @@ path. After deploying, verify readiness and a spoken echo through the declared V
 - The story and its word sequence are directly in `OnUserMessageAsync`; no model history is added.
 - Echo is scheduled as cancellable work so the receive loop remains available for control events.
 - Barge-in and cancellation synchronize caller-heard text and stop pending output.
-- Playback state is bounded to 64 known responses and cleared on session termination.
+- Playback state is bounded to 64 known responses and cleared on session termination. Each
+  heard prefix retains at most the 512 KiB UTF-8 output budget, without splitting Unicode
+  characters; the 8,000-character user-input limit does not truncate valid reply prefixes.
 - Custom spans contain identifiers, durations, and status, but no prompt or response content.
 - A deployed two-turn audio smoke passed with public SDK packages; see the
   [validation status](../README.md#validation-status). Perform deployment-specific validation
