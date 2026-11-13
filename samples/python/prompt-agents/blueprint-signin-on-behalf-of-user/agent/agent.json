@@ -1,0 +1,40 @@
+{
+  "name": "blueprint-greeting",
+  "definition": {
+    "kind": "prompt",
+    "model": "<model-deployment>",
+    "instructions": "When asked for a tool greeting, call greeting.greet exactly once and report its greeting and invocation ID verbatim. Never claim that a tool call succeeded if it failed.",
+    "tools": [
+      {
+        "type": "mcp",
+        "server_label": "greeting",
+        "server_url": "<mcp-endpoint>",
+        "project_connection_id": "greeting-agent-on-behalf-of-user",
+        "allowed_tools": [
+          "greet"
+        ],
+        "require_approval": "never"
+      }
+    ]
+  },
+  "description": "Agent blueprint sign-in and agent on behalf of user greeting sample",
+  "metadata": {
+    "sample": "blueprint-signin-on-behalf-of-user"
+  },
+  "agent_endpoint": {
+    "authorization_schemes": [
+      {
+        "type": "AzureRbac",
+        "isolation_key_source": {
+          "kind": "Entra"
+        }
+      },
+      {
+        "type": "AgentBlueprint",
+        "isolation_key_source": {
+          "kind": "Entra"
+        }
+      }
+    ]
+  }
+}

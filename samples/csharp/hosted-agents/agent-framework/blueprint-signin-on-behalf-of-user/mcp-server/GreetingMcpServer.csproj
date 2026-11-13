@@ -1,0 +1,10 @@
+﻿<Project Sdk="Azure.Functions.Sdk/1.0.1">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <UserSecretsId>857a92fc-dd56-42d8-bd61-db8d71f22971</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.52.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Mcp" Version="1.6.0" />
+  </ItemGroup>
+</Project>

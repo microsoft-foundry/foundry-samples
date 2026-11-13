@@ -1,0 +1,22 @@
+{
+  "name": "foundry-blueprint-signin-on-behalf-of-user-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/greet.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prestart": "npm run build",
+    "start": "func start"
+  },
+  "dependencies": {
+    "@azure/functions": "4.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.17",
+    "typescript": "5.9.3"
+  }
+}

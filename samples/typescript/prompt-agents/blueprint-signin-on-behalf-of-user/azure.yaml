@@ -1,0 +1,20 @@
+name: typescript-blueprint-signin-on-behalf-of-user
+infra:
+  provider: bicep
+  path: infra
+services:
+  mcp:
+    project: mcp-server
+    language: ts
+    host: function
+    dist: .
+hooks:
+  postprovision:
+    windows:
+      shell: pwsh
+      run: ./scripts/Deploy-Agent.ps1
+      continueOnError: false
+    posix:
+      shell: pwsh
+      run: ./scripts/Deploy-Agent.ps1
+      continueOnError: false

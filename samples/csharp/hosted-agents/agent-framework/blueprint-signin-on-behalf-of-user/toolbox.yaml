@@ -1,0 +1,3 @@
+description: One protected greeting MCP tool through an AgentOnBehalfOfUser project connection
+connections:
+  - name: greeting-agent-on-behalf-of-user

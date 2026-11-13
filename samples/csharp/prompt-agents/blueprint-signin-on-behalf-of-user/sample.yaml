@@ -1,0 +1,5 @@
+name: Agent blueprint sign-in and AgentOnBehalfOfUser
+description: A C# client calls a prompt agent through its blueprint, which calls a protected greet MCP tool on behalf of the user.
+build: >-
+  dotnet build client/AgentClient.cs --verbosity minimal &&
+  dotnet build mcp-server/GreetingMcpServer.csproj --verbosity minimal

@@ -1,0 +1,6 @@
+name: Hosted agent blueprint sign-in and AgentOnBehalfOfUser
+description: A C# client calls a hosted agent through its blueprint, which calls a protected greeting MCP tool through a Toolbox on behalf of the user.
+build: >-
+  dotnet build client/AgentClient.cs --verbosity minimal &&
+  dotnet build mcp-server/GreetingMcpServer.csproj --verbosity minimal &&
+  dotnet build src/HostedGreetingAgent.csproj --verbosity minimal
