@@ -1,0 +1,5 @@
+**/bin/
+**/obj/
+.azure/
+.test-results/
+.env

@@ -1,0 +1,7 @@
+{
+  "name": "travel-web-search-dotnet",
+  "description": "Public flight and hotel research only. No bookings or private data.",
+  "tools": [
+    { "type": "web_search", "name": "web_search" }
+  ]
+}

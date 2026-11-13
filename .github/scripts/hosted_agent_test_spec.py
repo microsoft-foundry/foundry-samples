@@ -449,7 +449,7 @@ def build_plan(
             raise SpecError(
                 "turn approvals are supported only for the Responses protocol"
             )
-        if any(
+        if protocol != "a2a" and any(
             assertion.get("source") == "assistant_text"
             for test in document["tests"]
             for turn in test["turns"]
@@ -1077,7 +1077,7 @@ def _build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--toolbox-label", default="")
     plan.add_argument("--toolbox-query", default="")
     plan.add_argument(
-        "--protocol", choices=("responses", "invocations"), default="responses"
+        "--protocol", choices=("responses", "invocations", "a2a"), default="responses"
     )
     plan.add_argument("--profile", choices=tuple(PROFILE_SOURCES), default="hosted")
     plan.add_argument("--output", type=Path, required=True)
