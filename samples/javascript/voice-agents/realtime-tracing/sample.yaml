@@ -1,0 +1,4 @@
+name: Voice Agent Realtime Tracing
+description: Trace a realtime voice-agent session and a local tool call with OpenTelemetry console tracing.
+
+build: "npm install --registry=https://registry.npmjs.org/"

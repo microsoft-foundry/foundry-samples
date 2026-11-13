@@ -5,16 +5,16 @@ languages:
 products:
 - ai-services
 - azure
-description: Microsoft Foundry Voice Agents samples in TypeScript, covering voice agent configuration, generation, realtime audio/text streaming, and telephony inspection.
+description: TypeScript samples for Microsoft Foundry Voice Agents, including agent setup, realtime audio, telephony sounds, and tracing.
 ---
 
 # 🎙️ Voice Agents TypeScript Samples
 
 Samples for Microsoft Foundry **Voice Agents**, a preview feature of the [`@azure/ai-projects`](https://www.npmjs.com/package/@azure/ai-projects) SDK that lets an agent hold a spoken, real-time conversation over a WebSocket connection.
 
-Voice Agents are gated behind an opt-in preview header, sent automatically by these samples via the `foundry-features: VoiceAgents=V1Preview` request option (or the equivalent `{ foundryFeatures: "VoiceAgents=V1Preview" }` shorthand).
+GPT-Live and some other Voice Agents features require the `VoiceAgents=V1Preview` opt-in. The samples use the `foundry-features` request header or `{ foundryFeatures: "VoiceAgents=V1Preview" }` where needed.
 
-These are TypeScript ports of the [JavaScript Voice Agents samples](../../javascript/voice-agents), with the same behavior and structure. For a browser-based voice console, see [`browser-voice-console`](../../javascript/voice-agents/browser-voice-console) in the JavaScript samples - it is already written in TypeScript internally.
+These are TypeScript ports of the [JavaScript Voice Agents samples](../../javascript/voice-agents), with the same behavior and structure. For browser samples, see [`browser-voice-console`](../../javascript/voice-agents/browser-voice-console) and the GPT-Live sample [`browser-gpt-live`](../../javascript/voice-agents/browser-gpt-live) in the JavaScript samples - both are already written in TypeScript internally.
 
 ## Samples
 
@@ -28,6 +28,10 @@ These are TypeScript ports of the [JavaScript Voice Agents samples](../../javasc
 | [`realtime-text-and-tools`](./realtime-text-and-tools) | Send text to a voice agent, stream its text/audio response, and handle a local function tool call. |
 | [`voice-agent-conversations`](./voice-agent-conversations) | Inspect a stored voice agent conversation - its items and model responses - through the Conversation REST API. |
 | [`telephony-inspection`](./telephony-inspection) | Read-only inspection of a voice agent's telephony bindings, transfer targets, and call history. |
+| [`configure-soundscape-and-audio`](./configure-soundscape-and-audio) | Set up telephony background and event sounds, noise suppression, and speech transcription. Soundscape audio is for telephony calls; the realtime check only verifies the agent responds. |
+| [`realtime-tracing`](./realtime-tracing) | View OpenTelemetry traces for agent setup, a realtime response, and a local function call. |
+
+These samples target `@azure/ai-projects` 2.11.0.
 
 ## Prerequisites
 

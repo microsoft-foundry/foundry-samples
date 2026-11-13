@@ -29,30 +29,30 @@ async function main(): Promise<void> {
   };
 
   console.log("Listing telephony bindings...");
-  for await (const binding of project.beta.voiceAgents.telephony.listBindings(agentName, options)) {
-    const details = await project.beta.voiceAgents.telephony.getBinding(
+  for await (const binding of project.voiceAgents.telephony.listBindings(agentName, options)) {
+    const details = await project.voiceAgents.telephony.getBinding(
       agentName,
       binding.id,
       options,
     );
-    console.log(`Binding provider: ${details.provider}, status: ${details.status}`);
+    console.log(`Binding provider: ${details.provider}`);
   }
 
   console.log("Reading configured transfer targets...");
-  const targets = await project.beta.voiceAgents.telephony.getTransferTargets(agentName, options);
+  const targets = await project.voiceAgents.telephony.getTransferTargets(agentName, options);
   console.log(
     "Transfer target names:",
     targets.transfer_targets.map((target) => target.name),
   );
 
   console.log("Reading the most recent page of call history...");
-  const pages = project.beta.voiceAgents.telephony
+  const pages = project.voiceAgents.telephony
     .listCalls(agentName, { ...options, order: "desc", limit: 5 })
     .byPage();
   const firstPage = await pages.next();
   for (const call of firstPage.value ?? []) {
     try {
-      const details = await project.beta.voiceAgents.telephony.getCall(agentName, call.id, options);
+      const details = await project.voiceAgents.telephony.getCall(agentName, call.id, options);
       console.log(`Call status: ${details.status}, phase: ${details.phase}`);
       console.log(`Lifecycle events: ${details.events.length}`);
     } catch (err) {

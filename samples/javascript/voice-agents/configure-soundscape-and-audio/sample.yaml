@@ -1,0 +1,4 @@
+name: Voice Agent Soundscape and Audio Configuration
+description: Configure a telephony soundscape, Azure noise suppression, and transcription profanity filtering on a voice agent.
+
+build: "npm install --registry=https://registry.npmjs.org/"

@@ -1,0 +1,4 @@
+name: GPT-Live Browser Voice Agent
+description: Browser sample (Vite + TypeScript) that creates a GPT-Live voice agent and holds a full-duplex microphone conversation using the Azure SDK and a local Azure CLI token bridge.
+
+build: "npm install --registry=https://registry.npmjs.org/ && npm run build --if-present"

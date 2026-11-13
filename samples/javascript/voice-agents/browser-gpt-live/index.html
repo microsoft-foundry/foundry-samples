@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <title>GPT-Live Voice Agent</title>
+  </head>
+  <body data-state="offline">
+    <div class="app-shell">
+      <header class="app-header">
+        <div>
+          <p class="product-context">Microsoft Foundry Voice Agents</p>
+          <h1>GPT-Live in the browser</h1>
+        </div>
+        <div class="global-status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="status">Offline</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="panel setup">
+          <h2>Agent</h2>
+          <label>
+            Project endpoint
+            <input id="endpoint" type="url" placeholder="https://<resource>.services.ai.azure.com/api/projects/<project>" />
+          </label>
+          <label>
+            Existing agent name
+            <input id="agentName" type="text" placeholder="Enter a name when using an existing agent" />
+          </label>
+          <label class="checkbox">
+            <input id="createAgent" type="checkbox" checked />
+            Create a temporary GPT-Live agent with a unique name (deleted on disconnect)
+          </label>
+          <fieldset class="create-options">
+            <label>
+              GPT-Live model deployment
+              <input id="model" type="text" />
+            </label>
+            <label>
+              Voice
+              <select id="voice">
+                <option>marin</option>
+                <option>cedar</option>
+                <option>alloy</option>
+                <option>ash</option>
+                <option>coral</option>
+                <option>sage</option>
+                <option>verse</option>
+              </select>
+            </label>
+            <label>
+              Responses model for typed messages (optional)
+              <input id="delegationModel" type="text" placeholder="For example, gpt-4.1" />
+            </label>
+            <label>
+              Instructions
+              <textarea id="instructions" rows="4">You are a friendly voice assistant. Keep spoken answers short and natural.</textarea>
+            </label>
+          </fieldset>
+          <div class="actions">
+            <button id="connect" type="button" class="primary">Connect</button>
+            <button id="disconnect" type="button">Disconnect</button>
+          </div>
+        </section>
+
+        <section class="panel conversation">
+          <div class="conversation-header">
+            <h2>Conversation</h2>
+            <div class="mic-controls">
+              <div id="level" class="level" aria-hidden="true"></div>
+              <button id="mic" type="button">Start microphone</button>
+            </div>
+          </div>
+          <ol id="transcript" class="transcript" aria-live="polite"></ol>
+          <form id="textForm" class="text-form">
+            <input id="textInput" type="text" placeholder="Type a message (requires a Responses model)" autocomplete="off" />
+            <button type="submit">Send</button>
+          </form>
+          <details>
+            <summary>Server events</summary>
+            <pre id="events" class="events"></pre>
+          </details>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/client/main.ts"></script>
+  </body>
+</html>
