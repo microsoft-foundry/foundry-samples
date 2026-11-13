@@ -359,12 +359,12 @@ class VoiceAgentConsole {
     this.setRestState("checking");
     try {
       const client = this.getClient(endpoint);
-      const conversation = await client.beta.voiceAgents.conversations.get(
+      const conversation = await client.voiceAgents.conversations.get(
         agentName,
         conversationId,
       );
       const items: RealtimeConversationItemUnion[] = [];
-      for await (const item of client.beta.voiceAgents.conversations.listItems(
+      for await (const item of client.voiceAgents.conversations.listItems(
         agentName,
         conversationId,
         { limit: 100, order: "asc" },
@@ -453,7 +453,7 @@ class VoiceAgentConsole {
   private async generateManagementAgent(): Promise<void> {
     const name = this.getManagementAgentName();
     await this.runManagementOperation("beta.agents.createFromPrompt", async (client) => {
-      const agent = await client.beta.agents.createFromPrompt({ kind: "voice", name });
+      const agent = await client.agents.createFromPrompt({ kind: "voice", name });
       this.applyManagementAgent(agent);
       return agent;
     });
@@ -739,7 +739,7 @@ class VoiceAgentConsole {
 
       this.clearConversationAudio();
       this.setConversationId(undefined, "Waiting for session...");
-      this.connection = await this.client.beta.voiceAgents.realtime.connect(agentName, {
+      this.connection = await this.client.voiceAgents.realtime.connect(agentName, {
         store: true,
         onConnectionStateChange: (state) => this.setSocketState(state),
       });
@@ -1055,7 +1055,7 @@ class VoiceAgentConsole {
     this.conversationAudioDetails.hidden = true;
     this.showConversationAudioStatus("Loading recording...");
     try {
-      const recording = await client.beta.voiceAgents.conversations.getAudio(
+      const recording = await client.voiceAgents.conversations.getAudio(
         agentName,
         conversationId,
       );
@@ -1068,7 +1068,7 @@ class VoiceAgentConsole {
         return "BYOS audio metadata";
       }
 
-      const content = await client.beta.voiceAgents.conversations.downloadAudio(
+      const content = await client.voiceAgents.conversations.downloadAudio(
         agentName,
         conversationId,
       );
@@ -1323,7 +1323,7 @@ function formatDuration(durationMs: number): string {
 function getVoiceDefinition(agent: Agent): VoiceAgentDefinition {
   const definition = agent.versions.latest.definition;
   if (!isVoiceAgentDefinition(definition)) {
-    throw new Error(`Agent ${agent.name} is not a voice agent.`);
+    throw new Error(`Agent ${agent.name} is not a Realtime voice agent.`);
   }
   return definition;
 }
@@ -1346,6 +1346,7 @@ function isVoiceAgentDefinition(
 ): definition is VoiceAgentDefinition {
   return (
     definition.kind === "voice" &&
+    !("sub_protocol" in definition && definition.sub_protocol === "live") &&
     "model_type" in definition &&
     (definition.model_type === "managed" || definition.model_type === "self_deployed") &&
     "model" in definition &&
@@ -1354,12 +1355,15 @@ function isVoiceAgentDefinition(
 }
 
 function withTurnDetectionOverrides(
-  turnDetection: VoiceAgentTurnDetectionConfigUnion | undefined,
+  turnDetection: VoiceAgentTurnDetectionConfigUnion | null | undefined,
 ): VoiceAgentTurnDetectionConfigUnion {
   // Turn-detection type is a session default set when the agent was configured and cannot change
   // at connect time (see the `audio` doc comment on `VoiceAgentDefinition`), so the agent's own
   // type and fields are preserved here; only this demo's chosen overrides are layered on top.
-  if (!turnDetection) {
+  if (turnDetection === null) {
+    throw new Error("This console requires automatic turn detection; the agent has it disabled.");
+  }
+  if (turnDetection === undefined) {
     return {
       type: "server_vad",
       create_response: true,

@@ -5,14 +5,14 @@ languages:
 products:
 - ai-services
 - azure
-description: Microsoft Foundry Voice Agents samples in JavaScript, covering voice agent configuration, generation, realtime audio/text streaming, and telephony inspection.
+description: JavaScript samples for Microsoft Foundry Voice Agents, including agent setup, realtime audio, telephony sounds, tracing, and GPT-Live in the browser.
 ---
 
 # 🎙️ Voice Agents JavaScript Samples
 
 Samples for Microsoft Foundry **Voice Agents**, a preview feature of the [`@azure/ai-projects`](https://www.npmjs.com/package/@azure/ai-projects) SDK that lets an agent hold a spoken, real-time conversation over a WebSocket connection.
 
-Voice Agents are gated behind an opt-in preview header, sent automatically by these samples via the `foundry-features: VoiceAgents=V1Preview` request option (or the equivalent `{ foundryFeatures: "VoiceAgents=V1Preview" }` shorthand).
+GPT-Live and some other Voice Agents features require the `VoiceAgents=V1Preview` opt-in. The samples use the `foundry-features` request header or `{ foundryFeatures: "VoiceAgents=V1Preview" }` where needed.
 
 ## Samples
 
@@ -26,7 +26,12 @@ Voice Agents are gated behind an opt-in preview header, sent automatically by th
 | [`realtime-text-and-tools`](./realtime-text-and-tools) | Send text to a voice agent, stream its text/audio response, and handle a local function tool call. |
 | [`voice-agent-conversations`](./voice-agent-conversations) | Inspect a stored voice agent conversation - its items and model responses - through the Conversation REST API. |
 | [`telephony-inspection`](./telephony-inspection) | Read-only inspection of a voice agent's telephony bindings, transfer targets, and call history. |
-| [`browser-voice-console`](./browser-voice-console) | Browser-based console for chatting or talking with a voice agent and managing its definitions, authenticated through a loopback Azure CLI bridge so no credential is ever supplied to the browser. |
+| [`configure-soundscape-and-audio`](./configure-soundscape-and-audio) | Set up telephony background and event sounds, noise suppression, and speech transcription. Soundscape audio is for telephony calls; the realtime check only verifies the agent responds. |
+| [`realtime-tracing`](./realtime-tracing) | View OpenTelemetry traces for agent setup, a realtime response, and a local function call. |
+| [`browser-voice-console`](./browser-voice-console) | Browser-based console for chatting or talking with a voice agent and managing its definitions, using a local Azure CLI token bridge. |
+| [`browser-gpt-live`](./browser-gpt-live) | Talk or type to a GPT-Live agent in your browser using the SDK's Live API. |
+
+These samples target `@azure/ai-projects` 2.11.0.
 
 ## Prerequisites
 
@@ -45,7 +50,9 @@ cp .env-template .env   # then fill in your values
 npm start
 ```
 
-`browser-voice-console` is a Vite app instead of a Node.js script: run `npm install`, copy `.env-template` to `.env`, then `npm run dev` and open the printed local URL.
+`browser-voice-console` and `browser-gpt-live` are Vite apps instead of Node.js scripts: run `npm install`, copy `.env-template` to `.env`, then `npm run dev` and open the printed local URL (`browser-gpt-live` uses port 5174). In `browser-gpt-live/.env`, set `VITE_FOUNDRY_LIVE_MODEL` to your GPT-Live deployment name (the default is `gpt-live-1`). To send typed messages, also set `VITE_FOUNDRY_DELEGATION_MODEL` to a Responses model deployment, such as `gpt-4.1`; allow microphone access to talk.
+
+The browser samples use a local development server that passes Azure CLI access tokens to the browser. Disconnect before closing the GPT-Live page so its temporary agent is deleted.
 
 ## Learn more
 
