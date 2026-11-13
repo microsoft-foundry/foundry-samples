@@ -49,6 +49,10 @@ param scopes array = []
 param deploymentInPath string = 'false'  // Required: Controls how deployment names are passed
 param inferenceAPIVersion string = ''    // Required: API version for model inference calls
 
+@description('Set to responses for upstream Responses API routing; leave empty to preserve existing routing.')
+@allowed(['', 'responses'])
+param upstreamSurface string = ''
+
 // 2. OPTIONAL - Deployment API Version
 param deploymentAPIVersion string = ''   // Optional: API version for deployment management
 
@@ -138,6 +142,9 @@ var metadata = union(
     deploymentInPath: deploymentInPath
     inferenceAPIVersion: inferenceAPIVersion
   },
+  upstreamSurface != '' ? {
+    upstreamSurface: upstreamSurface
+  } : {},
   // Conditionally include deployment API version
   deploymentAPIVersion != '' ? {
     deploymentAPIVersion: deploymentAPIVersion

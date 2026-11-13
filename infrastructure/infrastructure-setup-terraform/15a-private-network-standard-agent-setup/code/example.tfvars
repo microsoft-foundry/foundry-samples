@@ -1,4 +1,3 @@
-location = "westus3"
 
 # Optional
 virtual_network_address_space          = "192.168.0.0/16"

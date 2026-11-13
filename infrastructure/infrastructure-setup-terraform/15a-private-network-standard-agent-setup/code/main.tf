@@ -181,7 +181,7 @@ resource "azapi_resource" "ai_foundry" {
   type                      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name                      = "aifoundry${random_string.unique.result}"
   parent_id                 = azurerm_resource_group.rg.id
-  location                  = var.location
+  location                  = azurerm_resource_group.rg.location
   schema_validation_enabled = false
 
   body = {

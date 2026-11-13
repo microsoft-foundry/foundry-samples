@@ -9,7 +9,7 @@
 param aiFoundryName string = 'foundrypnadisabled-${uniqueString(resourceGroup().id)}'
 
 @description('Location for all resources.')
-param location string = 'eastus'
+param location string = resourceGroup().location
 
 @description('Name of the first project')
 param defaultProjectName string = '${aiFoundryName}-proj'

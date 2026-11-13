@@ -29,6 +29,19 @@ variable "subscription_id_resources" {
 }
 
 variable "location" {
-  description = "The name of the location to provision the resources to"
+  description = "Choose a supported Azure region for the resource group and supporting resources."
   type        = string
+
+  validation {
+    condition = contains([
+      "australiaeast", "brazilsouth", "canadacentral", "canadaeast",
+      "centralindia", "centralus", "eastasia", "eastus",
+      "francecentral", "germanywestcentral", "italynorth", "japaneast",
+      "koreacentral", "northcentralus", "northeurope", "norwayeast",
+      "qatarcentral", "southafricanorth", "southcentralus", "southindia",
+      "southeastasia", "spaincentral", "swedencentral", "switzerlandnorth",
+      "uaenorth", "uksouth", "westeurope", "westus",
+    ], var.location)
+    error_message = "Choose a supported Azure region from the list above."
+  }
 }

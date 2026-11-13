@@ -1,6 +1,5 @@
 using './main.bicep'
 
-param location = 'westus'
 param aiServices = 'foundry'
 param modelName = 'gpt-4.1'
 param modelFormat = 'OpenAI'

@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.39.26.7824",
-      "templateHash": "17241521535998536253"
+      "version": "0.48.1.52935",
+      "templateHash": "18090382923730046102"
     }
   },
   "parameters": {
@@ -65,6 +65,17 @@
       "type": "string",
       "defaultValue": ""
     },
+    "upstreamSurface": {
+      "type": "string",
+      "defaultValue": "",
+      "allowedValues": [
+        "",
+        "responses"
+      ],
+      "metadata": {
+        "description": "Set to responses for upstream Responses API routing; leave empty to preserve existing routing."
+      }
+    },
     "deploymentAPIVersion": {
       "type": "string",
       "defaultValue": ""
@@ -109,7 +120,7 @@
     "isOAuth2Missing": "[and(equals(parameters('authType'), 'OAuth2'), or(or(empty(parameters('clientId')), empty(parameters('clientSecret'))), empty(parameters('tokenUrl'))))]",
     "authValidationError": "[or(variables('isApiKeyMissing'), variables('isOAuth2Missing'))]",
     "authValidationMessage": "[if(variables('isApiKeyMissing'), 'ERROR: apiKey is required when authType is ApiKey.', if(variables('isOAuth2Missing'), 'ERROR: clientId, clientSecret, and tokenUrl are required when authType is OAuth2.', ''))]",
-    "metadata": "[union(createObject('deploymentInPath', parameters('deploymentInPath'), 'inferenceAPIVersion', parameters('inferenceAPIVersion')), if(not(equals(parameters('deploymentAPIVersion'), '')), createObject('deploymentAPIVersion', parameters('deploymentAPIVersion')), createObject()), if(variables('hasModelDiscovery'), createObject('modelDiscovery', string(createObject('listModelsEndpoint', parameters('listModelsEndpoint'), 'getModelEndpoint', parameters('getModelEndpoint'), 'deploymentProvider', parameters('deploymentProvider')))), createObject()), if(and(variables('hasStaticModels'), not(variables('hasModelDiscovery'))), createObject('models', string(parameters('staticModels'))), createObject()), if(variables('hasCustomHeaders'), createObject('customHeaders', string(parameters('customHeaders'))), createObject()), if(variables('hasAuthConfig'), createObject('authConfig', string(parameters('authConfig'))), createObject()))]"
+    "metadata": "[union(createObject('deploymentInPath', parameters('deploymentInPath'), 'inferenceAPIVersion', parameters('inferenceAPIVersion')), if(not(equals(parameters('upstreamSurface'), '')), createObject('upstreamSurface', parameters('upstreamSurface')), createObject()), if(not(equals(parameters('deploymentAPIVersion'), '')), createObject('deploymentAPIVersion', parameters('deploymentAPIVersion')), createObject()), if(variables('hasModelDiscovery'), createObject('modelDiscovery', string(createObject('listModelsEndpoint', parameters('listModelsEndpoint'), 'getModelEndpoint', parameters('getModelEndpoint'), 'deploymentProvider', parameters('deploymentProvider')))), createObject()), if(and(variables('hasStaticModels'), not(variables('hasModelDiscovery'))), createObject('models', string(parameters('staticModels'))), createObject()), if(variables('hasCustomHeaders'), createObject('customHeaders', string(parameters('customHeaders'))), createObject()), if(variables('hasAuthConfig'), createObject('authConfig', string(parameters('authConfig'))), createObject()))]"
   },
   "resources": [
     {
@@ -202,8 +213,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "15217823060306523247"
+              "version": "0.48.1.52935",
+              "templateHash": "1030383591227121407"
             }
           },
           "parameters": {

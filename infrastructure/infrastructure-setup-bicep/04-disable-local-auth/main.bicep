@@ -1,6 +1,6 @@
 param aiFoundryName string = 'foundry-disable-localauth'
 param aiProjectName string = '${aiFoundryName}-proj'
-param location string = 'eastus2'
+param location string = resourceGroup().location
 
 /*
   An AI Foundry resources is a variant of a CognitiveServices/account resource type

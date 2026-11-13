@@ -106,12 +106,6 @@ Controlled by the `enablePrivateCaTrust` parameter (set for you by
 
 ### Phase 0 — bootstrap the cert (run once)
 
-Create the resource group first (the bootstrap creates the Key Vault in it):
-
-```powershell
-az group create --name rg-byomca --location canadacentral
-```
-
 ```powershell
 .\bootstrap-cert.ps1 -Subscription <sub-id> -ResourceGroup rg-byomca `
   -Location canadacentral -KeyVaultName byomca-kv-01 `
@@ -119,9 +113,8 @@ az group create --name rg-byomca --location canadacentral
   -PrincipalObjectId <your-entra-object-id>
 ```
 
-Writes `.gateway\{cert.b64,key.b64,certversion.txt,secretname.txt}` and uploads the root CA
-public PEM to Key Vault as a **secret**. `deploy.ps1` forwards the secret name
-to the `gatewayCaSecretName` template parameter, so a custom `-SecretName` is honored.
+Writes `.gateway\{cert.b64,key.b64,certversion.txt}` and uploads the root CA
+public PEM to Key Vault as a **secret**.
 
 ### Phase 1 — REPRO (`enablePrivateCaTrust = false`, default)
 

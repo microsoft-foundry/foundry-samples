@@ -14,7 +14,7 @@ param aiFoundryName string = 'ai-foundry-complete-cmk'
 param aiProjectName string = '${aiFoundryName}-proj'
 
 @description('Location for all resources.')
-param location string = 'eastus2'
+param location string = resourceGroup().location
 
 @description('Name of the Azure Key Vault target')
 param keyVaultName string

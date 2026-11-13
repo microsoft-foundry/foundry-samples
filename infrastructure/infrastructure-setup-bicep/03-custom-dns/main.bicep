@@ -1,7 +1,7 @@
 param aiFoundryName string = 'foundry-name'
 param customDNSName string = 'foundry-alt-custom-dns'
 param aiProjectName string = '${aiFoundryName}-proj'
-param location string = 'eastus2'
+param location string = resourceGroup().location
 
 /*
   An AI Foundry resources is a variant of a CognitiveServices/account resource type

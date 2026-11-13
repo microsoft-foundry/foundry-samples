@@ -23,7 +23,7 @@
     },
     "location": {
       "type": "string",
-      "defaultValue": "eastus2"
+      "defaultValue": "[resourceGroup().location]"
     }
   },
   "resources": [

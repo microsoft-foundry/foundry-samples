@@ -11,11 +11,10 @@
   "parameters": {
     "location": {
       "type": "string",
-      "defaultValue": "eastus",
+      "defaultValue": "[resourceGroup().location]",
       "allowedValues": [
         "westus",
         "eastus",
-        "eastus2",
         "japaneast",
         "francecentral",
         "spaincentral",

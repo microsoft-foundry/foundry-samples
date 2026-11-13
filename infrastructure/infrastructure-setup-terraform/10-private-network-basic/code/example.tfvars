@@ -1,7 +1,6 @@
 # Example terraform.tfvars file
 # Copy this to terraform.tfvars and customize for your deployment
 
-location                      = "eastus2"
 ai_foundry_name               = "foundrypnadisabled"
 virtual_network_name          = "private-vnet"
 virtual_network_address_space = "192.168.0.0/16"

@@ -13,7 +13,6 @@ use the hosted-agent runtime.
 @allowed([
   'westus'
   'eastus'
-  'eastus2'
   'japaneast'
   'francecentral'
   'spaincentral'
@@ -37,7 +36,7 @@ use the hosted-agent runtime.
   'switzerlandnorth'
   'norwayeast'
 ])
-param location string = 'eastus'
+param location string = any(resourceGroup().location)
 
 @description('Name for your AI Services resource.')
 param aiServices string = 'aiservices'

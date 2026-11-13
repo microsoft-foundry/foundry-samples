@@ -42,29 +42,26 @@ Deploy [`41-standard-agent-setup`](../41-standard-agent-setup/) (standard, BYO d
 | 3 | **Third-party model provider** | Model hosted by a 3P provider (e.g. OpenAI) reached through the Foundry **ModelGateway** connection | [`01-connections/model-gateway`](../01-connections/model-gateway/) (`samples/parameters-openai.json`) | API key / OAuth2 |
 | 4 | **BYOM + BYOG** (your own 3P gateway) | Your own non-APIM gateway (LiteLLM, Kong, a custom proxy, …) in front of your models | [`01-connections/model-gateway`](../01-connections/model-gateway/) (custom `targetUrl` + headers / auth) | API key / OAuth2 |
 | 5 | **AI Gateway tier** (preview) — dedicated gateway fronting a Foundry model | You want the purpose-built AI Gateway tier (APIM **`AIGateway`** SKU) with a token-limit policy in front of a Foundry model, consumed by one or more spoke projects (same or cross-subscription) | [`01-connections/ai-gateway-tier`](../01-connections/ai-gateway-tier/) — deploy `main.bicep` (hub: account + model + gateway) **once**, then `connection.bicep` per spoke project | Gateway runtime key (`api-key`) |
-| 6 | **Direct Foundry connection with PMI** | Reach an existing Foundry model without a separate gateway or API keys; grant the source project's identity access on the target account | [`01-connections/foundry-model-connection`](../01-connections/foundry-model-connection/) — `ApiManagement` connection plus optional Foundry User role assignment | Project MI |
 
-All six produce a **connection** whose model is referenced as `<connectionName>/<modelName>`
+All five produce a **connection** whose model is referenced as `<connectionName>/<modelName>`
 by the agent in step 6 (e.g. `ai-gateway/gpt-4o`).
 
 > [!IMPORTANT]
 > **BYOM `<connection>/<model>` resolution only works for *gateway-category* connections —
-> `ApiManagement` (variants 1 and 6) or `ModelGateway` (variants 2–5).** A plain `AzureOpenAI` or
+> `ApiManagement` (variant 1) or `ModelGateway` (variants 2–4).** A plain `AzureOpenAI` or
 > `CognitiveService`/Foundry connection (`connection-azure-openai.bicep` /
 > `connection-foundry.bicep`) is **not** resolvable by a prompt agent as `<connection>/<model>`
 > — a prompt agent bound to one fails with `Connection '<name>' not found`. Those connection
 > types are for classic SDK / data-plane use, not gateway-routed agent inference. To reach a
 > model in *another* account without your own APIM, use variant 2 (a `ModelGateway` connection
-> pointed directly at that account's inference endpoint) or variant 6 for a direct Foundry
-> `ApiManagement` connection authenticated with the project's managed identity.
+> pointed directly at that account's inference endpoint).
 
 > [!NOTE]
 > Variants **1 and 5** *create* the gateway infra for you — variant 1 a public APIM, variant 5
 > the **AI Gateway tier** (`AIGateway` SKU) hub (deploy its `main.bicep` once; multiple spoke
 > projects/subscriptions attach with `connection.bicep`). Variants 2–4 add a **ModelGateway**
 > connection to an upstream endpoint that already exists (another Foundry/Azure OpenAI account,
-> a 3P provider, or your own gateway). Variant 6 adds a direct `ApiManagement` connection
-> to an existing Foundry account without creating a gateway. In every case the model is invoked through a
+> a 3P provider, or your own gateway). In every case the model is invoked through a
 > **prompt agent + Responses API** — see [Step 6](#step-6--create-an-agent-both-paths).
 
 ### Step 6 — create an agent
@@ -130,9 +127,8 @@ variant you deployed).
 
 Point the SDK at your **project endpoint** and reference the model as
 `<connection-name>/<model-name>` (e.g. `ai-gateway/gpt-4o`) from step 5. The agent runs
-server-side. For the PMI variants, it uses the **project's managed identity**:
-APIM's `validate-azure-ad-token` policy checks the token in variant 1, while the
-target Foundry account authorizes that identity directly in variant 6.
+server-side using the **project's managed identity**, which mints the token that APIM's
+`validate-azure-ad-token` policy checks.
 
 ```python
 # pip install azure-ai-projects>=2.0.0 azure-identity

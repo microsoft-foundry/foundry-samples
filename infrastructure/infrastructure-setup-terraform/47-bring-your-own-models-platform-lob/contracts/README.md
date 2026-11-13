@@ -14,6 +14,7 @@ Non-secret published artifacts. Hub-owned roots write files here; LoB-owned root
 {
   "$schema": "https://example.com/contoso/hub-workload-contract-v1.json",
   "version": "1",
+  "generated_at": "2026-08-27T12:00:00Z",
 
   "gateway": {
     "private_url": "https://<apim-name>.azure-api.net/inference",

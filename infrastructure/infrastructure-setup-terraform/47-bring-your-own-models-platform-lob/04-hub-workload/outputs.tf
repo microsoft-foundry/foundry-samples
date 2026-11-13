@@ -59,5 +59,7 @@ output "policy_render_inputs" {
     groq_alias       = var.groq_alias
     groq_upstream    = "https://api.groq.com/openai/v1"
     groq_model       = var.groq_model_name
+
+    mock_alias = local.mock_alias
   }
 }

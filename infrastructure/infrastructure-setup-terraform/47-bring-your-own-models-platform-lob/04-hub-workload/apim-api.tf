@@ -77,6 +77,12 @@ resource "azurerm_api_management_api_diagnostic" "appi" {
       "x-aigw-project-id",
       "x-aigw-model-alias",
       "x-aigw-vendor",
+      # Foundry data-proxy fingerprint: these are stamped by the data-proxy
+      # when a VNet-injected (networkInjections) account routes inference
+      # through it. Presence here proves the data-proxy is in the path.
+      "x-aml-data-proxy-url",
+      "x-aml-vnet-identifier",
+      "x-aml-static-ingress-ip",
     ]
   }
 

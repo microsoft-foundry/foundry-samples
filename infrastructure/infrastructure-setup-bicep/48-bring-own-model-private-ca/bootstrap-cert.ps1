@@ -48,8 +48,6 @@ param(
   # token's 'oid' claim (no Microsoft Graph call, so conditional-access policies
   # that block Graph do not matter).
   [string]$PrincipalObjectId = '',
-  [ValidateSet('User', 'ServicePrincipal')]
-  [string]$PrincipalType = 'User',
   # Where the base64 PEM material is written for deploy.ps1 to pick up.
   # Leave empty to default to '.gateway' next to this script.
   [string]$OutDir = ''
@@ -76,7 +74,6 @@ $env:MSYS_NO_PATHCONV = '1'
 Write-Host "Using openssl: $openssl"
 
 az account set --subscription $Subscription
-if ($LASTEXITCODE -ne 0) { throw "Could not select subscription '$Subscription'." }
 
 function Get-OidFromArmToken {
   $tok = az account get-access-token --query accessToken -o tsv
@@ -155,11 +152,10 @@ Write-Host "==> Granting 'Key Vault Secrets Officer' on the vault (no Graph look
 $eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
 az role assignment create `
   --assignee-object-id $PrincipalObjectId `
-  --assignee-principal-type $PrincipalType `
+  --assignee-principal-type User `
   --role "Key Vault Secrets Officer" `
   --scope $kvId | Out-Null
 $ErrorActionPreference = $eap
-if ($LASTEXITCODE -ne 0) { throw "Could not grant Key Vault Secrets Officer to the bootstrap principal." }
 
 Write-Host "==> Waiting 30s for RBAC to propagate ..."
 Start-Sleep -Seconds 30
@@ -190,7 +186,6 @@ $keyB64  = [Convert]::ToBase64String([IO.File]::ReadAllBytes($leafKey))
 Set-Content -Path (Join-Path $OutDir 'cert.b64') -Value $certB64 -NoNewline
 Set-Content -Path (Join-Path $OutDir 'key.b64')  -Value $keyB64  -NoNewline
 Set-Content -Path (Join-Path $OutDir 'certversion.txt') -Value $version -NoNewline
-Set-Content -Path (Join-Path $OutDir 'secretname.txt') -Value $SecretName -NoNewline
 
 # Clean up private-key-bearing artifacts (secrets); keep public certs + chain.
 Remove-Item $caKey, $leafCsr, $leafExt -ErrorAction SilentlyContinue

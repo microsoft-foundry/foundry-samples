@@ -84,9 +84,6 @@ param keyVaultName string
 @description('Pinned version of the root CA public-cert PEM Key Vault SECRET. Only needed for the VERIFY phase (enablePrivateCaTrust=true); leave empty for REPRO. Emitted by the bootstrap script.')
 param gatewayCaSecretVersion string = ''
 
-@description('Name of the root CA public-cert PEM Key Vault SECRET (the trust anchor referenced by account.trustedCertificateSources). Must match the -SecretName used by the bootstrap script; deploy.ps1 forwards it automatically.')
-param gatewayCaSecretName string = 'trustedca-root-pem'
-
 @description('''Two-phase test switch.
 false (default) = REPRO: root CA NOT registered on the account; inference is expected to FAIL at the data proxy with certificate-not-trusted.
 true = VERIFY: root CA (public PEM) registered in account.trustedCertificateSources; wait for the account update to succeed and trust to propagate, then inference is expected to SUCCEED.''')
@@ -109,12 +106,11 @@ var cosmosName = toLower('${namePrefix}-cosmos-${suffix}')
 var searchName = toLower('${namePrefix}-search-${suffix}')
 
 var customDomainFqdn = '${customDomainHost}.${customDomainZone}'
-// gatewayCaSecretName (parameter) names the ROOT CA public-cert PEM stored as a
-// Key Vault SECRET. The trusted-cert resolver reads a KV SECRET (public PEM),
-// not a certificate object; referencing a certificate object fails with
-// InvalidReference.
-var natGatewayName = 'ng-${namePrefix}-${suffix}'
-var natPublicIpName = 'pip-ng-${namePrefix}-${suffix}'
+// Name of the ROOT CA public-cert PEM stored as a Key Vault SECRET (the trust
+// anchor referenced by account.trustedCertificateSources).
+// trusted-cert resolver reads a KV SECRET (public PEM), not a certificate
+// object; referencing a certificate object fails with InvalidReference.
+var gatewayCaSecretName = 'trustedca-root-pem'
 
 var apimApiPath = 'inference'
 var tokenAudience = 'https://cognitiveservices.azure.com'
@@ -191,41 +187,6 @@ resource appi 'Microsoft.Insights/components@2020-02-02' = {
 }
 
 // ----------------------------------------------------------------------------
-// Explicit outbound for the gateway ACI subnet. The nginx container must reach
-// the public model endpoint; a NAT gateway provides deterministic egress
-// instead of relying on (retiring) default outbound access.
-// ----------------------------------------------------------------------------
-resource natPublicIp 'Microsoft.Network/publicIPAddresses@2023-11-01' = {
-  name: natPublicIpName
-  location: location
-  tags: commonTags
-  sku: {
-    name: 'Standard'
-  }
-  properties: {
-    publicIPAllocationMethod: 'Static'
-    publicIPAddressVersion: 'IPv4'
-  }
-}
-
-resource natGateway 'Microsoft.Network/natGateways@2023-11-01' = {
-  name: natGatewayName
-  location: location
-  tags: commonTags
-  sku: {
-    name: 'Standard'
-  }
-  properties: {
-    idleTimeoutInMinutes: 4
-    publicIpAddresses: [
-      {
-        id: natPublicIp.id
-      }
-    ]
-  }
-}
-
-// ----------------------------------------------------------------------------
 // Network: spoke VNet with a delegated agent subnet + a PE subnet.
 // ----------------------------------------------------------------------------
 resource vnet 'Microsoft.Network/virtualNetworks@2023-11-01' = {
@@ -269,9 +230,6 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-11-01' = {
           addressPrefixes: [
             aciSubnetPrefix
           ]
-          natGateway: {
-            id: natGateway.id
-          }
           delegations: [
             {
               name: 'Microsoft.ContainerInstance/containerGroups'
@@ -437,10 +395,6 @@ http {
       proxy_pass https://__MODELHOST__/openai/;
       proxy_set_header Host __MODELHOST__;
       proxy_ssl_server_name on;
-      proxy_ssl_name __MODELHOST__;
-      proxy_ssl_verify on;
-      proxy_ssl_verify_depth 3;
-      proxy_ssl_trusted_certificate /etc/pki/tls/certs/ca-bundle.crt;
     }
     location / { return 200 'gateway-ok'; }
   }
@@ -682,7 +636,6 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
   kind: 'GlobalDocumentDB'
   properties: {
     databaseAccountOfferType: 'Standard'
-    disableLocalAuth: true
     publicNetworkAccess: 'Disabled'
     consistencyPolicy: {
       defaultConsistencyLevel: 'Session'
@@ -934,10 +887,6 @@ resource projectCapabilityHost 'Microsoft.CognitiveServices/accounts/projects/ca
   parent: project
   name: 'agents'
   properties: {
-    // Bicep types for capabilityHosts may omit capabilityHostKind, but the ARM
-    // API requires it for agent capability hosts.
-    #disable-next-line BCP037
-    capabilityHostKind: 'Agents'
     vectorStoreConnections: [
       searchName
     ]

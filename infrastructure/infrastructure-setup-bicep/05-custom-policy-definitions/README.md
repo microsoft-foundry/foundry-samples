@@ -7,7 +7,8 @@ Azure Policy enables you to put guardrails on resource configurations and enable
 ### 1. Deny Disallowed Connections (`deny-disallowed-connections.json`)
 This policy restricts AI Foundry project connections to only allow specific categories. By default, it only allows `CognitiveSearch` connections, but this can be customized via parameters.
 
-**Policy Effect**: Deny  
+**Policy Effect**: Deny
+
 **Scope**: Microsoft.CognitiveServices/accounts/projects/connections
 
 ### 2. Deny Key Authentication Connections (`deny-key-auth-connections.json`)
@@ -15,6 +16,20 @@ This policy prevents the creation of connections that use key-based authenticati
 
 ### 3. Audit Enabled VNet Injection (`audit-enabled-vnet-injection.json`)
 This policy audits whether VNet injection is properly enabled for AI Foundry resources.
+
+### 4. Restrict Admin-Connected Models to Approved APIM Targets (`deny-disallowed-admin-connected-models.json`)
+This policy restricts `ModelGateway` and `ApiManagement` connections to APIM base URLs supplied through the `allowedApimTargets` parameter. Each configured base URL matches the exact URL and paths beneath it, such as `/inference`; enter base URLs without a trailing slash. An empty target list blocks all matching connections.
+
+**Policy Effect**: Configurable (`Deny`, `Audit`, or `Disabled`)
+
+**Scope**: Microsoft.CognitiveServices/accounts/connections and Microsoft.CognitiveServices/accounts/projects/connections
+
+### 5. Deny Spoke Model Deployments (`deny-spoke-model-deployments.json`)
+This policy makes a spoke Foundry account consumer-only by preventing creation of `Microsoft.CognitiveServices/accounts/deployments` resources. Spokes can continue consuming models exposed through approved hub gateway connections.
+
+**Policy Effect**: Configurable (`Deny`, `Audit`, or `Disabled`)
+
+**Scope**: Microsoft.CognitiveServices/accounts/deployments
 
 ## Deployment
 

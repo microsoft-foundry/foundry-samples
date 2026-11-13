@@ -1,7 +1,6 @@
 # Example terraform.tfvars file
 # Copy this to terraform.tfvars and customize for your deployment
 
-location             = "eastus2"
 ai_foundry_name      = "foundry-bing"
 ai_project_name      = "foundry-bing-proj"
 bing_api_key         = "YOUR_BING_API_KEY_HERE" # Replace with your actual Bing API key

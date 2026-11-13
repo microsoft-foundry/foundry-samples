@@ -5,9 +5,6 @@
     "aiFoundryName": {
       "value": "<your foundry resource name>"
     },
-    "location": {
-      "value": "<your location>"
-    },
     "keyVaultName": {
       "value": "<your key vault name>"
     },

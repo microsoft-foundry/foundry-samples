@@ -109,7 +109,7 @@ resource "azurerm_cosmosdb_account" "cosmos" {
 resource "azapi_resource" "ai_foundry" {
   type      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name      = local.account_name
-  location  = var.location
+  location  = azurerm_resource_group.rg.location
   parent_id = azurerm_resource_group.rg.id
 
   identity {

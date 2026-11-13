@@ -54,7 +54,7 @@ resource "azurerm_key_vault_key" "cmk" {
 resource "azapi_resource" "ai_foundry" {
   type      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name      = var.ai_foundry_name
-  location  = var.location
+  location  = azurerm_resource_group.rg.location
   parent_id = azurerm_resource_group.rg.id
 
   identity {

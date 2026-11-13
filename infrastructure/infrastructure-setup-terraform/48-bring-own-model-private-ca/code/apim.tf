@@ -72,6 +72,6 @@ resource "azurerm_api_management_logger" "appi" {
   resource_id         = azurerm_application_insights.appi.id
 
   application_insights {
-    instrumentation_key = azurerm_application_insights.appi.instrumentation_key
+    connection_string = azurerm_application_insights.appi.connection_string
   }
 }

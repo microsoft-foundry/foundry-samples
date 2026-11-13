@@ -27,8 +27,3 @@ output "cosmos_db_id" {
   description = "The ID of the Cosmos DB account"
   value       = local.cosmos_id
 }
-
-output "app_insights_id" {
-  description = "The ID of the Application Insights resource used for agent tracing"
-  value       = azurerm_application_insights.app_insights.id
-}

@@ -1,0 +1,112 @@
+{
+  "properties": {
+    "displayName": "Restrict Foundry admin-connected models to approved APIM targets",
+    "policyType": "Custom",
+    "mode": "All",
+    "description": "Controls ModelGateway and ApiManagement connections that do not target an approved Azure API Management endpoint.",
+    "version": "1.1.0",
+    "parameters": {
+      "allowedApimTargets": {
+        "type": "Array",
+        "metadata": {
+          "description": "Approved APIM base URLs. Each URL also allows paths beneath it. Enter each URL without a trailing slash.",
+          "displayName": "Allowed APIM target URLs"
+        },
+        "defaultValue": []
+      },
+      "effect": {
+        "type": "String",
+        "metadata": {
+          "description": "Deny blocks matching connections, Audit reports them, and Disabled turns off evaluation.",
+          "displayName": "Policy effect"
+        },
+        "allowedValues": [
+          "Deny",
+          "Audit",
+          "Disabled"
+        ],
+        "defaultValue": "Deny"
+      }
+    },
+    "policyRule": {
+      "if": {
+        "anyOf": [
+          {
+            "allOf": [
+              {
+                "field": "type",
+                "equals": "Microsoft.CognitiveServices/accounts/connections"
+              },
+              {
+                "field": "Microsoft.CognitiveServices/accounts/connections/category",
+                "in": [
+                  "ModelGateway",
+                  "ApiManagement"
+                ]
+              },
+              {
+                "count": {
+                  "value": "[parameters('allowedApimTargets')]",
+                  "name": "allowedApimTarget",
+                  "where": {
+                    "anyOf": [
+                      {
+                        "field": "Microsoft.CognitiveServices/accounts/connections/target",
+                        "equals": "[current('allowedApimTarget')]"
+                      },
+                      {
+                        "field": "Microsoft.CognitiveServices/accounts/connections/target",
+                        "like": "[concat(current('allowedApimTarget'), '/*')]"
+                      }
+                    ]
+                  }
+                },
+                "equals": 0
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "field": "type",
+                "equals": "Microsoft.CognitiveServices/accounts/projects/connections"
+              },
+              {
+                "field": "Microsoft.CognitiveServices/accounts/projects/connections/category",
+                "in": [
+                  "ModelGateway",
+                  "ApiManagement"
+                ]
+              },
+              {
+                "count": {
+                  "value": "[parameters('allowedApimTargets')]",
+                  "name": "allowedApimTarget",
+                  "where": {
+                    "anyOf": [
+                      {
+                        "field": "Microsoft.CognitiveServices/accounts/projects/connections/target",
+                        "equals": "[current('allowedApimTarget')]"
+                      },
+                      {
+                        "field": "Microsoft.CognitiveServices/accounts/projects/connections/target",
+                        "like": "[concat(current('allowedApimTarget'), '/*')]"
+                      }
+                    ]
+                  }
+                },
+                "equals": 0
+              }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    },
+    "versions": [
+      "1.1.0"
+    ]
+  }
+}

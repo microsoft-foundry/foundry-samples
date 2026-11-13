@@ -6,7 +6,6 @@ Standard Setup Network Secured Steps for main.bicep
 @allowed([
   'westus'
   'eastus'
-  'eastus2'
   'japaneast'
   'francecentral'
   'spaincentral'
@@ -31,7 +30,7 @@ Standard Setup Network Secured Steps for main.bicep
   'switzerlandnorth'
   'norwayeast'
 ])
-param location string = 'eastus'
+param location string = any(resourceGroup().location)
 
 @description('Name for your AI Services resource.')
 param aiServices string = 'aiservices'

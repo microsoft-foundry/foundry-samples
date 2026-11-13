@@ -1,7 +1,19 @@
 variable "location" {
-  description = "The Azure region where resources will be deployed"
+  description = "Choose a supported Azure region for the resource group and supporting resources."
   type        = string
-  default     = "eastus2"
+
+  validation {
+    condition = contains([
+      "australiaeast", "brazilsouth", "canadacentral", "canadaeast",
+      "centralindia", "centralus", "eastasia", "eastus",
+      "francecentral", "germanywestcentral", "italynorth", "japaneast",
+      "koreacentral", "northcentralus", "northeurope", "norwayeast",
+      "qatarcentral", "southafricanorth", "southcentralus", "southindia",
+      "southeastasia", "spaincentral", "swedencentral", "switzerlandnorth",
+      "uaenorth", "uksouth", "westeurope", "westus",
+    ], var.location)
+    error_message = "Choose a supported Azure region from the list above."
+  }
 }
 
 variable "ai_services_name" {

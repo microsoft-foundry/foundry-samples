@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "15571043127430806677"
+      "templateHash": "18122772352860090834"
     }
   },
   "parameters": {
@@ -136,13 +136,6 @@
         "description": "Pinned version of the root CA public-cert PEM Key Vault SECRET. Only needed for the VERIFY phase (enablePrivateCaTrust=true); leave empty for REPRO. Emitted by the bootstrap script."
       }
     },
-    "gatewayCaSecretName": {
-      "type": "string",
-      "defaultValue": "trustedca-root-pem",
-      "metadata": {
-        "description": "Name of the root CA public-cert PEM Key Vault SECRET (the trust anchor referenced by account.trustedCertificateSources). Must match the -SecretName used by the bootstrap script; deploy.ps1 forwards it automatically."
-      }
-    },
     "enablePrivateCaTrust": {
       "type": "bool",
       "defaultValue": false,
@@ -164,8 +157,7 @@
     "cosmosName": "[toLower(format('{0}-cosmos-{1}', parameters('namePrefix'), variables('suffix')))]",
     "searchName": "[toLower(format('{0}-search-{1}', parameters('namePrefix'), variables('suffix')))]",
     "customDomainFqdn": "[format('{0}.{1}', parameters('customDomainHost'), parameters('customDomainZone'))]",
-    "natGatewayName": "[format('ng-{0}-{1}', parameters('namePrefix'), variables('suffix'))]",
-    "natPublicIpName": "[format('pip-ng-{0}-{1}', parameters('namePrefix'), variables('suffix'))]",
+    "gatewayCaSecretName": "trustedca-root-pem",
     "apimApiPath": "inference",
     "tokenAudience": "https://cognitiveservices.azure.com",
     "gatewayTarget": "[format('https://{0}/{1}', variables('customDomainFqdn'), variables('apimApiPath'))]",
@@ -200,7 +192,7 @@
     "roleSearchIndexDataContributor": "8ebe5a00-799e-43f5-93ac-243d3dce84a7",
     "roleSearchServiceContributor": "7ca78c08-252a-4471-8644-bb5ff32d4ba0",
     "cosmosBuiltInDataContributorRoleId": "00000000-0000-0000-0000-000000000002",
-    "nginxConfTemplate": "worker_processes 1;\r\nerror_log /dev/stderr warn;\r\npid /tmp/nginx.pid;\r\nevents { worker_connections 1024; }\r\nhttp {\r\n  include /etc/nginx/mime.types;\r\n  default_type application/octet-stream;\r\n  access_log /dev/stdout;\r\n  proxy_http_version 1.1;\r\n  server {\r\n    listen 443 ssl;\r\n    server_name __FQDN__;\r\n    ssl_certificate     /mnt/certs/server.crt;\r\n    ssl_certificate_key /mnt/certs/server.key;\r\n    location /__APIPATH__/ {\r\n      proxy_pass https://__MODELHOST__/openai/;\r\n      proxy_set_header Host __MODELHOST__;\r\n      proxy_ssl_server_name on;\r\n      proxy_ssl_name __MODELHOST__;\r\n      proxy_ssl_verify on;\r\n      proxy_ssl_verify_depth 3;\r\n      proxy_ssl_trusted_certificate /etc/pki/tls/certs/ca-bundle.crt;\r\n    }\r\n    location / { return 200 'gateway-ok'; }\r\n  }\r\n}\r\n",
+    "nginxConfTemplate": "worker_processes 1;\nerror_log /dev/stderr warn;\npid /tmp/nginx.pid;\nevents { worker_connections 1024; }\nhttp {\n  include /etc/nginx/mime.types;\n  default_type application/octet-stream;\n  access_log /dev/stdout;\n  proxy_http_version 1.1;\n  server {\n    listen 443 ssl;\n    server_name __FQDN__;\n    ssl_certificate     /mnt/certs/server.crt;\n    ssl_certificate_key /mnt/certs/server.key;\n    location /__APIPATH__/ {\n      proxy_pass https://__MODELHOST__/openai/;\n      proxy_set_header Host __MODELHOST__;\n      proxy_ssl_server_name on;\n    }\n    location / { return 200 'gateway-ok'; }\n  }\n}\n",
     "nginxConf": "[replace(replace(replace(variables('nginxConfTemplate'), '__FQDN__', variables('customDomainFqdn')), '__APIPATH__', variables('apimApiPath')), '__MODELHOST__', variables('modelHost'))]",
     "agentAccountBaseProperties": {
       "allowProjectManagement": true,
@@ -220,7 +212,7 @@
         }
       ]
     },
-    "trustedCertificateSourcesProperty": "[if(parameters('enablePrivateCaTrust'), createObject('trustedCertificateSources', createArray(createObject('type', 'AzureKeyVault', 'resourceId', resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), 'certificateBundleReferences', createArray(createObject('secretName', parameters('gatewayCaSecretName'), 'secretVersion', parameters('gatewayCaSecretVersion')))))), createObject())]"
+    "trustedCertificateSourcesProperty": "[if(parameters('enablePrivateCaTrust'), createObject('trustedCertificateSources', createArray(createObject('type', 'AzureKeyVault', 'resourceId', resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), 'certificateBundleReferences', createArray(createObject('secretName', variables('gatewayCaSecretName'), 'secretVersion', parameters('gatewayCaSecretVersion')))))), createObject())]"
   },
   "resources": [
     {
@@ -249,41 +241,6 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.OperationalInsights/workspaces', variables('lawName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.Network/publicIPAddresses",
-      "apiVersion": "2023-11-01",
-      "name": "[variables('natPublicIpName')]",
-      "location": "[parameters('location')]",
-      "tags": "[variables('commonTags')]",
-      "sku": {
-        "name": "Standard"
-      },
-      "properties": {
-        "publicIPAllocationMethod": "Static",
-        "publicIPAddressVersion": "IPv4"
-      }
-    },
-    {
-      "type": "Microsoft.Network/natGateways",
-      "apiVersion": "2023-11-01",
-      "name": "[variables('natGatewayName')]",
-      "location": "[parameters('location')]",
-      "tags": "[variables('commonTags')]",
-      "sku": {
-        "name": "Standard"
-      },
-      "properties": {
-        "idleTimeoutInMinutes": 4,
-        "publicIpAddresses": [
-          {
-            "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('natPublicIpName'))]"
-          }
-        ]
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Network/publicIPAddresses', variables('natPublicIpName'))]"
       ]
     },
     {
@@ -329,9 +286,6 @@
               "addressPrefixes": [
                 "[parameters('aciSubnetPrefix')]"
               ],
-              "natGateway": {
-                "id": "[resourceId('Microsoft.Network/natGateways', variables('natGatewayName'))]"
-              },
               "delegations": [
                 {
                   "name": "Microsoft.ContainerInstance/containerGroups",
@@ -343,10 +297,7 @@
             }
           }
         ]
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Network/natGateways', variables('natGatewayName'))]"
-      ]
+      }
     },
     {
       "copy": {
@@ -649,8 +600,8 @@
       "dependsOn": [
         "[resourceId('Microsoft.Network/privateEndpoints', format('pe-{0}', variables('foundryAgentAccountName')))]",
         "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[0])]",
-        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[1])]",
-        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[2])]"
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[2])]",
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[1])]"
       ]
     },
     {
@@ -678,7 +629,6 @@
       "kind": "GlobalDocumentDB",
       "properties": {
         "databaseAccountOfferType": "Standard",
-        "disableLocalAuth": true,
         "publicNetworkAccess": "Disabled",
         "consistencyPolicy": {
           "defaultConsistencyLevel": "Session"
@@ -984,7 +934,6 @@
       "apiVersion": "2026-05-15-preview",
       "name": "[format('{0}/{1}/{2}', variables('foundryAgentAccountName'), format('{0}-project', parameters('namePrefix')), 'agents')]",
       "properties": {
-        "capabilityHostKind": "Agents",
         "vectorStoreConnections": [
           "[variables('searchName')]"
         ],
@@ -1104,7 +1053,7 @@
     },
     "gatewayCaSecretName": {
       "type": "string",
-      "value": "[parameters('gatewayCaSecretName')]"
+      "value": "[variables('gatewayCaSecretName')]"
     },
     "gatewayCaSecretVersion": {
       "type": "string",

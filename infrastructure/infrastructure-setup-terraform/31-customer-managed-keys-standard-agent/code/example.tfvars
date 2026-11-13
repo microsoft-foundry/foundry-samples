@@ -1,7 +1,6 @@
 # Example configuration for customer-managed keys with standard agent
 
 # Azure region
-location = "eastus2"
 
 # AI Foundry configuration
 ai_services_name_prefix = "foundry"

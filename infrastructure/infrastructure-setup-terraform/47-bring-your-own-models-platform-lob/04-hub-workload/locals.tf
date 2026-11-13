@@ -50,12 +50,23 @@ locals {
   }
 
   # --------------------------------------------------------------------------
-  # Approved catalog. Same shape as sample 46 — Foundry / Gemini / Groq.
+  # Diagnostic mock alias. Routed in the APIM policy to a constant-latency
+  # <return-response> (no upstream call), so client-side A/B timing can
+  # isolate the data-proxy hop from real model/backend variance. Listed in
+  # the catalog so the gateway connection's model metadata accepts
+  # `gateway/mock` at invocation time.
+  # --------------------------------------------------------------------------
+  mock_alias = "mock"
+
+  # --------------------------------------------------------------------------
+  # Approved catalog. Same shape as sample 46 — Foundry / Gemini / Groq,
+  # plus the diagnostic mock alias.
   # --------------------------------------------------------------------------
   catalog_aliases = [
     { alias = var.foundry_model_name, vendor = "microsoft-foundry", upstream_model = var.foundry_model_name },
     { alias = var.gemini_alias, vendor = "google-gemini", upstream_model = var.gemini_model_name },
     { alias = var.groq_alias, vendor = "groq-llama", upstream_model = var.groq_model_name },
+    { alias = local.mock_alias, vendor = "mock", upstream_model = local.mock_alias },
   ]
 
   # --------------------------------------------------------------------------

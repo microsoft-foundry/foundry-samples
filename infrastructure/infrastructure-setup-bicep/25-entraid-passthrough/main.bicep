@@ -9,7 +9,7 @@
 param aiFoundryName string = 'entraid-foundry'
 
 @description('Location for all resources.')
-param location string = 'eastus'
+param location string = resourceGroup().location
 
 @description('Name of the first project')
 param projectName string = '${aiFoundryName}-proj'

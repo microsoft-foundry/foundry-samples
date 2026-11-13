@@ -1,0 +1,20 @@
+# Copy to terraform.tfvars and fill in.
+
+spoke_subscription_id = "b2bba6b4-c67d-43f2-9fbf-998560a9bdb0"
+tenant_id             = "e6f8ac30-2fd5-4173-8392-31b071846feb"
+
+# Optional overrides.
+name_prefix = "foundrysample-byom-lob"
+
+# Distinct project so it coexists with the non-injected sample-47 project.
+# project_name         = "hrbotdp"
+# project_display_name = "HR Bot (data-proxy)"
+
+# Free /24 within the spoke VNet (10.20.0.0/16). Clear of bastion (.3.0/26)
+# and jumpbox (.4.0/28) created by 08-spoke-jumpbox. Adjust if it collides.
+# agent_subnet_prefix = "10.20.5.0/24"
+
+# State + contract paths (defaults assume the standard sample-47 layout).
+# spoke_base_state_path = "../02-spoke-base/terraform.tfstate"
+# hub_base_state_path   = "../01-hub-base/terraform.tfstate"
+# contract_path         = "../contracts/hub-workload.contract.json"

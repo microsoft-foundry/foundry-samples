@@ -26,7 +26,7 @@ resource "azapi_resource" "ai_foundry" {
   type                      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name                      = "aifoundry${random_string.unique.result}"
   parent_id                 = azapi_resource.rg.id
-  location                  = var.location
+  location                  = azapi_resource.rg.location
   schema_validation_enabled = false
 
   body = {

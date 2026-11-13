@@ -290,11 +290,6 @@ The template creates the following resources:
 | Connections (3) | `azapi_resource` | Cosmos DB, Storage, AI Search (AAD auth) |
 | RBAC Assignments (6) | `azapi_resource` | Phase A (before caphost) + Phase B (after caphost) |
 | Capability Hosts (2) | `azapi_resource` | Account + Project |
-| Application Insights + Log Analytics | `azurerm_application_insights` | Public ingestion disabled, public query enabled |
-| Azure Monitor Private Link Scope (AMPLS) | `azurerm_monitor_private_link_scope` | Ingestion `PrivateOnly`, query `Open`; both resources scoped |
-| AMPLS Private Endpoint + DNS Zones (4) | `azurerm_private_endpoint` | `azuremonitor` group; monitor, oms, ods, agentsvc zones linked to VNet |
-| App Insights Connection | `azapi_resource` | Project-level `ApiKey` connection so agent traces are exported |
-| Monitoring Roles (2) | `azurerm_role_assignment` | Log Analytics Reader + Privileged Monitoring Data Reader on App Insights, project MI |
 | ACR (optional) | `azurerm_container_registry` | Premium SKU, PE + DNS zone, AcrPull role on project MI |
 | Account Purger | `terraform_data` | Purges soft-deleted account on destroy |
 
@@ -312,8 +307,6 @@ This template uses **System Assigned Managed Identity** with the following role 
 | Cosmos DB Operator | Cosmos DB Account | A |
 | Cosmos DB SQL Built-in Data Contributor | Cosmos DB Account | B (after caphost) |
 | Storage Blob Data Owner (with ABAC condition) | Storage Account | B |
-| Log Analytics Reader | Application Insights | After project creation |
-| Privileged Monitoring Data Reader | Application Insights | After project creation |
 
 ### BYO Resources
 
@@ -368,8 +361,7 @@ existing_dns_zones_resource_group = "my-dns-rg"
 - **VNet**: All 3 subnet IDs must be provided together. Agent and MCP subnets must be delegated to `Microsoft.App/environments`.
 - **Agent subnet**: Must not have an existing Service Association Link (SAL) from another Foundry account. One account per agent subnet.
 - **Backend services**: Must have public access disabled.
-- **DNS zones**: All 6 private DNS zones must exist in the specified resource group and be linked to the VNet. The 4 Azure Monitor zones (`privatelink.monitor.azure.com`, `privatelink.oms.opinsights.azure.com`, `privatelink.ods.opinsights.azure.com`, `privatelink.agentsvc.azure-automation.net`) must exist there too and be linked to the VNet.
-- **Azure Monitor private link**: A VNet can use only one Azure Monitor Private Link Scope. If your VNet already has an `azuremonitor` private endpoint, the new scope's DNS records would conflict with it; use a different VNet or reuse your existing scope instead. Because ingestion is `PrivateOnly`, other Azure Monitor resources sharing the same DNS zones can only be reached if they are also scoped into this AMPLS.
+- **DNS zones**: All 6 private DNS zones must exist in the specified resource group and be linked to the VNet.
 - **DNS zone cross-subscription**: Set `existing_dns_zones_subscription_id` if the DNS zones are in a different subscription. The deployment identity needs `Private DNS Zone Contributor` on each referenced zone.
 
 > **Cosmos DB Connection Note**: The Cosmos DB connection uses `authType: AAD` and includes the `ResourceId` in metadata. This is the only supported authentication type for the Cosmos DB connection used by the Agent Service.
@@ -449,7 +441,6 @@ If you need to manually clean up:
 └── code/
     ├── main.tf            # All resources (networking, compute, RBAC, connections)
     ├── variables.tf       # Input variable definitions
-    ├── monitor.tf         # Application Insights, AMPLS, private endpoint, connection, monitor roles
     ├── locals.tf          # Computed locals (BYO flags, unified references)
     ├── data.tf            # Data sources (client config, existing resources)
     ├── outputs.tf         # Output values

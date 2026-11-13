@@ -15,7 +15,7 @@
 param aiFoundryName string = 'foundry-uai'
 
 @description('Location for all resources.')
-param location string = 'eastus2'
+param location string = resourceGroup().location
 
 @description('Name of the first project')
 param defaultProjectName string = '${aiFoundryName}-proj'

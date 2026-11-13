@@ -87,7 +87,7 @@ The template constructs the Key Vault URI automatically from `keyVaultName` usin
 | Parameter | Description | Example |
 |-----------|-------------|---------|
 | `aiFoundryName` | Name of the AI Foundry account | `ai-foundry-prod` |
-| `location` | Azure region | `eastus2` |
+| `location` | Azure region (defaults to resource group location) | Choose a supported region |
 | `keyVaultName` | Name of existing Key Vault | `kv-ai-foundry-cmk` |
 | `keyName` | Name of the CMK key | `cmk-key` |
 | `keyVersion` | Version of the CMK key | `abc123...` |

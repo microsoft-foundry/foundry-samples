@@ -67,6 +67,50 @@ az deployment group create \
   --parameters apiKey=<your-api-key>
 ```
 
+### Upstream Responses API Connection
+
+Use `samples/parameters-responses.json` with the same unified template to connect
+an existing Azure OpenAI deployment through its versionless v1 endpoint:
+`https://<upstream-resource-name>.openai.azure.com/openai/v1`.
+
+Edit the project resource ID, target URL, connection name, and model/deployment
+name in the parameter file. Deploy into the Foundry project's resource group and
+subscription. The registered model name must match the upstream deployment name.
+This example uses the `api-key` header for Azure OpenAI authentication.
+
+Run from this directory in PowerShell, with `CONNECTED_MODEL_API_KEY` set locally
+to the upstream API key:
+
+```powershell
+if ([string]::IsNullOrWhiteSpace($env:CONNECTED_MODEL_API_KEY)) {
+    throw "Set CONNECTED_MODEL_API_KEY to the upstream resource's API key."
+}
+az deployment group create `
+    --resource-group "<foundry-resource-group>" `
+    --template-file .\connection-modelgateway.bicep `
+    --parameters "@samples\parameters-responses.json" `
+    --parameters "apiKey=$env:CONNECTED_MODEL_API_KEY"
+```
+
+The template writes `upstreamSurface: responses` into connection metadata.
+Omitting `upstreamSurface` preserves existing routing; existing parameter files
+do not need to change. The API key remains a secure deployment parameter and
+must not be saved in the parameter file.
+
+Do not append `/responses`, `/chat/completions`, or a deployment path to the
+target URL. Other providers may need different base URLs and authentication
+headers; for example, OpenAI uses `https://api.openai.com/v1` and bearer
+authentication instead of Azure OpenAI's `api-key` header.
+
+This requires the connected-model Responses API preview/feature flight in your
+environment. Creating the connection does not enable that feature. A deployment
+can update an existing connection with the same name; use a new name to avoid
+changing another workload's connection. The connection persists until explicitly
+deleted.
+
+For inference and saved-setting verification, see the
+[connected-model Responses sample](../../../../samples/python/foundry-models/connected-models/README.md).
+
 
 ### Dynamic Discovery ModelGateway Connection
 ```bash
@@ -157,6 +201,7 @@ The template includes built-in validation:
 - `samples/parameters-openai.json`: For OpenAI connections with Bearer token authentication
 - `samples/parameters-foundryopenai.json`: For Foundry AzureOpenAI connection
 - `samples/parameters-foundryanthropic.json`: For Foundry Anthropic connection
+- `samples/parameters-responses.json`: For upstream Responses routing to an Azure OpenAI v1 endpoint
 - `samples/parameters-dynamic.json`: For dynamic discovery connections with API key authentication
 - `samples/parameters-static.json`: For static model list connections with placeholder models
 - `samples/parameters-custom-auth-config.json`: For custom authentication and headers configuration
@@ -177,5 +222,6 @@ The `connection-modelgateway.bicep` template supports all ModelGateway connectio
 7. **Authentication Options**: 
    - **ApiKey Authentication**: Traditional API key-based authentication
    - **OAuth2 Authentication**: OAuth2 client credentials flow with configurable scopes
+8. **Upstream Responses Routing**: Optional `upstreamSurface: responses`; omitted by default to preserve existing routing
 
 The template uses conditional logic to include only non-empty parameters, making it clean and flexible for any ModelGateway scenario.
