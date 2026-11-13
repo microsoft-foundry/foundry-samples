@@ -1,0 +1,22 @@
+{
+  "version": "2.0",
+  "extensionBundle": {
+    "id": "Microsoft.Azure.Functions.ExtensionBundle",
+    "version": "[4.*, 5.0.0)"
+  },
+  "extensions": {
+    "serviceBus": {
+      "maxConcurrentCalls": 8,
+      "maxAutoLockRenewalDuration": "00:30:00",
+      "autoCompleteMessages": true
+    }
+  },
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": false,
+        "excludedTypes": "Request"
+      }
+    }
+  }
+}
