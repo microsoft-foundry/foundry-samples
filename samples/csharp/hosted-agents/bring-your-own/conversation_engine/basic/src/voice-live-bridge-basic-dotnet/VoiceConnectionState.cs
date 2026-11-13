@@ -39,6 +39,7 @@ internal sealed class VoiceConnectionState
     internal const int MaximumTerminalSends = 8;
     internal const int MaximumTrackedInputItems = 4096;
     internal const int MaximumTrackedPlaybackResponses = 64;
+    internal const int MaximumOutputBytes = 512 * 1024;
 
     private readonly object _sync = new();
     private readonly HashSet<string> _seenInputItemDigests = new(StringComparer.Ordinal);
@@ -287,13 +288,14 @@ internal sealed class VoiceConnectionState
             }
             TrackResponse(responseId);
             var length = 0;
-            var characters = 0;
+            var bytes = 0;
             foreach (var rune in heardText.EnumerateRunes())
             {
-                if (characters++ == 8_000)
+                if (bytes + rune.Utf8SequenceLength > MaximumOutputBytes)
                 {
                     break;
                 }
+                bytes += rune.Utf8SequenceLength;
                 length += rune.Utf16SequenceLength;
             }
             _heardTextByResponse[responseId] = heardText[..length];
