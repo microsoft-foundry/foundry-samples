@@ -7,7 +7,11 @@ COPY --from=uv /uv /uvx /bin/
 
 WORKDIR /app/user_agent
 COPY pyproject.toml uv.lock uv.toml ./
-RUN uv sync --frozen --no-dev --no-install-project
+# Precompile installed dependencies to reduce startup compilation overhead.
+# This covers site-packages, not the stdlib or application source outside it.
+# PYTHONDONTWRITEBYTECODE disables automatic .pyc writes on import,
+# but Python can still read existing valid .pyc files.
+RUN uv sync --frozen --no-dev --no-install-project --compile-bytecode
 
 # Resolve the SDK's pinned CLI runtime at build time instead of on the first
 # invocation, when the container filesystem may be read-only.
@@ -25,10 +29,5 @@ ENV PYTHONUNBUFFERED=1
 COPY . .
 
 EXPOSE 8088
-
-# Precompile dependencies best-effort, but fail the build for invalid
-# application Python.
-RUN PYTHONDONTWRITEBYTECODE= .venv/bin/python -m compileall -q $(.venv/bin/python -c "import sysconfig as s; print(s.get_paths()['stdlib'], s.get_paths()['purelib'])") || true; \
-    PYTHONDONTWRITEBYTECODE= .venv/bin/python -m compileall -q -x '[.]venv' .
 
 CMD ["/app/user_agent/.venv/bin/python", "main.py"]

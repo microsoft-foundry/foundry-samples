@@ -7,12 +7,10 @@ COPY --from=uv /uv /uvx /bin/
 
 WORKDIR /app/user_agent
 COPY pyproject.toml uv.lock uv.toml ./
-# Precompile Python bytecode at build time so cold starts don't pay for it.
-# uv compiles site-packages, not the stdlib or application code. Slim base
-# images ship little precompiled stdlib bytecode, so those imports may still
-# compile on first use.
-# PYTHONDONTWRITEBYTECODE blocks bytecode writes, not reads, so precompiled
-# .pyc files still benefit images that set it.
+# Precompile installed dependencies to reduce startup compilation overhead.
+# This covers site-packages, not the stdlib or application source outside it.
+# PYTHONDONTWRITEBYTECODE disables automatic .pyc writes on import,
+# but Python can still read existing valid .pyc files.
 RUN uv sync --frozen --no-dev --no-install-project --compile-bytecode
 
 COPY . .
