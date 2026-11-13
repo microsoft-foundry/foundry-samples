@@ -160,6 +160,14 @@ lifecycle stays consistent across samples. Give each its own `##` heading. Commo
 Delete this comment and add the real sections your sample needs.
 -->
 
+## Telemetry and logging
+
+The standard host enables console logging and OpenTelemetry by default. Connect
+Application Insights to the Foundry project for hosted export; configure
+`APPLICATIONINSIGHTS_CONNECTION_STRING` or an OTLP destination for local export.
+Verify logs and traces in the destination. Keep sensitive message/tool content
+recording opt-in and reuse the host's instrumentation and exporters.
+
 ## Troubleshooting
 
 > Delete if not needed. List errors specific to this sample and their fixes.

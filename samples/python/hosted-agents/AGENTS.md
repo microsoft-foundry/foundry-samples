@@ -67,6 +67,13 @@ submitting changes.
 
 ## Runtime logging
 
+Keep the standard host's default telemetry enabled. Configure INFO logging for
+startup diagnostics before host creation and reuse the host's instrumentation
+and exporters; do not configure a second provider or framework instrumentor.
+Message/tool content recording is distinct from logging and remains opt-in for
+sensitive data. Document the Application Insights or OTLP export configuration
+and verify destination ingestion, not only console output.
+
 Use the standard `logging` module for diagnostics emitted by a running hosted
 agent. Prefer `logger.info()`, `logger.warning()`, and `logger.exception()` over
 `print()` when output must be observable while the long-running process remains

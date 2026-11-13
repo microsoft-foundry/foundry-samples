@@ -226,3 +226,22 @@ azd deploy livekit-server-azd
 - [LiveKit Azure TTS plugin](https://docs.livekit.io/agents/models/tts/azure/)
 - [LiveKit Azure OpenAI LLM plugin](https://docs.livekit.io/agents/models/llm/azure-openai/)
 - Inspiration: [`livekit-examples/agent-deployment#21`](https://github.com/livekit-examples/agent-deployment/pull/21) (Bedrock AgentCore deployment)
+
+
+## Telemetry and logging
+
+The custom server enables INFO logging and OpenTelemetry at startup. Unlike
+Agent Server-based samples, this runtime configures its own provider through
+`microsoft-opentelemetry`; `telemetry.py` is idempotent within each process.
+Loguru messages are forwarded into standard logging so console and exported
+application logs use the same pipeline. DEBUG/TRACE logs and sensitive framework
+message capture are not enabled by default.
+
+Connect Application Insights to the Foundry project for hosted export, or set
+`APPLICATIONINSIGHTS_CONNECTION_STRING` locally. The exporter is enabled when
+that connection string exists; OTLP configuration is also supported by the distro.
+Verify destination ingestion separately from console output. Never log API keys,
+bearer tokens, signaling payloads, or full user transcripts.
+
+The signaling server and spawned agent worker configure telemetry independently;
+each process owns its provider. Voice event logs record event types, not payloads.

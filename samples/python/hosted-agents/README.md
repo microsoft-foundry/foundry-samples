@@ -2,7 +2,32 @@
 
 Samples for building, deploying, and managing hosted agents on [Microsoft Foundry](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents). Each sample is a starter template — fork it, change the system prompt and tools, deploy with `azd up`.
 
-> **Every sample includes Application Insights and OpenTelemetry tracing out of the box.** You get production-ready logging, distributed traces, and metrics from the first sample you run.
+> **Hosted Agent Server samples enable logging and OpenTelemetry by default.** Export requires a configured Application Insights connection or OTLP destination; local console logging does not prove remote telemetry ingestion.
+
+## Telemetry and logging
+
+The standard Python/C# Agent Server hosts configure console logging and
+OpenTelemetry by default. Keep that default enabled when adapting a sample;
+Python startup diagnostics emitted before host construction should initialize
+`logging` at INFO. Let the host own instrumentation/export rather than also
+configuring another provider or instrumenting the same framework twice.
+
+For Application Insights export, connect the resource to the Foundry project
+and verify the injected `APPLICATIONINSIGHTS_CONNECTION_STRING`. For local
+runs, provide your own connection string or an OTLP destination. Check actual
+logs/spans in the destination; an absent environment variable, a warning, or a
+successful model response is not evidence that remote telemetry was exported.
+Protocol-only, externally hosted, and framework-specific samples may configure
+observability explicitly; inspect their documented entry point instead of
+requiring one universal initialization call.
+
+Telemetry enabled does not mean sensitive content must be recorded. Keep
+prompts, report bodies, tool payloads, secrets, bearer tokens, and SAS URLs out
+of default logs. Message-content capture is a separate opt-in setting; do not
+turn `AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED` or
+`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` on solely to enable logging.
+Tests and offline replay utilities may suppress telemetry deliberately; do not
+copy those opt-outs into production entry points.
 
 ### Quickstart
 

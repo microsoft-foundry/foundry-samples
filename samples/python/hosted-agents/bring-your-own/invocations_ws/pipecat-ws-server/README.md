@@ -273,3 +273,19 @@ The portal log shows the upstream `agent_session_id` it generated; that ID is al
 ```bash
 azd ai agent monitor pipecat-ws-server --session-id <session-id> --follow
 ```
+
+
+## Telemetry and logging
+
+The custom server enables INFO logging and OpenTelemetry at startup. Unlike
+Agent Server-based samples, this runtime configures its own provider through
+`microsoft-opentelemetry`; `telemetry.py` is idempotent within each process.
+Loguru messages are forwarded into standard logging so console and exported
+application logs use the same pipeline. DEBUG/TRACE logs and sensitive framework
+message capture are not enabled by default.
+
+Connect Application Insights to the Foundry project for hosted export, or set
+`APPLICATIONINSIGHTS_CONNECTION_STRING` locally. The exporter is enabled when
+that connection string exists; OTLP configuration is also supported by the distro.
+Verify destination ingestion separately from console output. Never log API keys,
+bearer tokens, signaling payloads, or full user transcripts.

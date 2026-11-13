@@ -45,6 +45,9 @@ class BlobToolWiringTests(unittest.TestCase):
             self.assertIn("## Report publication", instructions)
             self.assertIn('publish_report(report_name="report-v1.md")', instructions)
             self.assertIn('publish_report(report_name="report-v2.md")', instructions)
+            self.assertIn("Microsoft Entra", instructions)
+            self.assertIn("--auth-mode login", instructions)
+            self.assertNotIn("its expiry", instructions)
             self.assertEqual(create.call_args.kwargs["tools"], [*tools, export_tool])
             self.assertIs(create.call_args.kwargs["subagents"][0]["tools"], tools)
 
@@ -88,6 +91,7 @@ class BlobCredentialTests(unittest.IsolatedAsyncioTestCase):
                 )
                 with (
                     patch.dict(os.environ, {"PORT": "8091"}),
+                    patch.object(main.logging, "basicConfig") as configure_logging,
                     patch.object(
                         main, "DefaultAzureCredential", return_value=credential_scope
                     ),
@@ -100,13 +104,17 @@ class BlobCredentialTests(unittest.IsolatedAsyncioTestCase):
                         main, "create_report_export_tool", return_value=export_tool
                     ) as create_export,
                     patch.object(main, "build_agent", return_value=graph) as build,
-                    patch.object(main, "ResponsesHostServer", return_value=host),
+                    patch.object(
+                        main, "ResponsesHostServer", return_value=host
+                    ) as main_host,
                 ):
                     if failure:
                         with self.assertRaisesRegex(RuntimeError, "host failed"):
                             await main.main()
                     else:
                         await main.main()
+                    configure_logging.assert_called_once_with(level=main.logging.INFO)
+                    main_host.assert_called_once_with(graph)
                     create_export.assert_called_once_with(credential)
                     build.assert_called_once_with(
                         model, checkpointer, tools, export_tool
