@@ -1,0 +1,1131 @@
+{
+  "run_id": "repro-9af72d559e114a51864d528caabd0bf8",
+  "local": false,
+  "observations": [
+    {
+      "label": "fresh-sequential",
+      "role": "A",
+      "task_id": "7b4eaca5-cdd1-4bb5-8f6f-f8de00f43239",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "receipt": {
+        "agent": "A",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-sequential-A",
+        "task_id": "7b4eaca5-cdd1-4bb5-8f6f-f8de00f43239",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "hosted_session_id": "b0030f4cfea77f8da60020ec4fc9dc4ace24d141f1af79b576f99b2632880a6",
+        "hosted_session_guid": "18a6938603bb4e409a6d7129eb7529a0",
+        "request_session_id": null,
+        "boot_id": "d10e4ffd-e4e2-45d0-b633-d2a02aa73c30",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "2f0ddcc3cda9fcb2539f",
+        "downstream": {
+          "task_id": "5ee295c9-8098-41e0-b468-9f09e58a47e8",
+          "context_id": "1bcef731-9cc3-4e4e-83ee-f287a5e71481",
+          "requested_context_id": null,
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-sequential-A",
+            "task_id": "5ee295c9-8098-41e0-b468-9f09e58a47e8",
+            "context_id": "1bcef731-9cc3-4e4e-83ee-f287a5e71481",
+            "input_context_id": "1bcef731-9cc3-4e4e-83ee-f287a5e71481",
+            "hosted_session_id": "006577e3b75e990600DZ3tNs1fGR7MZZqBRITZeeaUJxD9r2Uz",
+            "hosted_session_guid": "e5a01cb61c0f48858081c478e3e45d63",
+            "request_session_id": null,
+            "boot_id": "f39512d3-42c6-4c3a-a34d-2da66176207f",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "a9ecdc52968cc0ef7a4b",
+            "sequence": 1,
+            "prior_session_messages": [],
+            "prior_context_messages": [],
+            "caller_agent": "A"
+          }
+        },
+        "forwarding_mode": "fresh"
+      }
+    },
+    {
+      "label": "fresh-sequential",
+      "role": "B",
+      "task_id": "a0efb37b-c338-4bf2-9655-d4b30dee58eb",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "receipt": {
+        "agent": "B",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-sequential-B",
+        "task_id": "a0efb37b-c338-4bf2-9655-d4b30dee58eb",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "hosted_session_id": "63612269eb59de56d12e99135be8445ab0840a880c0ea725211640bf1108a79",
+        "hosted_session_guid": "9c593201a136401b9e94985125e9fe85",
+        "request_session_id": null,
+        "boot_id": "4c92a6c1-35e9-46d8-afe2-5e4daadf394a",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "d698996b2b5c83069403",
+        "downstream": {
+          "task_id": "b2ab5e8e-a72f-4e30-95e6-43b2ce0834be",
+          "context_id": "f5fdee80-1bda-4973-80d8-45384c9adb09",
+          "requested_context_id": null,
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-sequential-B",
+            "task_id": "b2ab5e8e-a72f-4e30-95e6-43b2ce0834be",
+            "context_id": "f5fdee80-1bda-4973-80d8-45384c9adb09",
+            "input_context_id": "f5fdee80-1bda-4973-80d8-45384c9adb09",
+            "hosted_session_id": "00be169b395df1ad00JD2DDY5N3ciamVg2nwUQElxnW4HMJLvk",
+            "hosted_session_guid": "eb0ea4d79a93427eb7f34d6ea7598044",
+            "request_session_id": null,
+            "boot_id": "33fb614d-1bea-4e2b-905a-b50deb7c20d6",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "e7e82dc48b4c2239b1e2",
+            "sequence": 1,
+            "prior_session_messages": [],
+            "prior_context_messages": [],
+            "caller_agent": "B"
+          }
+        },
+        "forwarding_mode": "fresh"
+      }
+    },
+    {
+      "label": "fresh-concurrent-0",
+      "role": "A",
+      "task_id": "776032b2-4671-4451-b1a7-bdfab1c12184",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "receipt": {
+        "agent": "A",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-concurrent-0-A",
+        "task_id": "776032b2-4671-4451-b1a7-bdfab1c12184",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "hosted_session_id": "b0030f4cfea77f8da60020ec4fc9dc4ace24d141f1af79b576f99b2632880a6",
+        "hosted_session_guid": "18a6938603bb4e409a6d7129eb7529a0",
+        "request_session_id": null,
+        "boot_id": "d10e4ffd-e4e2-45d0-b633-d2a02aa73c30",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "5b38245b50ea58968a6a",
+        "downstream": {
+          "task_id": "18523d46-a7f1-4729-92e1-58be23c695af",
+          "context_id": "4401351d-5f40-4772-9690-3bb6edd628d0",
+          "requested_context_id": null,
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-concurrent-0-A",
+            "task_id": "18523d46-a7f1-4729-92e1-58be23c695af",
+            "context_id": "4401351d-5f40-4772-9690-3bb6edd628d0",
+            "input_context_id": "4401351d-5f40-4772-9690-3bb6edd628d0",
+            "hosted_session_id": "0c99ad1a91df370300oSBK77Z9icAaOV0CBwaAo0CfqnI4hgbZ",
+            "hosted_session_guid": "f47cffe0b8a74db882f02be0fa281827",
+            "request_session_id": null,
+            "boot_id": "94a810f7-4a2a-4cc3-923d-46997dabc258",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "3530c3476c9f7775823a",
+            "sequence": 1,
+            "prior_session_messages": [],
+            "prior_context_messages": [],
+            "caller_agent": "A"
+          }
+        },
+        "forwarding_mode": "fresh"
+      }
+    },
+    {
+      "label": "fresh-concurrent-0",
+      "role": "B",
+      "task_id": "3b23ffb7-c9c2-408c-a217-c7df4a2471f2",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "receipt": {
+        "agent": "B",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-concurrent-0-B",
+        "task_id": "3b23ffb7-c9c2-408c-a217-c7df4a2471f2",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "hosted_session_id": "63612269eb59de56d12e99135be8445ab0840a880c0ea725211640bf1108a79",
+        "hosted_session_guid": "9c593201a136401b9e94985125e9fe85",
+        "request_session_id": null,
+        "boot_id": "4c92a6c1-35e9-46d8-afe2-5e4daadf394a",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "cd055ddad81b0770913b",
+        "downstream": {
+          "task_id": "f4ec365e-5698-4c74-a675-575e8c77feef",
+          "context_id": "207f76fe-29c4-44bf-ba23-288052765b18",
+          "requested_context_id": null,
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-concurrent-0-B",
+            "task_id": "f4ec365e-5698-4c74-a675-575e8c77feef",
+            "context_id": "207f76fe-29c4-44bf-ba23-288052765b18",
+            "input_context_id": "207f76fe-29c4-44bf-ba23-288052765b18",
+            "hosted_session_id": "082402fec04c560d00dOoA4WGpoxI3r80EUkuiaLqsQgYKdmur",
+            "hosted_session_guid": "57757556cf6b41e6840a05ad57b41f62",
+            "request_session_id": null,
+            "boot_id": "886ca022-e7bf-4c0f-9777-1963951f61bc",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "799fb905783d26d21b2a",
+            "sequence": 1,
+            "prior_session_messages": [],
+            "prior_context_messages": [],
+            "caller_agent": "B"
+          }
+        },
+        "forwarding_mode": "fresh"
+      }
+    },
+    {
+      "label": "fresh-concurrent-1",
+      "role": "B",
+      "task_id": "1b1aff92-d7b7-4b7b-af59-30d3f6afce0f",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "receipt": {
+        "agent": "B",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-concurrent-1-B",
+        "task_id": "1b1aff92-d7b7-4b7b-af59-30d3f6afce0f",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "hosted_session_id": "63612269eb59de56d12e99135be8445ab0840a880c0ea725211640bf1108a79",
+        "hosted_session_guid": "9c593201a136401b9e94985125e9fe85",
+        "request_session_id": null,
+        "boot_id": "4c92a6c1-35e9-46d8-afe2-5e4daadf394a",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "38b22da55bc89ecaaf8e",
+        "downstream": {
+          "task_id": "6a3177ed-3618-4739-a4e0-b2d934768a23",
+          "context_id": "ecbf3a3d-2c1c-4420-8593-c8503d1908eb",
+          "requested_context_id": null,
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-concurrent-1-B",
+            "task_id": "6a3177ed-3618-4739-a4e0-b2d934768a23",
+            "context_id": "ecbf3a3d-2c1c-4420-8593-c8503d1908eb",
+            "input_context_id": "ecbf3a3d-2c1c-4420-8593-c8503d1908eb",
+            "hosted_session_id": "040a845437f4759100DUqoY786TS5hbBQdwEuqgnNOssCUt03e",
+            "hosted_session_guid": "1e836c37dff54d8e8c0e6b6e5c91b62f",
+            "request_session_id": null,
+            "boot_id": "85344df2-953b-4869-b66c-b3de0d716d49",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "68463080ac7346c2f871",
+            "sequence": 1,
+            "prior_session_messages": [],
+            "prior_context_messages": [],
+            "caller_agent": "B"
+          }
+        },
+        "forwarding_mode": "fresh"
+      }
+    },
+    {
+      "label": "fresh-concurrent-1",
+      "role": "A",
+      "task_id": "3a0bbdc8-1be1-4815-98ae-2daadce0cdd1",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "receipt": {
+        "agent": "A",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-concurrent-1-A",
+        "task_id": "3a0bbdc8-1be1-4815-98ae-2daadce0cdd1",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "hosted_session_id": "b0030f4cfea77f8da60020ec4fc9dc4ace24d141f1af79b576f99b2632880a6",
+        "hosted_session_guid": "18a6938603bb4e409a6d7129eb7529a0",
+        "request_session_id": null,
+        "boot_id": "d10e4ffd-e4e2-45d0-b633-d2a02aa73c30",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "ba19b0a8928a477f3ecf",
+        "downstream": {
+          "task_id": "f41408c6-c0b8-4eed-b382-3cb9f6f18715",
+          "context_id": "5b8e291e-27d8-4eae-9f2c-09aeacae31d1",
+          "requested_context_id": null,
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-concurrent-1-A",
+            "task_id": "f41408c6-c0b8-4eed-b382-3cb9f6f18715",
+            "context_id": "5b8e291e-27d8-4eae-9f2c-09aeacae31d1",
+            "input_context_id": "5b8e291e-27d8-4eae-9f2c-09aeacae31d1",
+            "hosted_session_id": "024efa574e8afbc500LZJ3pPrPFgPNC2ntvVADyd3l0vSMDy8L",
+            "hosted_session_guid": "376796796086465b82cf74ba4f040d7b",
+            "request_session_id": null,
+            "boot_id": "91bb831a-1b59-4a66-8b29-5d7b962450d0",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "60f87b16d90891ce7f93",
+            "sequence": 1,
+            "prior_session_messages": [],
+            "prior_context_messages": [],
+            "caller_agent": "A"
+          }
+        },
+        "forwarding_mode": "fresh"
+      }
+    },
+    {
+      "label": "fresh-concurrent-2",
+      "role": "B",
+      "task_id": "9aac583e-ab11-40b4-8e65-54ffeb02af59",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "receipt": {
+        "agent": "B",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-concurrent-2-B",
+        "task_id": "9aac583e-ab11-40b4-8e65-54ffeb02af59",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "hosted_session_id": "63612269eb59de56d12e99135be8445ab0840a880c0ea725211640bf1108a79",
+        "hosted_session_guid": "9c593201a136401b9e94985125e9fe85",
+        "request_session_id": null,
+        "boot_id": "4c92a6c1-35e9-46d8-afe2-5e4daadf394a",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "6d36379a22895bf25a1b",
+        "downstream": {
+          "task_id": "c2869a6f-7ae6-4a6f-ab74-0b5fc9e8f49f",
+          "context_id": "89f64306-d62a-4ff2-b6a6-fd95e0b1ef29",
+          "requested_context_id": null,
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-concurrent-2-B",
+            "task_id": "c2869a6f-7ae6-4a6f-ab74-0b5fc9e8f49f",
+            "context_id": "89f64306-d62a-4ff2-b6a6-fd95e0b1ef29",
+            "input_context_id": "89f64306-d62a-4ff2-b6a6-fd95e0b1ef29",
+            "hosted_session_id": "0db63d4ac63e4d3800KjRgDSxnbVH4Hd4pDb9QeOHy8bfu7Obm",
+            "hosted_session_guid": "772d9256c0ef4659825b97f81e92d366",
+            "request_session_id": null,
+            "boot_id": "e98a3605-382e-4c53-99d4-39fa6299d093",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "04489d3db930dd7b98cb",
+            "sequence": 1,
+            "prior_session_messages": [],
+            "prior_context_messages": [],
+            "caller_agent": "B"
+          }
+        },
+        "forwarding_mode": "fresh"
+      }
+    },
+    {
+      "label": "fresh-concurrent-2",
+      "role": "A",
+      "task_id": "cb74f863-4667-4bb7-bd19-9574d5487461",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "receipt": {
+        "agent": "A",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-concurrent-2-A",
+        "task_id": "cb74f863-4667-4bb7-bd19-9574d5487461",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "hosted_session_id": "b0030f4cfea77f8da60020ec4fc9dc4ace24d141f1af79b576f99b2632880a6",
+        "hosted_session_guid": "18a6938603bb4e409a6d7129eb7529a0",
+        "request_session_id": null,
+        "boot_id": "d10e4ffd-e4e2-45d0-b633-d2a02aa73c30",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "5ab86a030933af797dc7",
+        "downstream": {
+          "task_id": "8056eb3a-fda4-4fcb-b71e-2f3dbfd97fc8",
+          "context_id": "b88c3596-81b0-43fa-9454-25ae3a027542",
+          "requested_context_id": null,
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-fresh-concurrent-2-A",
+            "task_id": "8056eb3a-fda4-4fcb-b71e-2f3dbfd97fc8",
+            "context_id": "b88c3596-81b0-43fa-9454-25ae3a027542",
+            "input_context_id": "b88c3596-81b0-43fa-9454-25ae3a027542",
+            "hosted_session_id": "0d9b7bfe80d4faf300FTzVOzWPJyHAqTv5FIXvkShys7UqWIoI",
+            "hosted_session_guid": "41c632f9a34c4045b4d81b2e18f34bdb",
+            "request_session_id": null,
+            "boot_id": "94dcbff5-7e7a-405d-9e07-1cd3a918a520",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "622151e6ea024bbdb07b",
+            "sequence": 1,
+            "prior_session_messages": [],
+            "prior_context_messages": [],
+            "caller_agent": "A"
+          }
+        },
+        "forwarding_mode": "fresh"
+      }
+    },
+    {
+      "label": "shared-sequential",
+      "role": "A",
+      "task_id": "e01a9066-ff5e-4ce9-87ea-3a15083ed575",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "receipt": {
+        "agent": "A",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-sequential-A",
+        "task_id": "e01a9066-ff5e-4ce9-87ea-3a15083ed575",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "hosted_session_id": "b0030f4cfea77f8da60020ec4fc9dc4ace24d141f1af79b576f99b2632880a6",
+        "hosted_session_guid": "18a6938603bb4e409a6d7129eb7529a0",
+        "request_session_id": null,
+        "boot_id": "d10e4ffd-e4e2-45d0-b633-d2a02aa73c30",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "f3e13e87c9fdcac26432",
+        "downstream": {
+          "task_id": "c59f5d12-015f-419a-beca-ae49bd58a336",
+          "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+          "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-sequential-A",
+            "task_id": "c59f5d12-015f-419a-beca-ae49bd58a336",
+            "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+            "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+            "hosted_session_id": "eeac7b653964cc989c6b26e2143e08da4dbec8a18c752e35b6225f3d28c3e95",
+            "hosted_session_guid": "d53ff9ac545c456db43849f00cd9d1e3",
+            "request_session_id": null,
+            "boot_id": "492a3c01-a780-431a-b94f-59672deeb923",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "c59bac4deadfbe9ea827",
+            "sequence": 1,
+            "prior_session_messages": [],
+            "prior_context_messages": [],
+            "caller_agent": "A"
+          }
+        },
+        "forwarding_mode": "explicit"
+      }
+    },
+    {
+      "label": "shared-sequential",
+      "role": "B",
+      "task_id": "2aca697d-a7bc-459f-8935-8594d4c4f2e7",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "receipt": {
+        "agent": "B",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-sequential-B",
+        "task_id": "2aca697d-a7bc-459f-8935-8594d4c4f2e7",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "hosted_session_id": "63612269eb59de56d12e99135be8445ab0840a880c0ea725211640bf1108a79",
+        "hosted_session_guid": "9c593201a136401b9e94985125e9fe85",
+        "request_session_id": null,
+        "boot_id": "4c92a6c1-35e9-46d8-afe2-5e4daadf394a",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "dc7e2888a785d3044087",
+        "downstream": {
+          "task_id": "ba6be92a-cc11-410f-965f-e71be6c2b2a5",
+          "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+          "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-sequential-B",
+            "task_id": "ba6be92a-cc11-410f-965f-e71be6c2b2a5",
+            "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+            "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+            "hosted_session_id": "eeac7b653964cc989c6b26e2143e08da4dbec8a18c752e35b6225f3d28c3e95",
+            "hosted_session_guid": "d53ff9ac545c456db43849f00cd9d1e3",
+            "request_session_id": null,
+            "boot_id": "492a3c01-a780-431a-b94f-59672deeb923",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "4e7e995aa3ec34b05d7a",
+            "sequence": 2,
+            "prior_session_messages": [
+              {
+                "sequence": 1,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-sequential-A",
+                "caller_agent": "A"
+              }
+            ],
+            "prior_context_messages": [
+              {
+                "sequence": 1,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-sequential-A",
+                "caller_agent": "A"
+              }
+            ],
+            "caller_agent": "B"
+          }
+        },
+        "forwarding_mode": "explicit"
+      }
+    },
+    {
+      "label": "shared-concurrent",
+      "role": "A",
+      "task_id": "8be5a927-614f-44ea-b6a3-f2b4dcf793de",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "receipt": {
+        "agent": "A",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-concurrent-A",
+        "task_id": "8be5a927-614f-44ea-b6a3-f2b4dcf793de",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "hosted_session_id": "b0030f4cfea77f8da60020ec4fc9dc4ace24d141f1af79b576f99b2632880a6",
+        "hosted_session_guid": "18a6938603bb4e409a6d7129eb7529a0",
+        "request_session_id": null,
+        "boot_id": "d10e4ffd-e4e2-45d0-b633-d2a02aa73c30",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "028e4ed9bdb4c0f278ab",
+        "downstream": {
+          "task_id": "9b9b176c-35cb-4ec0-9608-59829f460a48",
+          "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+          "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-concurrent-A",
+            "task_id": "9b9b176c-35cb-4ec0-9608-59829f460a48",
+            "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+            "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+            "hosted_session_id": "eeac7b653964cc989c6b26e2143e08da4dbec8a18c752e35b6225f3d28c3e95",
+            "hosted_session_guid": "d53ff9ac545c456db43849f00cd9d1e3",
+            "request_session_id": null,
+            "boot_id": "492a3c01-a780-431a-b94f-59672deeb923",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "ead1e065ae4c206edbbd",
+            "sequence": 3,
+            "prior_session_messages": [
+              {
+                "sequence": 1,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-sequential-A",
+                "caller_agent": "A"
+              },
+              {
+                "sequence": 2,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-sequential-B",
+                "caller_agent": "B"
+              }
+            ],
+            "prior_context_messages": [
+              {
+                "sequence": 1,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-sequential-A",
+                "caller_agent": "A"
+              },
+              {
+                "sequence": 2,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-sequential-B",
+                "caller_agent": "B"
+              }
+            ],
+            "caller_agent": "A"
+          }
+        },
+        "forwarding_mode": "explicit"
+      }
+    },
+    {
+      "label": "shared-concurrent",
+      "role": "B",
+      "task_id": "23ad7435-d5b2-4b8a-97e1-ca7bbd28067d",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "receipt": {
+        "agent": "B",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-concurrent-B",
+        "task_id": "23ad7435-d5b2-4b8a-97e1-ca7bbd28067d",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "hosted_session_id": "63612269eb59de56d12e99135be8445ab0840a880c0ea725211640bf1108a79",
+        "hosted_session_guid": "9c593201a136401b9e94985125e9fe85",
+        "request_session_id": null,
+        "boot_id": "4c92a6c1-35e9-46d8-afe2-5e4daadf394a",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "85854076ad904e2d15fa",
+        "downstream": {
+          "task_id": "f21c4981-413b-4bad-bb53-cd0c64221d9f",
+          "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+          "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-concurrent-B",
+            "task_id": "f21c4981-413b-4bad-bb53-cd0c64221d9f",
+            "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+            "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+            "hosted_session_id": "eeac7b653964cc989c6b26e2143e08da4dbec8a18c752e35b6225f3d28c3e95",
+            "hosted_session_guid": "d53ff9ac545c456db43849f00cd9d1e3",
+            "request_session_id": null,
+            "boot_id": "492a3c01-a780-431a-b94f-59672deeb923",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "3e6339882b095f30b00a",
+            "sequence": 4,
+            "prior_session_messages": [
+              {
+                "sequence": 1,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-sequential-A",
+                "caller_agent": "A"
+              },
+              {
+                "sequence": 2,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-sequential-B",
+                "caller_agent": "B"
+              },
+              {
+                "sequence": 3,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-concurrent-A",
+                "caller_agent": "A"
+              }
+            ],
+            "prior_context_messages": [
+              {
+                "sequence": 1,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-sequential-A",
+                "caller_agent": "A"
+              },
+              {
+                "sequence": 2,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-sequential-B",
+                "caller_agent": "B"
+              },
+              {
+                "sequence": 3,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-shared-c",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-shared-concurrent-A",
+                "caller_agent": "A"
+              }
+            ],
+            "caller_agent": "B"
+          }
+        },
+        "forwarding_mode": "explicit"
+      }
+    },
+    {
+      "label": "inherit-same-context",
+      "role": "A",
+      "task_id": "d4b73b79-cf73-4d72-800f-c49713799254",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+      "receipt": {
+        "agent": "A",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-inherit-same-context-A",
+        "task_id": "d4b73b79-cf73-4d72-800f-c49713799254",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+        "hosted_session_id": "e074e96126b1089c3912147e2616bcee0f31bc90667a347cfc01109f4413991",
+        "hosted_session_guid": "c66ce49a9664435eb7c9c4acf7e04578",
+        "request_session_id": null,
+        "boot_id": "46d453a9-5841-416b-9480-6de1ce8b5f23",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "1453402a11f4ba36ff9e",
+        "downstream": {
+          "task_id": "1f1fa34c-88d7-47d1-964e-0af762384a6f",
+          "context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+          "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-inherit-same-context-A",
+            "task_id": "1f1fa34c-88d7-47d1-964e-0af762384a6f",
+            "context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+            "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+            "hosted_session_id": "4e9ab3033ec97845802b0170544fd306f41c370d78df9b3817180cc2a69500e",
+            "hosted_session_guid": "4dc6a5e415c04835a277dcd8fb5eb5e0",
+            "request_session_id": null,
+            "boot_id": "4d550139-9e48-4e4d-b386-28dfd663400d",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "290336e6e1be0a40f394",
+            "sequence": 1,
+            "prior_session_messages": [],
+            "prior_context_messages": [],
+            "caller_agent": "A"
+          }
+        },
+        "forwarding_mode": "inherit"
+      }
+    },
+    {
+      "label": "inherit-same-context",
+      "role": "B",
+      "task_id": "bc8cdce2-1924-4fb4-acec-ea796d08bf4b",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+      "receipt": {
+        "agent": "B",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-inherit-same-context-B",
+        "task_id": "bc8cdce2-1924-4fb4-acec-ea796d08bf4b",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+        "hosted_session_id": "89af2454eb4d16312a3cf6c0e4417a2756f2b46cbf7f6fc2b9e89182eeedeb3",
+        "hosted_session_guid": "f56fc023ceea4c039fdd6d941577e848",
+        "request_session_id": null,
+        "boot_id": "97d3357a-b6c0-4c2c-8fd9-58952d7f72b8",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "bb4d1b1c9da466184d04",
+        "downstream": {
+          "task_id": "7d25495d-43d1-4efa-b0dc-9736f72d9e5c",
+          "context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+          "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-inherit-same-context-B",
+            "task_id": "7d25495d-43d1-4efa-b0dc-9736f72d9e5c",
+            "context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+            "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+            "hosted_session_id": "4e9ab3033ec97845802b0170544fd306f41c370d78df9b3817180cc2a69500e",
+            "hosted_session_guid": "4dc6a5e415c04835a277dcd8fb5eb5e0",
+            "request_session_id": null,
+            "boot_id": "4d550139-9e48-4e4d-b386-28dfd663400d",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "24d28124e09b19cba194",
+            "sequence": 2,
+            "prior_session_messages": [
+              {
+                "sequence": 1,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-inherit-same-context-A",
+                "caller_agent": "A"
+              }
+            ],
+            "prior_context_messages": [
+              {
+                "sequence": 1,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-same-upstream",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-inherit-same-context-A",
+                "caller_agent": "A"
+              }
+            ],
+            "caller_agent": "B"
+          }
+        },
+        "forwarding_mode": "inherit"
+      }
+    },
+    {
+      "label": "unique-context",
+      "role": "A",
+      "task_id": "26e1814b-546d-4f6b-b44b-5f992ff5b08e",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "receipt": {
+        "agent": "A",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-unique-context-A",
+        "task_id": "26e1814b-546d-4f6b-b44b-5f992ff5b08e",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "hosted_session_id": "b0030f4cfea77f8da60020ec4fc9dc4ace24d141f1af79b576f99b2632880a6",
+        "hosted_session_guid": "18a6938603bb4e409a6d7129eb7529a0",
+        "request_session_id": null,
+        "boot_id": "d10e4ffd-e4e2-45d0-b633-d2a02aa73c30",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "14abe49a85cc0451b900",
+        "downstream": {
+          "task_id": "63198726-f716-4f51-8cc1-8588a2165b50",
+          "context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-A",
+          "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-A",
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-unique-context-A",
+            "task_id": "63198726-f716-4f51-8cc1-8588a2165b50",
+            "context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-A",
+            "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-A",
+            "hosted_session_id": "d754f4e8817b63e143900425dcd0d6e2693c530707bedbddf99f8cfd6bbda14",
+            "hosted_session_guid": "20f16511e82e427d9cd152ce8001c8ba",
+            "request_session_id": null,
+            "boot_id": "8f59beb6-81ae-4708-a91f-e12af1907658",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "6a37f8726f33b8e8f89f",
+            "sequence": 1,
+            "prior_session_messages": [],
+            "prior_context_messages": [],
+            "caller_agent": "A"
+          }
+        },
+        "forwarding_mode": "explicit"
+      }
+    },
+    {
+      "label": "unique-context",
+      "role": "B",
+      "task_id": "6c8a18c4-6269-4ea7-beba-830e67b696d3",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "receipt": {
+        "agent": "B",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-unique-context-B",
+        "task_id": "6c8a18c4-6269-4ea7-beba-830e67b696d3",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "hosted_session_id": "63612269eb59de56d12e99135be8445ab0840a880c0ea725211640bf1108a79",
+        "hosted_session_guid": "9c593201a136401b9e94985125e9fe85",
+        "request_session_id": null,
+        "boot_id": "4c92a6c1-35e9-46d8-afe2-5e4daadf394a",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "003085fbea8521850690",
+        "downstream": {
+          "task_id": "2cde98fc-d090-488a-90d6-418d11850824",
+          "context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-B",
+          "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-B",
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-unique-context-B",
+            "task_id": "2cde98fc-d090-488a-90d6-418d11850824",
+            "context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-B",
+            "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-B",
+            "hosted_session_id": "7c8dc9eb2f33c6422b76d10f02446f5fa41912ec442ac246038a693f3b29b4b",
+            "hosted_session_guid": "4131c446eead406487eed7090712b9d7",
+            "request_session_id": null,
+            "boot_id": "a9f43d95-5564-4542-9fc1-78736635dfaf",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "8b2ba78752068dffa1f6",
+            "sequence": 1,
+            "prior_session_messages": [],
+            "prior_context_messages": [],
+            "caller_agent": "B"
+          }
+        },
+        "forwarding_mode": "explicit"
+      }
+    },
+    {
+      "label": "unique-context-repeat",
+      "role": "A",
+      "task_id": "f5a27f12-8f36-4777-9a11-4171aec627ef",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+      "receipt": {
+        "agent": "A",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-unique-context-repeat-A",
+        "task_id": "f5a27f12-8f36-4777-9a11-4171aec627ef",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-A",
+        "hosted_session_id": "b0030f4cfea77f8da60020ec4fc9dc4ace24d141f1af79b576f99b2632880a6",
+        "hosted_session_guid": "18a6938603bb4e409a6d7129eb7529a0",
+        "request_session_id": null,
+        "boot_id": "d10e4ffd-e4e2-45d0-b633-d2a02aa73c30",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "fd681cfccd349e3b72c4",
+        "downstream": {
+          "task_id": "2d255690-4667-42dd-af99-6ab7638377c7",
+          "context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-A",
+          "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-A",
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-unique-context-repeat-A",
+            "task_id": "2d255690-4667-42dd-af99-6ab7638377c7",
+            "context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-A",
+            "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-A",
+            "hosted_session_id": "d754f4e8817b63e143900425dcd0d6e2693c530707bedbddf99f8cfd6bbda14",
+            "hosted_session_guid": "20f16511e82e427d9cd152ce8001c8ba",
+            "request_session_id": null,
+            "boot_id": "8f59beb6-81ae-4708-a91f-e12af1907658",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "e3830c8f3de900c7ab41",
+            "sequence": 2,
+            "prior_session_messages": [
+              {
+                "sequence": 1,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-A",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-unique-context-A",
+                "caller_agent": "A"
+              }
+            ],
+            "prior_context_messages": [
+              {
+                "sequence": 1,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-A",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-unique-context-A",
+                "caller_agent": "A"
+              }
+            ],
+            "caller_agent": "A"
+          }
+        },
+        "forwarding_mode": "explicit"
+      }
+    },
+    {
+      "label": "unique-context-repeat",
+      "role": "B",
+      "task_id": "779eaaa7-6850-4422-9bc4-245add0a7444",
+      "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+      "receipt": {
+        "agent": "B",
+        "marker": "repro-9af72d559e114a51864d528caabd0bf8-unique-context-repeat-B",
+        "task_id": "779eaaa7-6850-4422-9bc4-245add0a7444",
+        "context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-outer-B",
+        "hosted_session_id": "63612269eb59de56d12e99135be8445ab0840a880c0ea725211640bf1108a79",
+        "hosted_session_guid": "9c593201a136401b9e94985125e9fe85",
+        "request_session_id": null,
+        "boot_id": "4c92a6c1-35e9-46d8-afe2-5e4daadf394a",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "call_fingerprint": "964a7184e1373b52f7ff",
+        "downstream": {
+          "task_id": "ade10468-b86c-41a0-8a8e-140eaf6a1d30",
+          "context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-B",
+          "requested_context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-B",
+          "receipt": {
+            "agent": "C",
+            "marker": "repro-9af72d559e114a51864d528caabd0bf8-unique-context-repeat-B",
+            "task_id": "ade10468-b86c-41a0-8a8e-140eaf6a1d30",
+            "context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-B",
+            "input_context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-B",
+            "hosted_session_id": "7c8dc9eb2f33c6422b76d10f02446f5fa41912ec442ac246038a693f3b29b4b",
+            "hosted_session_guid": "4131c446eead406487eed7090712b9d7",
+            "request_session_id": null,
+            "boot_id": "a9f43d95-5564-4542-9fc1-78736635dfaf",
+            "user_fingerprint": "3fa479bce41fc1b2a75d",
+            "call_fingerprint": "5db0f36bd39fb7d555f6",
+            "sequence": 2,
+            "prior_session_messages": [
+              {
+                "sequence": 1,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-B",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-unique-context-B",
+                "caller_agent": "B"
+              }
+            ],
+            "prior_context_messages": [
+              {
+                "sequence": 1,
+                "context_id": "repro-9af72d559e114a51864d528caabd0bf8-c-B",
+                "marker": "repro-9af72d559e114a51864d528caabd0bf8-unique-context-B",
+                "caller_agent": "B"
+              }
+            ],
+            "caller_agent": "B"
+          }
+        },
+        "forwarding_mode": "explicit"
+      }
+    }
+  ],
+  "checks": [
+    {
+      "name": "fresh-sequential: C context equality is False",
+      "passed": true
+    },
+    {
+      "name": "fresh-sequential: distinct C task IDs",
+      "passed": true
+    },
+    {
+      "name": "fresh-sequential: actual hosted session IDs are present",
+      "passed": true
+    },
+    {
+      "name": "fresh-sequential: C hosted session equality is False",
+      "passed": true
+    },
+    {
+      "name": "fresh-sequential: same resolved user",
+      "passed": true
+    },
+    {
+      "name": "fresh-sequential: no cross-caller context history",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-0: C context equality is False",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-0: distinct C task IDs",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-0: actual hosted session IDs are present",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-0: C hosted session equality is False",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-0: same resolved user",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-0: no cross-caller context history",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-1: C context equality is False",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-1: distinct C task IDs",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-1: actual hosted session IDs are present",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-1: C hosted session equality is False",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-1: same resolved user",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-1: no cross-caller context history",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-2: C context equality is False",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-2: distinct C task IDs",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-2: actual hosted session IDs are present",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-2: C hosted session equality is False",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-2: same resolved user",
+      "passed": true
+    },
+    {
+      "name": "fresh-concurrent-2: no cross-caller context history",
+      "passed": true
+    },
+    {
+      "name": "shared-sequential: C context equality is True",
+      "passed": true
+    },
+    {
+      "name": "shared-sequential: distinct C task IDs",
+      "passed": true
+    },
+    {
+      "name": "shared-sequential: actual hosted session IDs are present",
+      "passed": true
+    },
+    {
+      "name": "shared-sequential: C hosted session equality is True",
+      "passed": true
+    },
+    {
+      "name": "shared-sequential: same resolved user",
+      "passed": true
+    },
+    {
+      "name": "shared-sequential: C saw the other caller's marker",
+      "passed": true
+    },
+    {
+      "name": "shared-concurrent: C context equality is True",
+      "passed": true
+    },
+    {
+      "name": "shared-concurrent: distinct C task IDs",
+      "passed": true
+    },
+    {
+      "name": "shared-concurrent: actual hosted session IDs are present",
+      "passed": true
+    },
+    {
+      "name": "shared-concurrent: C hosted session equality is True",
+      "passed": true
+    },
+    {
+      "name": "shared-concurrent: same resolved user",
+      "passed": true
+    },
+    {
+      "name": "shared-concurrent: C saw the other caller's marker",
+      "passed": true
+    },
+    {
+      "name": "inherit-same-context: C context equality is True",
+      "passed": true
+    },
+    {
+      "name": "inherit-same-context: distinct C task IDs",
+      "passed": true
+    },
+    {
+      "name": "inherit-same-context: actual hosted session IDs are present",
+      "passed": true
+    },
+    {
+      "name": "inherit-same-context: C hosted session equality is True",
+      "passed": true
+    },
+    {
+      "name": "inherit-same-context: same resolved user",
+      "passed": true
+    },
+    {
+      "name": "inherit-same-context: C saw the other caller's marker",
+      "passed": true
+    },
+    {
+      "name": "unique-context: C context equality is False",
+      "passed": true
+    },
+    {
+      "name": "unique-context: distinct C task IDs",
+      "passed": true
+    },
+    {
+      "name": "unique-context: actual hosted session IDs are present",
+      "passed": true
+    },
+    {
+      "name": "unique-context: C hosted session equality is False",
+      "passed": true
+    },
+    {
+      "name": "unique-context: same resolved user",
+      "passed": true
+    },
+    {
+      "name": "unique-context: no cross-caller context history",
+      "passed": true
+    },
+    {
+      "name": "unique-context-repeat: C context equality is False",
+      "passed": true
+    },
+    {
+      "name": "unique-context-repeat: distinct C task IDs",
+      "passed": true
+    },
+    {
+      "name": "unique-context-repeat: actual hosted session IDs are present",
+      "passed": true
+    },
+    {
+      "name": "unique-context-repeat: C hosted session equality is False",
+      "passed": true
+    },
+    {
+      "name": "unique-context-repeat: same resolved user",
+      "passed": true
+    },
+    {
+      "name": "unique-context-repeat: no cross-caller context history",
+      "passed": true
+    },
+    {
+      "name": "each unique C context retains its own prior marker",
+      "passed": true
+    },
+    {
+      "name": "all eight default downstream context IDs are distinct",
+      "passed": true
+    },
+    {
+      "name": "all eight default C hosted sessions are distinct",
+      "passed": true
+    }
+  ],
+  "status": "passed"
+}
