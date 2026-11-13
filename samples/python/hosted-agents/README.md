@@ -216,6 +216,12 @@ Already built an agent with CrewAI or your own code? The protocol SDKs (`azure-a
 | **[Env Vars Agent](bring-your-own/responses/env-vars-agent/)**     | Reads env vars injected by Foundry's connection-templated secret resolver. Covers ApiKey + CustomKeys connections and a kind-aware safety policy (whole value for `metadata`/`target`, fingerprint only for `credentials`). |
 | **[Browser Automation](bring-your-own/responses/browser-automation/)** | Browser automation agent using Toolbox MCP for session lifecycle and playwright-cli for browser commands. Supports multi-session, form filling, and web scraping. |
 
+### Native A2A protocol
+
+| Sample | What it shows |
+| --- | --- |
+| **[Copilot Travel Planner with Web Search](bring-your-own/a2a/travel-planner-web-search/)** | Direct A2A travel research with bounded Toolbox web search inside the specialists, citations and saved unverified results. |
+
 ### Invocations protocol
 
 | Sample                                                                 | What it shows                                                                                               |

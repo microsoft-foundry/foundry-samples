@@ -1,0 +1,13 @@
+[project]
+name = "foundry-a2a-echo"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "azure-ai-agentserver-a2a==1.0.0b1",
+    "azure-ai-agentserver-core==2.3.1b1",
+    "a2a-sdk==1.2.3",
+    "azure-identity==1.25.1",
+]
+
+[tool.uv]
+package = false

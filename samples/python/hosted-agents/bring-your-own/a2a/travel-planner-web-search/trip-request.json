@@ -1,0 +1,19 @@
+{
+  "jsonrpc": "2.0",
+  "id": "web-travel-trip-1",
+  "method": "SendMessage",
+  "params": {
+    "message": {
+      "messageId": "web-travel-message-1",
+      "role": "ROLE_USER",
+      "parts": [
+        {
+          "text": "Research and save a trip for 1 traveler from SFO to SEA, departing 2027-01-10 and returning 2027-01-13. Arrive before 2027-01-11T09:00:00-08:00. Prefer refundable flight and hotel. Hotel check-in 2027-01-10, check-out 2027-01-13, within 3000 meters of the public landmark Seattle Convention Center Summit, Seattle. Total budget USD 1200. Use the specialists' web search, cite sources, and clearly mark exact-date fares, rates, availability, distance and cancellation terms as unverified when not established. Do not book anything."
+        }
+      ]
+    },
+    "configuration": {
+      "returnImmediately": false
+    }
+  }
+}
