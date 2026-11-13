@@ -15,8 +15,6 @@
     "modelCapacity": { "value": 1 },
 
     "gatewayName": { "value": "" },
-    "publisherEmail": { "value": "noreply@example.com" },
-    "publisherName": { "value": "AI Gateway tier hub" },
     "tokensPerMinute": { "value": 100 }
   }
 }
