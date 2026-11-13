@@ -63,7 +63,7 @@ targetScope = 'resourceGroup'
   'swedencentral'
 ])
 @description('Region for resources that require the AI Gateway tier and its co-regional VNet.')
-param region string = any(resourceGroup().location)
+param region string = 'swedencentral'
 
 // ===========================================================================
 // Foundation inputs (template 16 standard network-secured agent)
