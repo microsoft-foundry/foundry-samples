@@ -22,6 +22,7 @@
         "centralus",
         "eastasia",
         "eastus",
+        "eastus2",
         "francecentral",
         "germanywestcentral",
         "italynorth",
@@ -948,7 +949,7 @@
             "value": "[variables('accountName')]"
           },
           "location": {
-            "value": "[resourceGroup().location]"
+            "value": "[parameters('location')]"
           },
           "modelName": {
             "value": "[parameters('modelName')]"

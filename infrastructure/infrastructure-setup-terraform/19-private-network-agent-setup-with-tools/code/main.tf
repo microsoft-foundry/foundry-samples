@@ -212,6 +212,13 @@ resource "azapi_resource" "ai_foundry" {
   name                      = local.account_name
   parent_id                 = local.rg_id
   location                  = coalesce(var.foundry_location, local.rg_location)
+
+  lifecycle {
+    precondition {
+      condition     = local.rg_location == var.location && coalesce(var.foundry_location, local.rg_location) == var.location
+      error_message = "The workload resource group, VNet, and Foundry account must all use var.location."
+    }
+  }
   schema_validation_enabled = false
 
   identity {

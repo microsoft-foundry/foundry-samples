@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "11620463237502199083"
+      "templateHash": "2730794585217518261"
     }
   },
   "parameters": {
@@ -21,6 +21,7 @@
         "centralus",
         "eastasia",
         "eastus",
+        "eastus2",
         "francecentral",
         "germanywestcentral",
         "italynorth",
@@ -233,7 +234,7 @@
     "roleSearchIndexDataContributor": "8ebe5a00-799e-43f5-93ac-243d3dce84a7",
     "roleSearchServiceContributor": "7ca78c08-252a-4471-8644-bb5ff32d4ba0",
     "cosmosBuiltInDataContributorRoleId": "00000000-0000-0000-0000-000000000002",
-    "nginxConfTemplate": "worker_processes 1;\r\nerror_log /dev/stderr warn;\r\npid /tmp/nginx.pid;\r\nevents { worker_connections 1024; }\r\nhttp {\r\n  include /etc/nginx/mime.types;\r\n  default_type application/octet-stream;\r\n  access_log /dev/stdout;\r\n  proxy_http_version 1.1;\r\n  server {\r\n    listen 443 ssl;\r\n    server_name __FQDN__;\r\n    ssl_certificate     /mnt/certs/server.crt;\r\n    ssl_certificate_key /mnt/certs/server.key;\r\n    location /__APIPATH__/ {\r\n      proxy_pass https://__MODELHOST__/openai/;\r\n      proxy_set_header Host __MODELHOST__;\r\n      proxy_ssl_server_name on;\r\n      proxy_ssl_name __MODELHOST__;\r\n      proxy_ssl_verify on;\r\n      proxy_ssl_verify_depth 3;\r\n      proxy_ssl_trusted_certificate /etc/pki/tls/certs/ca-bundle.crt;\r\n    }\r\n    location / { return 200 'gateway-ok'; }\r\n  }\r\n}\r\n",
+    "nginxConfTemplate": "worker_processes 1;\nerror_log /dev/stderr warn;\npid /tmp/nginx.pid;\nevents { worker_connections 1024; }\nhttp {\n  include /etc/nginx/mime.types;\n  default_type application/octet-stream;\n  access_log /dev/stdout;\n  proxy_http_version 1.1;\n  server {\n    listen 443 ssl;\n    server_name __FQDN__;\n    ssl_certificate     /mnt/certs/server.crt;\n    ssl_certificate_key /mnt/certs/server.key;\n    location /__APIPATH__/ {\n      proxy_pass https://__MODELHOST__/openai/;\n      proxy_set_header Host __MODELHOST__;\n      proxy_ssl_server_name on;\n      proxy_ssl_name __MODELHOST__;\n      proxy_ssl_verify on;\n      proxy_ssl_verify_depth 3;\n      proxy_ssl_trusted_certificate /etc/pki/tls/certs/ca-bundle.crt;\n    }\n    location / { return 200 'gateway-ok'; }\n  }\n}\n",
     "nginxConf": "[replace(replace(replace(variables('nginxConfTemplate'), '__FQDN__', variables('customDomainFqdn')), '__APIPATH__', variables('apimApiPath')), '__MODELHOST__', variables('modelHost'))]",
     "agentAccountBaseProperties": {
       "allowProjectManagement": true,
@@ -439,7 +440,7 @@
       "type": "Microsoft.CognitiveServices/accounts",
       "apiVersion": "2025-04-01-preview",
       "name": "[variables('foundryModelAccountName')]",
-      "location": "[resourceGroup().location]",
+      "location": "[parameters('location')]",
       "kind": "AIServices",
       "tags": "[variables('commonTags')]",
       "sku": {
@@ -598,7 +599,7 @@
       "type": "Microsoft.CognitiveServices/accounts",
       "apiVersion": "2026-11-15-preview",
       "name": "[variables('foundryAgentAccountName')]",
-      "location": "[resourceGroup().location]",
+      "location": "[parameters('location')]",
       "kind": "AIServices",
       "tags": "[variables('commonTags')]",
       "sku": {
@@ -681,9 +682,9 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.Network/privateEndpoints', format('pe-{0}', variables('foundryAgentAccountName')))]",
-        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[2])]",
         "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[0])]",
-        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[1])]"
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[1])]",
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[2])]"
       ]
     },
     {

@@ -26,6 +26,7 @@ Architecture:
   'centralus'
   'eastasia'
   'eastus'
+  'eastus2'
   'francecentral'
   'germanywestcentral'
   'italynorth'

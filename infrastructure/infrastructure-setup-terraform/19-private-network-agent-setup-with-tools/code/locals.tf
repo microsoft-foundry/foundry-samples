@@ -62,7 +62,7 @@ locals {
   ## AI Search
   search_id       = local.create_search ? azapi_resource.ai_search[0].id : var.existing_ai_search_id
   search_name     = local.create_search ? azapi_resource.ai_search[0].name : split("/", var.existing_ai_search_id)[8]
-  search_location = local.create_search ? var.location : data.azapi_resource.existing_search[0].output.location
+  search_location = local.create_search ? azapi_resource.ai_search[0].location : data.azapi_resource.existing_search[0].output.location
 
   ## Fabric (BYO-only, never created — only PE + DNS when workspace ID provided)
   fabric_name = local.create_fabric ? split("/", var.existing_fabric_workspace_id)[8] : ""

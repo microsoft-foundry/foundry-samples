@@ -138,6 +138,13 @@ resource "azapi_resource" "ai_foundry" {
   name                      = "aifoundry${random_string.unique.result}"
   parent_id                 = "/subscriptions/${var.subscription_id_resources}/resourceGroups/${var.resource_group_name_resources}"
   location                  = coalesce(var.foundry_location, data.azurerm_resource_group.resources.location)
+
+  lifecycle {
+    precondition {
+      condition     = data.azurerm_resource_group.resources.location == var.location && coalesce(var.foundry_location, data.azurerm_resource_group.resources.location) == var.location
+      error_message = "The workload resource group, VNet, and Foundry account must all use var.location."
+    }
+  }
   schema_validation_enabled = false
 
   body = {
@@ -464,7 +471,7 @@ resource "azapi_resource" "conn_aisearch" {
         ApiType    = "Azure"
         ApiVersion = "2025-05-01-preview"
         ResourceId = azapi_resource.ai_search.id
-        location   = var.location
+        location   = azapi_resource.ai_search.location
       }
     }
   }

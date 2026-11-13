@@ -13,6 +13,7 @@ Standard Setup Network Secured Steps for main.bicep
   'centralus'
   'eastasia'
   'eastus'
+  'eastus2'
   'francecentral'
   'germanywestcentral'
   'italynorth'

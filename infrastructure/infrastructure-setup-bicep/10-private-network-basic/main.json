@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "13386588499278082521"
+      "templateHash": "9333187855641087974"
     }
   },
   "parameters": {
@@ -134,7 +134,7 @@
       "type": "Microsoft.Network/privateEndpoints",
       "apiVersion": "2024-05-01",
       "name": "[format('{0}-private-endpoint', parameters('aiFoundryName'))]",
-      "location": "[resourceGroup().location]",
+      "location": "[parameters('location')]",
       "properties": {
         "subnet": {
           "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"

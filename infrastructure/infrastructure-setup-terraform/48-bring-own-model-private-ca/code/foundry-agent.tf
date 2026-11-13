@@ -43,6 +43,13 @@ resource "azapi_resource" "foundry_agent_account" {
   parent_id = local.rg_id
   tags      = local.common_tags
 
+  lifecycle {
+    precondition {
+      condition     = coalesce(var.foundry_location, local.create_rg ? azurerm_resource_group.rg[0].location : data.azurerm_resource_group.existing[0].location) == var.location
+      error_message = "The Foundry account, its injected agent subnet, and the spoke VNet must all use var.location."
+    }
+  }
+
   # trustedCertificateSources is a public-preview property that may not be in
   # the azapi embedded schema; skip client-side validation.
   schema_validation_enabled = false
