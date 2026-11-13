@@ -1,0 +1,6 @@
+name: Foundry Tracing Doctor
+description: Read-only configuration diagnostics for missing Foundry agent traces.
+
+build: "python -m pip install -r requirements-dev.txt"
+validate: "python -m py_compile tracing_doctor.py test_tracing_doctor.py"
+test: "python -m pytest -q test_tracing_doctor.py"

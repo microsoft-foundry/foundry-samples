@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Microsoft Corporation. All rights reserved.
-"""Read-only Foundry tracing doctor (draft, Python 3.10+ and Azure CLI).
+"""Read-only Foundry tracing doctor (Python 3.10+ and Azure CLI).
 
 Run from this directory after `az login` to the project's cloud and tenant:
   python3 tracing_doctor.py --project-id "<project ARM ID>"
@@ -490,7 +490,7 @@ class TracingDoctor:
                 "UNKNOWN",
                 "CONNECTION_AUTH_TYPE",
                 connection_id,
-                "This draft only understands ApiKey and ProjectManagedIdentity authentication.",
+                "Supported authentication types are ApiKey and ProjectManagedIdentity.",
             )
 
     def check_pmi_metadata(self, connection, component):
@@ -768,7 +768,7 @@ def render_report(project_id, findings, output_format):
             indent=2,
         )
     lines = [
-        "Foundry tracing doctor - configuration-only draft",
+        "Foundry tracing doctor - configuration checks",
         f"Project: {project_id}",
         "",
     ]
