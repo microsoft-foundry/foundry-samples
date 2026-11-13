@@ -337,7 +337,7 @@ internal sealed class VoiceResponseCoordinator
                 ThrowIfStopped(state, operation, cancellationToken);
                 var chunk = iterator.Current;
                 if (++outputChunks > 4096 ||
-                    (outputBytes += Encoding.UTF8.GetByteCount(chunk)) > 512 * 1024)
+                    (outputBytes += Encoding.UTF8.GetByteCount(chunk)) > VoiceConnectionState.MaximumOutputBytes)
                 {
                     throw new InvalidOperationException("Response exceeds its output budget.");
                 }
@@ -418,7 +418,7 @@ internal sealed class VoiceResponseCoordinator
             await Task.Yield();
             await created;
             ThrowIfStopped(state, operation, cancellationToken);
-            if (Encoding.UTF8.GetByteCount(text) > 512 * 1024)
+            if (Encoding.UTF8.GetByteCount(text) > VoiceConnectionState.MaximumOutputBytes)
             {
                 throw new InvalidOperationException("Response text exceeds its output budget.");
             }
