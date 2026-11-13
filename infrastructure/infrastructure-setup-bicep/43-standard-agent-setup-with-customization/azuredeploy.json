@@ -557,7 +557,7 @@
             "value": "[variables('accountName')]"
           },
           "location": {
-            "value": "[resourceGroup().location]"
+            "value": "[parameters('location')]"
           }
         },
         "template": {
