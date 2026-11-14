@@ -3,16 +3,16 @@
 Instead of invoking ``run_multiturn_trace_eval.py`` by hand, this creates a
 Foundry **schedule** (``project_client.beta.schedules``) that re-runs the same
 conversation-level trace eval on a cron cadence, so new conversations are scored
-as they arrive. A schedule runs on a timer, which is why it works for
-trace-sourced external agents (an evaluation *rule* would not fire — external
-agents only emit OpenTelemetry traces, never ``responseCompleted`` events).
+as they arrive. For turn-level scoring, the GA timer evaluation rule in
+``create_trace_eval_rule.py`` is simpler.
 
 The scheduled ``eval_run`` mirrors the payload ``run_multiturn_trace_eval.py``
 passes to ``client.evals.runs.create``: the
-``azure_ai_trace_data_source_preview`` ``agent_filter`` data source keyed on
-``agent_name``, plus ``evaluation_level: conversation``. The trace window
-(``start_time``/``end_time``, derived from ``--lookback-hours``) is set when the
-schedule is created; each cron run evaluates the agent's recent conversations.
+``azure_ai_trace_data_source`` ``agent_filter`` data source keyed on
+``agent_name``, plus ``evaluation_level: conversation``. On each run, the service
+moves the trace window to end at the run time and keeps its length (``end_time``
+minus ``start_time``, set from ``--lookback-hours``), so every run scores the
+agent's most recent conversations.
 Keep the window a bit longer than the cron interval to absorb Application
 Insights ingestion lag.
 
@@ -74,8 +74,8 @@ def main() -> None:
                         help="Cron expression for the cadence (default: hourly).")
     parser.add_argument("--time-zone", default="UTC")
     parser.add_argument("--lookback-hours", type=int, default=2,
-                        help="Trace window (from now) captured when the schedule is "
-                             "created; keep it a bit longer than the cron interval.")
+                        help="Length of the trace window each run scores, ending at the "
+                             "run time; keep it a bit longer than the cron interval.")
     parser.add_argument("--max-traces", type=int, default=50,
                         help="Max traces to evaluate per run.")
     parser.add_argument("--list", action="store_true", help="List schedule runs and exit.")
@@ -84,7 +84,7 @@ def main() -> None:
 
     with (
         DefaultAzureCredential() as credential,
-        AIProjectClient(endpoint=ENDPOINT, credential=credential, allow_preview=True) as project_client,
+        AIProjectClient(endpoint=ENDPOINT, credential=credential) as project_client,
     ):
         if args.delete:
             project_client.beta.schedules.delete(SCHEDULE_ID)
@@ -115,7 +115,7 @@ def main() -> None:
             "eval_id": eval_object.id,
             "name": f"{AGENT_NAME}-multiturn-scheduled",
             "data_source": {
-                "type": "azure_ai_trace_data_source_preview",
+                "type": "azure_ai_trace_data_source",
                 "trace_source": {
                     "type": "agent_filter",
                     "agent_name": AGENT_NAME,

@@ -32,7 +32,6 @@ def main() -> None:
     project_client = AIProjectClient(
         endpoint=os.environ["FOUNDRY_PROJECT_ENDPOINT"],
         credential=DefaultAzureCredential(),
-        allow_preview=True,
     )
 
     # create_version creates the agent if needed and adds a registration revision.

@@ -13,9 +13,9 @@ Foundry project. The sample runs the agent locally to keep the demo
 small. You can deploy the same runtime anywhere you host your agents;
 just keep the same environment variables and `gen_ai.agent.id` value.
 
-**Preview note.** External agents are gated behind
-`Foundry-Features: ExternalAgents=V1Preview` while in public preview.
-The SDK calls below opt in via `allow_preview=True`.
+**GA note.** External agents are generally available in `azure-ai-projects`
+2.11.0 and later, so these scripts don't need `allow_preview=True`. Only the
+schedule script in Step 7 uses a preview API (`project_client.beta.schedules`).
 
 **Distro note.** The Microsoft OTel distro now forwards per-library
 kwargs from `instrumentation_options` into the instrumentor call
@@ -47,6 +47,10 @@ start here:
 | [run_trace_eval.py](run_trace_eval.py) | Runs a one-off trace-based eval over the registered agent and prints scores. |
 | [run_multiturn_trace_eval.py](run_multiturn_trace_eval.py) | Runs a conversation-level (multi-turn) trace eval and prints per-conversation scores. |
 | [schedule_multiturn_trace_eval.py](schedule_multiturn_trace_eval.py) | Creates/lists/deletes a Foundry schedule that re-runs the multi-turn trace eval on a cron cadence. |
+| [create_trace_eval_rule.py](create_trace_eval_rule.py) | Creates an hourly evaluation rule (GA) that continuously evaluates the agent's traces. |
+| [run_agent_insights.py](run_agent_insights.py) | Runs Agent Insights over recent traces and prints recurring issues. |
+| [generate_dataset_from_traces.py](generate_dataset_from_traces.py) | Generates an evaluation dataset from the agent's traces. |
+| [generate_rubric_evaluator.py](generate_rubric_evaluator.py) | Generates a rubric evaluator from the agent's job description and traces. |
 | [requirements.txt](requirements.txt) | Python deps for both the runtime and the helper scripts. |
 
 ## Architecture
@@ -72,12 +76,17 @@ start here:
    - A Foundry project with an Application Insights connection.
    - An Azure OpenAI deployment (for example, `gpt-4o-mini`) for both
      the agent LLM and the eval judge.
+   - For Agent Insights (Step 8), a GPT-5 or later deployment, set as
+     `INSIGHTS_MODEL_DEPLOYMENT`.
 2. **Permissions**
    - Permission to create agents in the Foundry project (for example, `Foundry User`).
    - For trace evaluation, the Foundry project managed identity needs
      **Log Analytics Reader** *and* **Privileged Monitoring Data Reader** on the
      connected Application Insights (the latter is required to read GenAI
-     message content — see Step 5).
+     message content — see Step 5). These roles also cover the trace reads in
+     Steps 7–9.
+3. For the status, model, and roles each capability needs, see
+   [What you need for each capability](../README.md#what-you-need-for-each-capability).
 
 ## Step 1 — Configure environment
 
@@ -93,6 +102,12 @@ AZURE_OPENAI_ENDPOINT=https://<aoai>.openai.azure.com
 AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
 AZURE_OPENAI_API_VERSION=2024-10-21
 AZURE_OPENAI_API_KEY=...
+```
+
+The Foundry scripts authenticate with `DefaultAzureCredential`, so sign in first:
+
+```bash
+az login
 ```
 
 The runtime sets the required OpenTelemetry defaults before instrumentation.
@@ -160,7 +175,7 @@ This:
 
 1. Creates an OpenAI-compatible eval group with the built-in trace
    evaluator `intent_resolution`.
-2. Creates an `azure_ai_trace_data_source_preview` `agent_filter` run scoped
+2. Creates an `azure_ai_trace_data_source` `agent_filter` run scoped
    to that agent over the last 24 hours.
 3. Polls until completion and prints per-criterion pass/fail counts.
 
@@ -199,13 +214,12 @@ python run_multiturn_trace_eval.py
 ```
 
 The request differs from the single-turn eval in two ways — the
-`azure_ai_trace_data_source_preview` `agent_filter` data source (the older
-`azure_ai_traces` source is being deprecated in favor of it) and the
+`azure_ai_trace_data_source` `agent_filter` data source and the
 `evaluation_level` field on the run:
 
 ```python
 data_source={
-    "type": "azure_ai_trace_data_source_preview",
+    "type": "azure_ai_trace_data_source",
     "trace_source": {
         "type": "agent_filter",
         "agent_name": AGENT_NAME,   # filter by the registered agent
@@ -250,10 +264,48 @@ evaluate a specific set of traces.
 ## Step 7 — Run the evaluation continuously
 
 The scripts above are one-off: each invocation scores the traces in its
-lookback window and exits. To keep scoring new conversations as they arrive,
-let Foundry run the trace eval on a cadence with a **schedule**.
-[schedule_multiturn_trace_eval.py](schedule_multiturn_trace_eval.py) creates one
-for you:
+lookback window and exits. To keep scoring new traces as they arrive, let
+Foundry run the evaluation on a timer.
+
+### Turn-level: evaluation rule (GA)
+
+[create_trace_eval_rule.py](create_trace_eval_rule.py) creates an evaluation
+rule with a timer trigger. Every hour, the service reads a sample of the
+agent's recent traces and adds an evaluation run to the evaluation:
+
+```bash
+python create_trace_eval_rule.py            # create or update the hourly rule
+python create_trace_eval_rule.py --status   # show provisioning status
+python create_trace_eval_rule.py --delete   # remove the rule
+```
+
+```python
+project_client.evaluation_rules.create_or_update(
+    id=RULE_ID,
+    evaluation_rule=EvaluationRule(
+        display_name="weather-agent hourly trace evaluation",
+        action=TraceEvaluationRuleAction(
+            eval_id=eval_id,
+            source=TracesEvalRunDataSource(agent_name=AGENT_NAME, max_traces=10),
+        ),
+        event_type=EvaluationRuleEventType.TIMER_TRIGGER,
+        schedule=RecurrenceTrigger(interval=1, schedule=HourlyRecurrenceSchedule()),
+        enabled=True,
+    ),
+)
+```
+
+The trace lookback window is inferred from the recurrence interval. Re-running
+the script updates the rule and keeps its evaluation, so score history stays in
+one place; to change the testing criteria, run `--delete` first. This GA rule
+scores individual turns; to score whole conversations on a timer, use the
+preview schedule below.
+
+### Conversation-level: schedule (preview)
+
+To score whole conversations on a cadence,
+[schedule_multiturn_trace_eval.py](schedule_multiturn_trace_eval.py) creates a
+**schedule** that re-runs the conversation-level evaluation from Step 6:
 
 ```bash
 python schedule_multiturn_trace_eval.py                       # hourly
@@ -262,16 +314,12 @@ python schedule_multiturn_trace_eval.py --list                # list schedule ru
 python schedule_multiturn_trace_eval.py --delete              # remove the schedule
 ```
 
-A schedule runs on a timer, so it works for trace-sourced external agents.
-(An evaluation *rule* would not: rules trigger on an agent's
-`responseCompleted` events, which an external agent that only emits
-OpenTelemetry traces never fires.)
-
 Under the hood it creates a persisted eval group, then attaches a schedule whose
-task re-runs that eval. The trace window (`start_time`/`end_time`, derived from
-`--lookback-hours`) is set when the schedule is created; each cron run evaluates
-the agent's recent conversations. Keep the window a bit longer than the cron
-interval to absorb Application Insights ingestion lag:
+task re-runs that eval. On each run, the service moves the trace window to end at
+the run time and keeps its length (`end_time` minus `start_time`, set from
+`--lookback-hours`), so every run scores the agent's most recent conversations.
+Keep the window a bit longer than the cron interval to absorb Application Insights
+ingestion lag:
 
 ```python
 from azure.ai.projects.models import Schedule, CronTrigger, EvaluationScheduleTask
@@ -284,7 +332,7 @@ eval_run = {
     "eval_id": eval_object.id,
     "name": "weather-agent-multiturn-scheduled",
     "data_source": {
-        "type": "azure_ai_trace_data_source_preview",
+        "type": "azure_ai_trace_data_source",
         "trace_source": {
             "type": "agent_filter",
             "agent_name": AGENT_NAME,   # filter by the registered agent
@@ -315,3 +363,50 @@ means a few conversations near the window edge may be scored twice; that is
 harmless. Inspect runs with `--list` and stop the schedule with `--delete`
 (these call `project_client.beta.schedules.list_runs` /
 `project_client.beta.schedules.delete`). Schedules are in preview.
+
+## Step 8 — Find recurring issues with Agent Insights
+
+[run_agent_insights.py](run_agent_insights.py) runs Agent Insights over the
+agent's recent traces. It creates an on-demand monitor for the agent (or reuses
+one), starts a run, and prints each active insight with its severity, trace
+count, and proposed next step:
+
+```bash
+python run_agent_insights.py --lookback-hours 24
+python run_agent_insights.py --delete   # remove the monitor
+```
+
+Set `INSIGHTS_MODEL_DEPLOYMENT` to a GPT-5 or later deployment for the analysis.
+If you change it, the next run switches the existing monitor to the new model. Foundry doesn't have the external
+agent's code, so proposed next steps are general guidance to apply in your own
+code. The monitor is kept so you can review the insights in the portal
+(**Agents** > your agent > **Insights**).
+
+## Step 9 — Turn traces into tests
+
+Two generation jobs turn production traces into reusable evaluation assets.
+
+**Dataset from traces.**
+[generate_dataset_from_traces.py](generate_dataset_from_traces.py) turns each
+captured turn into a dataset row that you can review and re-run as a test:
+
+```bash
+python generate_dataset_from_traces.py --lookback-hours 24 --max-samples 15
+```
+
+The project managed identity needs read access to the connected Application
+Insights resource; the Log Analytics Reader role from Step 5 covers it. Test-case rubrics (`generate_test_case_rubric=True`) and
+conversation-level datasets are in preview and aren't used here.
+
+**Rubric evaluator.**
+[generate_rubric_evaluator.py](generate_rubric_evaluator.py) generates a rubric
+evaluator with named pass/fail dimensions from a description of the agent's job
+plus its traces:
+
+```bash
+python generate_rubric_evaluator.py --lookback-hours 24
+```
+
+Edit `AGENT_JOB_DESCRIPTION` to describe your own agent. Review and edit the
+generated dimensions in the portal, then use the evaluator by name as a testing
+criterion in any evaluation.
