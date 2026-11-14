@@ -151,7 +151,7 @@ resource "azapi_resource" "ai_search" {
   type                      = "Microsoft.Search/searchServices@2024-06-01-preview"
   name                      = "aifoundry${random_string.unique.result}search"
   parent_id                 = local.rg_id
-  location                  = local.rg_location
+  location                  = var.location
   schema_validation_enabled = false
 
   body = {
@@ -215,8 +215,8 @@ resource "azapi_resource" "ai_foundry" {
 
   lifecycle {
     precondition {
-      condition     = local.rg_location == var.location && coalesce(var.foundry_location, local.rg_location) == var.location
-      error_message = "The workload resource group, VNet, and Foundry account must all use var.location."
+      condition     = coalesce(var.foundry_location, local.rg_location) == var.location
+      error_message = "The Foundry account must be in the same region as the VNet (var.location). Set foundry_location to var.location when the resource group is in a different region."
     }
   }
   schema_validation_enabled = false

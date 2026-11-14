@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.46.1.21595",
-      "templateHash": "2291527954509146527"
+      "templateHash": "13158301262934709590"
     }
   },
   "parameters": {
@@ -377,7 +377,7 @@
       "type": "Microsoft.CognitiveServices/accounts",
       "apiVersion": "2025-04-01-preview",
       "name": "[variables('hubName')]",
-      "location": "[resourceGroup().location]",
+      "location": "[parameters('region')]",
       "sku": {
         "name": "S0"
       },

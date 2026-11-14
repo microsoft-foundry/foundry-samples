@@ -90,7 +90,7 @@ resource "azapi_resource" "ai_search" {
   type                      = "Microsoft.Search/searchServices@2025-05-01"
   name                      = "aifoundry${random_string.unique.result}search"
   parent_id                 = "/subscriptions/${var.subscription_id_resources}/resourceGroups/${var.resource_group_name_resources}"
-  location                  = data.azurerm_resource_group.resources.location
+  location                  = var.location
   schema_validation_enabled = true
 
   body = {
@@ -141,8 +141,8 @@ resource "azapi_resource" "ai_foundry" {
 
   lifecycle {
     precondition {
-      condition     = data.azurerm_resource_group.resources.location == var.location && coalesce(var.foundry_location, data.azurerm_resource_group.resources.location) == var.location
-      error_message = "The workload resource group, VNet, and Foundry account must all use var.location."
+      condition     = coalesce(var.foundry_location, data.azurerm_resource_group.resources.location) == var.location
+      error_message = "The Foundry account must be in the same region as the injected VNet (var.location). Set foundry_location to var.location when the resource group is in a different region."
     }
   }
   schema_validation_enabled = false

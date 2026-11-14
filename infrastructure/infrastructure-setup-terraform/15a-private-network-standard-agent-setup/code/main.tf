@@ -751,7 +751,7 @@ resource "azurerm_role_assignment" "storage_blob_data_owner_ai_foundry_project" 
 
 resource "azapi_resource_action" "purge_ai_foundry" {
   method      = "DELETE"
-  resource_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.CognitiveServices/locations/${azurerm_resource_group.rg.location}/resourceGroups/${azurerm_resource_group.rg.name}/deletedAccounts/aifoundry${random_string.unique.result}"
+  resource_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.CognitiveServices/locations/${coalesce(var.foundry_location, azurerm_resource_group.rg.location)}/resourceGroups/${azurerm_resource_group.rg.name}/deletedAccounts/aifoundry${random_string.unique.result}"
   type        = "Microsoft.CognitiveServices/locations/resourceGroups/deletedAccounts@2021-04-30"
   when        = "destroy"
 
