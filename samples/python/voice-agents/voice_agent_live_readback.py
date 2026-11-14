@@ -7,6 +7,7 @@ Env: FOUNDRY_PROJECT_ENDPOINT, FOUNDRY_VOICE_LIVE_AGENT_NAME (existing Live
 agent), FOUNDRY_VOICE_LIVE_CONVERSATION_ID (session.started.conversation_id,
 NOT session.id). Optional FOUNDRY_VOICE_LIVE_RECORDING_PATH: a new output WAV.
 The first speech-item WAV is saved beside it as <recording-stem>-first-item.wav.
+If either download fails, newly created recordings are removed; existing files are kept.
 Use voice_agent_live_audio.py --store to produce/read/delete an owned example.
 DefaultAzureCredential authenticates. Existing agents/conversations are NEVER
 changed or deleted. Requires store=True and captured speech audio. Missing audio
@@ -182,7 +183,15 @@ async def readback(
         validate_storage(recording_blob_uri)
         item_path = path.with_name(f"{path.stem}-first-item.wav")
         await save_audio(path, blob_uri=recording_blob_uri)
-        await save_audio(item_path, blob_uri=speech_blob_uri, item_id=first_speech_id)
+        item_saved = False
+        try:
+            await save_audio(
+                item_path, blob_uri=speech_blob_uri, item_id=first_speech_id
+            )
+            item_saved = True
+        finally:
+            if not item_saved:
+                path.unlink()
         print(f"Saved merged {recording.channels}-channel recording: {path}")
         print(f"Saved first speech-item recording: {item_path}")
 

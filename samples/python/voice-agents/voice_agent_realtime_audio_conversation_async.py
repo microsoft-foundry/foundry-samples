@@ -63,6 +63,7 @@ from azure.ai.projects.aio.operations import AsyncRealtimeConnection
 from azure.ai.projects.aio import AIProjectClient
 from azure.ai.projects.models import (
     RealtimeServerEventConversationItemInputAudioTranscriptionCompleted,
+    RealtimeServerEventConversationItemInputAudioTranscriptionFailed,
     RealtimeServerEventInputAudioBufferSpeechStarted,
     RealtimeServerEventInputAudioBufferSpeechStopped,
     RealtimeServerEventResponseAudioDelta,
@@ -140,7 +141,11 @@ async def run_file_conversation(
     commit/create the turn. Use it for Azure Speech with Azure semantic VAD.
     Manual mode explicitly commits and creates the turn; the existing frontend
     must already have VAD disabled and a compatible transcription provider.
-    A completed response, nonempty PCM, and actual input transcription are required.
+    Keep receiving while all input and EOF silence are sent. Completion requires
+    the latest turn's completed response, a non-silent final audio item, and input
+    transcription. A VAD ``turn_detected`` cancellation must match newer speech.
+    The voice frontend can report that interruption as ``client_cancelled``
+    while input is streaming; other unsuccessful responses still fail.
     """
     pcm = read_pcm_wav(audio_file)
     if output_audio.exists():
@@ -153,10 +158,12 @@ async def run_file_conversation(
         "speech_stopped": 0,
         "input_transcript_characters": 0,
         "response_statuses": [],
+        "response_status_details": [],
         "response_transcripts": [],
         "response_metadata": [],
         "audio_item_bytes": {},
         "transcript_item_ids": [],
+        "final_response_id": None,
         "conversation_id": None,
     }
     async with client.voice_agents.realtime.connect(agent_name=agent_name) as conn:
@@ -189,28 +196,75 @@ async def run_file_conversation(
                 await conn.response.create()
 
         sender = asyncio.create_task(send_audio())
+        receiver = asyncio.create_task(conn.recv())
         try:
             with output_audio.open("xb") as raw, wave.open(raw, "wb") as target:
                 target.setnchannels(1)
                 target.setsampwidth(2)
                 target.setframerate(_SAMPLE_RATE)
-                complete = False
+                speech_turn = 0
+                response_turns: dict[str, int] = {}
+                audio_items: dict[str, set[str]] = {}
+                transcript_items: dict[str, set[str]] = {}
+                started_items: set[str] = set()
+                stopped_items: set[str] = set()
+                transcribed_items: set[str] = set()
+                streaming_interrupts: set[str] = set()
+                latest_response_id = None
+                completed_response_id = None
+                final_item_id = None
                 while True:
                     if sender.done():
                         sender.result()
-                    event = await asyncio.wait_for(
-                        conn.recv(), deadline - asyncio.get_running_loop().time()
+                    remaining = deadline - asyncio.get_running_loop().time()
+                    if remaining <= 0:
+                        raise TimeoutError(
+                            "Timed out waiting for the final voice response."
+                        )
+                    pending: set[asyncio.Task[object]] = {receiver}
+                    if not sender.done():
+                        pending.add(sender)
+                    done, _ = await asyncio.wait(
+                        pending,
+                        timeout=remaining,
+                        return_when=asyncio.FIRST_COMPLETED,
                     )
-                    if isinstance(event, RealtimeServerEventError):
+                    if not done:
+                        raise TimeoutError(
+                            "Timed out waiting for the final voice response."
+                        )
+                    if sender in done:
+                        sender.result()
+                    event = receiver.result() if receiver in done else None
+                    if receiver in done:
+                        receiver = asyncio.create_task(conn.recv())
+                    if isinstance(
+                        event,
+                        (
+                            RealtimeServerEventError,
+                            RealtimeServerEventConversationItemInputAudioTranscriptionFailed,
+                        ),
+                    ):
                         raise RuntimeError(event.error.message)
                     if isinstance(
                         event, RealtimeServerEventInputAudioBufferSpeechStarted
                     ):
+                        if (
+                            use_vad
+                            and not sender.done()
+                            and latest_response_id is not None
+                            and completed_response_id is None
+                        ):
+                            streaming_interrupts.add(latest_response_id)
                         result["speech_started"] += 1
+                        speech_turn += 1
+                        started_items.add(event.item_id)
+                        completed_response_id = None
                     elif isinstance(
                         event, RealtimeServerEventInputAudioBufferSpeechStopped
                     ):
                         result["speech_stopped"] += 1
+                        stopped_items.add(event.item_id)
                     elif isinstance(
                         event,
                         RealtimeServerEventConversationItemInputAudioTranscriptionCompleted,
@@ -218,6 +272,16 @@ async def run_file_conversation(
                         result["input_transcript_characters"] += len(
                             event.transcript.strip()
                         )
+                        transcribed_items.add(event.item_id)
+                    elif isinstance(event, RealtimeServerEventResponseCreated):
+                        response_id = event.response.id
+                        if not response_id:
+                            raise RuntimeError(
+                                "The voice response omitted its response ID."
+                            )
+                        latest_response_id = response_id
+                        response_turns[response_id] = speech_turn
+                        completed_response_id = None
                     elif isinstance(event, RealtimeServerEventResponseAudioDelta):
                         if not event.delta or len(event.delta) % 2:
                             raise ValueError("Invalid PCM16 response chunk.")
@@ -227,40 +291,100 @@ async def run_file_conversation(
                         result["audio_item_bytes"][event.item_id] = result[
                             "audio_item_bytes"
                         ].get(event.item_id, 0) + len(event.delta)
+                        if any(event.delta):
+                            audio_items.setdefault(event.response_id, set()).add(
+                                event.item_id
+                            )
                     elif isinstance(
                         event, RealtimeServerEventResponseAudioTranscriptDone
                     ):
                         result["response_transcripts"].append(event.transcript)
                         result["transcript_item_ids"].append(event.item_id)
+                        if event.transcript.strip():
+                            transcript_items.setdefault(event.response_id, set()).add(
+                                event.item_id
+                            )
                     elif isinstance(event, RealtimeServerEventResponseDone):
+                        response_id = event.response.id
+                        if not response_id:
+                            raise RuntimeError(
+                                "The voice response omitted its response ID."
+                            )
                         result["response_statuses"].append(event.response.status)
                         result["response_metadata"].append(
                             dict(event.response.metadata or {})
                         )
-                        if event.response.status != "completed":
-                            raise RuntimeError(
-                                f"Voice response ended with status {event.response.status}."
-                            )
-                        complete = True
-                    if (
-                        complete
-                        and result["audio_bytes"] > 0
-                        and result["input_transcript_characters"] > 0
-                        and result["response_transcripts"]
-                    ):
-                        await asyncio.wait_for(
-                            sender,
-                            deadline - asyncio.get_running_loop().time(),
+                        details = event.response.status_details
+                        result["response_status_details"].append(
+                            details.as_dict() if details is not None else None
                         )
-                        break
+                        expected_barge_in = (
+                            use_vad
+                            and event.response.status == "cancelled"
+                            and details is not None
+                            and (
+                                details.reason == "turn_detected"
+                                or (
+                                    details.reason == "client_cancelled"
+                                    and response_id in streaming_interrupts
+                                )
+                            )
+                            and response_turns.get(response_id, speech_turn)
+                            < speech_turn
+                        )
+                        if (
+                            event.response.status != "completed"
+                            and not expected_barge_in
+                        ):
+                            raise RuntimeError(
+                                f"Voice response ended with status {event.response.status}: "
+                                f"{result['response_status_details'][-1]}."
+                            )
+                        if (
+                            event.response.status == "completed"
+                            and response_id == latest_response_id
+                            and response_turns.get(response_id) == speech_turn
+                        ):
+                            completed_response_id = response_id
+                            final_item_id = (
+                                event.response.output[-1].get("id")
+                                if event.response.output
+                                else None
+                            )
+                    if (
+                        sender.done()
+                        and completed_response_id is not None
+                        and completed_response_id == latest_response_id
+                        and response_turns.get(completed_response_id) == speech_turn
+                        and final_item_id
+                        in audio_items.get(completed_response_id, set())
+                        and final_item_id
+                        in transcript_items.get(completed_response_id, set())
+                        and result["input_transcript_characters"] > 0
+                        and (
+                            not use_vad
+                            or (
+                                started_items
+                                and started_items <= stopped_items
+                                and started_items <= transcribed_items
+                            )
+                        )
+                    ):
+                        # Drain already queued events before accepting an EOF candidate.
+                        await asyncio.sleep(0)
+                        if not receiver.done():
+                            result["final_response_id"] = completed_response_id
+                            break
                 if use_vad and not (
                     result["speech_started"] and result["speech_stopped"]
                 ):
                     raise RuntimeError("The service did not detect the supplied turn.")
         finally:
-            sender.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await sender
+            for task in (sender, receiver):
+                task.cancel()
+            for task in (sender, receiver):
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
     print(
         f"File turn: input_bytes={result['input_bytes']}, "
         f"audio_bytes={result['audio_bytes']}, "

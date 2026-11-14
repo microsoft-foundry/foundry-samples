@@ -105,6 +105,13 @@ def run_tool_turn(
     response_active = True
     deadline = time.monotonic() + 120
 
+    def collect_approval(item: RealtimeMCPApprovalRequest) -> None:
+        if item.server_label != server_label or item.name != tool_name:
+            raise RuntimeError(
+                "Refusing approval for an unexpected MCP server or tool."
+            )
+        approvals[item.id] = item
+
     def submit_approvals() -> None:
         for request in approvals.values():
             if request.id in answered_approvals:
@@ -156,11 +163,7 @@ def run_tool_turn(
         ):
             item = event.item
             if isinstance(item, RealtimeMCPApprovalRequest):
-                if item.server_label != server_label or item.name != tool_name:
-                    raise RuntimeError(
-                        "Refusing approval for an unexpected MCP server or tool."
-                    )
-                approvals[item.id] = item
+                collect_approval(item)
                 # The service can emit the request after its response.done.
                 if not response_active:
                     submit_approvals()
@@ -204,6 +207,9 @@ def run_tool_turn(
                 raise RuntimeError(
                     f"MCP response ended with status {event.response.status}."
                 )
+            for item in event.response.output or []:
+                if isinstance(item, RealtimeMCPApprovalRequest):
+                    collect_approval(item)
             text = response_texts.pop(response_id, "")
             current_calls = {
                 item.id
