@@ -9,7 +9,9 @@ FOUNDRY_VOICE_AGENT_IMAGE_PROMPT.
 import argparse
 import base64
 import os
+import time
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Final
 
 from azure.ai.projects import AIProjectClient
@@ -21,6 +23,7 @@ from azure.ai.projects.models import (
     RealtimeServerEventResponseAudioTranscriptDone,
     RealtimeServerEventResponseDone,
     RealtimeServerEventResponseTextDone,
+    VoiceAgentDefinition,
 )
 from azure.identity import DefaultAzureCredential
 from dotenv import load_dotenv
@@ -75,13 +78,19 @@ def send_image_turn(connection, data_url: str, prompt: str) -> None:
     )
     connection.conversation.item.create(item=item)
     connection.response.create()
+
+
 # </image_turn>
 
 
 def receive_response(connection) -> None:
     """Print the final text transcript and require a completed response."""
+    deadline = time.monotonic() + 45
     while True:
-        event = connection.recv(timeout=45)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("The voice agent did not complete its response.")
+        event = connection.recv(timeout=remaining)
         if isinstance(event, RealtimeServerEventResponseAudioTranscriptDone):
             print(f"Agent: {event.transcript}")
         elif isinstance(event, RealtimeServerEventResponseTextDone):
@@ -113,7 +122,7 @@ def self_test() -> None:
 
     class FakeConnection:
         def __init__(self) -> None:
-            self.conversation = type("Conversation", (), {"item": ItemOperations()})()
+            self.conversation = SimpleNamespace(item=ItemOperations())
             self.response = ResponseOperations()
 
     connection = FakeConnection()
@@ -163,14 +172,22 @@ def main() -> None:
         AIProjectClient(
             endpoint=endpoint,
             credential=credential,
-            allow_preview=True,
         ) as project_client,
-        project_client.beta.voice_agents.realtime.connect(
-            agent_name=agent_name
-        ) as connection,
     ):
-        send_image_turn(connection, data_url, prompt)
-        receive_response(connection)
+        definition = project_client.agents.get(
+            agent_name=agent_name
+        ).versions.latest.definition
+        if not isinstance(definition, VoiceAgentDefinition):
+            raise TypeError(
+                "Image input requires a Realtime voice agent, not a GPT Live agent."
+            )
+        with project_client.voice_agents.realtime.connect(
+            agent_name=agent_name
+        ) as connection:
+            if definition.greeting is not None:
+                receive_response(connection)
+            send_image_turn(connection, data_url, prompt)
+            receive_response(connection)
 
 
 if __name__ == "__main__":

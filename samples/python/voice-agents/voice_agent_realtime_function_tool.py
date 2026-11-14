@@ -14,19 +14,19 @@ USAGE:
 
     Before running the sample:
 
-    pip install "azure-ai-projects[voice]==2.7.0" azure-identity python-dotenv
+    pip install "azure-ai-projects[voice]==2.11.0" azure-identity python-dotenv
 
     Set these environment variables with your own values:
     1) FOUNDRY_PROJECT_ENDPOINT - The Azure AI Project endpoint.
     2) FOUNDRY_VOICE_AGENT_MODEL - Optional. The realtime model deployment name.
        Defaults to "gpt-realtime".
-    3) FOUNDRY_VOICE_AGENT_NAME - Optional. Name for the sample voice agent
-       created and deleted by this script. Defaults to
-       "sample-voice-agent-function-tool".
+    3) FOUNDRY_VOICE_AGENT_NAME - Optional unused name. Otherwise a unique
+       sample-owned name is generated.
 """
 
 import json
 import os
+import time
 from typing import Final, List, Tuple
 
 from dotenv import load_dotenv
@@ -49,12 +49,13 @@ from azure.ai.projects.models import (
     VoiceOutputModality,
 )
 
-from voice_agent_util import safe_print
+from voice_agent_util import require_new_agent, safe_print, sample_agent_name
 
 load_dotenv()
 
 # Seconds to wait for the agent to finish a response.
 _RESPONSE_TIMEOUT: Final = 45
+_MAX_TOOL_ROUNDS: Final = 3
 
 
 def get_weather(city: str) -> str:
@@ -68,7 +69,9 @@ def get_weather(city: str) -> str:
     return json.dumps({"city": city, "condition": "sunny", "temperature_f": 72})
 
 
-def _run_turn_with_tool_support(client: AIProjectClient, agent_name: str, prompt: str) -> None:
+def _run_turn_with_tool_support(
+    client: AIProjectClient, agent_name: str, prompt: str
+) -> None:
     """Send one turn and resolve any function-call the agent makes before printing its reply.
 
     :param client: The Foundry project client.
@@ -78,11 +81,15 @@ def _run_turn_with_tool_support(client: AIProjectClient, agent_name: str, prompt
     :type agent_name: str
     :type prompt: str
     """
-    with client.beta.voice_agents.realtime.connect(agent_name=agent_name) as conn:
+    with client.voice_agents.realtime.connect(agent_name=agent_name) as conn:
         conn.conversation.item.create(
             item=RealtimeConversationItemMessageUser(
                 type=RealtimeConversationItemType.MESSAGE,
-                content=[RealtimeConversationItemMessageUserContent(type="input_text", text=prompt)],
+                content=[
+                    RealtimeConversationItemMessageUserContent(
+                        type="input_text", text=prompt
+                    )
+                ],
             )
         )
         conn.response.create()
@@ -92,51 +99,79 @@ def _run_turn_with_tool_support(client: AIProjectClient, agent_name: str, prompt
         # response.create() while the function-call response is still finishing can otherwise
         # race with the service and produce a concurrent-response error.
         pending_tool_outputs: List[Tuple[str, str]] = []
+        tool_rounds = 0
+        deadline = time.monotonic() + _RESPONSE_TIMEOUT
         while True:
-            try:
-                event = conn.recv(timeout=_RESPONSE_TIMEOUT)
-            except TimeoutError:
-                print("Timed out waiting for the agent's reply.")
-                conn.response.cancel()
-                return
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("Timed out waiting for the agent's reply.")
+            event = conn.recv(timeout=remaining)
             if isinstance(event, RealtimeServerEventResponseFunctionCallArgumentsDone):
                 # The service forwards the call to us; execute it locally now, but defer sending
                 # the result until this response's own response.done arrives.
                 args = json.loads(event.arguments)
                 print(f"Tool call: {event.name}({args})")
-                if event.name == "get_weather":
-                    result = get_weather(**args)
-                else:
-                    result = json.dumps({"error": f"Unknown tool: {event.name}"})
+                if event.name != "get_weather":
+                    raise ValueError(f"Unknown tool: {event.name}")
+                if (
+                    not isinstance(args, dict)
+                    or set(args) != {"city"}
+                    or not isinstance(args["city"], str)
+                    or not args["city"].strip()
+                ):
+                    raise ValueError(
+                        "get_weather needs exactly one non-empty string argument: city."
+                    )
+                result = get_weather(args["city"])
                 pending_tool_outputs.append((event.call_id, result))
             elif isinstance(event, RealtimeServerEventResponseTextDone):
                 # The sample agent uses a text-only output modality, so the
                 # reply arrives as output text rather than an audio transcript.
                 safe_print(f"Agent: {event.text}")
             elif isinstance(event, RealtimeServerEventResponseDone):
+                if event.response.status != "completed":
+                    raise RuntimeError(
+                        f"Voice response ended with status {event.response.status}."
+                    )
                 # A response.done that isn't a function call is the final answer for this turn.
                 if pending_tool_outputs:
+                    tool_rounds += 1
+                    if tool_rounds > _MAX_TOOL_ROUNDS:
+                        raise RuntimeError(
+                            "The agent exceeded the sample's tool-call limit."
+                        )
                     # The function-call response has now fully completed, so it's safe to submit
                     # its tool output(s) and ask for a new response.
                     for call_id, result in pending_tool_outputs:
                         conn.conversation.item.create(
-                            item=RealtimeConversationItemFunctionCallOutput(call_id=call_id, output=result)
+                            item=RealtimeConversationItemFunctionCallOutput(
+                                call_id=call_id, output=result
+                            )
                         )
                     pending_tool_outputs = []
                     conn.response.create()
+                    deadline = time.monotonic() + _RESPONSE_TIMEOUT
                 elif not any(
-                    isinstance(item, RealtimeConversationItemFunctionCall) for item in (event.response.output or [])
+                    isinstance(item, RealtimeConversationItemFunctionCall)
+                    for item in (event.response.output or [])
                 ):
+                    if tool_rounds == 0:
+                        raise RuntimeError(
+                            "The agent replied without completing the sample function call."
+                        )
                     return
+                else:
+                    raise RuntimeError(
+                        "A function-call response ended without complete arguments."
+                    )
             elif isinstance(event, RealtimeServerEventError):
-                print(f"Session error: {event.error.message}")
-                return
+                raise RuntimeError(event.error.message)
 
 
 def main() -> None:
     endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
     model = os.environ.get("FOUNDRY_VOICE_AGENT_MODEL") or "gpt-realtime"
-    agent_name = os.environ.get("FOUNDRY_VOICE_AGENT_NAME") or "sample-voice-agent-function-tool"
+    agent_name = sample_agent_name("sample-voice-agent-function-tool")
 
     get_weather_tool = VoiceAgentFunctionTool(
         name="get_weather",
@@ -144,7 +179,12 @@ def main() -> None:
         parameters=RealtimeFunctionToolParameters(
             {
                 "type": "object",
-                "properties": {"city": {"type": "string", "description": "City name, e.g. Seattle."}},
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "description": "City name, e.g. Seattle.",
+                    }
+                },
                 "required": ["city"],
             }
         ),
@@ -152,8 +192,9 @@ def main() -> None:
 
     with (
         DefaultAzureCredential() as credential,
-        AIProjectClient(endpoint=endpoint, credential=credential, allow_preview=True) as project_client,
+        AIProjectClient(endpoint=endpoint, credential=credential) as project_client,
     ):
+        require_new_agent(project_client, agent_name)
         created_version = None
         try:
             created_version = project_client.agents.create_version(
@@ -171,10 +212,16 @@ def main() -> None:
             )
             print(f"Created voice agent: {agent_name}")
 
-            _run_turn_with_tool_support(project_client, agent_name, "What's the weather like in Seattle right now?")
+            _run_turn_with_tool_support(
+                project_client,
+                agent_name,
+                "What's the weather like in Seattle right now?",
+            )
         finally:
             if created_version is not None:
-                project_client.agents.delete_version(agent_name=agent_name, agent_version=created_version.version)
+                project_client.agents.delete_version(
+                    agent_name=agent_name, agent_version=created_version.version
+                )
                 print(f"Deleted voice agent version: {created_version.version}")
 
 
