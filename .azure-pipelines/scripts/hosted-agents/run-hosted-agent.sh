@@ -7,6 +7,26 @@
 # FD 3 carries shell source without consuming the commands' standard input.
 set -euo pipefail
 
+if [ "${PROTOCOL:-}" = "a2a" ]; then
+  export AZD_ALPHA_ENABLE_AGENTS_A2A=true
+  azd() {
+    if [ "${1:-} ${2:-}" = "ai agent" ]; then
+      case "${3:-}" in
+        show|monitor)
+          command azd "$@" "$FOUNDRY_AGENT_NAME"
+          return
+          ;;
+        sessions|files)
+          command azd "$@" --agent-name "$FOUNDRY_AGENT_NAME"
+          return
+          ;;
+      esac
+    fi
+    command azd "$@"
+  }
+  export -f azd
+fi
+
 if [ "$#" -ne 1 ]; then
   echo "Usage: $0 <action>" >&2
   exit 2
@@ -235,11 +255,17 @@ errors=()
 if [ ! -f "$sample_dir/azure.yaml" ]; then
   errors+=("missing azure.yaml")
 else
-  proj=$(yq '(.services[] | select(.host == "azure.ai.agent") | .project) // ""' "$sample_dir/azure.yaml")
-  if [ -z "$proj" ]; then
+  projects=$(yq -r '.services | to_entries[] | select(.value.host == "azure.ai.agent") | [.key, (.value.project // "")] | @tsv' "$sample_dir/azure.yaml")
+  if [ -z "$projects" ]; then
     errors+=("azure.yaml has no 'project: src/<agent>' entry")
-  elif [ ! -d "$sample_dir/$proj" ]; then
-    errors+=("missing source directory '$proj'")
+  else
+    while IFS=$'\t' read -r service proj; do
+      if [ -z "$proj" ]; then
+        errors+=("azure.yaml service '$service' has no 'project: src/<agent>' entry")
+      elif [ ! -d "$sample_dir/$proj" ]; then
+        errors+=("missing source directory '$proj'")
+      fi
+    done <<< "$projects"
   fi
 fi
 if [ ${#errors[@]} -gt 0 ]; then
@@ -561,6 +587,7 @@ fi
 # only scaffold the manifest; when the scaffolded service
 # directory has no source files, copy them from the sample's
 # src/<agent>/ directory in the repo.
+if [ "$PROTOCOL" != "a2a" ]; then
 SERVICE_SRC="src/$SAMPLE_NAME"
 if [ ! -d "$SERVICE_SRC" ] && [ -d "$SAMPLE_NAME" ]; then
   SERVICE_SRC="$SAMPLE_NAME"
@@ -583,6 +610,18 @@ else
   echo "Scaffolded service already has source — skipping source copy"
 fi
 echo "Contents of $SERVICE_SRC:" && ls -la "$SERVICE_SRC"
+fi
+
+if [ "$PROTOCOL" = "a2a" ]; then
+  # Native collaboration keeps every service and source project intact.
+  mkdir -p src
+  cp -a "$REPO_ROOT/$SAMPLE_PATH/src/." src/
+  fixture_relative=$(python3 "$REPO_ROOT/.github/scripts/hosted_agent_fixture.py" \
+    fixture-dir --sample-dir "$SAMPLE_PATH")
+  python3 "$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/prepare_hosted_agent_a2a.py" \
+    azure.yaml "$REPO_ROOT/$fixture_relative/test-spec.yml" \
+    "$REPO_ROOT/$SAMPLE_PATH" "$AGENT_NAME"
+fi
 
 # Rename the agent so each matrix job deploys to a UNIQUE
 # Foundry agent. Without this, the bare sample name is used and:
@@ -600,12 +639,16 @@ if [ -f azure.yaml ]; then
   # rawtext.log in time for azd's log streamer, then azd falls
   # back to a local publish path without a local package
   # artifact. CI agents have Docker, so build/push locally.
-  AGENT_NAME="$AGENT_NAME" yq -i '
+  if [ "$PROTOCOL" != "a2a" ]; then
+    AGENT_NAME="$AGENT_NAME" yq -i '
     .name = strenv(AGENT_NAME) |
     (.services[] | select(.host == "azure.ai.agent") | .name) = strenv(AGENT_NAME) |
     (.. | select(has("remoteBuild")) | .remoteBuild) = false |
     .services = (.services | to_entries | map(select(.value.host == "azure.ai.agent").key = strenv(AGENT_NAME)) | from_entries)
   ' azure.yaml
+  else
+    yq -i '(.. | select(has("remoteBuild")) | .remoteBuild) = false' azure.yaml
+  fi
   if [ "$(AGENT_NAME="$AGENT_NAME" yq '.services | has(strenv(AGENT_NAME))' azure.yaml)" != "true" ]; then
     echo "##vso[task.logissue type=error]Failed to update azure.yaml agent service key to $AGENT_NAME"
     exit 1
@@ -958,8 +1001,18 @@ max_attempts=3
 while : ; do
   attempt=$((attempt+1))
   echo "─── Deploy attempt $attempt/$max_attempts ───"
-  azd deploy --no-prompt 2>&1 | tee /tmp/azd-deploy.log
-  azd_exit=${PIPESTATUS[0]}
+  if [ "$PROTOCOL" = "a2a" ]; then
+    python3 "$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/prepare_hosted_agent_a2a.py" \
+      --deploy-dependencies azure.yaml "$FOUNDRY_AGENT_NAME" 2>&1 | tee /tmp/azd-deploy.log
+    azd_exit=${PIPESTATUS[0]}
+    if [ $azd_exit -eq 0 ]; then
+      azd deploy "$FOUNDRY_AGENT_NAME" --no-prompt 2>&1 | tee -a /tmp/azd-deploy.log
+      azd_exit=${PIPESTATUS[0]}
+    fi
+  else
+    azd deploy --no-prompt 2>&1 | tee /tmp/azd-deploy.log
+    azd_exit=${PIPESTATUS[0]}
+  fi
   if [ $azd_exit -eq 0 ]; then
     echo "Deploy succeeded"
     break
@@ -1003,6 +1056,15 @@ while : ; do
   echo "Deploy failed"
   exit 1
 done
+if [ "$PROTOCOL" = "a2a" ]; then
+  fixture_relative=$(python3 "$REPO_ROOT/.github/scripts/hosted_agent_fixture.py" \
+    fixture-dir --sample-dir "$SAMPLE_PATH")
+  if [ "$(yq '.sample.endpoints // {} | length' "$REPO_ROOT/$fixture_relative/test-spec.yml")" -gt 0 ]; then
+    python3 "$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/hosted_agent_a2a_access.py" \
+      grant "/tmp/a2a-access-${COMBO_ID}.json" "$FOUNDRY_AGENT_NAME" || exit 1
+    sleep 60
+  fi
+fi
 STEP_DEPLOY_AGENT
     ;;
   verify-deploy)
@@ -1390,18 +1452,22 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
     approval_events='[]'
     approval_pending_count=0
     approval_auto=false
-    if [ "$PROTOCOL" = "responses" ]; then
+    if [ "$PROTOCOL" = "responses" ] || [ "$PROTOCOL" = "a2a" ]; then
       result_file="/tmp/invoke-result-${turn}.json"
       rm -f "$result_file"
+      helper="$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/invoke_hosted_agent_responses.py"
+      if [ "$PROTOCOL" = "a2a" ]; then
+        helper="$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/invoke_hosted_agent_a2a.py"
+      fi
       AGENT_RESPONSES_URL="$AGENT_RESPONSES_URL" \
       AAD_TOKEN="$AAD_TOKEN" \
       DEPLOYED_AGENT_VERSION="$DEPLOYED_AGENT_VERSION" \
       CI_AGENT_SESSION_ID="$CI_AGENT_SESSION_ID" \
-        python3 "$REPO_ROOT/.azure-pipelines/scripts/hosted-agents/scripts/invoke_hosted_agent_responses.py" \
+        python3 "$helper" \
           "$turn" "$TURN_FILE" "$TURN_RECORD_FILE" "$EVIDENCE_DIR" "$request_attempt"
       if [ ! -s "$result_file" ] || ! jq -e 'type == "object"' "$result_file" >/dev/null; then
         approval_terminal_error=true
-        approval_error="Responses helper did not produce a valid result"
+        approval_error="$PROTOCOL helper did not produce a valid result"
         turn_exit=1
         http_code=""
         echo "##vso[task.logissue type=error]$approval_error"
@@ -1431,7 +1497,11 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
       break
     fi
     quota_error_files=(/tmp/invoke-out-${turn}.txt)
-    if [ "$PROTOCOL" = "responses" ]; then
+    if [ "$PROTOCOL" = "a2a" ]; then
+      # The helper separates validated service/transport diagnostics from
+      # artifacts, which may legitimately contain error-like text.
+      quota_error_files=(/tmp/invoke-diagnostics-${turn}.txt /tmp/invoke-headers-${turn}.txt)
+    elif [ "$PROTOCOL" = "responses" ]; then
       quota_error_files+=(/tmp/invoke-headers-${turn}.txt /tmp/invoke-raw-${turn}.json)
     fi
     if [ $turn_exit -ne 0 ] && hosted_agent_is_session_quota_error "${quota_error_files[@]}"; then
@@ -1464,6 +1534,9 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
       continue
     fi
     if [ $turn_exit -eq 0 ]; then
+      # Native A2A success is already validated structurally. Its artifacts
+      # are checked by the behavior contract, not generic error heuristics.
+      [ "$PROTOCOL" != "a2a" ] || break
       # Even on HTTP 200, the response may contain a transient
       # platform error (status:failed + error.code:server_error)
       # or a model hallucination (the toolbox tool was not
@@ -1502,7 +1575,7 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
     # propagates to the MCP gateway's auth cache. The HTTP/2
     # "stream ... CANCEL" signal is a transient server-side
     # stream reset and is also retried.
-    if grep -qiE "session_not_ready|status[ _]?code[: ]+424|HTTP 424|readiness|PermissionDenied|Principal does not have access|still being provisioned|version is still being|\"status\"[[:space:]]*:[[:space:]]*\"failed\"|\"code\"[[:space:]]*:[[:space:]]*\"server_error\"|invalid_payload|internal server error occurred|401 Unauthorized|stream error.*CANCEL|received from peer|connection reset by peer|EOF while reading response" /tmp/invoke-out-${turn}.txt; then
+    if hosted_agent_is_transient_error "${quota_error_files[@]}"; then
       echo "##vso[task.logissue type=warning]Turn $turn transient attempt $transient_attempt hit transient error; retrying in ${backoff}s"
       sleep "$backoff"
       backoff=$((backoff * 2))
@@ -1533,8 +1606,12 @@ while IFS= read -r turn_record || [ -n "$turn_record" ]; do
 
   # Persist only the final retry attempt as assertion evidence.
   cp "/tmp/invoke-out-${turn}.txt" "$EVIDENCE_DIR/turn-$turn-invoke.txt"
-  if [ "$PROTOCOL" = "responses" ]; then
-    cp "$EVIDENCE_DIR/turn-$turn-attempt-$request_attempt-approval-step-0-request.json" \
+  if [ "$PROTOCOL" = "responses" ] || [ "$PROTOCOL" = "a2a" ]; then
+    request_evidence="$EVIDENCE_DIR/turn-$turn-attempt-$request_attempt-approval-step-0-request.json"
+    if [ "$PROTOCOL" = "a2a" ]; then
+      request_evidence="$EVIDENCE_DIR/turn-$turn-attempt-$request_attempt-a2a-request.json"
+    fi
+    cp "$request_evidence" \
       "$EVIDENCE_DIR/turn-$turn-request.json"
     cp "/tmp/invoke-headers-${turn}.txt" "$EVIDENCE_DIR/turn-$turn-headers.txt"
     cp "/tmp/invoke-raw-${turn}.json" "$EVIDENCE_DIR/turn-$turn-raw.txt"
@@ -1607,7 +1684,9 @@ fi
 #   plus natural-language failure phrases.
 # Skipped for the github-copilot sample — its non-deterministic
 # output may legitimately match these.
-if [[ "$SAMPLE_PATH" != *"github-copilot"* ]]; then
+if [ "$PROTOCOL" = "a2a" ]; then
+  echo "A2A Task validated by the native helper; artifacts are behavior-contract evidence."
+elif [[ "$SAMPLE_PATH" != *"github-copilot"* ]]; then
   if echo "$response" | grep -qiE '("error"[[:space:]]*:[[:space:]]*("|\{)|"errors"[[:space:]]*:[[:space:]]*\[|'\''error'\''[[:space:]]*:[[:space:]]*["{\[]|\bTraceback\b|^ERROR:|^\#\#\[error\]|Error calling model:|invalid_request_error|I encountered an error|request was cancelled|unhandled errors|Please retry|Failed to process request)'; then
     echo "##vso[task.logissue type=error]Agent returned an error response"
     echo "--- response ---"; echo "$response"; echo "--- end response ---"
@@ -1621,7 +1700,7 @@ fi
 # answers from training data without invoking the toolbox we get
 # phrases like "I don't have access to real-time". These mean the
 # toolbox tool was not actually called and the job should fail.
-if [ "$IS_TOOLBOX" = "true" ]; then
+if [ "$IS_TOOLBOX" = "true" ] && [ "$PROTOCOL" != "a2a" ]; then
   if echo "$response" | grep -qiE "(I don.t have access to real|I cannot access|I don.t have real-time|unable to retrieve|couldn.t retrieve|I do not have access to real|wasn.t able to retrieve|was not able to retrieve|temporary issue accessing|appears there was a temporary issue|please upload|if you have a document or file|fictional (company|organization)|is not a real (company|organization)|likely because the repository is private|don.t have permission to view)"; then
     echo "##vso[task.logissue type=error]Agent did not call the toolbox tool (hallucinated answer from training data)"
     echo "--- response ---"; echo "$response"; echo "--- end response ---"

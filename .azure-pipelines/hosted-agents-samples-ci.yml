@@ -168,7 +168,9 @@ stages:
                   exit 1
                 fi
                 if [ "$(basename "$fixture")" = "test-spec.yml" ]; then
-                  if [ "$(yq '[.services[] | select(.host == "azure.ai.agent") | .protocols[]?.protocol] | any_c(. == "invocations")' "$manifest")" = "true" ]; then
+                  if [ "$(yq '[.services[] | select(.host == "azure.ai.agent") | .protocols[]?.protocol] | any_c(. == "a2a")' "$manifest")" = "true" ]; then
+                    protocol="a2a"
+                  elif [ "$(yq '[.services[] | select(.host == "azure.ai.agent") | .protocols[]?.protocol] | any_c(. == "invocations")' "$manifest")" = "true" ]; then
                     protocol="invocations"
                   else
                     protocol="responses"
@@ -486,6 +488,8 @@ stages:
                 scriptPath: $(Build.SourcesDirectory)/.azure-pipelines/scripts/hosted-agents/run-hosted-agent.sh
                 arguments: deploy
               env:
+                REPO_ROOT: $(Build.SourcesDirectory)
+                COMBO_ID: $(comboId)
                 SKIP_ACR_CREATION: $(skipAcrCreation)
             - task: AzureCLI@2
               displayName: Verify deployed toolbox and agent environment
