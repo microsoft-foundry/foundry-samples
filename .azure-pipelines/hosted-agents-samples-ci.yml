@@ -488,6 +488,8 @@ stages:
                 scriptPath: $(Build.SourcesDirectory)/.azure-pipelines/scripts/hosted-agents/run-hosted-agent.sh
                 arguments: deploy
               env:
+                REPO_ROOT: $(Build.SourcesDirectory)
+                COMBO_ID: $(comboId)
                 SKIP_ACR_CREATION: $(skipAcrCreation)
             - task: AzureCLI@2
               displayName: Verify deployed toolbox and agent environment
