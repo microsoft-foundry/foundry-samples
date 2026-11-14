@@ -1,0 +1,8 @@
+{
+  "jsonrpc": "2.0",
+  "id": "echo-get-1",
+  "method": "GetTask",
+  "params": {
+    "id": "<TASK-ID>"
+  }
+}

@@ -61,6 +61,41 @@ assert_throttle_error "$work/responses-deployment-throttle"
 assert_not_throttle_error "$work/server-error"
 assert_not_throttle_error "$work/assistant-prose-about-throttling"
 
+printf '%s\n' 'A2A Task failed: Model deployment rate limit exceeded' \
+  > "$work/a2a-throttle"
+printf '%s\n' 'A2A Task failed: The model is currently experiencing high demand that exceeds the maximum usage size allowed during peak load.' \
+  > "$work/a2a-high-demand"
+printf '%s\n' 'A2A Task failed: Error calling model: Error code: 503 - server_error' \
+  > "$work/a2a-transient"
+printf '%s\n' 'A2A Task failed: No cited search results' \
+  > "$work/a2a-permanent"
+# Successful A2A invocations produce empty diagnostics; raw artifacts are evidence only.
+printf '' \
+  > "$work/a2a-prose"
+
+assert_throttle_error "$work/a2a-throttle"
+assert_throttle_error "$work/a2a-high-demand"
+for diagnostic in \
+  'A2A Task failed: HTTP 429 Too Many Requests' \
+  'A2A JSON-RPC error: {"code":-32603,"message":"HTTP 429"}'; do
+  printf '%s\n' "$diagnostic" > "$work/a2a-http-429"
+  assert_throttle_error "$work/a2a-http-429"
+done
+for diagnostic in \
+  'Echo: HTTP 429 Too Many Requests' \
+  'A2A Task failed: HTTP 4290' \
+  'A2A Task failed: HTTP 429abc' \
+  'A2A Task failed: HTTP 403 Forbidden'; do
+  printf '%s\n' "$diagnostic" > "$work/not-a2a-http-429"
+  assert_not_throttle_error "$work/not-a2a-http-429"
+done
+assert_not_throttle_error "$work/a2a-prose"
+assert_not_throttle_error "$work/a2a-permanent"
+hosted_agent_is_transient_error "$work/a2a-transient" || fail "A2A model 503 must be transient"
+if hosted_agent_is_transient_error "$work/a2a-permanent" "$work/a2a-prose"; then
+  fail "permanent A2A failures and artifact prose must not be transient"
+fi
+
 delays=()
 for _ in $(seq 1 100); do
   delay=$(hosted_agent_quota_retry_delay)
