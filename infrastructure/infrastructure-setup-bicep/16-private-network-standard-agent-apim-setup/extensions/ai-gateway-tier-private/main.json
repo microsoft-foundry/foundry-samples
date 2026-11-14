@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.46.1.21595",
-      "templateHash": "8402656451811108928"
+      "templateHash": "13158301262934709590"
     }
   },
   "parameters": {
@@ -13,11 +13,10 @@
       "type": "string",
       "defaultValue": "swedencentral",
       "allowedValues": [
-        "eastus2",
         "swedencentral"
       ],
       "metadata": {
-        "description": "Region for every resource in this sample. The AIGateway SKU is a release-gated preview available only in East US 2 / Sweden Central, and its outbound integration needs a co-regional VNet, so the whole sample deploys in one of these regions."
+        "description": "Region for resources that require the AI Gateway tier and its co-regional VNet."
       }
     },
     "aiServices": {
@@ -1866,6 +1865,9 @@
           },
           "peSubnetName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', format('vnet-{0}-{1}-deployment', variables('trimVnetName'), variables('uniqueSuffix'))), '2025-04-01').outputs.peSubnetName.value]"
+          },
+          "privateEndpointLocation": {
+            "value": "[parameters('region')]"
           },
           "suffix": {
             "value": "[variables('uniqueSuffix')]"

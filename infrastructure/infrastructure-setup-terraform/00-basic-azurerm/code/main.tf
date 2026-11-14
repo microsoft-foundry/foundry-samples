@@ -21,7 +21,7 @@ resource "azurerm_resource_group" "rg" {
 
 resource "azurerm_cognitive_account" "ai_foundry" {
   name                = "aifoundry${random_string.unique.result}"
-  location            = var.location
+  location            = coalesce(var.foundry_location, azurerm_resource_group.rg.location)
   resource_group_name = azurerm_resource_group.rg.name
   kind                = "AIServices"
 
@@ -32,7 +32,7 @@ resource "azurerm_cognitive_account" "ai_foundry" {
   sku_name = "S0"
 
   # required for stateful development in Foundry including agent service
-  custom_subdomain_name = "aifoundry${random_string.unique.result}"
+  custom_subdomain_name      = "aifoundry${random_string.unique.result}"
   project_management_enabled = true
 
   tags = {
@@ -44,7 +44,7 @@ resource "azurerm_cognitive_account" "ai_foundry" {
 resource "azurerm_cognitive_account_project" "example" {
   name                 = "myproject"
   cognitive_account_id = azurerm_cognitive_account.ai_foundry.id
-  location             = azurerm_resource_group.rg.location 
+  location             = azurerm_cognitive_account.ai_foundry.location
 
   identity {
     type = "SystemAssigned"

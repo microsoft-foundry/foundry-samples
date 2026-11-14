@@ -1,7 +1,7 @@
 # Example terraform.tfvars file
 # Copy this to terraform.tfvars and customize for your deployment
 
-location                = "eastus2"
+location                = "eastus"
 ai_services_name_prefix = "foundry"
 project_name            = "standard-agent-project"
 model_name              = "gpt-4.1"

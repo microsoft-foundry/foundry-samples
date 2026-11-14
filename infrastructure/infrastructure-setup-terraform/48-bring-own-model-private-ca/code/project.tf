@@ -8,7 +8,7 @@
 resource "azapi_resource" "project" {
   type      = "Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview"
   name      = "${var.name_prefix}-project"
-  location  = var.location
+  location  = azapi_resource.foundry_agent_account.location
   parent_id = azapi_resource.foundry_agent_account.id
   tags      = local.common_tags
 

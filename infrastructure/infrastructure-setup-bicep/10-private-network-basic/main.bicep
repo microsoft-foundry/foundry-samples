@@ -9,7 +9,40 @@
 param aiFoundryName string = 'foundrypnadisabled-${uniqueString(resourceGroup().id)}'
 
 @description('Location for all resources.')
-param location string = 'eastus'
+@allowed([
+  'australiaeast'
+  'brazilsouth'
+  'canadacentral'
+  'canadaeast'
+  'centralindia'
+  'centralus'
+  'eastasia'
+  'eastus'
+  'francecentral'
+  'germanywestcentral'
+  'italynorth'
+  'japaneast'
+  'koreacentral'
+  'northcentralus'
+  'northeurope'
+  'norwayeast'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
+  'southindia'
+  'southeastasia'
+  'spaincentral'
+  'swedencentral'
+  'switzerlandnorth'
+  'uaenorth'
+  'uksouth'
+  'westeurope'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
+])
+param location string = any(resourceGroup().location)
 
 @description('Name of the first project')
 param defaultProjectName string = '${aiFoundryName}-proj'
@@ -89,7 +122,7 @@ Step 3: Create a private endpoint to access your private resource
 // - Establishes private connection to AI Services account
 resource aiAccountPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
   name: '${aiFoundryName}-private-endpoint'
-  location: resourceGroup().location
+  location: location
   properties: {
     subnet: {
       id: subnet.id                    // Deploy in customer hub subnet

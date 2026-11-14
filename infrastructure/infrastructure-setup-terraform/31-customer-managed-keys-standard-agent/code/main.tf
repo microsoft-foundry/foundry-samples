@@ -109,7 +109,7 @@ resource "azurerm_cosmosdb_account" "cosmos" {
 resource "azapi_resource" "ai_foundry" {
   type      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name      = local.account_name
-  location  = var.location
+  location  = coalesce(var.foundry_location, azurerm_resource_group.rg.location)
   parent_id = azurerm_resource_group.rg.id
 
   identity {
@@ -221,7 +221,7 @@ resource "time_sleep" "wait_for_rbac" {
 resource "azapi_resource" "ai_project" {
   type      = "Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview"
   name      = var.project_name
-  location  = var.location
+  location  = azapi_resource.ai_foundry.location
   parent_id = azapi_resource.ai_foundry.id
 
   identity {

@@ -63,7 +63,7 @@ locals {
 resource "azapi_resource" "ai_foundry" {
   type      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name      = var.ai_foundry_name
-  location  = var.location
+  location  = coalesce(var.foundry_location, azurerm_resource_group.rg.location)
   parent_id = azurerm_resource_group.rg.id
 
   identity {
@@ -87,6 +87,24 @@ resource "azapi_resource" "ai_foundry" {
       ]
     }
   }
+}
+
+resource "azapi_resource" "ai_foundry_project" {
+  type                      = "Microsoft.CognitiveServices/accounts/projects@2025-06-01"
+  name                      = "${var.ai_foundry_name}-proj"
+  parent_id                 = azapi_resource.ai_foundry.id
+  location                  = coalesce(var.foundry_location, azurerm_resource_group.rg.location)
+  schema_validation_enabled = false
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  body = {
+    properties = {}
+  }
+
+  depends_on = [time_sleep.wait_for_ai_foundry]
 }
 
 ## Wait for AI Foundry creation to ensure identity is available

@@ -12,6 +12,11 @@ resource "random_string" "unique" {
   upper       = false
 }
 
+data "azurerm_resource_group" "resources" {
+  provider = azurerm.workload_subscription
+  name     = var.resource_group_name_resources
+}
+
 ########## Create resoures required to for agent data storage
 ##########
 
@@ -132,7 +137,14 @@ resource "azapi_resource" "ai_foundry" {
   type                      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name                      = "aifoundry${random_string.unique.result}"
   parent_id                 = "/subscriptions/${var.subscription_id_resources}/resourceGroups/${var.resource_group_name_resources}"
-  location                  = var.location
+  location                  = coalesce(var.foundry_location, data.azurerm_resource_group.resources.location)
+
+  lifecycle {
+    precondition {
+      condition     = coalesce(var.foundry_location, data.azurerm_resource_group.resources.location) == var.location
+      error_message = "The Foundry account must be in the same region as the injected VNet (var.location). Set foundry_location to var.location when the resource group is in a different region."
+    }
+  }
   schema_validation_enabled = false
 
   body = {
@@ -341,7 +353,7 @@ resource "azapi_resource" "ai_foundry_project" {
   type                      = "Microsoft.CognitiveServices/accounts/projects@2025-06-01"
   name                      = "project${random_string.unique.result}"
   parent_id                 = azapi_resource.ai_foundry.id
-  location                  = var.location
+  location                  = azapi_resource.ai_foundry.location
   schema_validation_enabled = false
 
   body = {
@@ -459,7 +471,7 @@ resource "azapi_resource" "conn_aisearch" {
         ApiType    = "Azure"
         ApiVersion = "2025-05-01-preview"
         ResourceId = azapi_resource.ai_search.id
-        location   = var.location
+        location   = azapi_resource.ai_search.location
       }
     }
   }

@@ -181,7 +181,7 @@ resource "azapi_resource" "ai_foundry" {
   type                      = "Microsoft.CognitiveServices/accounts@2025-06-01"
   name                      = "aifoundry${random_string.unique.result}"
   parent_id                 = azurerm_resource_group.rg.id
-  location                  = var.location
+  location                  = coalesce(var.foundry_location, azurerm_resource_group.rg.location)
   schema_validation_enabled = false
 
   body = {
@@ -501,7 +501,7 @@ resource "azapi_resource" "ai_foundry_project" {
   type                      = "Microsoft.CognitiveServices/accounts/projects@2025-06-01"
   name                      = "project${random_string.unique.result}"
   parent_id                 = azapi_resource.ai_foundry.id
-  location                  = var.location
+  location                  = azapi_resource.ai_foundry.location
   schema_validation_enabled = false
 
   body = {
@@ -751,7 +751,7 @@ resource "azurerm_role_assignment" "storage_blob_data_owner_ai_foundry_project" 
 
 resource "azapi_resource_action" "purge_ai_foundry" {
   method      = "DELETE"
-  resource_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.CognitiveServices/locations/${azurerm_resource_group.rg.location}/resourceGroups/${azurerm_resource_group.rg.name}/deletedAccounts/aifoundry${random_string.unique.result}"
+  resource_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.CognitiveServices/locations/${coalesce(var.foundry_location, azurerm_resource_group.rg.location)}/resourceGroups/${azurerm_resource_group.rg.name}/deletedAccounts/aifoundry${random_string.unique.result}"
   type        = "Microsoft.CognitiveServices/locations/resourceGroups/deletedAccounts@2021-04-30"
   when        = "destroy"
 

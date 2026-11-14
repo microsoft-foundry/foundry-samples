@@ -15,34 +15,39 @@ are used instead.
 */
 @description('Location for all resources.')
 @allowed([
-  'westus'
-  'eastus'
-  'eastus2'
-  'japaneast'
-  'francecentral'
-  'spaincentral'
-  'uaenorth'
-  'southcentralus'
-  'italynorth'
-  'germanywestcentral'
-  'brazilsouth'
-  'southafricanorth'
   'australiaeast'
-  'swedencentral'
-  'canadaeast'
+  'brazilsouth'
   'canadacentral'
-  'westeurope'
-  'westus3'
-  'uksouth'
-  'southindia'
-
-  //only class B and C
+  'canadaeast'
+  'centralindia'
+  'centralus'
+  'eastasia'
+  'eastus'
+  'francecentral'
+  'germanywestcentral'
+  'italynorth'
+  'japaneast'
   'koreacentral'
-  'polandcentral'
-  'switzerlandnorth'
+  'northcentralus'
+  'northeurope'
   'norwayeast'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
+  'southindia'
+  'southeastasia'
+  'spaincentral'
+  'swedencentral'
+  'switzerlandnorth'
+  'uaenorth'
+  'uksouth'
+  'westeurope'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
 ])
-param location string = 'eastus'
+param location string = any(resourceGroup().location)
 
 @description('Name for your AI Services resource.')
 param aiServices string = 'aiservices'
@@ -157,7 +162,6 @@ var resolvedDnsZonesSubscriptionId = empty(dnsZonesSubscriptionId) ? subscriptio
 module vnet 'modules-network-secured/network-agent-vnet.bicep' = {
   name: 'vnet-${trimVnetName}-${uniqueSuffix}-deployment'
   params: {
-    location: location
     vnetName: trimVnetName
     useExistingVnet: existingVnetPassedIn
     existingVnetResourceGroupName: vnetResourceGroupName
@@ -167,6 +171,7 @@ module vnet 'modules-network-secured/network-agent-vnet.bicep' = {
     agentSubnetPrefix: agentSubnetPrefix
     peSubnetPrefix: peSubnetPrefix
     existingVnetSubscriptionId: vnetSubscriptionId
+    location: location
   }
 }
 

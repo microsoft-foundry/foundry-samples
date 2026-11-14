@@ -1,3 +1,20 @@
+variable "foundry_location" {
+  description = "Optional Foundry account location override. Defaults to each account's resource-group location."
+  type        = string
+  default     = null
+
+  validation {
+    condition = var.foundry_location == null ? true : contains([
+      "australiaeast", "brazilsouth", "canadacentral", "canadaeast", "centralindia", "centralus",
+      "eastasia", "eastus", "francecentral", "germanywestcentral", "italynorth", "japaneast",
+      "koreacentral", "northcentralus", "northeurope", "norwayeast", "qatarcentral", "southafricanorth",
+      "southcentralus", "southindia", "southeastasia", "spaincentral", "swedencentral", "switzerlandnorth",
+      "uaenorth", "uksouth", "usgovarizona", "usgovvirginia", "westeurope", "westus", "westus3",
+    ], var.foundry_location)
+    error_message = "The location must be a supported Microsoft Foundry region."
+  }
+}
+
 # ============================================================================
 # Subscription and location inputs
 # ============================================================================
@@ -20,7 +37,18 @@ variable "tenant_id" {
 variable "location" {
   description = "Azure region for all resources in both subscriptions."
   type        = string
-  default     = "eastus2"
+  default     = "eastus"
+
+  validation {
+    condition = contains([
+      "australiaeast", "brazilsouth", "canadacentral", "canadaeast", "centralindia", "centralus",
+      "eastasia", "eastus", "francecentral", "germanywestcentral", "italynorth", "japaneast",
+      "koreacentral", "northcentralus", "northeurope", "norwayeast", "qatarcentral", "southafricanorth",
+      "southcentralus", "southindia", "southeastasia", "spaincentral", "swedencentral", "switzerlandnorth",
+      "uaenorth", "uksouth", "usgovarizona", "usgovvirginia", "westeurope", "westus", "westus3",
+    ], var.location)
+    error_message = "The location must be a supported Microsoft Foundry region."
+  }
 }
 
 variable "name_prefix" {

@@ -211,7 +211,14 @@ resource "azapi_resource" "ai_foundry" {
   type                      = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
   name                      = local.account_name
   parent_id                 = local.rg_id
-  location                  = var.location
+  location                  = coalesce(var.foundry_location, local.rg_location)
+
+  lifecycle {
+    precondition {
+      condition     = coalesce(var.foundry_location, local.rg_location) == var.location
+      error_message = "The Foundry account must be in the same region as the VNet (var.location). Set foundry_location to var.location when the resource group is in a different region."
+    }
+  }
   schema_validation_enabled = false
 
   identity {
@@ -524,7 +531,7 @@ resource "azapi_resource" "ai_project" {
   ]
   type                      = "Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview"
   name                      = var.project_name
-  location                  = var.location
+  location                  = azapi_resource.ai_foundry.location
   parent_id                 = azapi_resource.ai_foundry.id
   schema_validation_enabled = false
 

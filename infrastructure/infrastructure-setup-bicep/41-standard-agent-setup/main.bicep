@@ -1,33 +1,40 @@
 // Standard agent setup
 
+@description('The Azure region where your AI Foundry resource and project will be created.')
 @allowed([
   'australiaeast'
+  'brazilsouth'
+  'canadacentral'
   'canadaeast'
+  'centralindia'
+  'centralus'
+  'eastasia'
   'eastus'
-  'eastus2'
   'francecentral'
+  'germanywestcentral'
+  'italynorth'
   'japaneast'
   'koreacentral'
+  'northcentralus'
+  'northeurope'
   'norwayeast'
-  'polandcentral'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
   'southindia'
+  'southeastasia'
+  'spaincentral'
   'swedencentral'
   'switzerlandnorth'
   'uaenorth'
   'uksouth'
-  'westus'
-  'westus2'
-  'westus3'
   'westeurope'
-  'southeastasia'
-  'brazilsouth'
-  'germanywestcentral'
-  'italynorth'
-  'southafricanorth'
-  'southcentralus'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
 ])
-@description('The Azure region where your AI Foundry resource and project will be created.')
-param location string = 'eastus'
+param location string = any(resourceGroup().location)
 
 @maxLength(9)
 @description('The name of the Azure AI Foundry resource.')

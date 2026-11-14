@@ -23,17 +23,18 @@ locals {
   create_fabric  = var.existing_fabric_workspace_id != ""
 
   ## DNS zones — create when no existing resource group provided
-  create_dns_zones      = var.existing_dns_zones_resource_group == ""
-  dns_zones_sub_id      = coalesce(var.existing_dns_zones_subscription_id, data.azurerm_client_config.current.subscription_id)
-  dns_zones_rg          = var.existing_dns_zones_resource_group
+  create_dns_zones = var.existing_dns_zones_resource_group == ""
+  dns_zones_sub_id = coalesce(var.existing_dns_zones_subscription_id, data.azurerm_client_config.current.subscription_id)
+  dns_zones_rg     = var.existing_dns_zones_resource_group
 
   ########## Unified resource references
   ########## All downstream code uses these locals instead of direct resource references.
   ##########
 
   ## Resource Group
-  rg_name = local.create_rg ? azurerm_resource_group.rg[0].name : var.existing_resource_group_name
-  rg_id   = local.create_rg ? azurerm_resource_group.rg[0].id : "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.existing_resource_group_name}"
+  rg_name     = local.create_rg ? azurerm_resource_group.rg[0].name : var.existing_resource_group_name
+  rg_id       = local.create_rg ? azurerm_resource_group.rg[0].id : "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.existing_resource_group_name}"
+  rg_location = local.create_rg ? azurerm_resource_group.rg[0].location : data.azurerm_resource_group.existing[0].location
 
   ## VNet
   vnet_id      = local.create_vnet ? azurerm_virtual_network.vnet[0].id : var.existing_vnet_id
@@ -61,7 +62,7 @@ locals {
   ## AI Search
   search_id       = local.create_search ? azapi_resource.ai_search[0].id : var.existing_ai_search_id
   search_name     = local.create_search ? azapi_resource.ai_search[0].name : split("/", var.existing_ai_search_id)[8]
-  search_location = local.create_search ? var.location : data.azapi_resource.existing_search[0].output.location
+  search_location = local.create_search ? azapi_resource.ai_search[0].location : data.azapi_resource.existing_search[0].output.location
 
   ## Fabric (BYO-only, never created — only PE + DNS when workspace ID provided)
   fabric_name = local.create_fabric ? split("/", var.existing_fabric_workspace_id)[8] : ""

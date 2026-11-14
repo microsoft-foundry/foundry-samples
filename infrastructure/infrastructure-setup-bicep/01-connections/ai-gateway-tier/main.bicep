@@ -50,8 +50,41 @@ param projectDescription string = 'AI Gateway tier hub: owns the model behind th
 @description('Hub project display name.')
 param projectDisplayName string = 'AI Gateway tier hub'
 
-@description('Region for the account, project, and model. Defaults to eastus2; can differ from gatewayLocation (e.g. a CI region).')
-param location string = 'eastus2'
+@description('Region for the account, project, and model. Defaults to the resource-group location and can differ from gatewayLocation.')
+@allowed([
+  'australiaeast'
+  'brazilsouth'
+  'canadacentral'
+  'canadaeast'
+  'centralindia'
+  'centralus'
+  'eastasia'
+  'eastus'
+  'francecentral'
+  'germanywestcentral'
+  'italynorth'
+  'japaneast'
+  'koreacentral'
+  'northcentralus'
+  'northeurope'
+  'norwayeast'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
+  'southindia'
+  'southeastasia'
+  'spaincentral'
+  'swedencentral'
+  'switzerlandnorth'
+  'uaenorth'
+  'uksouth'
+  'westeurope'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
+])
+param location string = any(resourceGroup().location)
 
 @allowed([
   'eastus2'

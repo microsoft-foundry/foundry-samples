@@ -1,7 +1,7 @@
 # Example terraform.tfvars file
 # Copy this to terraform.tfvars and customize for your deployment
 
-location        = "eastus2"
+location        = "eastus"
 ai_foundry_name = "foundry-cmk"
 ai_project_name = "foundry-cmk-proj"
 model_name      = "gpt-4.1-mini"

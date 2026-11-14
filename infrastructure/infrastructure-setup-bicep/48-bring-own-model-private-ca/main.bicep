@@ -27,7 +27,41 @@ targetScope = 'resourceGroup'
 // Parameters
 // ----------------------------------------------------------------------------
 @description('Azure region for all resources.')
-param location string = resourceGroup().location
+@allowed([
+  'australiaeast'
+  'brazilsouth'
+  'canadacentral'
+  'canadaeast'
+  'centralindia'
+  'centralus'
+  'eastasia'
+  'eastus'
+  'eastus2'
+  'francecentral'
+  'germanywestcentral'
+  'italynorth'
+  'japaneast'
+  'koreacentral'
+  'northcentralus'
+  'northeurope'
+  'norwayeast'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
+  'southindia'
+  'southeastasia'
+  'spaincentral'
+  'swedencentral'
+  'switzerlandnorth'
+  'uaenorth'
+  'uksouth'
+  'westeurope'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
+])
+param location string = any(resourceGroup().location)
 
 @description('Region for the Cosmos DB account only. Defaults to location; override (e.g. eastus2) when the main region lacks Cosmos capacity. The Cosmos private endpoint still lands in the spoke VNet in location.')
 param cosmosLocation string = location

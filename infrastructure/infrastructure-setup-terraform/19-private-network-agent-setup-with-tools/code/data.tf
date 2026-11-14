@@ -2,6 +2,11 @@
 ########## These are only instantiated when using existing resources (count = 0 by default).
 ##########
 
+data "azurerm_resource_group" "existing" {
+  count = local.create_rg ? 0 : 1
+  name  = var.existing_resource_group_name
+}
+
 ## Existing Storage Account — needed for primary_blob_endpoint
 data "azurerm_storage_account" "existing" {
   count               = local.create_storage ? 0 : 1
@@ -18,8 +23,8 @@ data "azurerm_cosmosdb_account" "existing" {
 
 ## Existing AI Search — needed for location metadata in connections
 data "azapi_resource" "existing_search" {
-  count                 = local.create_search ? 0 : 1
-  type                  = "Microsoft.Search/searchServices@2024-06-01-preview"
-  resource_id           = var.existing_ai_search_id
+  count                  = local.create_search ? 0 : 1
+  type                   = "Microsoft.Search/searchServices@2024-06-01-preview"
+  resource_id            = var.existing_ai_search_id
   response_export_values = ["location"]
 }
