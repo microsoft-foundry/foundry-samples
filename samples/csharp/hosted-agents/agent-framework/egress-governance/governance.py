@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -407,8 +408,18 @@ def cleanup(args, state):
         )
         if not url.startswith(allowed_prefixes):
             raise ValueError("Cleanup target is outside this run's ownership prefix.")
-        require(*request("DELETE", url), allowed=(200, 204, 404))
-        require(*request("GET", url), allowed=(404,))
+        require(*request("DELETE", url), allowed=(200, 202, 204, 404))
+        deadline = time.monotonic() + 300
+        while True:
+            status, body = request("GET", url)
+            if status == 404:
+                break
+            require(status, body, allowed=(200, 202))
+            if time.monotonic() >= deadline:
+                raise RuntimeError(
+                    "Resource deletion is still pending. Keep the state file and rerun cleanup."
+                )
+            time.sleep(2)
         item["deleted"] = True
         save(args.state, state)
         print("Deleted and verified absent: " + url.split("?")[0])

@@ -211,7 +211,9 @@ python governance.py cleanup
 
 Cleanup removes this run's assignments first, then its agent and guardrail
 resources, verifying absence. It does not delete built-ins, account, project,
-registry, or other agents. Keep the state file and rerun cleanup if any deletion
+registry, or other agents. An asynchronous deletion is polled for up to five minutes
+per resource; it is marked complete only after GET returns 404.
+Keep the state file and rerun cleanup if any deletion
 fails. No sessions are started here; if you started one manually, stop it before
 deleting the agent. Separately remove infrastructure you created for this sample
 through its original deployment environment, after checking ownership.

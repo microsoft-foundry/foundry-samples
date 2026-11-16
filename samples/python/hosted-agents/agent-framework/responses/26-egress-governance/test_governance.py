@@ -269,6 +269,47 @@ class GovernanceTests(unittest.TestCase):
             g.cleanup(self.args, self.state)
         self.assertIn("/policyAssignments/", network.call_args_list[0].args[1])
 
+    def test_cleanup_waits_for_async_deletion_and_persists_only_verified_absence(self):
+        url = (
+            "https://management.azure.com"
+            + self.state["account"]
+            + "/raiPolicies/"
+            + self.state["run"]
+            + "-good?api-version=2026-09-01"
+        )
+        self.state["owned"] = [{"kind": "guardrail", "url": url}]
+        with patch.object(
+            g,
+            "request",
+            side_effect=[
+                (202, {}),
+                (200, {"properties": {"provisioningState": "Deleting"}}),
+                (404, {}),
+            ],
+        ) as network, patch("time.sleep"), patch("time.monotonic", return_value=0):
+            g.cleanup(self.args, self.state)
+        self.assertEqual(
+            [call.args[0] for call in network.call_args_list], ["DELETE", "GET", "GET"]
+        )
+        self.assertTrue(g.load(self.args.state)["owned"][0]["deleted"])
+
+    def test_cleanup_timeout_keeps_the_resource_pending(self):
+        url = (
+            "https://management.azure.com"
+            + self.state["account"]
+            + "/raiPolicies/"
+            + self.state["run"]
+            + "-good?api-version=2026-09-01"
+        )
+        self.state["owned"] = [{"kind": "guardrail", "url": url}]
+        with patch.object(g, "request", side_effect=[(202, {}), (200, {})]), patch(
+            "time.sleep"
+        ), patch("time.monotonic", side_effect=[0, 301]), self.assertRaisesRegex(
+            RuntimeError, "deletion"
+        ):
+            g.cleanup(self.args, self.state)
+        self.assertFalse(self.state["owned"][0].get("deleted", False))
+
     def test_target_must_be_https_project_on_same_account(self):
         g.validate_target(self.state["account"], self.state["endpoint"])
         for endpoint in (
