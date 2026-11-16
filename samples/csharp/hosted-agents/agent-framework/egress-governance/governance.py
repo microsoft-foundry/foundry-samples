@@ -158,10 +158,15 @@ def initialize(args):
 
 
 def own(args, state, kind, url):
-    if not any(item["url"] == url for item in state["owned"]):
-        require(*request("GET", url), allowed=(404,))
+    item = next((item for item in state["owned"] if item["url"] == url), None)
+    if item is not None and not item.get("deleted"):
+        return
+    require(*request("GET", url), allowed=(404,))
+    if item is None:
         state["owned"].append({"kind": kind, "url": url})
-        save(args.state, state)
+    else:
+        item.pop("deleted")
+    save(args.state, state)
 
 
 def assign(args, state):

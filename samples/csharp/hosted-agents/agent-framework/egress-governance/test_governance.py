@@ -310,6 +310,88 @@ class GovernanceTests(unittest.TestCase):
             g.cleanup(self.args, self.state)
         self.assertFalse(self.state["owned"][0].get("deleted", False))
 
+    def test_recreated_assignments_and_guardrails_are_owned_before_write_and_cleaned(
+        self,
+    ):
+        for kind in ("assignment", "guardrail"):
+            with self.subTest(kind=kind):
+                state = copy.deepcopy(self.state)
+                remote = {}
+                args = argparse.Namespace(
+                    state=self.args.state,
+                    confirm_account=state["account"],
+                    profile="baseline",
+                    effect="Audit",
+                    fixture="good",
+                    member="baseline",
+                    expect="allowed",
+                )
+
+                def network(method, url, body=None):
+                    if method == "GET":
+                        return (
+                            (200, copy.deepcopy(remote[url]))
+                            if url in remote
+                            else (404, {})
+                        )
+                    if method == "PUT":
+                        persisted = next(
+                            item
+                            for item in g.load(args.state)["owned"]
+                            if item["url"] == url
+                        )
+                        self.assertFalse(persisted.get("deleted", False))
+                        remote[url] = copy.deepcopy(body)
+                        return 201, copy.deepcopy(body)
+                    if method == "DELETE":
+                        remote.pop(url, None)
+                        return 204, {}
+                    self.fail("Unexpected method: " + method)
+
+                write = g.assign if kind == "assignment" else g.guardrail
+                with patch.object(g, "request", side_effect=network):
+                    write(args, state)
+                    g.cleanup(args, state)
+                    self.assertFalse(remote)
+                    args.effect = "Deny"
+                    write(args, state)
+                    self.assertTrue(remote)
+                    if kind == "assignment":
+                        self.assertTrue(
+                            all(
+                                body["properties"]["parameters"]["effect"]["value"]
+                                == "Deny"
+                                for body in remote.values()
+                            )
+                        )
+                    g.cleanup(args, state)
+                self.assertFalse(remote)
+                self.assertTrue(
+                    all(item.get("deleted") for item in g.load(args.state)["owned"])
+                )
+
+    def test_deleted_ownership_entry_cannot_reclaim_an_existing_resource(self):
+        for kind, suffix in (
+            ("assignment", "/providers/Microsoft.Authorization/policyAssignments/"),
+            ("guardrail", "/raiPolicies/"),
+        ):
+            with self.subTest(kind=kind):
+                state = copy.deepcopy(self.state)
+                url = (
+                    "https://management.azure.com"
+                    + state["account"]
+                    + suffix
+                    + state["run"]
+                    + "-good"
+                )
+                state["owned"] = [{"kind": kind, "url": url, "deleted": True}]
+                g.save(self.args.state, state)
+                with patch.object(g, "request", return_value=(200, {})) as network:
+                    with self.assertRaises(RuntimeError):
+                        g.own(self.args, state, kind, url)
+                network.assert_called_once_with("GET", url)
+                self.assertTrue(g.load(self.args.state)["owned"][0]["deleted"])
+
     def test_target_must_be_https_project_on_same_account(self):
         g.validate_target(self.state["account"], self.state["endpoint"])
         for endpoint in (
