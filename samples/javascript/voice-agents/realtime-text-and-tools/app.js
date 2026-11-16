@@ -33,7 +33,7 @@ async function main() {
   const { created } = await getOrCreateVoiceAgent(project);
 
   try {
-    const connection = await project.beta.voiceAgents.realtime.connect(agentName);
+    const connection = await project.voiceAgents.realtime.connect(agentName);
     const audioOutput = createWriteStream(audioOutputPath);
     let pendingToolOutputs = 0;
     let toolCallCount = 0;
