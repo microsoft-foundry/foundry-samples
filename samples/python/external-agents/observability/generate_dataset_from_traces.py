@@ -50,7 +50,8 @@ def main() -> None:
     end_time = datetime.now(tz=timezone.utc)
     start_time = end_time - timedelta(hours=args.lookback_hours)
     run_suffix = end_time.strftime("%y%m%d%H%M%S")
-    dataset_name = f"{AGENT_NAME}-traces-{run_suffix}"
+    # Generated dataset names are limited in length; keep the suffix, shorten the prefix.
+    dataset_name = f"{AGENT_NAME[:30].rstrip('-_.')}-traces-{run_suffix}"
 
     with (
         DefaultAzureCredential() as credential,

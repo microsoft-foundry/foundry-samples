@@ -140,6 +140,10 @@ def main() -> None:
         print(
             f"Evaluation rule {rule.id}: provisioning={rule.provisioning_status}, error={rule.error}"
         )
+        if rule.provisioning_status != ScheduleProvisioningStatus.SUCCEEDED:
+            raise SystemExit(
+                "The rule wasn't provisioned, so no hourly runs will be added."
+            )
         print(
             "Runs are added to the evaluation every hour. Delete the rule with --delete."
         )

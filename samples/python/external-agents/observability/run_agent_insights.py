@@ -28,6 +28,7 @@ load_dotenv(Path(__file__).with_name(".env"), override=True)
 
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import AgentInsightStatus
+from azure.core.exceptions import ResourceExistsError
 from azure.identity import DefaultAzureCredential
 
 AGENT_NAME = os.environ.get("AGENT_NAME", "weather-agent")
@@ -73,7 +74,13 @@ def main() -> None:
         monitors = project_client.agent_insight_monitors
         if args.delete:
             for existing in monitors.list(agent_name=AGENT_NAME):
-                monitors.delete(existing.id)
+                try:
+                    monitors.delete(existing.id)
+                except ResourceExistsError:
+                    raise SystemExit(
+                        f"Monitor {existing.id} has a run in progress. "
+                        "Wait for it to finish, then run --delete again."
+                    )
                 print(f"Deleted monitor {existing.id}")
             return
 
