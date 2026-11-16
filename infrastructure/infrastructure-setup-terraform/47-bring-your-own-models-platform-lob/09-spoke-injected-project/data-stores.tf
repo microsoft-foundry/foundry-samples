@@ -14,6 +14,7 @@ resource "azurerm_storage_account" "agent" {
   account_replication_type = "ZRS"
 
   shared_access_key_enabled       = false
+  public_network_access_enabled   = false
   min_tls_version                 = "TLS1_2"
   allow_nested_items_to_be_public = false
 
@@ -33,7 +34,8 @@ resource "azurerm_cosmosdb_account" "agent" {
   kind              = "GlobalDocumentDB"
   free_tier_enabled = false
 
-  local_authentication_enabled  = false
+  # The inverse local_authentication_enabled argument is unavailable in AzureRM 4.37.
+  local_authentication_disabled = true
   public_network_access_enabled = false
 
   automatic_failover_enabled       = false

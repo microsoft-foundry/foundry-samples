@@ -46,7 +46,7 @@ resource "azapi_resource" "foundry_agent_account" {
   response_export_values = ["identity.principalId"]
 
   # Destroy order is the reverse: account delete -> cooldown -> purge -> subnet.
-  depends_on = [azurerm_subnet.agent, time_sleep.purge_cooldown]
+  depends_on = [azurerm_subnet_route_table_association.agent, time_sleep.purge_cooldown]
 }
 
 # Private endpoint for the injected account. DNS resolves through the

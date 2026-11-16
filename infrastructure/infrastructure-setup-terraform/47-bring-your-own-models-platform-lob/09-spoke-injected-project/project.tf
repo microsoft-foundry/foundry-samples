@@ -172,6 +172,9 @@ resource "azapi_resource" "project_capability_host" {
     azurerm_private_endpoint.storage,
     azurerm_private_endpoint.cosmos,
     azurerm_private_endpoint.search,
+    azurerm_private_dns_zone_virtual_network_link.blob,
+    azurerm_private_dns_zone_virtual_network_link.cosmos,
+    azurerm_private_dns_zone_virtual_network_link.search,
     time_sleep.wait_rbac,
   ]
 }

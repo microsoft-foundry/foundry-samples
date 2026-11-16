@@ -83,13 +83,46 @@
              Same APIM policy runs for injected and non-injected callers, so
              the paired delta is the honest data-proxy tax. -->
         <set-variable name="vendor" value="mock" />
+        <set-variable name="mockStream" value="@((bool?)context.Request.Body.As&lt;JObject&gt;(preserveContent: true)[&quot;stream&quot;] == true)" />
+        <set-variable name="mockIncludeUsage" value="@((bool?)context.Request.Body.As&lt;JObject&gt;(preserveContent: true)[&quot;stream_options&quot;]?[&quot;include_usage&quot;] == true)" />
         <return-response>
           <set-status code="200" reason="OK" />
           <set-header name="Content-Type" exists-action="override">
-            <value>application/json</value>
+            <value>@((bool)context.Variables["mockStream"] ? "text/event-stream" : "application/json")</value>
+          </set-header>
+          <set-header name="x-aigw-project-id" exists-action="override">
+            <value>@((string)context.Variables["projectOid"])</value>
+          </set-header>
+          <set-header name="x-aigw-model-alias" exists-action="override">
+            <value>@((string)context.Variables["deploymentName"])</value>
+          </set-header>
+          <set-header name="x-aigw-vendor" exists-action="override">
+            <value>@((string)context.Variables["vendor"])</value>
           </set-header>
           <set-body>@{
-            return "{\"id\":\"chatcmpl-mock\",\"object\":\"chat.completion\",\"created\":" + DateTimeOffset.UtcNow.ToUnixTimeSeconds() + ",\"model\":\"mock\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"hello\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1,\"total_tokens\":2}}";
+            var completion = JObject.Parse("{\"id\":\"chatcmpl-mock\",\"object\":\"chat.completion\",\"created\":" + DateTimeOffset.UtcNow.ToUnixTimeSeconds() + ",\"model\":\"mock\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"hello\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1,\"total_tokens\":2}}");
+            if ((bool)context.Variables["mockStream"]) {
+              var choice = (JObject)completion["choices"][0];
+              var message = choice["message"];
+              var usage = completion["usage"];
+              completion.Remove("usage");
+              completion["object"] = "chat.completion.chunk";
+              choice.Remove("message");
+              choice["delta"] = message;
+              choice["finish_reason"] = JValue.CreateNull();
+              var first = completion.ToString(Newtonsoft.Json.Formatting.None);
+              choice["delta"] = new JObject();
+              choice["finish_reason"] = "stop";
+              var events = "data: " + first + "\n\n"
+                + "data: " + completion.ToString(Newtonsoft.Json.Formatting.None) + "\n\n";
+              if ((bool)context.Variables["mockIncludeUsage"]) {
+                completion["choices"] = new JArray();
+                completion["usage"] = usage;
+                events += "data: " + completion.ToString(Newtonsoft.Json.Formatting.None) + "\n\n";
+              }
+              return events + "data: [DONE]\n\n";
+            }
+            return completion.ToString(Newtonsoft.Json.Formatting.None);
           }</set-body>
         </return-response>
       </when>

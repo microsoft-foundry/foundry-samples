@@ -23,3 +23,22 @@ resource "azurerm_subnet" "agent" {
     }
   }
 }
+
+resource "azurerm_route_table" "agent" {
+  name                = "rt-${var.name_prefix}-agent-${local.random_suffix}"
+  location            = local.location
+  resource_group_name = local.spoke_rg_name
+  tags                = local.common_tags
+
+  route {
+    name                   = "default-via-hub-firewall"
+    address_prefix         = "0.0.0.0/0"
+    next_hop_type          = "VirtualAppliance"
+    next_hop_in_ip_address = data.terraform_remote_state.hub_base.outputs.hub_firewall_private_ip
+  }
+}
+
+resource "azurerm_subnet_route_table_association" "agent" {
+  subnet_id      = azurerm_subnet.agent.id
+  route_table_id = azurerm_route_table.agent.id
+}
