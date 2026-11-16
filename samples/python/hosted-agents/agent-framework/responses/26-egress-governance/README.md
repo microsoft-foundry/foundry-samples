@@ -43,8 +43,10 @@ initiatives. Assignments reference `/providers/Microsoft.Authorization/policyDef
   Central. Catalog publication does not establish service-feature availability.
 - Administrator permission to assign Azure Policy at the account, such as Resource
   Policy Contributor. Developer permission to manage RAI policies and hosted agents.
-  Contributor alone does not grant assignment-write access. No assignment managed
-  identity, new role assignment, Key Vault, or actual credential is needed.
+  Contributor alone does not grant assignment-write access. The Azure Policy
+  assignments need no managed identity or remediation role. Image-pull permissions
+  are a separate deployment prerequisite. No Key Vault or actual credential is
+  needed for these fixtures.
 - A digest-pinned image built from this sample, accessible to the project. Build
   with your normal hosted-agent deployment flow or the Dockerfile below.
 
@@ -80,6 +82,16 @@ az acr repository show --name "<registry-name>" \
 Use the returned digest in `AGENT_IMAGE` below. The helper registers new versions
 directly so that accepted and rejected requests are visible without starting a
 session. It never invokes the agent or tests token retrieval.
+
+An ACR build does **not** grant the Foundry project access to pull the image.
+For a registry you configured manually, grant the project's managed identity
+the image-pull role appropriate to the registry's permission mode: AcrPull for
+RBAC-only registries, or Container Registry Repository Reader for ABAC-enabled
+registries. Creating these grants requires separate role-assignment permission.
+See [hosted-agent deployment permissions](https://learn.microsoft.com/azure/foundry/agents/how-to/deploy-hosted-agent#required-permissions).
+The agent's per-agent identity is not the project identity used for image pulls.
+Without that access, version registration can succeed but provisioning fails
+with `ImageError`; that is not a governance denial or a working hosted agent.
 
 For an optional local host check, use uv 0.11.7:
 
