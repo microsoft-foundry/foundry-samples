@@ -2683,6 +2683,32 @@ class HttpValidationTests(unittest.IsolatedAsyncioTestCase):
         get_active.assert_awaited_once_with("copilot-session", "framework-b")
         run.cancel.assert_awaited_once()
 
+    async def test_cancel_query_session_cannot_override_resolved_session(self):
+        run = SimpleNamespace(cancel=AsyncMock())
+        request = self.request(
+            method="POST", invocation_id="invocation-b", session_id="session"
+        )
+        request.scope["query_string"] = b"agent_session_id=other"
+        with patch.object(
+            main,
+            "get_invocation_status",
+            AsyncMock(
+                return_value={
+                    "task_id": "copilot-other",
+                    "framework_input_id": "framework-b",
+                    "status": "running",
+                }
+            ),
+        ), patch.object(
+            main.copilot_agent,
+            "get_active_run",
+            AsyncMock(return_value=run),
+        ) as get_active:
+            response = await main.handle_cancel(request)
+        self.assertIn("does not belong", json.loads(response.body)["message"])
+        get_active.assert_not_awaited()
+        run.cancel.assert_not_awaited()
+
     async def test_sse_done_frame_uses_requested_invocation_id(self):
         class Stream:
             async def subscribe(self, after=None):

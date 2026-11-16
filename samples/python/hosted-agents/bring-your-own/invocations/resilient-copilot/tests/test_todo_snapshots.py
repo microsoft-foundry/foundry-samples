@@ -113,6 +113,27 @@ class TodoSnapshotTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(FileNotFoundError):
             todo_fingerprint(self.workspace)
 
+    def test_fingerprint_tracks_committed_wal_only_update_to_declared_database(self):
+        notes = sqlite3.connect(self.workspace / "notes.db")
+        self.addCleanup(notes.close)
+        notes.execute("PRAGMA journal_mode=WAL")
+        notes.execute("PRAGMA wal_autocheckpoint=0")
+        notes.execute("CREATE TABLE notes (body TEXT)")
+        notes.commit()
+        notes.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        (self.workspace / "continuation-files.json").write_text(
+            json.dumps({"schema": _PIN_SCHEMA, "paths": ["notes.db"]}),
+            encoding="utf-8",
+        )
+        before = todo_fingerprint(self.workspace)
+        main_file = (self.workspace / "notes.db").read_bytes()
+
+        notes.execute("INSERT INTO notes VALUES ('committed in wal')")
+        notes.commit()
+
+        self.assertEqual(main_file, (self.workspace / "notes.db").read_bytes())
+        self.assertNotEqual(before, todo_fingerprint(self.workspace))
+
     async def test_live_snapshot_restores_committed_wal_todos_to_new_directory(self):
         self.change_todo("done")
         self.db.execute(

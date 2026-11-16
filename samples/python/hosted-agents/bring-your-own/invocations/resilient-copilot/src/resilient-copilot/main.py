@@ -143,9 +143,12 @@ def _request_prompt(data: dict[str, Any]) -> str:
 
 
 def _session_id(request: Request) -> str:
-    """Resolve the session id on any route (falls back to a query param)."""
-    return request.query_params.get("agent_session_id") or getattr(
-        request.state, "session_id", ""
+    """Resolve the caller's session; the query parameter is only a local fallback."""
+    return (
+        getattr(request.state, "session_id", "")
+        or app.config.session_id
+        or request.query_params.get("agent_session_id")
+        or ""
     )
 
 

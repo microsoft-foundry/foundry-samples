@@ -65,6 +65,7 @@ _INVOCATION_STORE_NAME = "copilot-invocations"
 _INVOCATION_TTL_SECONDS = 30 * 24 * 60 * 60
 _PIN_SCHEMA = "copilot-continuation-files/v1"
 _PIN_FILENAME = "continuation-files.json"
+_SQLITE_SUFFIXES = (".db", ".sqlite", ".sqlite3")
 
 
 class SnapshotTooLargeError(ValueError):
@@ -199,6 +200,20 @@ def _file_metadata(path: Path, relative: PurePosixPath) -> dict[str, Any]:
     }
 
 
+def _required_file_metadata(workspace: Path, relative: PurePosixPath) -> dict[str, Any]:
+    path = workspace.joinpath(*relative.parts)
+    if relative.suffix not in _SQLITE_SUFFIXES:
+        return _file_metadata(path, relative)
+    # A committed write can live only in the -wal file while the main database
+    # file is unchanged, so hash an online backup that includes it.
+    with tempfile.TemporaryDirectory(prefix="copilot-fingerprint-") as staging:
+        backup = Path(staging) / "backup.db"
+        _sqlite_backup(path, backup)
+        metadata = _file_metadata(backup, relative)
+    metadata["mode"] = path.stat().st_mode & 0o777
+    return metadata
+
+
 def _is_lockfile(name: str) -> bool:
     """Stale per-process lock files must not travel into a restored workspace."""
     base = os.path.basename(name)
@@ -241,8 +256,7 @@ def todo_fingerprint(workspace: Path) -> str | None:
         ).hexdigest()
     if required_paths:
         state["required_files"] = [
-            _file_metadata(workspace.joinpath(*path.parts), path)
-            for path in required_paths
+            _required_file_metadata(workspace, path) for path in required_paths
         ]
     if not state:
         return None
@@ -491,7 +505,7 @@ class SessionSnapshotStore:
             frozen_files[declaration_relative] = declaration
         sqlite_paths = set(recovery)
         sqlite_paths.update(
-            path for path in required if path.suffix in (".db", ".sqlite", ".sqlite3")
+            path for path in required if path.suffix in _SQLITE_SUFFIXES
         )
         jsonl_paths = {workspace_relative / "events.jsonl"}
         jsonl_paths.update(path for path in required if path.suffix == ".jsonl")
