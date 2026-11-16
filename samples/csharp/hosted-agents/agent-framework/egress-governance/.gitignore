@@ -1,0 +1,5 @@
+.egress-governance*.json
+.azure/
+.env
+.venv/
+__pycache__/

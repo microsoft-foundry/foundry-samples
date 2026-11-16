@@ -1,0 +1,11 @@
+{
+  "permittedDestinations": {
+    "value": ["httpbin.org/get", "httpbin.org/headers"]
+  },
+  "deniedDestinations": {
+    "value": ["unapproved.example.com"]
+  },
+  "allowedActionTypes": {
+    "value": ["Allow", "Deny", "Transform", "Rewrite"]
+  }
+}

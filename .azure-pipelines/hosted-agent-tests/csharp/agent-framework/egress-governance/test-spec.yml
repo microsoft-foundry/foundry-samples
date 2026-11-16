@@ -1,0 +1,12 @@
+version: 1
+sample:
+  owner: evmattso
+  experiences: [azd, vscode]
+tests:
+  - name: model-free-governance-probe
+    turns:
+      - input: Check the governance probe.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: Governance sample ready.

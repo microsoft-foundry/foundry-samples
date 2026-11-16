@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+requiredVersions:
+  azd: '>=1.27.1'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.16'
+name: dotnet-egress-governance
+services:
+  ai-project:
+    host: azure.ai.project
+  egress-governance:
+    host: azure.ai.agent
+    project: src/egress-governance
+    language: csharp
+    codeConfiguration:
+      runtime: dotnet_10
+      entryPoint: egress-governance.dll
+    docker:
+      path: Dockerfile
+      remoteBuild: true
+    uses:
+      - ai-project
+    kind: hosted
+    name: dotnet-egress-governance
+    displayName: Egress governance probe (C#)
+    description: Model-free Agent Framework host for the built-in Azure Policy governance walkthrough.
+    protocols:
+      - protocol: responses
+        version: 2.0.0
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1Gi
+infra:
+  provider: microsoft.foundry

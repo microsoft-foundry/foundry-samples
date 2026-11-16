@@ -40,6 +40,12 @@ This directory contains samples that demonstrate how to use the [Agent Framework
 | 23 | [harness-data-processing](harness-data-processing/) | A data-processing harness agent with scoped file access and approval-gated writes. |
 | 24 | [harness-scaling-capabilities](harness-scaling-capabilities/) | A harness agent that combines skills, background agents, confined shell access, and optional Hyperlight CodeAct. |
 
+### Governance walkthrough
+
+[Egress governance](egress-governance/) assigns the published network guardrail
+built-ins and demonstrates guardrail-save versus hosted-agent admission checks
+with a model-free Agent Framework host.
+
 ### Invocations API
 
 | # | Sample | Description |
