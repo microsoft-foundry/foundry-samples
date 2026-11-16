@@ -1,6 +1,7 @@
 """Router Agent — function-routing pattern with tool_choice: required.
 
-Every router turn MUST produce exactly one tool call. No free-text path exists.
+Every initial routing request MUST produce exactly one tool call, not free text.
+Successful result retrieval then uses one tool-free presentation request.
 This eliminates "hallucinated action" where the LLM says "looking into it" without
 actually delegating.
 
@@ -101,7 +102,10 @@ ROUTER_TOOLS = [
     {
         "type": "function",
         "name": "cancel_task",
-        "description": "Cancel a running or queued task.",
+        "description": (
+            "Request cancellation of a running or queued task. This turn only acknowledges "
+            "the request; it does not wait for or deliver Worker results."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
@@ -122,7 +126,8 @@ ROUTER_TOOLS = [
         "name": "get_task_result",
         "description": (
             "Retrieve the final result of a completed task. "
-            "Use when a task has finished and you need to relay the answer."
+            "Use for retained results, including recall, translation, and summarization. "
+            "The retrieved body is then presented according to the current user request."
         ),
         "parameters": {
             "type": "object",
@@ -137,7 +142,7 @@ ROUTER_TOOLS = [
     },
 ]
 
-# Force the model to always call a tool (no free-text path)
+# The initial routing request must select a tool; result presentation disables tools.
 ROUTER_TOOL_CHOICE = "required"
 
 ROUTER_SYSTEM_PROMPT = (
@@ -153,7 +158,7 @@ ROUTER_SYSTEM_PROMPT = (
     "er provides a COMPLETE, ACTIONABLE field-ops request (they've given en"
     "ough info to act on)\n- check_task_status: user asks about progress of "
     "a running task\n- cancel_task: user wants to stop a task\n- get_task_res"
-    "ult: retrieve a finished task's result that hasn't been shown yet\n\nWHE"
+    "ult: retrieve a retained result for delivery, recall, translation, or summary\n\nWHE"
     'N TO USE start_task vs respond_directly:\n- "Analyze document 12345" → '
     'start_task (actionable: document ID is provided)\n- "Can you analyze a '
     'document?" → respond_directly (capability question, no document specif'

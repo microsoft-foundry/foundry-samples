@@ -8,8 +8,11 @@ Hosted ingress is now the CE WebSocket protocol, not the Responses HTTP protocol
 
 ## Router Agent
 
-- Receives every user message and makes a single LLM call with `tool_choice: required`.
-- Must call exactly one of its meta-tools per turn — no free-text output path.
+- Receives every user message and makes an initial LLM call with `tool_choice: required`.
+- Must select exactly one meta-tool in that initial routing request.
+- Successful result/status retrieval then makes at most one tool-free presentation call.
+  The full retrieved body and current user request let it translate, summarize, or relay
+  the result; it cannot start more work. This is separate from optional progress calls.
 - Meta-tools:
   - `respond_directly` — greetings, chat, clarifications, delivering results
   - `start_task` — delegate actionable field-ops work to the Worker
@@ -42,6 +45,11 @@ Hosted ingress is now the CE WebSocket protocol, not the Responses HTTP protocol
 ## Streaming & Wait Behavior
 
 - Handler streams: acknowledgment → wait for active tasks → deliver results.
+- Business cancellation is acknowledgment-only: this turn does not wait for or deliver
+  Worker outcomes. An in-flight final answer is retained for a later request.
+- Result/status lookup may wait for its Worker, then presents its complete result according
+  to the current user request. Only successfully sent presentation text enters history;
+  only successful `response.done` commits delivery. Failed/interrupted presentation can retry.
 - While waiting, optional status updates run every five seconds, up to five times, with a
   one-second model deadline. A newly ready result takes precedence over optional status speech.
 - Foreground cancellation stops that CE response. Workers continue until they finish or the

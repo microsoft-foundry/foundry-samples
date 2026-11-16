@@ -17,6 +17,7 @@ from test_conversation_engine import (
     RecordingSession,
     Responses,
     answer,
+    chat_reply,
     output,
     send,
     start,
@@ -168,7 +169,11 @@ async def test_recall_after_history_eviction_keeps_full_result_or_requires_looku
             "respond_directly", message="Translated FINAL STEP", delivered_task_ids=[task.task_id]
         )
 
-    agent = ForegroundBackgroundAgent(Chat(recall), Responses(), "test")
+    agent = ForegroundBackgroundAgent(
+        Chat(recall, *([chat_reply(task.result)] if large else [])),
+        Responses(),
+        "test",
+    )
     turn = Turn("r_recall")
     spoken = "".join([s async for s in agent.respond(conversation, turn, "Repeat or translate")])
     assert spoken == (task.result if large else "Translated FINAL STEP")
@@ -305,7 +310,12 @@ async def test_real_sdk_worker_final_outcomes_are_truthful(
     assert "(No response)" not in task.result
     assert "Reached maximum" not in task_message(task)
     agent = ForegroundBackgroundAgent(
-        Chat(tool("get_task_result", task_id=task.task_id)), Responses(), "test"
+        Chat(
+            tool("get_task_result", task_id=task.task_id),
+            *([chat_reply(task.result)] if success else []),
+        ),
+        Responses(),
+        "test",
     )
     turn = Turn("r_status")
     spoken = "".join([s async for s in agent.respond(conversation, turn, "Status")])
