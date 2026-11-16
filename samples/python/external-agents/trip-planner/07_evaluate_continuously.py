@@ -160,6 +160,8 @@ def create_rule(project, eval_id: str) -> None:
         time.sleep(5)
         rule = project.evaluation_rules.get(id=rule.id)
     print(f"Evaluation rule {rule.id}: {rule.provisioning_status}")
+    if rule.provisioning_status != ScheduleProvisioningStatus.SUCCEEDED:
+        raise SystemExit(f"The rule wasn't provisioned: {rule.error}")
 
 
 def create_smart_schedule(project, eval_id: str) -> None:
@@ -194,6 +196,10 @@ def create_smart_schedule(project, eval_id: str) -> None:
         time.sleep(5)
         schedule = project.beta.schedules.get(schedule_id=CONTINUOUS_ID)
     print(f"Schedule {schedule.schedule_id}: {schedule.provisioning_status}")
+    if schedule.provisioning_status != ScheduleProvisioningStatus.SUCCEEDED:
+        raise SystemExit(
+            "The schedule wasn't provisioned, so no hourly runs will be added."
+        )
 
 
 def delete_continuous(project) -> None:

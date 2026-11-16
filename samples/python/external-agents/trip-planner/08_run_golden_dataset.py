@@ -190,18 +190,19 @@ def get_or_create_eval(openai_client) -> str:
 
 
 def pass_rates(run) -> dict[str, str]:
-    """Return 'passed/total' per criterion for a finished run."""
-    rates = {}
-    for result in run.per_testing_criteria_results or []:
-        total = result.passed + result.failed
-        rates[result.testing_criteria] = f"{result.passed}/{total}"
-    return rates
+    """Return 'passed/rows' per criterion for a finished run. Errored rows count as not passed."""
+    rows = run.result_counts.total
+    return {
+        result.testing_criteria: f"{result.passed}/{rows}"
+        for result in run.per_testing_criteria_results or []
+    }
 
 
-def print_comparison(results: dict[str, dict[str, str]]) -> None:
-    """Print every saved golden run side by side."""
+def print_comparison(version: str, results: dict[str, dict[str, str]]) -> None:
+    """Print every saved run on one golden dataset version side by side."""
     labels = list(results)
-    print("\n" + "criterion".ljust(18) + "".join(label.ljust(16) for label in labels))
+    print(f"\nGolden dataset version {version}")
+    print("criterion".ljust(18) + "".join(label.ljust(16) for label in labels))
     for criterion in CRITERIA:
         print(
             criterion.ljust(18)
@@ -247,11 +248,17 @@ def main() -> None:
         run = wait_for_eval_run(openai_client, eval_id, run.id)
     if run.status != "completed":
         raise SystemExit(f"Evaluation run ended with status {run.status}: {run.error}")
+    if run.result_counts.errored:
+        print(
+            f"Warning: {run.result_counts.errored} of {run.result_counts.total} rows "
+            "had evaluator errors and count as not passed. See the run in Foundry."
+        )
 
-    results = TutorialState.load().get("golden_results", {})
-    results[label] = pass_rates(run)
-    TutorialState.update(golden_results=results)
-    print_comparison(results)
+    # Keep results per golden version so edits to the test set can't look like agent changes.
+    by_version = TutorialState.load().get("golden_results_by_version", {})
+    by_version.setdefault(args.golden_version, {})[label] = pass_rates(run)
+    TutorialState.update(golden_results_by_version=by_version)
+    print_comparison(args.golden_version, by_version[args.golden_version])
 
 
 if __name__ == "__main__":

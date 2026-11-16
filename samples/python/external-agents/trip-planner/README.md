@@ -139,12 +139,14 @@ python 08_run_golden_dataset.py --instructions v2      # after the fix
   reviewed set. Because Foundry can't call an external agent, the script runs
   the agent locally on each golden row, uploads the answers as a dataset, and
   scores them in Foundry with the same three evaluators every time. It then
-  prints all saved runs side by side. After you edit `golden_dataset.jsonl`, run
-  with a new `--golden-version`.
+  prints the saved runs for that golden version side by side, and warns if any
+  rows had evaluator errors. After you edit `golden_dataset.jsonl`, run with a new
+  `--golden-version`; results are compared only within a version.
 
 Example output (your results vary):
 
 ```text
+Golden dataset version 1
 criterion         v1              v2
 task_rubric       2/6             6/6
 shared_rubric     1/6             6/6

@@ -11,6 +11,7 @@ import os
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 from dotenv import load_dotenv
 
@@ -80,15 +81,27 @@ def download_dataset_rows(project, name: str, version: str) -> list[dict[str, An
     """Download a JSONL dataset from Foundry and return its rows."""
     from azure.storage.blob import ContainerClient
 
-    credential = project.datasets.get_credentials(name=name, version=version)
-    container = ContainerClient.from_container_url(
-        credential.blob_reference.credential.sas_uri
+    reference = project.datasets.get_credentials(
+        name=name, version=version
+    ).blob_reference
+    container = ContainerClient.from_container_url(reference.credential.sas_uri)
+    # blob_uri points at this version's file or folder; read only that, not the whole container.
+    path = unquote(urlparse(reference.blob_uri).path).split("/", 2)[2]
+    blob_names = (
+        [path]
+        if path.endswith(".jsonl")
+        else [
+            blob
+            for blob in container.list_blob_names(
+                name_starts_with=path.rstrip("/") + "/"
+            )
+            if blob.endswith(".jsonl")
+        ]
     )
     rows: list[dict[str, Any]] = []
-    for blob_name in container.list_blob_names():
-        if blob_name.endswith(".jsonl"):
-            text = container.download_blob(blob_name).readall().decode("utf-8")
-            rows.extend(json.loads(line) for line in text.splitlines() if line.strip())
+    for blob_name in blob_names:
+        text = container.download_blob(blob_name).readall().decode("utf-8")
+        rows.extend(json.loads(line) for line in text.splitlines() if line.strip())
     return rows
 
 
