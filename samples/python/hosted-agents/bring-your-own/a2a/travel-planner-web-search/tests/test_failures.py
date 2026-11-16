@@ -307,6 +307,9 @@ class FailureTests(unittest.IsolatedAsyncioTestCase):
                         (work / "turn.json").write_text("{}")
 
                         def transport(arguments, work=work, planned=planned):
+                            self.assertEqual(
+                                arguments[arguments.index("--version") + 1], "1"
+                            )
                             request = json.loads((work / "req-1.json").read_text())
                             body = {
                                 "jsonrpc": "2.0",
@@ -326,6 +329,7 @@ class FailureTests(unittest.IsolatedAsyncioTestCase):
                             environment={
                                 "CI_AGENT_SESSION_ID": "test",
                                 "FOUNDRY_AGENT_NAME": "planner",
+                                "DEPLOYED_AGENT_VERSION": "1",
                             },
                             transport=transport,
                             temp_dir=work,
