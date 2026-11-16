@@ -242,8 +242,8 @@ one-time publish overrides.
 
 ## Understand how the agent works
 
-`agent/app.py` uses the preview
-[Foundry AgentServer Activity SDK](https://learn.microsoft.com/python/api/overview/azure/ai-agentserver-activity-readme?view=azure-python-preview)
+`agent/app.py` uses the stable
+[Foundry AgentServer Activity SDK](https://pypi.org/project/azure-ai-agentserver-activity/1.0.0/)
 to host the M365 Agents SDK application. `ActivityAgentServerHost` builds the
 M365 adapter and connection configuration, serves `POST /activity/messages`
 and `GET /readiness`, and manages the web server and graceful shutdown.
