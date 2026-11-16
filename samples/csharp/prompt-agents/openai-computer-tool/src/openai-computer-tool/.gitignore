@@ -1,0 +1,6 @@
+bin/
+obj/
+.vs/
+.env
+paint_smiley_*.png
+smiley_*.png

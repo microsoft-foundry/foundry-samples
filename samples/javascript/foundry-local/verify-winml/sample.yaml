@@ -1,6 +1,5 @@
-name: Verify WinML Execution Providers (JavaScript)
-description: Verify WinML 2.0 execution providers are correctly registered.
+name: Verify Accelerator Execution Providers (JavaScript)
+description: Verify unified-package GPU and NPU execution providers and native v2 streaming chat.
 
-# SKIP: Windows-only: requires the foundry-local-sdk-winml package.
-build: "echo 'SKIP: Windows-only: requires the foundry-local-sdk-winml package.'"
-validate: "echo 'SKIP: Windows-only: requires the foundry-local-sdk-winml package.'"
+build: "npm install --no-audit --no-fund"
+validate: "node --check app.js"

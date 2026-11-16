@@ -1,13 +1,14 @@
 # Tutorial: Chat Assistant (C#)
 
-Build an interactive multi-turn chat assistant (tutorial).
+Build an interactive multi-turn chat assistant with a stateful native v2 `ChatSession`.
 
 > Part of the [Foundry Local samples for C#](../).
 
 ## Prerequisites
 
-- [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
 - .NET 9 SDK
+
+The unified `Microsoft.AI.Foundry.Local` package includes the local runtime.
 
 ## Run
 

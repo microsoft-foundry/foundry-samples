@@ -1,8 +1,5 @@
 name: Quickstart Agent Service
 description: Basic quickstart sample demonstrating Microsoft Foundry agent service.
 
-# SKIP: Source uses unreleased @azure/ai-projects APIs (getOpenAIClient renamed
-# to getAzureOpenAIClient, createVersion/deleteVersion not yet on AgentsClient).
-# Re-enable when @azure/ai-projects is updated with these APIs.
-build: "echo 'SKIP: requires unreleased @azure/ai-projects API'"
-validate: "echo 'SKIP: requires unreleased @azure/ai-projects API'"
+build: "npm install --registry=https://registry.npmjs.org/"
+validate: "npx tsc --noEmit"

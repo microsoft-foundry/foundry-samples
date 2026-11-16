@@ -1,0 +1,72 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.36.0'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.21'
+    azure.ai.projects: '>=1.0.0-beta.14'
+
+name: prompt-agent-tools
+services:
+  ai-project:
+    host: azure.ai.project
+    deployments:
+      - name: gpt-5.4-mini
+        model:
+          format: OpenAI
+          name: gpt-5.4-mini
+          version: '2026-03-17'
+        sku:
+          name: GlobalStandard
+          capacity: 30
+  prompt-agent-tools:
+    host: azure.ai.agent
+    project: .
+    uses:
+      - ai-project
+    kind: prompt
+    name: prompt-agent-tools
+    description: A prompt agent that emits client-executed function tool calls.
+    model: gpt-5.4-mini
+    instructions: >-
+      You are a helpful assistant. When the user asks about the weather or a currency conversion,
+      call the appropriate function tool. The calling application executes the function and returns
+      the result to you.
+    toolChoice: auto
+    tools:
+      - type: function
+        name: get_weather
+        description: Get the current weather for a city.
+        parameters:
+          type: object
+          additionalProperties: false
+          properties:
+            city:
+              type: string
+              description: City name, for example "Seattle".
+            unit:
+              type: string
+              enum: [celsius, fahrenheit]
+              description: Temperature unit to report.
+          required: [city, unit]
+        strict: true
+      - type: function
+        name: convert_currency
+        description: Convert an amount from one currency to another.
+        parameters:
+          type: object
+          additionalProperties: false
+          properties:
+            amount:
+              type: number
+              description: The amount to convert.
+            from_currency:
+              type: string
+              description: ISO 4217 code, for example "USD".
+            to_currency:
+              type: string
+              description: ISO 4217 code, for example "EUR".
+          required: [amount, from_currency, to_currency]
+        strict: true
+infra:
+  provider: microsoft.foundry

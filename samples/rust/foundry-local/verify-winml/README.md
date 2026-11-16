@@ -1,8 +1,8 @@
 # Verify WinML 2.0 Execution Providers (Rust)
 
-This sample verifies that WinML 2.0 execution providers are correctly discovered,
-downloaded, and registered using the Foundry Local Rust SDK. It uses registered WinML
-EP-backed model variants and finishes with one native streaming chat check.
+This sample verifies that accelerated WinML execution providers are correctly discovered,
+downloaded, and registered using the unified Foundry Local Rust SDK. It uses registered
+accelerated model variants and finishes with one v2 streaming chat-session check.
 
 ## Prerequisites
 
@@ -11,9 +11,8 @@ EP-backed model variants and finishes with one native streaming chat check.
 
 ## Build & Run
 
-This sample enables the Rust SDK's `winml` feature and the SDK build script
-downloads the pinned `Microsoft.AI.Foundry.Local.Core.WinML` package from the
-configured NuGet feeds during the build.
+The unified v2 SDK provides execution-provider discovery and registration directly;
+there is no separate `winml` Cargo feature or package split.
 
 ```bash
 cargo run

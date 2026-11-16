@@ -1,0 +1,10 @@
+[project]
+name = "agent-framework-agent-with-skills-responses"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent with native file-based skills."
+requires-python = ">=3.13"
+dependencies = [
+    "agent-framework-foundry==1.10.4",
+    "agent-framework-foundry-hosting==1.0.0b260813",
+    "debugpy==1.8.21",
+]

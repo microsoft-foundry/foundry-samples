@@ -42,6 +42,7 @@ services:
       - protocol: invocations
         version: 2.0.0
     env:
+      PYTHONNOUSERSITE: "1"
       AZURE_AI_MODEL_DEPLOYMENT_NAME: gpt-5.4-mini
     container:
       resources:

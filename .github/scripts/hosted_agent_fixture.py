@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve one-to-one paths between hosted-agent samples and shared CI fixtures."""
+"""Resolve one-to-one paths between agent samples and shared CI fixtures."""
 
 from __future__ import annotations
 
@@ -16,6 +16,8 @@ SAMPLE_ROOTS = {
     "python": PurePosixPath("samples/python/hosted-agents"),
     "csharp": PurePosixPath("samples/csharp/hosted-agents"),
 }
+PROMPT_SAMPLE_ROOT = PurePosixPath("samples/cli/prompt-agents")
+PROMPT_FIXTURE_ROOT = PurePosixPath(".azure-pipelines/prompt-agent-tests/cli")
 
 
 class FixturePathError(ValueError):
@@ -36,8 +38,10 @@ def _relative_path(path: str, *, label: str) -> PurePosixPath:
 
 
 def fixture_dir_for_sample(sample_dir: str) -> PurePosixPath:
-    """Return the fixture directory preserving the complete hosted-agent path."""
+    """Return the fixture directory preserving the path below its sample root."""
     sample = _relative_path(sample_dir, label="sample directory")
+    if sample.is_relative_to(PROMPT_SAMPLE_ROOT) and sample != PROMPT_SAMPLE_ROOT:
+        return PROMPT_FIXTURE_ROOT / sample.relative_to(PROMPT_SAMPLE_ROOT)
     for language, root in SAMPLE_ROOTS.items():
         try:
             relative = sample.relative_to(root)
@@ -60,6 +64,11 @@ def sample_dir_for_fixture(fixture_path: str) -> PurePosixPath:
             "fixture must end with test-spec.yml or test-payload.txt: "
             f"{fixture_path}"
         )
+    if fixture.parent.is_relative_to(PROMPT_FIXTURE_ROOT):
+        relative = fixture.parent.relative_to(PROMPT_FIXTURE_ROOT)
+        if relative.parts:
+            return PROMPT_SAMPLE_ROOT / relative
+        raise FixturePathError(f"fixture must include a sample path: {fixture_path}")
     try:
         relative = fixture.parent.relative_to(FIXTURE_ROOT)
     except ValueError as error:
@@ -86,10 +95,11 @@ def load_skiplist(repo: Path, filename: PurePosixPath) -> set[PurePosixPath]:
         if not line or line.startswith("#"):
             continue
         try:
-            fixture_dir_for_sample(line)
-            sample = PurePosixPath(line)
+            sample = _relative_path(line, label="sample directory")
             if sample.as_posix() != line or "\\" in line:
                 raise FixturePathError("expected an exact normalized sample directory")
+            if not any(sample.is_relative_to(root) and sample != root for root in SAMPLE_ROOTS.values()):
+                raise FixturePathError("skiplist entries must be hosted-agent samples")
         except FixturePathError as error:
             raise FixturePathError(f"{filename}:{number}: {error}") from error
         samples.add(sample)

@@ -88,6 +88,7 @@ services:
       - protocol: responses
         version: 2.0.0
     env:
+      PYTHONNOUSERSITE: "1"
       AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
       TOOLBOX_NAME: ${TOOLBOX_NAME}
     container:
@@ -139,6 +140,7 @@ uses:
   - math-expert-a2a
   - a2a-delegation-tools
 env:
+  PYTHONNOUSERSITE: "1"
   AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
   TOOLBOX_NAME: ${TOOLBOX_NAME}
 ```

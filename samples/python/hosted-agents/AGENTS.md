@@ -22,6 +22,12 @@ Match deployment guidance to the sample's `azure.yaml`: direct code deployment
 uses `codeConfiguration` and does not require a Dockerfile; Dockerfile guidance
 applies only when the sample uses container deployment through `docker.path`.
 
+Configure `PYTHONNOUSERSITE: "1"` in each Python hosted service's `env` map
+and `ENV PYTHONNOUSERSITE=1` in Python Dockerfiles, not in individual run
+commands or inside `main.py`.
+See the shared [Python startup configuration](./README.md#python-startup-configuration)
+for deployment environment and dependency guidance.
+
 ## Python dependency policy
 
 Follow [`DEPENDENCY_POLICY.md`](./DEPENDENCY_POLICY.md) whenever you create a

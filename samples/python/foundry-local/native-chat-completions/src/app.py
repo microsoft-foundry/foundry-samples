@@ -1,6 +1,16 @@
 # <complete_code>
 # <imports>
-from foundry_local_sdk import Configuration, FoundryLocalManager
+from foundry_local_sdk import (
+    ChatSession,
+    Configuration,
+    FoundryLocalManager,
+    MessageItem,
+    Request,
+    RequestOptions,
+    SearchOptions,
+    TextItem,
+    TextItemType,
+)
 
 # </imports>
 
@@ -12,56 +22,58 @@ def main():
     FoundryLocalManager.initialize(config)
     manager = FoundryLocalManager.instance
 
-    # Download and register all execution providers.
-    current_ep = ""
+    # Discover and register execution providers that are not already available.
+    eps = manager.discover_eps()
+    missing_eps = [ep.name for ep in eps if not ep.is_registered]
+    if missing_eps:
+        manager.download_and_register_eps(missing_eps)
 
-    def ep_progress(ep_name: str, percent: float):
-        nonlocal current_ep
-        if ep_name != current_ep:
-            if current_ep:
-                print()
-            current_ep = ep_name
-        print(f"\r  {ep_name:<30}  {percent:5.1f}%", end="", flush=True)
-
-    manager.download_and_register_eps(progress_callback=ep_progress)
-    if current_ep:
-        print()
-
-    # Select and load a model from the catalog
+    # Select and load a model from the catalog.
     model = manager.catalog.get_model("qwen2.5-0.5b")
-    model.download(
-        lambda progress: print(
-            f"\rDownloading model: {progress:.2f}%",
-            end="",
-            flush=True,
+    if model is None:
+        raise RuntimeError("Model 'qwen2.5-0.5b' was not found in the catalog.")
+    if not model.is_cached:
+        model.download(
+            lambda progress: print(
+                f"\rDownloading model: {progress:.2f}%",
+                end="",
+                flush=True,
+            )
         )
-    )
-    print()
+        print()
     model.load()
     print("Model loaded and ready.")
-
-    # Get a chat client
-    client = model.get_chat_client()
     # </init>
 
-    # <streaming>
-    # Create the conversation messages
-    messages = [{"role": "user", "content": "What is the golden ratio?"}]
-
-    # Stream the response token by token
-    print("Assistant: ", end="", flush=True)
-    for chunk in client.complete_streaming_chat(messages):
-        if not chunk.choices:
-            continue
-        content = chunk.choices[0].delta.content
-        if content:
-            print(content, end="", flush=True)
-    print()
+    try:
+        # <streaming>
+        # Create a native chat session and stream the response token by token.
+        with ChatSession(model) as session:
+            session.set_options(
+                RequestOptions(
+                    search=SearchOptions(temperature=0.0, max_output_tokens=256)
+                )
+            )
+            session.set_streaming(True)
+            with Request().add_item(
+                MessageItem.user("What is the golden ratio?")
+            ) as request:
+                print("Assistant: ", end="", flush=True)
+                with session.process_streaming_request(request) as stream:
+                    for item in stream:
+                        if (
+                            isinstance(item, TextItem)
+                            and item.type == TextItemType.DEFAULT
+                        ):
+                            print(item.text, end="", flush=True)
+                print()
     # </streaming>
-
-    # Clean up
-    model.unload()
-    print("Model unloaded.")
+    finally:
+        # Clean up
+        if model.is_loaded:
+            model.unload()
+        manager.close()
+        print("Model unloaded.")
 
 
 if __name__ == "__main__":

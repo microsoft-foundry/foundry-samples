@@ -1,13 +1,14 @@
 # Model Management (C#)
 
-Manage models, variant selection, and updates with the Foundry Local C# SDK.
+Manage models and variants, then run inference with the native v2 session APIs.
 
 > Part of the [Foundry Local samples for C#](../).
 
 ## Prerequisites
 
-- [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
 - .NET 9 SDK
+
+The unified `Microsoft.AI.Foundry.Local` package includes the local runtime.
 
 ## Run
 

@@ -8,7 +8,7 @@
 
   <!-- Windows: target Windows SDK for WinML hardware acceleration -->
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-    <TargetFramework>net8.0-windows10.0.18362.0</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <Platforms>ARM64;x64</Platforms>
     <WindowsPackageType>None</WindowsPackageType>
     <EnableCoreMrtTooling>false</EnableCoreMrtTooling>
@@ -16,20 +16,14 @@
 
   <!-- Non-Windows: standard .NET -->
   <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('Windows'))">
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(RuntimeIdentifier)'==''">
     <RuntimeIdentifier>$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>
   </PropertyGroup>
 
-  <!-- Windows: WinML for hardware acceleration -->
-  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-    <PackageReference Include="Microsoft.AI.Foundry.Local.WinML" />
-  </ItemGroup>
-
-  <!-- Non-Windows: standard SDK -->
-  <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Windows'))">
+  <ItemGroup>
     <PackageReference Include="Microsoft.AI.Foundry.Local" />
   </ItemGroup>
 

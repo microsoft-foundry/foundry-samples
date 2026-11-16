@@ -1,5 +1,4 @@
 using Microsoft.AI.Foundry.Local;
-using Betalgo.Ranul.OpenAI.ObjectModels.RequestModels;
 using System.Diagnostics;
 
 CancellationToken ct = new CancellationToken();
@@ -116,31 +115,39 @@ foreach (var loadedModel in loadedModels)
 Console.WriteLine();
 
 
-// Get a chat client
-var chatClient = await model.GetChatClientAsync();
-
-// Create a chat message
-List<ChatMessage> messages = new()
+// Create a native chat session and adjust its inference settings.
+using var chatSession = new ChatSession(model);
+chatSession.SetOptions(new RequestOptions
 {
-    new ChatMessage { Role = "user", Content = "Why is the sky blue?" }
-};
-
-// You can adjust settings on the chat client
-chatClient.Settings.Temperature = 0.7f;
-chatClient.Settings.MaxTokens = 512;
+    Search = new SearchOptions { Temperature = 0.7f, MaxOutputTokens = 512 }
+});
+chatSession.SetStreaming(true);
+using var request = new Request();
+request.AddItem(MessageItem.User("Why is the sky blue?"));
 
 Console.WriteLine("Chat completion response:");
-var streamingResponse = chatClient.CompleteChatStreamingAsync(messages, ct);
-await foreach (var chunk in streamingResponse)
+await using var streamingResponse = chatSession.ProcessStreamingRequestAsync(request, ct);
+await foreach (var item in streamingResponse)
 {
-    Console.Write(chunk.Choices[0].Message.Content);
-    Console.Out.Flush();
+    using (item)
+    {
+        if (item is TextItem { Type: TextItemType.Default } text)
+        {
+            Console.Write(text.Text);
+            Console.Out.Flush();
+        }
+    }
 }
+using var finalResponse = await streamingResponse.FinalResponse;
 Console.WriteLine();
 Console.WriteLine();
 
 // Tidy up - unload the model
 Console.WriteLine($"Unloading model {model.Id}...");
+finalResponse.Dispose();
+await streamingResponse.DisposeAsync();
+request.Dispose();
+chatSession.Dispose();
 await model.UnloadAsync();
 Console.WriteLine("Model unloaded.");
 

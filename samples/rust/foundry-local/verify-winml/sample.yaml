@@ -1,6 +1,6 @@
 name: Verify WinML Execution Providers (Rust)
-description: Verify WinML 2.0 execution providers are correctly registered.
+description: Verify accelerated WinML execution providers through the unified v2 SDK.
 
-# SKIP: Windows-only: requires the `winml` feature of foundry-local-sdk and Windows runtime.
-build: "echo 'SKIP: Windows-only: requires the `winml` feature of foundry-local-sdk and Windows runtime.'"
-validate: "echo 'SKIP: Windows-only: requires the `winml` feature of foundry-local-sdk and Windows runtime.'"
+# SKIP: Windows-only: requires compatible WinML hardware and runtime support.
+build: "echo 'SKIP: Windows-only: requires compatible WinML hardware and runtime support.'"
+validate: "echo 'SKIP: Windows-only: requires compatible WinML hardware and runtime support.'"

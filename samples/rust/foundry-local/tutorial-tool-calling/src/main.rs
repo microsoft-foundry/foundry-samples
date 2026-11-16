@@ -1,32 +1,19 @@
 // <complete_code>
 // <imports>
 use foundry_local_sdk::{
-    ChatCompletionRequestMessage,
-    ChatCompletionRequestSystemMessage,
-    ChatCompletionRequestToolMessage,
-    ChatCompletionRequestUserMessage,
-    ChatCompletionMessageToolCalls,
-    ChatCompletionTools, ChatToolChoice,
-    FoundryLocalConfig, FoundryLocalManager,
+    ChatSession, FoundryLocalConfig, FoundryLocalManager, Item, Request, RequestOptions,
+    SearchOptions, ToolChoice, ToolDefinition,
 };
 use serde_json::{json, Value};
 use std::io::{self, BufRead, Write};
 // </imports>
 
 // <tool_implementations>
-// --- Tool implementations ---
-fn execute_tool(
-    name: &str,
-    arguments: &Value,
-) -> Value {
+fn execute_tool(name: &str, arguments: &Value) -> Value {
     match name {
         "get_weather" => {
-            let location = arguments["location"]
-                .as_str()
-                .unwrap_or("unknown");
-            let unit = arguments["unit"]
-                .as_str()
-                .unwrap_or("celsius");
+            let location = arguments["location"].as_str().unwrap_or("unknown");
+            let unit = arguments["unit"].as_str().unwrap_or("celsius");
             let temp = if unit == "celsius" { 22 } else { 72 };
             json!({
                 "location": location,
@@ -36,24 +23,19 @@ fn execute_tool(
             })
         }
         "calculate" => {
-            let expression = arguments["expression"]
-                .as_str()
-                .unwrap_or("");
+            let expression = arguments["expression"].as_str().unwrap_or("");
             let is_valid = expression
                 .chars()
-                .all(|c| "0123456789+-*/(). ".contains(c));
+                .all(|character| "0123456789+-*/(). ".contains(character));
             if !is_valid {
                 return json!({"error": "Invalid expression"});
             }
             match eval_expression(expression) {
-                Ok(result) => json!({
-                    "expression": expression,
-                    "result": result
-                }),
-                Err(e) => json!({"error": e}),
+                Ok(result) => json!({"expression": expression, "result": result}),
+                Err(error) => json!({"error": error}),
             }
         }
-        _ => json!({"error": format!("Unknown function: {}", name)}),
+        _ => json!({"error": format!("Unknown function: {name}")}),
     }
 }
 
@@ -68,14 +50,9 @@ fn eval_expression(expr: &str) -> Result<f64, String> {
     Ok(result)
 }
 
-fn parse_add(
-    chars: &[char],
-    pos: &mut usize,
-) -> Result<f64, String> {
+fn parse_add(chars: &[char], pos: &mut usize) -> Result<f64, String> {
     let mut result = parse_mul(chars, pos)?;
-    while *pos < chars.len()
-        && (chars[*pos] == '+' || chars[*pos] == '-')
-    {
+    while *pos < chars.len() && (chars[*pos] == '+' || chars[*pos] == '-') {
         let op = chars[*pos];
         *pos += 1;
         let right = parse_mul(chars, pos)?;
@@ -88,14 +65,9 @@ fn parse_add(
     Ok(result)
 }
 
-fn parse_mul(
-    chars: &[char],
-    pos: &mut usize,
-) -> Result<f64, String> {
+fn parse_mul(chars: &[char], pos: &mut usize) -> Result<f64, String> {
     let mut result = parse_atom(chars, pos)?;
-    while *pos < chars.len()
-        && (chars[*pos] == '*' || chars[*pos] == '/')
-    {
+    while *pos < chars.len() && (chars[*pos] == '*' || chars[*pos] == '/') {
         let op = chars[*pos];
         *pos += 1;
         let right = parse_atom(chars, pos)?;
@@ -108,10 +80,7 @@ fn parse_mul(
     Ok(result)
 }
 
-fn parse_atom(
-    chars: &[char],
-    pos: &mut usize,
-) -> Result<f64, String> {
+fn parse_atom(chars: &[char], pos: &mut usize) -> Result<f64, String> {
     if *pos < chars.len() && chars[*pos] == '(' {
         *pos += 1;
         let result = parse_add(chars, pos)?;
@@ -121,76 +90,50 @@ fn parse_atom(
         return Ok(result);
     }
     let start = *pos;
-    while *pos < chars.len()
-        && (chars[*pos].is_ascii_digit() || chars[*pos] == '.')
-    {
+    while *pos < chars.len() && (chars[*pos].is_ascii_digit() || chars[*pos] == '.') {
         *pos += 1;
     }
     if start == *pos {
         return Err("Expected number".to_string());
     }
-    let num_str: String = chars[start..*pos].iter().collect();
-    num_str.parse::<f64>().map_err(|e| e.to_string())
+    chars[start..*pos]
+        .iter()
+        .collect::<String>()
+        .parse::<f64>()
+        .map_err(|error| error.to_string())
 }
 // </tool_implementations>
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // <tool_definitions>
-    // --- Tool definitions ---
-    let tools: Vec<ChatCompletionTools> = serde_json::from_value(json!([
-        {
-            "type": "function",
-            "function": {
-                "name": "get_weather",
-                "description":
-                    "Get the current weather for a location",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "location": {
-                            "type": "string",
-                            "description":
-                                "The city or location"
-                        },
-                        "unit": {
-                            "type": "string",
-                            "enum": ["celsius", "fahrenheit"],
-                            "description": "Temperature unit"
-                        }
-                    },
-                    "required": ["location"]
-                }
+    let weather_schema = json!({
+        "type": "object",
+        "properties": {
+            "location": {"type": "string", "description": "The city or location"},
+            "unit": {
+                "type": "string",
+                "enum": ["celsius", "fahrenheit"],
+                "description": "Temperature unit"
             }
         },
-        {
-            "type": "function",
-            "function": {
-                "name": "calculate",
-                "description": "Perform a math calculation",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "expression": {
-                            "type": "string",
-                            "description":
-                                "The math expression to evaluate"
-                        }
-                    },
-                    "required": ["expression"]
-                }
+        "required": ["location"]
+    });
+    let calculator_schema = json!({
+        "type": "object",
+        "properties": {
+            "expression": {
+                "type": "string",
+                "description": "The math expression to evaluate"
             }
-        }
-    ]))?;
+        },
+        "required": ["expression"]
+    });
     // </tool_definitions>
 
     // <init>
-    // Initialize the Foundry Local SDK
-    let manager = FoundryLocalManager::create(
-        FoundryLocalConfig::new("foundry_local_samples"),
-    )?;
+    let manager = FoundryLocalManager::create(FoundryLocalConfig::new("foundry_local_samples"))?;
 
-    // Download and register all execution providers.
     manager
         .download_and_register_eps_with_progress(None, {
             let mut current_ep = String::new();
@@ -201,19 +144,14 @@ async fn main() -> anyhow::Result<()> {
                     }
                     current_ep = ep_name.to_string();
                 }
-                print!("\r  {:<30}  {:5.1}%", ep_name, percent);
+                print!("\r  {ep_name:<30}  {percent:5.1}%");
                 io::stdout().flush().ok();
             }
         })
         .await?;
     println!();
 
-    // Select and load a model
-    let model = manager
-        .catalog()
-        .get_model("qwen2.5-0.5b")
-        .await?;
-
+    let model = manager.catalog().get_model("qwen2.5-0.5b").await?;
     if !model.is_cached().await? {
         println!("Downloading model...");
         model
@@ -226,30 +164,34 @@ async fn main() -> anyhow::Result<()> {
     }
 
     model.load().await?;
-    println!("Model loaded and ready.");
-
-    // Create a chat client
-    let client = model
-        .create_chat_client()
-        .temperature(0.7)
-        .max_tokens(512)
-        .tool_choice(ChatToolChoice::Auto);
-
-    // Conversation with a system prompt
-    let mut messages: Vec<ChatCompletionRequestMessage> = vec![
-        ChatCompletionRequestSystemMessage::from(
-            "You are a helpful assistant with access to tools. \
-             Use them when needed to answer questions accurately.",
+    let session = ChatSession::new(&model).await?;
+    session
+        .set_options(RequestOptions {
+            search: SearchOptions {
+                temperature: Some(0.7),
+                max_output_tokens: Some(512),
+                ..Default::default()
+            },
+            tool_choice: Some(ToolChoice::Auto),
+            ..Default::default()
+        })
+        .await?;
+    session
+        .add_tool_definition(
+            ToolDefinition::new("get_weather", weather_schema.to_string())
+                .with_description("Get the current weather for a location."),
         )
-        .into(),
-    ];
+        .await?;
+    session
+        .add_tool_definition(
+            ToolDefinition::new("calculate", calculator_schema.to_string())
+                .with_description("Perform a math calculation."),
+        )
+        .await?;
     // </init>
 
     // <tool_loop>
-    println!(
-        "\nTool-calling assistant ready! Type 'quit' to exit.\n"
-    );
-
+    println!("\nTool-calling assistant ready! Type 'quit' to exit.\n");
     let stdin = io::stdin();
     loop {
         print!("You: ");
@@ -258,87 +200,59 @@ async fn main() -> anyhow::Result<()> {
         let mut input = String::new();
         stdin.lock().read_line(&mut input)?;
         let input = input.trim();
-
-        if input.eq_ignore_ascii_case("quit")
-            || input.eq_ignore_ascii_case("exit")
-        {
+        if input.eq_ignore_ascii_case("quit") || input.eq_ignore_ascii_case("exit") {
             break;
         }
-
-        messages.push(
-            ChatCompletionRequestUserMessage::from(input).into(),
-        );
-
-        let mut response = client
-            .complete_chat(&messages, Some(&tools))
-            .await?;
-
-        // Process tool calls in a loop
-        while response.choices[0].message.tool_calls.is_some() {
-            let tool_calls = response.choices[0]
-                .message
-                .tool_calls
-                .as_ref()
-                .unwrap();
-
-            // Append the assistant's tool_calls message via JSON
-            let assistant_msg: ChatCompletionRequestMessage =
-                serde_json::from_value(json!({
-                    "role": "assistant",
-                    "content": null,
-                    "tool_calls": tool_calls,
-                }))?;
-            messages.push(assistant_msg);
-
-            for tc_enum in tool_calls {
-                let tool_call = match tc_enum {
-                    ChatCompletionMessageToolCalls::Function(
-                        tc,
-                    ) => tc,
-                    _ => continue,
-                };
-                let function_name =
-                    &tool_call.function.name;
-                let arguments: Value =
-                    serde_json::from_str(
-                        &tool_call.function.arguments,
-                    )?;
-                println!(
-                    "  Tool call: {}({})",
-                    function_name, arguments
-                );
-
-                let result =
-                    execute_tool(function_name, &arguments);
-                messages.push(
-                    ChatCompletionRequestToolMessage {
-                        content: result.to_string().into(),
-                        tool_call_id: tool_call.id.clone(),
-                    }
-                    .into(),
-                );
-            }
-
-            response = client
-                .complete_chat(&messages, Some(&tools))
-                .await?;
+        if input.is_empty() {
+            continue;
         }
 
-        let answer = response.choices[0]
-            .message
-            .content
-            .as_deref()
-            .unwrap_or("");
-        let assistant_msg: ChatCompletionRequestMessage =
-            serde_json::from_value(json!({
-                "role": "assistant",
-                "content": answer,
-            }))?;
-        messages.push(assistant_msg);
-        println!("Assistant: {}\n", answer);
+        let mut items = Vec::new();
+        if session.turn_count() == 0 {
+            items.push(Item::system_message(vec![Item::text(
+                "You are a helpful assistant with access to tools. Use them when needed.",
+            )]));
+        }
+        items.push(Item::user_message(vec![Item::text(input)]));
+
+        loop {
+            let response = session
+                .process_request(Request::from_items(items).with_options(RequestOptions {
+                    search: SearchOptions {
+                        temperature: Some(0.7),
+                        max_output_tokens: Some(512),
+                        ..Default::default()
+                    },
+                    tool_choice: Some(ToolChoice::Auto),
+                    ..Default::default()
+                }))
+                .await?;
+
+            let mut tool_results = Vec::new();
+            let mut answer = String::new();
+            for item in &response.items {
+                if let Some(call) = item.as_tool_call() {
+                    let arguments: Value =
+                        serde_json::from_str(&call.arguments).unwrap_or_else(|_| json!({}));
+                    println!("  Tool call: {}({arguments})", call.name);
+                    let result = execute_tool(&call.name, &arguments);
+                    tool_results.push(Item::tool_result(call.call_id.clone(), result.to_string()));
+                } else if let Some(message) = item.as_message() {
+                    answer.push_str(&message.text());
+                } else if let Some(text) = item.as_text() {
+                    answer.push_str(text);
+                }
+            }
+
+            if tool_results.is_empty() {
+                println!("Assistant: {answer}\n");
+                break;
+            }
+            items = tool_results;
+        }
     }
 
-    // Clean up
+    drop(session);
     model.unload().await?;
     println!("Model unloaded. Goodbye!");
     // </tool_loop>

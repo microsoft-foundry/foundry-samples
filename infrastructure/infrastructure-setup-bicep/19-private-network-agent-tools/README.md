@@ -292,35 +292,44 @@ To use an existing Azure Storage account, set `existingAzureStorageAccountResour
 
 5. **Use Key Vault for private CA trust**
 
-Key Vault is deployed by default with Azure RBAC authorization, firewall default-deny, Azure-services bypass, a private endpoint in the PE subnet, and `privatelink.vaultcore.azure.net` DNS. The Foundry account system identity receives the **Key Vault Secrets User** role. To use an existing vault instead, set `existingKeyVaultResourceId`; the vault must use Azure RBAC authorization.
+Key Vault is deployed by default with Azure RBAC authorization, firewall default-deny, Azure-services bypass, a private endpoint in the PE subnet, and `privatelink.vaultcore.azure.net` DNS. The Foundry account system identity receives the **Key Vault Secrets User** role. To use an existing vault instead, set `existingKeyVaultResourceId`; the vault must use Azure RBAC authorization. The template does not modify an existing vault's firewall.
+
+**Restricted Key Vaults are supported.** Enable **Allow trusted Microsoft services to bypass this firewall** (`networkAcls.bypass: AzureServices`) and grant the account identity permission to read secrets. Private endpoint connectivity alone is not sufficient for the service's CA retrieval path. The default vault keeps `publicNetworkAccess: Enabled` with `defaultAction: Deny`, no public IP rules, and the trusted-services bypass; this is not unrestricted public access. Upload secrets from a machine with authorized vault connectivity, such as a jump host using the private endpoint.
+
+The service uses the account's primary attached user-assigned managed identity when configured, otherwise its system-assigned identity. This template uses the system-assigned identity. A project's identity is not used to retrieve the CA secrets.
 
 Certificate onboarding remains separate because the CA secret and its pinned version do not exist during the initial deployment:
 
-1. Store each required **public root or intermediate CA certificate** as a PEM-formatted Key Vault secret. Do not store the CA private key.
-2. Add the vault ID plus each secret name/version to the Foundry account-level `trustedCertificates` property.
-3. Recreate the project capability host while preserving its existing connection references so the runtime reloads the trust configuration.
+1. Store the required **public root or intermediate CA certificates** as PEM-formatted Key Vault secrets. One secret can contain multiple CA certificates. Do not upload private keys or use Key Vault certificate objects.
+2. Register the vault ID and exact secret versions in account-level `properties.trustedCertificateSources`, using `type: "AzureKeyVault"`, `resourceId`, and `certificateBundleReferences` entries with `secretName` and `secretVersion`.
+3. Wait for the account update's long-running operation (LRO) to report `Succeeded`, then verify the stored references and test a managed-tool HTTPS call from your agent.
+
+```json
+{
+  "properties": {
+    "trustedCertificateSources": [{
+      "type": "AzureKeyVault",
+      "resourceId": "<key-vault-resource-id>",
+      "certificateBundleReferences": [{
+        "secretName": "private-ca-bundle",
+        "secretVersion": "<exact-secret-version>"
+      }]
+    }]
+  }
+}
+```
+
+The account supports one vault source, up to 25 secret references, and up to 100 CA certificates across those secrets. An update replaces the entire array: preserve unrelated references. An empty array (`trustedCertificateSources: []`) removes all customer CA references. The registration script below merges references from the same vault, replaces the pinned version for explicitly named secrets, and refuses a different vault or an update exceeding 25 references. The service validates certificate contents and the total certificate count.
+
+Account CA trust is **public preview in all Azure public cloud regions**, with no subscription allowlisting required for this feature. This does not change Hosted Agent preview access requirements or other networking, model availability, and quota requirements.
+
+After the account update succeeds, trust propagates **automatically** to project capability hosts. Existing Hosted Agent sandboxes or snapshots can retain older trust for direct HTTPS: use a newly provisioned sandbox after propagation. Application runtimes with their own CA stores may need application-level configuration.
 
 Trust is based on the issuing CA chain, not the MCP or API hostname. A leaf certificate renewal under an already trusted CA needs no trust change; repeat onboarding only for a new CA or a new pinned secret version. Key Vault supplies the CA material when the runtime is configured and is not queried on every tool request.
 
-Use the [private CA recovery scripts](scripts/private-ca-recovery/README.md) to:
+Use [Set-PrivateCaTrust.ps1](scripts/private-ca-trust/README.md#register-or-rotate-ca-trust) for onboarding and rotation. It preserves unrelated references, monitors the LRO (including `Updating`), and verifies read-back. The API version defaults to `2026-07-15-preview`; use a different version only when explicitly supported for your environment. Uploading a new secret version alone does not rotate trust: register its exact version. Leaf renewal under the same CA chain does not require a trust change.
 
-- register version-pinned CA secret references without replacing other trusted certificates;
-- export Prompt Agent definitions through the supported Cosmos-backed Foundry API;
-- preserve container-based Hosted Agent definitions and endpoint routing;
-- delete and recreate the capability host with the same connection references;
-- redeploy the selected Prompt and Hosted Agent versions and reapply captured identity RBAC.
-
-The workflow is parameterized and customer-neutral; it has no lab-specific
-subscription, region, resource-name, or network dependencies. Customers can use
-the same steps wherever the private-CA and agent features are enabled for their
-subscription and region.
-
-> [!CAUTION]
-> Capability-host recreation is a destructive reset. Reusing the same Cosmos DB
-> account doesn't make orphaned agent or thread records reachable again. Export
-> first and retain source-controlled agent definitions, non-secret tool
-> configuration, knowledge files, secure credential references, and immutable
-> Hosted Agent container images.
+For LRO failures, inspect the returned error and fix the cause. A partial failure can leave the account on the new configuration while some projects retain the old trust. An identical resubmission can be a no-op; change the configuration or pinned version, or contact support. A local monitoring timeout does not cancel the server update: inspect the saved operation URL before resubmitting.
 
 6. **Use existing Private DNS zones (cross-RG / cross-subscription)**
 

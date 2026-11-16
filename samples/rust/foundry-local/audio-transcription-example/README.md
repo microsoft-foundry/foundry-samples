@@ -1,6 +1,6 @@
 # Audio Transcription (Rust)
 
-Audio transcription (non-streaming and streaming) using the Whisper model.
+Audio transcription (non-streaming and streaming) using the Whisper model and the v2 `AudioSession` API.
 
 > Part of the [Foundry Local samples for Rust](../).
 

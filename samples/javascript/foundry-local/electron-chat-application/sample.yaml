@@ -3,4 +3,4 @@ description: Full-featured Electron desktop chat app with voice transcription an
 
 # SKIP: Electron desktop app — requires a display server and electron-builder toolchain.
 build: "echo 'SKIP: Electron desktop app — requires a display server and electron-builder toolchain.'"
-validate: "echo 'SKIP: Electron desktop app — requires a display server and electron-builder toolchain.'"
+validate: "node --check main.js && node --check preload.js && node --check renderer.js"

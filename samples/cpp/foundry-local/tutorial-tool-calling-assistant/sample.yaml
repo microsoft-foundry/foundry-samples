@@ -1,0 +1,4 @@
+name: Foundry Local C++ tutorial tool-calling assistant
+description: Build an assistant that invokes deterministic local tools.
+build: cmake -S . -B build
+validate: cmake --build build --config Release --target tutorial-tool-calling-assistant

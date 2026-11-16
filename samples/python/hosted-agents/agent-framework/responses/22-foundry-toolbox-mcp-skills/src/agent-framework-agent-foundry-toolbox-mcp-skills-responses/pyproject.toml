@@ -1,0 +1,10 @@
+[project]
+name = "agent-framework-agent-foundry-toolbox-mcp-skills-responses"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent with Toolbox MCP tools and skills."
+requires-python = ">=3.13"
+dependencies = [
+    "agent-framework-foundry==1.14.1",
+    "agent-framework-foundry-hosting==1.0.0b261008",
+    "debugpy==1.8.22",
+]

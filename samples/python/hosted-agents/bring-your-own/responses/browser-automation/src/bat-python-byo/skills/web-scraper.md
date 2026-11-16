@@ -1,20 +1,10 @@
 # Web Scraper Skill
 
-You are scraping data from a web page. The browser is already connected.
+1. Create or reuse a browser session and preserve its `browserSessionId`.
+2. Navigate to the target page with the discovered navigation tool.
+3. Take a browser snapshot before interacting with the page.
+4. Use discovered browser tools to reveal tabs, accordions, pagination, or lazy-loaded content.
+5. Extract the requested values from snapshots or the discovered evaluation tool, preserving the source page's meaning and ordering.
+6. Continue through all requested pages, then report the data clearly with any missing or inaccessible fields identified.
 
-## Workflow
-
-1. **Navigate** to the target URL with `goto`.
-2. **Snapshot** to see the page structure.
-3. **Extract** data using `eval` with JavaScript:
-   - `eval "document.querySelector('.price').textContent"`
-   - `eval "JSON.stringify([...document.querySelectorAll('tr')].map(r => r.textContent))"`
-4. **Navigate** pagination if needed (click Next, snapshot, repeat).
-5. **Report** the extracted data clearly to the user.
-
-## Tips
-
-- Use `snapshot` to understand page structure before writing selectors.
-- For tables, extract row by row or use `eval` to get all at once.
-- If content is behind clicks (tabs, accordions), click to reveal first.
-- For infinite scroll pages, use `scroll down` then snapshot to load more.
+Pass `browserSessionId` to every browser tool. Use only names and schemas returned by MCP discovery.

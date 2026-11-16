@@ -1,0 +1,5 @@
+name: OpenAI Computer Tool Prompt Agent
+description: Provision and invoke an Azure AI Foundry Prompt Agent with the GA OpenAI Computer Tool (ComputerTool) and local PyAutoGUI execution.
+
+build: "pip install -r src/openai-computer-tool/requirements.txt"
+validate: "python -m compileall -q src/openai-computer-tool"

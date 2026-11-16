@@ -4,9 +4,12 @@
   "type": "module",
   "main": "app.js",
   "scripts": {
-    "postinstall": "node node_modules/foundry-local-sdk/script/install-winml.cjs"
+    "start": "node app.js"
   },
   "dependencies": {
-    "foundry-local-sdk": "file:../../../sdk/js"
+    "foundry-local-sdk": "2.2.1"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

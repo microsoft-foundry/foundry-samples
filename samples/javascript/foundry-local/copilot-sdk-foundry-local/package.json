@@ -9,14 +9,14 @@
   },
   "dependencies": {
     "@github/copilot-sdk": "latest",
-    "foundry-local-sdk": "latest",
+    "foundry-local-sdk": "2.2.1",
     "zod": "^3.0.0"
-  },
-  "optionalDependencies": {
-    "foundry-local-sdk-winml": "latest"
   },
   "devDependencies": {
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

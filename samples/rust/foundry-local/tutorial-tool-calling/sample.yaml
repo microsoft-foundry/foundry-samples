@@ -1,5 +1,5 @@
-name: Tutorial: Tool Calling (Rust)
-description: Create a tool-calling assistant (tutorial).
+name: "Tutorial: Tool Calling (Rust)"
+description: Create a v2 session-based tool-calling assistant (tutorial).
 
 build: "cargo build --verbose"
 validate: "cargo check"

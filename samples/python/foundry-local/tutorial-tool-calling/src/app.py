@@ -1,7 +1,19 @@
 # <complete_code>
 # <imports>
 import json
-from foundry_local_sdk import Configuration, FoundryLocalManager
+
+from foundry_local_sdk import (
+    ChatSession,
+    Configuration,
+    FoundryLocalManager,
+    MessageItem,
+    Request,
+    RequestOptions,
+    SearchOptions,
+    TextItem,
+    ToolCallItem,
+    ToolResultItem,
+)
 
 # </imports>
 
@@ -10,42 +22,36 @@ from foundry_local_sdk import Configuration, FoundryLocalManager
 # --- Tool definitions ---
 tools = [
     {
-        "type": "function",
-        "function": {
-            "name": "get_weather",
-            "description": "Get the current weather for a location",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "The city or location",
-                    },
-                    "unit": {
-                        "type": "string",
-                        "enum": ["celsius", "fahrenheit"],
-                        "description": "Temperature unit",
-                    },
+        "name": "get_weather",
+        "description": "Get the current weather for a location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "The city or location",
                 },
-                "required": ["location"],
+                "unit": {
+                    "type": "string",
+                    "enum": ["celsius", "fahrenheit"],
+                    "description": "Temperature unit",
+                },
             },
+            "required": ["location"],
         },
     },
     {
-        "type": "function",
-        "function": {
-            "name": "calculate",
-            "description": "Perform a math calculation",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "expression": {
-                        "type": "string",
-                        "description": ("The math expression to evaluate"),
-                    }
-                },
-                "required": ["expression"],
+        "name": "calculate",
+        "description": "Perform a math calculation",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "expression": {
+                    "type": "string",
+                    "description": "The math expression to evaluate",
+                }
             },
+            "required": ["expression"],
         },
     },
 ]
@@ -65,64 +71,49 @@ def get_weather(location, unit="celsius"):
 def calculate(expression):
     """Evaluate a math expression safely."""
     allowed = set("0123456789+-*/(). ")
-    if not all(c in allowed for c in expression):
+    if not all(character in allowed for character in expression):
         return {"error": "Invalid expression"}
     try:
-        result = eval(expression)
+        result = eval(expression, {"__builtins__": {}}, {})
         return {"expression": expression, "result": result}
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception as error:
+        return {"error": str(error)}
 
 
 tool_functions = {"get_weather": get_weather, "calculate": calculate}
 # </tool_definitions>
 
 
+def response_content(response):
+    text_parts = []
+    tool_calls = []
+    for item in response:
+        parts = item.parts if isinstance(item, MessageItem) else [item]
+        for part in parts:
+            if isinstance(part, TextItem):
+                text_parts.append(part.text)
+            elif isinstance(part, ToolCallItem):
+                tool_calls.append((part.call_id, part.name, part.arguments))
+    return "".join(text_parts), tool_calls
+
+
 # <tool_loop>
-def process_tool_calls(messages, response, client):
-    """Handle tool calls in a loop until the model produces a final answer."""
-    choice = response.choices[0].message
+def process_tool_calls(session, answer, pending_calls):
+    """Handle tool calls until the stateful session produces a final answer."""
+    while pending_calls:
+        with Request() as follow_up:
+            for call_id, function_name, arguments_json in pending_calls:
+                arguments = json.loads(arguments_json)
+                print(f"  Tool call: {function_name}({arguments})")
+                result = tool_functions[function_name](**arguments)
+                follow_up.add_item(
+                    ToolResultItem(call_id=call_id, result=json.dumps(result))
+                )
 
-    while choice.tool_calls:
-        # Convert the assistant message to a dict for the SDK
-        assistant_msg = {
-            "role": "assistant",
-            "content": choice.content,
-            "tool_calls": [
-                {
-                    "id": tc.id,
-                    "type": tc.type,
-                    "function": {
-                        "name": tc.function.name,
-                        "arguments": tc.function.arguments,
-                    },
-                }
-                for tc in choice.tool_calls
-            ],
-        }
-        messages.append(assistant_msg)
+            with session.process_request(follow_up) as next_response:
+                answer, pending_calls = response_content(next_response)
 
-        for tool_call in choice.tool_calls:
-            function_name = tool_call.function.name
-            arguments = json.loads(tool_call.function.arguments)
-            print(f"  Tool call: {function_name}({arguments})")
-
-            # Execute the function and add the result
-            func = tool_functions[function_name]
-            result = func(**arguments)
-            messages.append(
-                {
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": json.dumps(result),
-                }
-            )
-
-        # Send the updated conversation back
-        response = client.complete_chat(messages, tools=tools)
-        choice = response.choices[0].message
-
-    return choice.content
+    return answer
 
 
 # </tool_loop>
@@ -135,62 +126,69 @@ def main():
     FoundryLocalManager.initialize(config)
     manager = FoundryLocalManager.instance
 
-    # Download and register all execution providers.
-    current_ep = ""
+    # Discover and register execution providers that are not already available.
+    missing_eps = [ep.name for ep in manager.discover_eps() if not ep.is_registered]
+    if missing_eps:
+        manager.download_and_register_eps(missing_eps)
 
-    def ep_progress(ep_name: str, percent: float):
-        nonlocal current_ep
-        if ep_name != current_ep:
-            if current_ep:
-                print()
-            current_ep = ep_name
-        print(f"\r  {ep_name:<30}  {percent:5.1f}%", end="", flush=True)
-
-    manager.download_and_register_eps(progress_callback=ep_progress)
-    if current_ep:
-        print()
-
-    # Select and load a model
+    # Select and load a tool-capable model.
     model = manager.catalog.get_model("qwen2.5-0.5b")
-    model.download(
-        lambda progress: print(
-            f"\rDownloading model: {progress:.2f}%", end="", flush=True
+    if model is None:
+        raise RuntimeError("Model 'qwen2.5-0.5b' was not found in the catalog.")
+    if not model.is_cached:
+        model.download(
+            lambda progress: print(
+                f"\rDownloading model: {progress:.2f}%", end="", flush=True
+            )
         )
-    )
-    print()
+        print()
     model.load()
     print("Model loaded and ready.")
 
-    # Get a chat client
-    client = model.get_chat_client()
+    try:
+        with ChatSession(model) as session:
+            session.set_options(
+                RequestOptions(
+                    search=SearchOptions(temperature=0.0, max_output_tokens=512)
+                )
+            )
+            for tool in tools:
+                session.add_tool_definition(
+                    tool["name"],
+                    tool["description"],
+                    json.dumps(tool["parameters"]),
+                )
 
-    # Conversation with a system prompt
-    messages = [
-        {
-            "role": "system",
-            "content": "You are a helpful assistant with access to tools. "
-            "Use them when needed to answer questions accurately.",
-        }
-    ]
+            system_prompt = (
+                "You are a helpful assistant with access to tools. "
+                "Use them when needed to answer questions accurately."
+            )
+            first_turn = True
 
-    print("\nTool-calling assistant ready! Type 'quit' to exit.\n")
+            print("\nTool-calling assistant ready! Type 'quit' to exit.\n")
 
-    while True:
-        user_input = input("You: ")
-        if user_input.strip().lower() in ("quit", "exit"):
-            break
+            while True:
+                user_input = input("You: ")
+                if user_input.strip().lower() in ("quit", "exit"):
+                    break
 
-        messages.append({"role": "user", "content": user_input})
+                with Request() as request:
+                    if first_turn:
+                        request.add_item(MessageItem.system(system_prompt))
+                        first_turn = False
+                    request.add_item(MessageItem.user(user_input))
 
-        response = client.complete_chat(messages, tools=tools)
-        answer = process_tool_calls(messages, response, client)
+                    with session.process_request(request) as response:
+                        answer, pending_calls = response_content(response)
+                    answer = process_tool_calls(session, answer, pending_calls)
 
-        messages.append({"role": "assistant", "content": answer})
-        print(f"Assistant: {answer}\n")
-
-    # Clean up
-    model.unload()
-    print("Model unloaded. Goodbye!")
+                print(f"Assistant: {answer}\n")
+    finally:
+        # Clean up
+        if model.is_loaded:
+            model.unload()
+        manager.close()
+        print("Model unloaded. Goodbye!")
 
 
 # </init>

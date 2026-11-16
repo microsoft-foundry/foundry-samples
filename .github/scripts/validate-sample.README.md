@@ -137,6 +137,16 @@ The contract is:
     have pre-existing conversations, so everything the filter returns was
     created by this run. Samples that never create a conversation simply
     have nothing to delete here.
+  Agent and agent-version DELETE responses must acknowledge deletion with
+  `deleted: true`, the matching agent name (and version for a version DELETE),
+  and the operation's `agent.deleted` or `agent.version.deleted` object type.
+  Before reporting success, cleanup GETs the exact deleted resource up to
+  three times, waiting two seconds between reads, until it returns HTTP 404.
+  A malformed/negative acknowledgement, a resource still present after those
+  reads, or any verification error other than HTTP 404 fails cleanup. These
+  checks do not retry DELETE, change conversation cleanup, or remove warm
+  project/model resources. Observing HTTP 404 is not a guarantee against later
+  service-side recreation after verification ends.
   Cleanup failure is an infrastructure error rather than a successful
   validation with leaked resources. Any future resource kind that can be
   scoped the same way (queryable by this run's unique agent name, with no

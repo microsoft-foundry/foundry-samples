@@ -1,0 +1,10 @@
+name: OpenAI Computer Tool Hosted Agent (Python, Responses)
+description: Containerized Microsoft Foundry Hosted Agent using the Responses protocol and GA OpenAI Computer Tool (computer) with PyAutoGUI and Xvfb.
+
+build: >-
+  python -m pip install --disable-pip-version-check "uv==0.11.7" &&
+  cd src/openai-computer-tool &&
+  uv sync --frozen --no-dev --no-install-project
+validate: >-
+  cd src/openai-computer-tool &&
+  uv run --no-sync python -m compileall -q .

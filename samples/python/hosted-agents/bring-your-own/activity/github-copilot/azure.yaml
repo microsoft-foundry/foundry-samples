@@ -51,6 +51,7 @@ services:
       authorizationSchemes:
         - type: BotServiceRbac
     env:
+      PYTHONNOUSERSITE: "1"
       AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-5-mini}
     container:
       resources:

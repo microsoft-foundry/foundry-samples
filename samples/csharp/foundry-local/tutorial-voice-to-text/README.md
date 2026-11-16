@@ -1,13 +1,14 @@
 # Tutorial: Voice to Text (C#)
 
-Transcribe and summarize audio (tutorial).
+Transcribe and summarize audio with native v2 audio and chat sessions.
 
 > Part of the [Foundry Local samples for C#](../).
 
 ## Prerequisites
 
-- [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
 - .NET 9 SDK
+
+The unified `Microsoft.AI.Foundry.Local` package includes the local runtime.
 
 ## Run
 

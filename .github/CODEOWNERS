@@ -9,8 +9,11 @@
 /.azure-pipelines/scripts/hosted-agents/ @microsoft-foundry/hosted-agents
 /.azure-pipelines/scripts/hosted-agent-samples-ci-skiplist @microsoft-foundry/hosted-agents
 /.azure-pipelines/scripts/hosted-agent-samples-code-ci-skiplist @microsoft-foundry/hosted-agents
+/samples/python/hosted-agents/langgraph/responses/14-middleware/ @microsoft-foundry/hosted-agents @herohua
+/.azure-pipelines/hosted-agent-tests/python/langgraph/responses/14-middleware/ @microsoft-foundry/hosted-agents @herohua
 
 # Foundry Local samples — replace @microsoft-foundry/foundry-local with the actual team slug once created.
+/samples/cpp/foundry-local/        @microsoft-foundry/foundry-local
 /samples/csharp/foundry-local/     @microsoft-foundry/foundry-local
 /samples/javascript/foundry-local/ @microsoft-foundry/foundry-local
 /samples/python/foundry-local/     @microsoft-foundry/foundry-local
@@ -25,6 +28,9 @@
 /samples/javascript/voice-agents/ @microsoft-foundry/voice-agents-sample
 /samples/python/voice-agents/     @microsoft-foundry/voice-agents-sample
 /samples/typescript/voice-agents/ @microsoft-foundry/voice-agents-sample
+
+#agent controls samples
+/samples/cli/agent-controls/ @microsoft-foundry/agent-controls
 
 #### Partner / external collaborator sample areas #######################################################
 # Partners are outside collaborators (not org members). Each entry is the source of truth for that
@@ -62,6 +68,17 @@
 /samples/REST/quickstart/quickstart-chat-with-agent.sh @microsoft-foundry/AI-Platform-Docs
 /samples/REST/quickstart/quickstart-create-agent.sh @microsoft-foundry/AI-Platform-Docs
 /samples/REST/quickstart/quickstart-responses.sh @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/audio-transcription/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/embeddings/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/integrate-examples/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/live-audio-transcription/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/native-chat-completions/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/tool-calling/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/tutorial-chat-assistant/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/tutorial-document-summarizer/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/tutorial-tool-calling-assistant/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/tutorial-voice-to-text/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/csharp/VoiceAgents/realtime-image-input/RealtimeImageInput.cs @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/enterprise-agent-tutorial/1-idea-to-prototype/Evaluate/Program.cs @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/enterprise-agent-tutorial/1-idea-to-prototype/ModernWorkplaceAssistant/Program.cs @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/foundry-local/audio-transcription-example/Program.cs @microsoft-foundry/AI-Platform-Docs
@@ -82,6 +99,7 @@
 /samples/java/quickstart/chat-with-agent/src/main/java/com/azure/ai/foundry/samples/ChatWithAgent.java @microsoft-foundry/AI-Platform-Docs
 /samples/java/quickstart/create-agent/src/main/java/com/azure/ai/foundry/samples/CreateAgent.java @microsoft-foundry/AI-Platform-Docs
 /samples/java/quickstart/responses/src/main/java/com/azure/ai/foundry/samples/CreateResponse.java @microsoft-foundry/AI-Platform-Docs
+/samples/java/voice-agents/src/main/java/com/azure/ai/agents/voice/VoiceAgentLiveImageConversationSample.java @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/foundry-local/audio-transcription-example/app.js @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/foundry-local/embeddings/app.js @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/foundry-local/langchain-integration-example/app.js @microsoft-foundry/AI-Platform-Docs
@@ -93,6 +111,7 @@
 /samples/javascript/foundry-local/tutorial-tool-calling/app.js @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/foundry-local/tutorial-voice-to-text/app.js @microsoft-foundry/AI-Platform-Docs
 /samples/javascript/foundry-local/web-server-example/app.js @microsoft-foundry/AI-Platform-Docs
+/samples/javascript/voice-agents/realtime-image-input/app.js @microsoft-foundry/AI-Platform-Docs
 /samples/python/enterprise-agent-tutorial/1-idea-to-prototype/evaluate.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/enterprise-agent-tutorial/1-idea-to-prototype/main.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/foundry-local/audio-transcription/src/app.py @microsoft-foundry/AI-Platform-Docs
@@ -113,6 +132,7 @@
 /samples/python/quickstart/chat-with-agent/quickstart-chat-with-agent.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/quickstart/create-agent/quickstart-create-agent.py @microsoft-foundry/AI-Platform-Docs
 /samples/python/quickstart/responses/quickstart-responses.py @microsoft-foundry/AI-Platform-Docs
+/samples/python/voice-agents/voice_agent_realtime_image_conversation.py @microsoft-foundry/AI-Platform-Docs
 /samples/rust/foundry-local/audio-transcription-example/src/main.rs @microsoft-foundry/AI-Platform-Docs
 /samples/rust/foundry-local/embeddings/src/main.rs @microsoft-foundry/AI-Platform-Docs
 /samples/rust/foundry-local/foundry-local-webserver/src/main.rs @microsoft-foundry/AI-Platform-Docs
@@ -126,6 +146,7 @@
 /samples/typescript/quickstart/chat-with-agent/src/quickstart-chat-with-agent.ts @microsoft-foundry/AI-Platform-Docs
 /samples/typescript/quickstart/create-agent/src/quickstart-create-agent.ts @microsoft-foundry/AI-Platform-Docs
 /samples/typescript/quickstart/responses/src/quickstart-responses.ts @microsoft-foundry/AI-Platform-Docs
+/samples/typescript/voice-agents/realtime-image-input/src/voice-agents-realtime-image-input.ts @microsoft-foundry/AI-Platform-Docs
 
 #### Additional ownership entries (added via issue triage) ##############################################
 # Routing for sample paths that were uncovered during issue triage.
@@ -146,6 +167,8 @@
 /samples/python/hosted-agents/bring-your-own/invocations/github-copilot/       @ankitbko @huimiu
 /samples/python/hosted-agents/bring-your-own/invocations/human-in-the-loop/    @ankitbko @huimiu
 /samples/python/hosted-agents/bring-your-own/responses/langgraph-toolbox/      @antriksh30 @lindazqli
+/samples/python/hosted-agents/langgraph/responses/11-deep-agents/              @microsoft-foundry/hosted-agents @Jiahui-Gu
+/.azure-pipelines/hosted-agent-tests/python/langgraph/responses/11-deep-agents/ @microsoft-foundry/hosted-agents @Jiahui-Gu
 
 # Migration scripts — v1-to-v2 migration tooling (issue #807)
 /migration/ @nikhowlettMicrosoft

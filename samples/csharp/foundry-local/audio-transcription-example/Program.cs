@@ -62,19 +62,32 @@ Console.WriteLine("done.");
 
 
 // <transcription>
-// Get an audio client
-var audioClient = await model.GetAudioClientAsync();
-audioClient.Settings.Language = "en";
+// Create a native audio session and configure transcription.
+using var audioSession = new AudioSession(model);
+audioSession.SetOptions(new RequestOptions
+{
+    AdditionalOptions = new Dictionary<string, string> { ["language"] = "en" }
+});
+audioSession.SetStreaming(true);
 
 // Get a transcription with streaming outputs
 var audioFile = args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "Recording.mp3");
 Console.WriteLine($"Transcribing audio with streaming output: {Path.GetFileName(audioFile)}");
-var response = audioClient.TranscribeAudioStreamingAsync(audioFile, CancellationToken.None);
-await foreach (var chunk in response)
+using var request = new Request();
+request.AddItem(new AudioItem(audioFile));
+await using var response = audioSession.ProcessStreamingRequestAsync(request);
+await foreach (var item in response)
 {
-    Console.Write(chunk.Text);
-    Console.Out.Flush();
+    using (item)
+    {
+        if (item is SpeechSegmentItem segment)
+        {
+            Console.Write(segment.Text);
+            Console.Out.Flush();
+        }
+    }
 }
+using var finalResponse = await response.FinalResponse;
 
 Console.WriteLine();
 // </transcription>
@@ -82,6 +95,10 @@ Console.WriteLine();
 
 // <cleanup>
 // Tidy up - unload the model
+finalResponse.Dispose();
+await response.DisposeAsync();
+request.Dispose();
+audioSession.Dispose();
 await model.UnloadAsync();
 // </cleanup>
 // </complete_code>

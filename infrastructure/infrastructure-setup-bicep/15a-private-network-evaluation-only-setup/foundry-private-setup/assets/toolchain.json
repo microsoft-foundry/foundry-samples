@@ -1,0 +1,18 @@
+{
+  "minimumPowerShell": "7.2",
+  "knownTested": {
+    "platform": "Windows",
+    "powerShell": "7.6.7",
+    "python": "3.14.7",
+    "azureCli": "2.91.0",
+    "bicep": "0.42.1"
+  },
+  "compatibility": "Known-tested versions are diagnostic/repro information, not exact locks. Check required local CLI commands/flags and compile the chosen bundled Bicep asset.",
+  "isolation": "Prefer CLI-owned python.exe -IBm azure.cli; otherwise use the discovered native CLI launcher. No global Python fallback/install.",
+  "downloads": false,
+  "budgets": {
+    "nativeSeconds": 120,
+    "operationSeconds": 900,
+    "maxConcurrency": 3
+  }
+}

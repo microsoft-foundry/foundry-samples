@@ -1,5 +1,5 @@
-name: Tutorial: Voice to Text (Python)
-description: Transcribe and summarize audio (tutorial).
+name: "Tutorial: Voice to Text (Python)"
+description: Transcribe with AudioSession and summarize with ChatSession.
 
-build: "pip install -r requirements.txt"
-validate: "python -m py_compile $(find . -maxdepth 3 -name '*.py' -not -path './.venv/*')"
+build: "python -m pip install -r requirements.txt"
+validate: "python -m compileall -q src"

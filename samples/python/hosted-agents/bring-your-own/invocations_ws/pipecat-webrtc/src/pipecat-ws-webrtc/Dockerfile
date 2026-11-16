@@ -1,6 +1,8 @@
 FROM ghcr.io/astral-sh/uv:0.11.7 AS uv
 FROM python:3.12-slim
 
+ENV PYTHONNOUSERSITE=1
+
 COPY --from=uv /uv /uvx /bin/
 
 WORKDIR /app
@@ -11,7 +13,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 # Foundry hosted agents expose port 8088 by convention; force the
 # server to bind there regardless of the .env default (8089).
-ENV SERVER_PORT=8088
+ENV PORT=8088
 
 # Install Python dependencies and strip unnecessary artifacts in the same layer.
 COPY pyproject.toml uv.lock uv.toml ./

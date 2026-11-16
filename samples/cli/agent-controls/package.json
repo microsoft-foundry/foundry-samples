@@ -1,0 +1,18 @@
+{
+  "name": "agent-control-quickstart",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "demo": "node demo.mjs",
+    "test": "node --test agent-control.test.mjs"
+  },
+  "dependencies": {
+    "@azure/identity": "4.14.1",
+    "@responsibleai/agent-hooks": "0.1.0-beta.3",
+    "canonicalize": "5.1.0"
+  }
+}

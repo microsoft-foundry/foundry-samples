@@ -1,0 +1,34 @@
+<policies>
+  <inbound>
+    <base />
+    <!--
+      Authenticate the caller. The Foundry ApiManagement connection uses
+      ProjectManagedIdentity auth: the project's managed identity presents an
+      Entra token whose audience is the Cognitive Services resource. Validate
+      tenant + audience, and admit only the workload project's identity.
+    -->
+    <validate-azure-ad-token tenant-id="${tenant_id}">
+      <audiences>
+        <audience>${token_audience}</audience>
+      </audiences>
+      <required-claims>
+        <claim name="oid" match="any">
+          <value>${project_principal_id}</value>
+        </claim>
+      </required-claims>
+    </validate-azure-ad-token>
+
+    <!-- Forward to the private Foundry model account using APIM's managed identity. -->
+    <set-backend-service base-url="${foundry_endpoint}/openai" />
+    <authentication-managed-identity resource="${token_audience}" />
+  </inbound>
+  <backend>
+    <base />
+  </backend>
+  <outbound>
+    <base />
+  </outbound>
+  <on-error>
+    <base />
+  </on-error>
+</policies>

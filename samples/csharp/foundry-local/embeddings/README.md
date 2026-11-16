@@ -1,13 +1,14 @@
 # Embeddings (C#)
 
-Generate single and batch text embeddings using the Foundry Local C# SDK.
+Generate single and batch text embeddings with the native v2 `EmbeddingsSession` and tensor item APIs.
 
 > Part of the [Foundry Local samples for C#](../).
 
 ## Prerequisites
 
-- [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
 - .NET 9 SDK
+
+The unified `Microsoft.AI.Foundry.Local` package includes the local runtime.
 
 ## Run
 

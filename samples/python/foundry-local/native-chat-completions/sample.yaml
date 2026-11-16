@@ -1,5 +1,5 @@
 name: Native Chat Completions (Python)
-description: Initialize the SDK, start the local service, and run streaming chat completions.
+description: Run in-process streaming chat with the SDK v2 native ChatSession API.
 
-build: "pip install -r requirements.txt"
-validate: "python -m py_compile $(find . -maxdepth 3 -name '*.py' -not -path './.venv/*')"
+build: "python -m pip install -r requirements.txt"
+validate: "python -m compileall -q src"

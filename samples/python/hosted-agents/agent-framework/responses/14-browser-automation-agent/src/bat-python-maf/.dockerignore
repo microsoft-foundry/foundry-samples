@@ -9,7 +9,6 @@ __pycache__
 .azure
 node_modules
 .playwright
-.playwright-cli
 screenshots
 downloads
 traces

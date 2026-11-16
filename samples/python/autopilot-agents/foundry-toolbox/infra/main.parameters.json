@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
+    "location": {
+      "value": "${AZURE_LOCATION}"
+    },
+    "resourceGroupName": {
+      "value": "${AZURE_RESOURCE_GROUP}"
+    },
+    "resourceGroupExists": {
+      "value": "${RESOURCE_GROUP_EXISTS}"
+    },
+    "foundryResourceName": {
+      "value": "${AZURE_AI_ACCOUNT_NAME}"
+    },
+    "foundryResourceExists": {
+      "value": "${FOUNDRY_RESOURCE_EXISTS}"
+    },
+    "foundryProjectName": {
+      "value": "${AZURE_AI_PROJECT_NAME}"
+    },
+    "foundryProjectExists": {
+      "value": "${FOUNDRY_PROJECT_EXISTS}"
+    },
+    "modelDeploymentName": {
+      "value": "${AZURE_AI_MODEL_DEPLOYMENT_NAME}"
+    },
+    "modelDeploymentExists": {
+      "value": "${MODEL_DEPLOYMENT_EXISTS}"
+    },
+    "modelName": {
+      "value": "${MODEL_NAME}"
+    },
+    "modelFormat": {
+      "value": "${MODEL_FORMAT}"
+    },
+    "modelVersion": {
+      "value": "${MODEL_VERSION}"
+    },
+    "modelSkuName": {
+      "value": "${MODEL_SKU_NAME}"
+    },
+    "modelCapacity": {
+      "value": "${MODEL_CAPACITY}"
+    }
+  }
+}

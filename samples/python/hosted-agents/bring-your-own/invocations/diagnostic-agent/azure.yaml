@@ -18,6 +18,8 @@ services:
         - Diagnostics
     project: src/diagnostic-agent-python-invocations
     language: python
+    env:
+      PYTHONNOUSERSITE: "1"
     codeConfiguration:
       runtime: python_3_13
       entryPoint: main.py

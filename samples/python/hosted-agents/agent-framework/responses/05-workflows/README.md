@@ -4,8 +4,6 @@ An [Agent Framework](https://github.com/microsoft/agent-framework) workflow demo
 
 > This sample requires a more advanced model because the model needs to continue the conversation from an assistant message. Not all models perform well in this scenario. Tested with OpenAI's model `gpt-5.4`.
 
-> This sample requires a more advanced model because the model needs to continue the conversation from an assistant message. Not all models perform well in this scenario. Tested with OpenAI's model `gpt-5.4`.
-
 ## How it works
 
 The agent creates three specialized `Agent` instances sharing the same `FoundryChatClient`: a **writer** that generates slogans, a **legal reviewer** that ensures compliance, and a **formatter** that styles the output. Each agent is wrapped in an `AgentExecutor` with `context_mode="last_agent"` so it only sees the previous agent's output. The `WorkflowBuilder` wires them into a linear pipeline and limits the output to the formatter's result. The workflow is converted to a standard agent via `.as_agent()` and served via `ResponsesHostServer`. See [main.py](src/agent-framework-workflows-responses/main.py) for the implementation.
@@ -82,14 +80,14 @@ azd ai agent invoke "Create a slogan for a new electric SUV that is affordable a
 
 1. **VS Code** with the **[Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)** extension installed.
 2. For debugging Python in VS Code, install the **[Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)** extension pack.
+3. **Python 3.13 or later** and [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment.
 
 ### Set up the Python virtual environment
 
-- With Python 3.13 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
+- Create and synchronize the locked environment:
 
   ```bash
-   pipx install uv==0.11.7
-   uv sync --frozen --python 3.13
+   uv sync --frozen
   ```
 - Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
 

@@ -1,6 +1,7 @@
 # Tutorial: Chat Assistant (Python)
 
-Build an interactive multi-turn chat assistant (tutorial).
+Build an interactive multi-turn assistant with a stateful SDK v2
+`ChatSession`.
 
 > Part of the [Foundry Local samples for Python](../).
 

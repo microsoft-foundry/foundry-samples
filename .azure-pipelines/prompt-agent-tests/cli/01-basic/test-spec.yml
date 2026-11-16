@@ -1,0 +1,17 @@
+version: 1
+sample:
+  owner: zhihuan
+  experiences: [azd]
+tests:
+  - name: arithmetic-and-conversation
+    turns:
+      - input: "What is two plus two? Answer with just the number."
+        assertions:
+          - source: assistant_text
+            type: equals
+            value: '4'
+      - input: "Add three to your previous answer. Answer with just the number."
+        assertions:
+          - source: assistant_text
+            type: equals
+            value: '7'

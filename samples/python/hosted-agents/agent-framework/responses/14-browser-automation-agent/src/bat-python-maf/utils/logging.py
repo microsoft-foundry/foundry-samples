@@ -21,4 +21,4 @@ def redact_sensitive_values(text: str) -> str:
     text = re.sub(
         r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b", "<redacted-jwt>", text
     )
-    return re.sub(r"wss://[^\s\"']+", "wss://<redacted-cdp-url>", text)
+    return text

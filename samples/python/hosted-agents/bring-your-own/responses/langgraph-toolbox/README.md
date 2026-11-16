@@ -91,7 +91,7 @@ Invoke-RestMethod -Method POST http://localhost:8088/responses `
 
 **Set up the Python virtual environment**
 
-- With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/installation/), install uv outside the project environment, then let uv create and synchronize the locked environment:
+- With Python 3.12 or later and [pipx](https://pipx.pypa.io/stable/how-to/install-pipx.html), install uv outside the project environment, then let uv create and synchronize the locked environment:
 
   ```bash
   cd src/toolbox-langgraph
@@ -161,7 +161,7 @@ azd auth login
 > If you use GitHub Copilot for Azure to scaffold a hosted agent that consumes this toolbox, the following skill references describe the same endpoint contract (env var, headers, MCP protocol, citation patterns, and troubleshooting) that the agent must implement:
 >
 > - [Toolbox reference](https://github.com/microsoft/GitHub-Copilot-for-Azure/blob/main/plugin/skills/microsoft-foundry/foundry-agent/create/references/toolbox-reference.md) — endpoint format, MCP protocol, OAuth consent handling, citation patterns, and troubleshooting.
-> - [Use toolbox in a hosted agent](https://github.com/microsoft/GitHub-Copilot-for-Azure/blob/main/plugin/skills/microsoft-foundry/foundry-agent/create/references/use-toolbox-in-hosted-agent.md) — endpoint resolution, env-var contract, payload shape, code integration patterns, and tracing.
+> - [Use toolbox in a hosted agent](https://github.com/microsoft/azure-skills/blob/main/.github/plugins/azure-skills/skills/microsoft-foundry/foundry-agent/create/references/use-toolbox-in-hosted-agent.md) — endpoint resolution, env-var contract, payload shape, code integration patterns, and tracing.
 
 This sample exposes the toolbox tools to a LangGraph ReAct loop. `azure.yaml`
 provisions `toolbox-langgraph-tools`, containing `web_search` plus the public
@@ -411,6 +411,8 @@ protocols:
   - protocol: responses
     version: 2.0.0
 environment_variables:
+  - name: PYTHONNOUSERSITE
+    value: "1"
   - name: AZURE_OPENAI_ENDPOINT
     value: ${AZURE_OPENAI_ENDPOINT}     # Single-brace syntax
   - name: AZURE_AI_MODEL_DEPLOYMENT_NAME

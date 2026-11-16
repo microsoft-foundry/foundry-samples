@@ -1,6 +1,6 @@
 # Tutorial: Voice to Text (Rust)
 
-Transcribe and summarize audio (tutorial).
+Transcribe audio with `AudioSession`, then summarize it with `ChatSession`.
 
 > Part of the [Foundry Local samples for Rust](../).
 

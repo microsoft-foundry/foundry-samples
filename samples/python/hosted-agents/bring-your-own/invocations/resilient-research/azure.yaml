@@ -44,6 +44,7 @@ services:
       - protocol: invocations
         version: 2.0.0
     env:
+      PYTHONNOUSERSITE: "1"
       AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
       # Pacing is tuned for a quick hosted demo (and to keep CI invocations
       # well within timeout). Raise NUM_PHASES / CALLS_PER_PHASE and the

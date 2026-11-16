@@ -82,7 +82,8 @@ async def _ensure_session():
             "FOUNDRY_AGENT_SESSION_ID not set, using: %s", _session_id)
 
     github_token = os.environ.get("GITHUB_TOKEN")
-    provider, model = _byok_provider()
+    # Token acquisition is blocking I/O; keep it off the event loop.
+    provider, model = await asyncio.to_thread(_byok_provider)
 
     if provider:
         # BYOK mode: Foundry model via Managed Identity — no token needed.

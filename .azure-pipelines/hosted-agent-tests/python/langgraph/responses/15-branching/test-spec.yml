@@ -1,0 +1,44 @@
+version: 1
+
+sample:
+  owner: wixzhu
+  experiences: [azd, vscode]
+
+tests:
+  - name: branching-rewind-and-regeneration
+    turns:
+      - input: Remember the number 10.
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: '^\s*10\s*$'
+      - input: Add 1 to the remembered number.
+        previous_turn: 1
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: '^\s*11\s*$'
+      - input: Add 2 to the remembered number.
+        previous_turn: 1
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: '^\s*12\s*$'
+      - input: What number do you remember?
+        previous_turn: 2
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: '^\s*11\s*$'
+      - input: Add 1 to the remembered number.
+        previous_turn: 4
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: '^\s*12\s*$'
+      - input: Add 1 to the remembered number.
+        previous_turn: 1
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: '^\s*11\s*$'

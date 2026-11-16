@@ -66,6 +66,7 @@ The browser client lives in [`chat_client/`](src/pipecat-ws-server/chat_client/)
 | `AZURE_FOUNDRY_API_KEY` | Yes | Key for the Azure OpenAI / Foundry endpoint. |
 | `AZURE_OPENAI_ENDPOINT` | Yes | Azure OpenAI endpoint (e.g. `https://your-aoai.openai.azure.com`). |
 | `AZURE_LLM_MODEL` | Yes | Model deployment name (e.g. `gpt-4o-mini`). |
+| `PORT` | No | Server port. Defaults to `8088`; `azd ai agent run --port` sets this automatically. |
 
 ```bash
 cp .env.example .env
@@ -129,7 +130,9 @@ uv sync --frozen
 uv run --no-sync python server.py
 ```
 
-The server logs `Uvicorn running on http://0.0.0.0:8088` and exposes:
+The server defaults to `http://0.0.0.0:8088`. Set `PORT` (or use
+`azd ai agent run --port <port>`) to select another port, and update the client's
+`PIPECAT_WEBSOCKET_LOCAL_URL` accordingly. The server exposes:
 
 - `GET /health`, `/readiness`, `/liveness` — health probes
 - `WS  /invocations_ws` — the pipecat protobuf WebSocket endpoint

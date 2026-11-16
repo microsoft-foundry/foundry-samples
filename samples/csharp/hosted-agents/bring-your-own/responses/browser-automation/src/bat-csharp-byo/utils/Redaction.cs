@@ -1,5 +1,7 @@
 // Copyright (c) Microsoft. All rights reserved.
 
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 namespace BrowserAutomation;
@@ -17,5 +19,87 @@ public static class Redaction
         text = TokenPattern.Replace(text, "<token>");
         text = AccessKeyPattern.Replace(text, "$1<redacted>");
         return text;
+    }
+
+    public static string PublicToolOutput(
+        string name, string output, IReadOnlyList<string> liveViewUrls)
+    {
+        if (name == "load_skill")
+            return output;
+        return SanitizeText(output, liveViewUrls);
+    }
+
+    private static string SanitizeText(string text, IReadOnlyList<string> liveViewUrls)
+    {
+        var prefix = text.StartsWith("Tool error: ", StringComparison.Ordinal)
+            ? "Tool error: "
+            : text.StartsWith("Tool call failed: ", StringComparison.Ordinal)
+                ? "Tool call failed: " : "";
+        text = text[prefix.Length..];
+        JsonNode? value;
+        try
+        {
+            value = JsonNode.Parse(text);
+        }
+        catch (JsonException)
+        {
+            value = null;
+        }
+        if (value is JsonObject or JsonArray)
+        {
+            var original = value.ToJsonString();
+            SanitizeJson(value, liveViewUrls);
+            var sanitized = value.ToJsonString();
+            if (sanitized != original)
+                return prefix + sanitized;
+        }
+        foreach (var url in liveViewUrls)
+        {
+            if (string.IsNullOrEmpty(url))
+                continue;
+            text = text.Replace(url, "[live-view URL omitted]", StringComparison.Ordinal);
+            text = text.Replace(
+                JsonSerializer.Serialize(url)[1..^1],
+                "[live-view URL omitted]",
+                StringComparison.Ordinal);
+        }
+        return prefix + Redact(text);
+    }
+
+    private static void SanitizeJson(JsonNode node, IReadOnlyList<string> liveViewUrls)
+    {
+        if (node is JsonObject obj)
+        {
+            if (obj["type"] is JsonValue type
+                && type.TryGetValue<string>(out var contentType) && contentType == "image")
+            {
+                obj.Clear();
+                obj["type"] = "text";
+                obj["text"] = "Screenshot omitted for privacy.";
+                return;
+            }
+            foreach (var property in obj.ToList())
+            {
+                var key = property.Key.Replace("_", "").Replace(" ", "").ToLowerInvariant();
+                if (key == "liveviewurl")
+                    obj.Remove(property.Key);
+                else if (key == "screenshot")
+                    obj[property.Key] = "Screenshot omitted for privacy.";
+                else if (property.Value is JsonValue item && item.TryGetValue<string>(out var text))
+                    obj[property.Key] = SanitizeText(text, liveViewUrls);
+                else if (property.Value is { } child)
+                    SanitizeJson(child, liveViewUrls);
+            }
+        }
+        else if (node is JsonArray array)
+        {
+            for (var index = 0; index < array.Count; index++)
+            {
+                if (array[index] is JsonValue item && item.TryGetValue<string>(out var text))
+                    array[index] = SanitizeText(text, liveViewUrls);
+                else if (array[index] is { } child)
+                    SanitizeJson(child, liveViewUrls);
+            }
+        }
     }
 }

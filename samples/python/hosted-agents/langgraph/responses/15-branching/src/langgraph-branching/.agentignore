@@ -1,0 +1,8 @@
+.azure/
+.git/
+.venv*/
+.env
+.env.*
+__pycache__/
+*.pyc
+wheels/

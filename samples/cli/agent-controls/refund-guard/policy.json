@@ -1,0 +1,77 @@
+{
+  "properties": {
+    "format": "ACS",
+    "acs": {
+      "agent_control_specification_version": "0.4.0-alpha.1",
+      "metadata": {
+        "name": "refund-guard",
+        "description": "Allow order lookup and refunds greater than zero and at most 100."
+      },
+      "policies": {
+        "refund-guard": {
+          "type": "rego",
+          "query": "data.refund_guard.verdict"
+        }
+      },
+      "intervention_points": {
+        "agent_startup": {
+          "policy_target": "$snap.agent_init",
+          "policy_target_kind": "agent_init",
+          "policy": { "id": "refund-guard" }
+        },
+        "input": {
+          "policy_target": "$snap.input",
+          "policy_target_kind": "user_input",
+          "policy": { "id": "refund-guard" }
+        },
+        "pre_model_call": {
+          "policy_target": "$snap.messages",
+          "policy_target_kind": "messages",
+          "policy": { "id": "refund-guard" }
+        },
+        "post_model_call": {
+          "policy_target": "$snap.response",
+          "policy_target_kind": "model_response",
+          "policy": { "id": "refund-guard" }
+        },
+        "pre_tool_call": {
+          "policy_target": "$snap.tool_call.args",
+          "policy_target_kind": "tool_args",
+          "tool_name_from": "$snap.tool_call.name",
+          "policy": { "id": "refund-guard" }
+        },
+        "post_tool_call": {
+          "policy_target": "$snap.tool_result.value",
+          "policy_target_kind": "tool_result",
+          "tool_name_from": "$snap.tool_call.name",
+          "policy": { "id": "refund-guard" }
+        },
+        "output": {
+          "policy_target": "$snap.output",
+          "policy_target_kind": "assistant_output",
+          "policy": { "id": "refund-guard" }
+        },
+        "agent_shutdown": {
+          "policy_target": "$snap.summary",
+          "policy_target_kind": "agent_summary",
+          "policy": { "id": "refund-guard" }
+        }
+      },
+      "tools": {
+        "lookup_order": {
+          "type": "read",
+          "description": "Look up an order.",
+          "security_labels": ["readonly"]
+        },
+        "refund_order": {
+          "type": "write",
+          "description": "Issue a refund in the application's configured currency.",
+          "security_labels": ["financial_write"]
+        }
+      }
+    },
+    "acsRegos": [
+      { "regoName": "refund-guard" }
+    ]
+  }
+}

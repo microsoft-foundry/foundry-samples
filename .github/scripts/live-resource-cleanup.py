@@ -19,6 +19,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -29,6 +30,8 @@ from urllib.request import Request, urlopen
 SCHEMA_VERSION = 1
 TOKEN_RESOURCE = "https://ai.azure.com"
 API_VERSION = "v1"
+DELETE_VERIFICATION_ATTEMPTS = 3
+DELETE_VERIFICATION_DELAY_SECONDS = 2
 
 
 class CleanupError(RuntimeError):
@@ -276,6 +279,37 @@ def version_sort_key(version: str) -> tuple[int, int | str]:
     return (0, int(version)) if version.isdigit() else (1, version)
 
 
+def delete_agent_resource(
+    url: str, token: str, agent_name: str, version: str | None = None
+) -> None:
+    payload = request_json("DELETE", url, token)
+    expected_object = "agent.deleted" if version is None else "agent.version.deleted"
+    if (
+        payload.get("object") != expected_object
+        or payload.get("name") != agent_name
+        or payload.get("deleted") is not True
+        or (version is not None and payload.get("version") != version)
+    ):
+        raise CleanupError(
+            f"Foundry API DELETE {url} returned an invalid deletion acknowledgement; "
+            f"expected {expected_object}, matching resource identity, and deleted=true"
+        )
+
+    for attempt in range(DELETE_VERIFICATION_ATTEMPTS):
+        try:
+            request_json("GET", url, token)
+        except FoundryApiError as exc:
+            if exc.status == 404:
+                return
+            raise
+        if attempt + 1 < DELETE_VERIFICATION_ATTEMPTS:
+            time.sleep(DELETE_VERIFICATION_DELAY_SECONDS)
+    raise CleanupError(
+        f"Foundry API DELETE {url} acknowledged deletion but the resource still exists "
+        f"after {DELETE_VERIFICATION_ATTEMPTS} verification reads"
+    )
+
+
 def cleanup(snapshot_path: Path) -> int:
     before = load_snapshot(snapshot_path)
     endpoint = foundry_endpoint()
@@ -301,7 +335,7 @@ def cleanup(snapshot_path: Path) -> int:
                     f"{endpoint}/agents/{quote(agent_name, safe='')}?"
                     f"{urlencode({'api-version': API_VERSION})}"
                 )
-                request_json("DELETE", url, token)
+                delete_agent_resource(url, token, agent_name)
                 print(f"Deleted live-created agent: {agent_name}")
                 deleted += 1
             continue
@@ -314,7 +348,7 @@ def cleanup(snapshot_path: Path) -> int:
                 f"{endpoint}/agents/{quote(agent_name, safe='')}/versions/"
                 f"{quote(version, safe='')}?{urlencode({'api-version': API_VERSION})}"
             )
-            request_json("DELETE", url, token)
+            delete_agent_resource(url, token, agent_name, version)
             print(f"Deleted live-created agent version: {agent_name} version {version}")
             deleted += 1
     print(f"Live-resource cleanup removed {deleted} resource(s).")

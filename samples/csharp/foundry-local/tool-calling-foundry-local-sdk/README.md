@@ -1,13 +1,14 @@
 # Tool Calling with Foundry Local SDK (C#)
 
-Use tool calling with native chat completions.
+Use native v2 tool definitions, tool-call items, and tool-result items with a stateful `ChatSession`.
 
 > Part of the [Foundry Local samples for C#](../).
 
 ## Prerequisites
 
-- [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
 - .NET 9 SDK
+
+The unified `Microsoft.AI.Foundry.Local` package includes the local runtime.
 
 ## Run
 

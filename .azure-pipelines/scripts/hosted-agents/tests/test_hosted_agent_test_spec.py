@@ -94,6 +94,24 @@ class SpecSchemaTests(unittest.TestCase):
         with self.assertRaisesRegex(module.SpecError, "duplicates test name"):
             self.load(duplicate)
 
+    def test_previous_turn_must_reference_an_earlier_turn_in_the_same_test(self):
+        for previous_turn in (None, True, False, 0, -1, 2, 3, 1.0, "1"):
+            with self.subTest(previous_turn=previous_turn), self.assertRaisesRegex(
+                module.SpecError, "previous_turn.*earlier turn"
+            ):
+                module.validate_spec({
+                    "version": 1,
+                    "sample": {"owner": "wemeng", "experiences": ["azd"]},
+                    "tests": [{
+                        "name": "branch",
+                        "turns": [{"input": "root"}, {
+                            "input": "branch", "previous_turn": previous_turn,
+                        }],
+                    }],
+                })
+        with self.assertRaisesRegex(module.SpecError, "previous_turn.*earlier turn"):
+            self.load(BASE.replace("input: hello", "input: hello\n        previous_turn: 1"))
+
     def test_wrong_scope_is_rejected(self):
         invalid = BASE.replace("source: assistant_text", "source: console_log")
         with self.assertRaisesRegex(module.SpecError, "not valid at turn scope"):
@@ -308,6 +326,39 @@ class PlanningTests(unittest.TestCase):
             plan["tests"][0]["turns"][0]["serialized_input"], '{"query":"one"}'
         )
         self.assertEqual(plan["tests"][0]["turns"][0]["test_turn_count"], 1)
+
+    def test_branching_contract_preserves_parent_selection(self):
+        root = Path(__file__).resolve().parents[4]
+        document = module.load_spec(
+            root / ".azure-pipelines/hosted-agent-tests/python/langgraph/"
+            "responses/15-branching/test-spec.yml"
+        )
+        plan = module.build_plan(document)
+        turns = plan["tests"][0]["turns"]
+        self.assertEqual(plan["turn_count"], 6)
+        self.assertEqual(
+            [turn.get("previous_turn") for turn in turns], [None, 1, 1, 2, 4, 1]
+        )
+        self.assertEqual(
+            [turn["assertions"][0]["value"] for turn in turns],
+            [r"^\s*10\s*$", r"^\s*11\s*$", r"^\s*12\s*$",
+             r"^\s*11\s*$", r"^\s*12\s*$", r"^\s*11\s*$"],
+        )
+
+    def test_previous_turn_is_rejected_by_unsupported_runners(self):
+        document = self.document()
+        document["tests"][0]["turns"].append({"input": "branch", "previous_turn": 1})
+        for protocol, profile in (
+            ("invocations", "hosted"), ("responses", "prompt"), ("responses", "managed")
+        ):
+            with self.subTest(protocol=protocol, profile=profile), self.assertRaisesRegex(
+                module.SpecError, "previous_turn.*hosted Responses"
+            ):
+                module.build_plan(document, protocol=protocol, profile=profile)
+
+    def test_sequential_plan_shape_is_unchanged(self):
+        turns = module.build_plan(self.document())["tests"][0]["turns"]
+        self.assertNotIn("previous_turn", turns[0])
 
     def test_nonmatching_condition_is_not_applicable(self):
         plan = module.build_plan(self.document(), "web-search")

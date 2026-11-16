@@ -7,7 +7,7 @@ Full-featured Electron desktop chat app with voice transcription and model manag
 ## Prerequisites
 
 - [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
-- Node.js 18+
+- Node.js 20+
 
 ## Run
 

@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.36.0'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.21'
+    azure.ai.projects: '>=1.0.0-beta.14'
+
+name: prompt-agent-mcp-tools
+services:
+  ai-project:
+    host: azure.ai.project
+    deployments:
+      - name: gpt-5.4-mini
+        model:
+          format: OpenAI
+          name: gpt-5.4-mini
+          version: '2026-03-17'
+        sku:
+          name: GlobalStandard
+          capacity: 50
+  prompt-agent-mcp-tools:
+    host: azure.ai.agent
+    project: .
+    uses:
+      - ai-project
+    kind: prompt
+    name: prompt-agent-mcp-tools
+    description: A prompt agent that calls tools on a remote MCP server.
+    model: gpt-5.4-mini
+    instructions: >-
+      You are a documentation assistant. Use the Microsoft Learn MCP server to look up official
+      Microsoft documentation before answering questions about Azure and Microsoft products.
+    tools:
+      - type: mcp
+        server_label: microsoft-learn
+        server_url: https://learn.microsoft.com/api/mcp
+        require_approval: never
+infra:
+  provider: microsoft.foundry

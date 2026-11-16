@@ -1,0 +1,7 @@
+.env
+.venv/
+.local/
+__pycache__/
+*.pyc
+*.wav
+result.json

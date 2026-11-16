@@ -33,6 +33,7 @@ services:
       - protocol: invocations_ws
         version: 2.0.0
     env:
+      PYTHONNOUSERSITE: "1"
       AZURE_VOICELIVE_MODEL: gpt-realtime-1.5
       AZURE_VOICELIVE_VOICE: en-US-Ava:DragonHDLatestNeural
       AZURE_VOICELIVE_IDLE_ENGAGEMENT_SECONDS: '20'

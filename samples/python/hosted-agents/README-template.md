@@ -16,6 +16,9 @@ How to use:
 
 {{Short description of how the agent is wired.}} See `main.py` for the implementation.
 
+Follow the shared [Python startup configuration](https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/README.md#python-startup-configuration)
+for deployment environments and dependency compatibility.
+
 <!--
 Sample-specific *background* subsections (e.g. "Environment variables", "Architecture",
 "Features") belong here, right after "How it works" and before "Prerequisites" — they give

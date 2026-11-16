@@ -2,3 +2,4 @@ name: Web Server (JavaScript)
 description: Start a local OpenAI-compatible web server and call it with the OpenAI SDK.
 
 build: "npm install --omit=optional --no-audit --no-fund"
+validate: "node --check app.js"

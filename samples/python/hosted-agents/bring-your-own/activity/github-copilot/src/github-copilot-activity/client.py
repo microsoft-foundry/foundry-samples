@@ -88,7 +88,8 @@ async def _get_session(conversation_id: str):
         _client = CopilotClient()
         await _client.start()
 
-    token = _fresh_token()
+    # Token acquisition is blocking I/O; keep it off the event loop.
+    token = await asyncio.to_thread(_fresh_token)
     # Reuse the conversation's session unless the bearer token rotated, so a
     # durable session never keeps calling the model with an expired token.
     cached = _sessions.get(conversation_id)

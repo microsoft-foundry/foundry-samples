@@ -1,5 +1,5 @@
-name: Tutorial: Tool Calling (Python)
-description: Create a tool-calling assistant (tutorial).
+name: "Tutorial: Tool Calling (Python)"
+description: Create an interactive SDK v2 native tool-calling assistant.
 
-build: "pip install -r requirements.txt"
-validate: "python -m py_compile $(find . -maxdepth 3 -name '*.py' -not -path './.venv/*')"
+build: "python -m pip install -r requirements.txt"
+validate: "python -m compileall -q src"

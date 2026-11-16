@@ -1,13 +1,14 @@
 # Tutorial: Tool Calling (C#)
 
-Create a tool-calling assistant (tutorial).
+Create a tool-calling assistant with native v2 tool definitions and typed tool items.
 
 > Part of the [Foundry Local samples for C#](../).
 
 ## Prerequisites
 
-- [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed
 - .NET 9 SDK
+
+The unified `Microsoft.AI.Foundry.Local` package includes the local runtime.
 
 ## Run
 

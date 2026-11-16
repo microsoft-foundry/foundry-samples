@@ -1,0 +1,12 @@
+name: GPT Live Response Delegation
+description: A declarative GPT Live Voice Agent with native Responses delegation.
+
+build: >-
+  python -m pip install --disable-pip-version-check
+  -r requirements.txt -r requirements-dev.txt
+validate: >-
+  python -m compileall -q . &&
+  python -c "import openai.resources.live.live" &&
+  python -m ruff check .
+test: >-
+  python -m pytest -q

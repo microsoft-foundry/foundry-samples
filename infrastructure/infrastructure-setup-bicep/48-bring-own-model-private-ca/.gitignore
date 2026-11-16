@@ -1,0 +1,4 @@
+# Self-signed cert material emitted by bootstrap-cert.ps1 (private key + PEM).
+.gateway/
+.gateway-untrusted/
+gw-roll.yaml

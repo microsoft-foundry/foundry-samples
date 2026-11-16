@@ -4,15 +4,15 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.39.26.7824",
-      "templateHash": "17632891943305566295"
+      "version": "0.48.1.52935",
+      "templateHash": "12806942303218057804"
     }
   },
   "parameters": {
     "aiServicesName": {
       "type": "string",
       "defaultValue": "foundy",
-      "maxLength": 9,
+      "maxLength": 60,
       "metadata": {
         "description": "The name of the Azure AI Foundry resource."
       }
@@ -41,6 +41,13 @@
     "deploymentTimestamp": {
       "type": "string",
       "defaultValue": "[utcNow('yyyyMMddHHmmss')]"
+    },
+    "deployApplicationInsights": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Deploy a Log Analytics workspace + Application Insights, connect them to the Foundry account, and grant the project managed identity read access so agent traces can be viewed and evaluated. Adds resources/cost. Default true."
+      }
     },
     "location": {
       "type": "string",
@@ -113,7 +120,9 @@
   },
   "variables": {
     "uniqueSuffix": "[substring(uniqueString(format('{0}-{1}', resourceGroup().id, parameters('deploymentTimestamp'))), 0, 4)]",
-    "accountName": "[toLower(format('{0}{1}', parameters('aiServicesName'), variables('uniqueSuffix')))]"
+    "accountName": "[toLower(format('{0}{1}', parameters('aiServicesName'), variables('uniqueSuffix')))]",
+    "appInsightsName": "[toLower(format('{0}appinsights', variables('uniqueSuffix')))]",
+    "logAnalyticsName": "[toLower(format('{0}loganalytics', variables('uniqueSuffix')))]"
   },
   "resources": [
     {
@@ -174,6 +183,230 @@
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('accountName'))]"
       ]
+    },
+    {
+      "condition": "[parameters('deployApplicationInsights')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('app-insights-{0}-deployment', variables('uniqueSuffix'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "aiAccountName": {
+            "value": "[variables('accountName')]"
+          },
+          "logAnalyticsName": {
+            "value": "[variables('logAnalyticsName')]"
+          },
+          "appInsightsName": {
+            "value": "[variables('appInsightsName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "4818811210265577355"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for the tracing resources (new resources only)."
+              }
+            },
+            "aiAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Foundry (AI Services) account to connect Application Insights to."
+              }
+            },
+            "logAnalyticsName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Log Analytics workspace to create."
+              }
+            },
+            "appInsightsName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Application Insights component to create."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2023-09-01",
+              "name": "[parameters('logAnalyticsName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "retentionInDays": 30
+              }
+            },
+            {
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[parameters('appInsightsName')]",
+              "location": "[parameters('location')]",
+              "kind": "web",
+              "properties": {
+                "Application_Type": "web",
+                "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsName'))]",
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/connections",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}', parameters('aiAccountName'), 'appinsights')]",
+              "properties": {
+                "category": "AppInsights",
+                "target": "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]",
+                "authType": "ApiKey",
+                "isSharedToAll": true,
+                "credentials": {
+                  "key": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName')), '2020-02-02').ConnectionString]"
+                },
+                "metadata": {
+                  "ApiType": "Azure",
+                  "ResourceId": "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "appInsightsName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Application Insights component."
+              },
+              "value": "[parameters('appInsightsName')]"
+            },
+            "appInsightsId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the Application Insights component."
+              },
+              "value": "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]"
+            },
+            "appInsightsAppId": {
+              "type": "string",
+              "metadata": {
+                "description": "Application ID of the Application Insights component (for trace queries)."
+              },
+              "value": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName')), '2020-02-02').AppId]"
+            },
+            "logAnalyticsId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the Log Analytics workspace backing Application Insights."
+              },
+              "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('accountName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('accountName'), parameters('projectName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('deployApplicationInsights')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('app-insights-ra-{0}-deployment', variables('uniqueSuffix'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "appInsightsName": {
+            "value": "[variables('appInsightsName')]"
+          },
+          "projectPrincipalId": {
+            "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('accountName'), parameters('projectName')), '2025-04-01-preview', 'full').identity.principalId]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "293823928903208822"
+            }
+          },
+          "parameters": {
+            "appInsightsName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Application Insights component to grant access on."
+              }
+            },
+            "projectPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Principal (object) ID of the project managed identity."
+              }
+            },
+            "roleDefinitionGuids": {
+              "type": "array",
+              "defaultValue": [
+                "73c42c96-874c-492b-b04d-ab87d138a893",
+                "dbc9c667-e97f-4491-aee6-90b9cf960190"
+              ],
+              "metadata": {
+                "description": "Built-in role definition GUIDs to assign. Defaults to Log Analytics Reader + Privileged Monitoring Data Reader (the latter is required to query GenAI content)."
+              }
+            }
+          },
+          "resources": [
+            {
+              "copy": {
+                "name": "appInsightsRoleAssignments",
+                "count": "[length(parameters('roleDefinitionGuids'))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]",
+              "name": "[guid(parameters('projectPrincipalId'), parameters('roleDefinitionGuids')[copyIndex()], resourceId('Microsoft.Insights/components', parameters('appInsightsName')))]",
+              "properties": {
+                "principalId": "[parameters('projectPrincipalId')]",
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleDefinitionGuids')[copyIndex()])]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', format('app-insights-{0}-deployment', variables('uniqueSuffix')))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('accountName'), parameters('projectName'))]"
+      ]
     }
   ],
   "outputs": {
@@ -188,6 +421,18 @@
     "accountEndpoint": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('accountName')), '2025-04-01-preview').endpoint]"
+    },
+    "applicationInsightsResourceId": {
+      "type": "string",
+      "value": "[if(parameters('deployApplicationInsights'), reference(resourceId('Microsoft.Resources/deployments', format('app-insights-{0}-deployment', variables('uniqueSuffix'))), '2025-04-01').outputs.appInsightsId.value, '')]"
+    },
+    "applicationInsightsAppId": {
+      "type": "string",
+      "value": "[if(parameters('deployApplicationInsights'), reference(resourceId('Microsoft.Resources/deployments', format('app-insights-{0}-deployment', variables('uniqueSuffix'))), '2025-04-01').outputs.appInsightsAppId.value, '')]"
+    },
+    "logAnalyticsWorkspaceId": {
+      "type": "string",
+      "value": "[if(parameters('deployApplicationInsights'), reference(resourceId('Microsoft.Resources/deployments', format('app-insights-{0}-deployment', variables('uniqueSuffix'))), '2025-04-01').outputs.logAnalyticsId.value, '')]"
     }
   }
 }

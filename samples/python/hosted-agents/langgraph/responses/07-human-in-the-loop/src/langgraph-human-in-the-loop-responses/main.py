@@ -92,11 +92,23 @@ class State(TypedDict):
 
 
 def _build_graph(model: ChatOpenAI):
+    def start_task(state: State) -> dict:
+        return {"draft": "", "revision_history": []}
+
     async def draft(state: State) -> dict:
-        task = state["messages"][0].content
+        task = next(
+            (
+                message
+                for message in reversed(state["messages"])
+                if isinstance(message, HumanMessage)
+            ),
+            None,
+        )
+        if task is None:
+            raise ValueError("A user message is required to draft a proposal")
         msgs: list[BaseMessage] = [
             SystemMessage(content=_DRAFT_PROMPT),
-            HumanMessage(content=f"Task: {task}"),
+            HumanMessage(content=task.content),
         ]
         for rev in state.get("revision_history", []):
             msgs.append(AIMessage(content=rev["draft"]))
@@ -125,9 +137,11 @@ def _build_graph(model: ChatOpenAI):
         )
 
     builder = StateGraph(State)
+    builder.add_node("start_task", start_task)
     builder.add_node("draft", draft)
     builder.add_node("await_approval", await_approval)
-    builder.add_edge(START, "draft")
+    builder.add_edge(START, "start_task")
+    builder.add_edge("start_task", "draft")
     builder.add_edge("draft", "await_approval")
     checkpointer = FoundryCheckpointSaver(user_isolation=True)
     return builder.compile(checkpointer=checkpointer)

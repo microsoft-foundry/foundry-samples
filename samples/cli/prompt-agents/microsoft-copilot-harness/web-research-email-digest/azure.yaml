@@ -1,0 +1,137 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.36.0'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.21'
+    azure.ai.projects: '>=1.0.0-beta.14'
+    azure.ai.routines: '>=1.0.0-beta.10'
+
+name: personal-m365-productivity
+
+hooks:
+  postprovision:
+    posix:
+      shell: sh
+      run: ./scripts/set-routine-project-endpoint.sh
+      interactive: false
+      continueOnError: false
+    windows:
+      shell: pwsh
+      run: ./scripts/set-routine-project-endpoint.ps1
+      interactive: false
+      continueOnError: false
+
+services:
+  ai-project:
+    host: azure.ai.project
+    deployments:
+      - name: gpt-5.4-mini
+        model:
+          format: OpenAI
+          name: gpt-5.4-mini
+          version: '2026-03-17'
+        sku:
+          name: GlobalStandard
+          capacity: 50
+
+  personal-m365-productivity:
+    host: azure.ai.agent
+    project: .
+    kind: prompt
+    name: personal-m365-productivity
+    displayName: Web Research Email Digest
+    description: Research current topics on the public web and email concise, cited summaries.
+    model: gpt-5.4-mini
+    harness:
+      type: microsoft_copilot_preview
+    instructions: |
+      You research current topics on the public web and email concise summaries to the signed-in user.
+
+      Use the Foundry Web Search tool for every request that depends on current public information.
+      Never use a harness-native web capability. Prefer authoritative and recent sources, verify
+      publication dates when the requested time window matters, and include source links in the
+      summary. Never claim that research was performed unless Web Search completed successfully.
+      Use no more than five Web Search calls per request. Start with broad queries, reuse the results,
+      and send fewer stories when necessary instead of searching repeatedly for additional items.
+
+      When the user asks you to email the result, first complete the research and write the full
+      summary. Then use WorkIQ Mail to send that summary to the exact email address supplied in the
+      request. If the request does not supply an address, use WorkIQ User's GetMyDetails tool exactly
+      once to resolve the signed-in user's primary email address. Send only to the exact address
+      returned by that tool. If it does not return an unambiguous email address, do not send.
+      Send the message immediately rather than creating a draft. Use a descriptive subject, an HTML
+      body, and save the message in Sent Items. Do not claim that the message was sent unless the Mail
+      tool completed successfully. If approval, authentication, or consent is required, ask for it and
+      preserve the complete URL or error details.
+
+      Be concise and direct. Format a news digest as restrained, email-client-safe HTML with inline
+      styles only. Use a readable sans-serif font, a maximum width around 680px, dark text on a white
+      background, and this structure:
+      - a compact title and one muted line stating the research window;
+      - a two-sentence overview;
+      - up to five story sections separated by subtle horizontal rules;
+      - for each story, a linked headline, source and publication date, a two- or three-sentence
+        summary, and one short bold "Why it matters" line;
+      - a small closing note that the digest was generated from current public sources.
+
+      Use descriptive linked text instead of displaying raw URLs. Do not use Markdown, tables, cards,
+      images, gradients, decorative banners, or emoji. Keep the HTML under 15 KB and include no scripts
+      or external styles. Do not send, reply to, forward, move, or delete any other email.
+    tools:
+      - type: microsoft_copilot_toolset_preview
+        defaultConfig:
+          enabled: false
+      - type: web_search
+      - type: mcp
+        server_label: WorkIQUser
+        server_url: https://agent365.svc.cloud.microsoft/agents/servers/mcp_MeServer
+        project_connection_id: WorkIQUser
+        allowed_tools:
+          - GetMyDetails
+        require_approval: never
+      - type: mcp
+        server_label: WorkIQMail
+        server_url: https://agent365.svc.cloud.microsoft/agents/servers/mcp_MailTools
+        project_connection_id: WorkIQMail
+        allowed_tools:
+          - SendEmailWithAttachments
+        require_approval: never
+    uses:
+      - ai-project
+
+  daily-foundry-news-digest:
+    host: azure.ai.routine
+    description: Email the Routine creator a daily digest of Microsoft Foundry news.
+    enabled: true
+    authorization:
+      identity: creator
+    triggers:
+      default:
+        type: schedule
+        cronExpression: '0 8 * * *'
+        timeZone: America/Vancouver
+    action:
+      type: invoke_agent_responses_api
+      agentName: personal-m365-productivity
+      input: |
+        Use WorkIQ User to resolve the signed-in Routine creator's primary email address. If the
+        tool does not return one unambiguous address, stop without sending mail and report why.
+        Research the most important Microsoft Foundry news published in the previous 24 hours.
+        Use no more than five broad Web Search calls, select up to five substantive stories, and
+        verify each publication date. Send fewer stories if the searches do not find five qualified
+        items. Email the completed HTML digest to the exact address returned by WorkIQ User. Send
+        only the final digest; do not send progress updates or drafts.
+    uses:
+      - personal-m365-productivity
+
+infra:
+  layers:
+    - provider: microsoft.foundry
+      path: infra/foundry
+      name: foundry
+    - provider: bicep
+      path: infra/connections
+      name: connections
+      dependsOn:
+        - foundry

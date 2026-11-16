@@ -28,7 +28,7 @@ async function runToolCallingExample() {
     console.log("Initializing Foundry Local SDK...");
     manager = FoundryLocalManager.create({
       appName: "foundry_local_samples",
-      serviceEndpoint: "http://localhost:5000",
+      webServiceUrls: "http://localhost:5000",
       logLevel: "info"
     });
     // </init>
@@ -105,47 +105,36 @@ async function runToolCallingExample() {
 
     // Start the conversation
     console.log("Chat completion response:");
-    const toolCallResponses = [];
-
-    const firstStream = await openai.chat.completions.create({
+    const firstResponse = await openai.chat.completions.create({
       model: model.id,
       messages,
       tools,
       tool_choice: "required",
-      stream: true
+      stream: false
     });
 
-    for await (const chunk of firstStream) {
-      const content = chunk.choices?.[0]?.delta?.content;
-      if (content) {
-        process.stdout.write(content);
-      }
-
-      if (chunk.choices?.[0]?.finish_reason === "tool_calls") {
-        toolCallResponses.push(chunk);
-      }
+    const assistantMessage = firstResponse.choices[0]?.message;
+    if (!assistantMessage) {
+      throw new Error("The model returned no assistant message.");
     }
-    console.log();
+    messages.push(assistantMessage);
 
     // Invoke tools called and append responses to the chat
-    for (const chunk of toolCallResponses) {
-      const toolCalls = chunk.choices?.[0]?.message?.tool_calls ?? chunk.choices?.[0]?.delta?.tool_calls ?? [];
-      for (const toolCall of toolCalls) {
-        if (toolCall.function?.name === "multiply_numbers") {
-          const args = JSON.parse(toolCall.function.arguments || "{}");
-          const first = args.first;
-          const second = args.second;
+    for (const toolCall of assistantMessage.tool_calls ?? []) {
+      if (toolCall.function?.name === "multiply_numbers") {
+        const args = JSON.parse(toolCall.function.arguments || "{}");
+        const first = args.first;
+        const second = args.second;
 
-          console.log(`\nInvoking tool: ${toolCall.function.name} with arguments ${first} and ${second}`);
-          const result = multiplyNumbers(first, second);
-          console.log(`Tool response: ${result}`);
+        console.log(`\nInvoking tool: ${toolCall.function.name} with arguments ${first} and ${second}`);
+        const result = multiplyNumbers(first, second);
+        console.log(`Tool response: ${result}`);
 
-          messages.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: result.toString()
-          });
-        }
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: result.toString()
+        });
       }
     }
 

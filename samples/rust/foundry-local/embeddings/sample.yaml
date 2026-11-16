@@ -1,5 +1,5 @@
 name: Embeddings (Rust)
-description: Generate single and batch text embeddings using the native embedding client.
+description: Generate single and batch text embeddings using the v2 EmbeddingsSession API.
 
 build: "cargo build --verbose"
 validate: "cargo check"

@@ -1,0 +1,4 @@
+name: Foundry Local C++ integration example
+description: Start the built-in service and call its local OpenAI-compatible REST API.
+build: cmake -S . -B build
+validate: cmake --build build --config Release --target integrate-examples

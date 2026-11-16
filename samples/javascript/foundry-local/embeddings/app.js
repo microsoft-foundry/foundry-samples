@@ -1,6 +1,11 @@
 // <complete_code>
 // <imports>
-import { FoundryLocalManager } from 'foundry-local-sdk';
+import {
+    EmbeddingsSession,
+    FoundryLocalManager,
+    Item,
+    Request
+} from 'foundry-local-sdk';
 // </imports>
 
 // Initialize the Foundry Local SDK
@@ -33,40 +38,60 @@ console.log('✓ Model loaded');
 // </model_setup>
 
 // <single_embedding>
-// Create embedding client
-console.log('\nCreating embedding client...');
-const embeddingClient = model.createEmbeddingClient();
-console.log('✓ Embedding client created');
+// Create a native embeddings session
+console.log('\nCreating embeddings session...');
+const embeddingsSession = new EmbeddingsSession(model);
+console.log('✓ Embeddings session created');
 
 // Generate a single embedding
 console.log('\n--- Single Embedding ---');
-const response = await embeddingClient.generateEmbedding(
-    'The quick brown fox jumps over the lazy dog'
+const response = await embeddingsSession.processRequest(
+    new Request().addItem(Item.text(
+        'The quick brown fox jumps over the lazy dog'
+    ))
 );
 
-const embedding = response.data[0].embedding;
+const tensor = response.output.find((item) => item.type === 'tensor');
+if (!tensor || tensor.dataType !== 'float') {
+    throw new Error('The model returned no float embedding tensor.');
+}
+const embedding = new Float32Array(
+    tensor.data.buffer,
+    tensor.data.byteOffset,
+    tensor.data.byteLength / Float32Array.BYTES_PER_ELEMENT
+);
 console.log(`Dimensions: ${embedding.length}`);
-console.log(`First 5 values: [${embedding.slice(0, 5).map(v => v.toFixed(6)).join(', ')}]`);
+console.log(`First 5 values: [${Array.from(
+    embedding.slice(0, 5),
+    (value) => value.toFixed(6)
+).join(', ')}]`);
 // </single_embedding>
 
 // <batch_embedding>
 // Generate embeddings for multiple inputs
 console.log('\n--- Batch Embeddings ---');
-const batchResponse = await embeddingClient.generateEmbeddings([
+const batchRequest = new Request();
+for (const input of [
     'Machine learning is a subset of artificial intelligence',
     'The capital of France is Paris',
-    'Rust is a systems programming language'
-]);
+    'JavaScript is a programming language'
+]) {
+    batchRequest.addItem(Item.text(input));
+}
+const batchResponse = await embeddingsSession.processRequest(batchRequest);
+const tensors = batchResponse.output.filter((item) => item.type === 'tensor');
 
-console.log(`Number of embeddings: ${batchResponse.data.length}`);
-for (let i = 0; i < batchResponse.data.length; i++) {
-    console.log(`  [${i}] Dimensions: ${batchResponse.data[i].embedding.length}`);
+console.log(`Number of embeddings: ${tensors.length}`);
+for (let i = 0; i < tensors.length; i++) {
+    const dimensions = tensors[i].data.byteLength / Float32Array.BYTES_PER_ELEMENT;
+    console.log(`  [${i}] Dimensions: ${dimensions}`);
 }
 // </batch_embedding>
 
 // <cleanup>
 // Unload the model
 console.log('\nUnloading model...');
+embeddingsSession.dispose();
 await model.unload();
 console.log('✓ Model unloaded');
 // </cleanup>

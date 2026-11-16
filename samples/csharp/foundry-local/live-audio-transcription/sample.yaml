@@ -1,6 +1,4 @@
 name: Live Audio Transcription (C#)
-description: Real-time microphone-to-text using the Foundry Local C# SDK and NAudio.
+description: Stream PCM audio through the Foundry Local C# SDK v2 with optional NAudio microphone capture.
 
-# SKIP: Requires NAudio (Windows audio APIs) and microphone hardware.
-build: "echo 'SKIP: Requires NAudio (Windows audio APIs) and microphone hardware.'"
-validate: "echo 'SKIP: Requires NAudio (Windows audio APIs) and microphone hardware.'"
+build: "dotnet restore ./*.csproj && dotnet build ./*.csproj --no-restore --verbosity minimal"

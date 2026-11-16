@@ -53,7 +53,7 @@ Each file includes a unique `*-CANARY-*` token that the model is asked to echo, 
 What the **sample itself** needs, independent of how you run it. The tooling for each run path (`azd` or the VS Code Foundry Toolkit) is listed under its option below.
 
 1. An existing Foundry project with a deployed model (or create them during setup in Option 1).
-2. **Python 3.10 or later.** The `azd ai agent run` flow in Option 1 sets up its environment with **Python 3.13+**; install 3.13 if you plan to use that path.
+2. **Python 3.13 or later.**
 3. **Roles (RBAC):** the identity running the sample (and, in production, the Managed Identity running the container) needs the **Foundry User** role (formerly *Azure AI User*) on the Foundry project. This covers creating skills, creating the toolbox, and discovering skills over MCP at runtime.
 4. **Additional Azure resources:** a Foundry Toolbox that serves the two bundled skills. You create it from the bundled [`skills/`](src/agent-framework-agent-foundry-toolbox-mcp-skills-responses/skills/) folder and [`toolbox.yaml`](src/agent-framework-agent-foundry-toolbox-mcp-skills-responses/toolbox.yaml) — see [Building the toolbox from zero](#building-the-toolbox-from-zero) below.
 5. **Environment variables:** `FOUNDRY_PROJECT_ENDPOINT`, `AZURE_AI_MODEL_DEPLOYMENT_NAME`, and `TOOLBOX_ENDPOINT` (the full versioned MCP endpoint of the toolbox). See [`.env.example`](src/agent-framework-agent-foundry-toolbox-mcp-skills-responses/.env.example).
@@ -105,7 +105,7 @@ The first version becomes the default automatically. Use `azd ai toolbox list`, 
 azd env set TOOLBOX_ENDPOINT "https://<account>.services.ai.azure.com/api/projects/<project>/toolboxes/maf-skills-toolbox/versions/1/mcp?api-version=v1"
 ```
 
-When running the host with plain `python`, put the same value in a `.env` file next to `main.py` instead — see [`.env.example`](src/agent-framework-agent-foundry-toolbox-mcp-skills-responses/.env.example).
+When running the host with `uv run --no-sync python main.py`, put the same value in a `.env` file next to `main.py` instead — see [`.env.example`](src/agent-framework-agent-foundry-toolbox-mcp-skills-responses/.env.example).
 
 ## Option 1: Azure Developer CLI (`azd`)
 
@@ -189,28 +189,24 @@ azd ai agent invoke "What skills do you have available?"
 
 1. **VS Code** with the **[Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)** extension installed.
 2. For debugging Python in VS Code, install the **[Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)** extension pack.
-3. **Azure Developer CLI (`azd`)** with the Foundry extension and login — the toolbox setup below uses `azd ai` commands:
+3. **Python 3.13 or later** and [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment.
+4. **Azure Developer CLI (`azd`)** with the Foundry extension and login — the toolbox setup below uses `azd ai` commands:
 
    ```bash
    azd ext install microsoft.foundry
    azd auth login
    ```
 
-4. The skills and toolbox must exist in your Foundry project, and `TOOLBOX_ENDPOINT` must be set — see [Building the toolbox from zero](#building-the-toolbox-from-zero). (You can also create the skills and toolbox from the Foundry portal instead of the `azd ai` commands.)
+5. The skills and toolbox must exist in your Foundry project, and `TOOLBOX_ENDPOINT` must be set — see [Building the toolbox from zero](#building-the-toolbox-from-zero). (You can also create the skills and toolbox from the Foundry portal instead of the `azd ai` commands.)
 
 ### Set up the Python virtual environment
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install dependencies in the virtual environment:
+- Create and synchronize the locked environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+   uv sync --frozen
   ```
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
 
 ### Run and debug the agent
 
@@ -219,7 +215,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
+2. Start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry

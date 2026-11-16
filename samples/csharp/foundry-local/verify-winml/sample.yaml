@@ -1,6 +1,4 @@
-name: Verify WinML Execution Providers (C#)
-description: Verify WinML 2.0 execution providers are correctly discovered, downloaded, and registered.
+name: Verify Unified WinML Capability (C#)
+description: Verify unified-package WinML execution-provider discovery, registration, and accelerated inference.
 
-# SKIP: Windows-only: requires Microsoft.AI.Foundry.Local.WinML and Windows SDK.
-build: "echo 'SKIP: Windows-only: requires Microsoft.AI.Foundry.Local.WinML and Windows SDK.'"
-validate: "echo 'SKIP: Windows-only: requires Microsoft.AI.Foundry.Local.WinML and Windows SDK.'"
+build: "dotnet restore ./*.csproj && dotnet build ./*.csproj --no-restore --verbosity minimal"

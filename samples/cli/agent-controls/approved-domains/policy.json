@@ -1,0 +1,26 @@
+{
+  "properties": {
+    "format": "ACS",
+    "acs": {
+      "agent_control_specification_version": "0.4.0-alpha.1",
+      "metadata": { "name": "approved-domains" },
+      "policies": {
+        "approved-domains": { "type": "rego", "query": "data.approved_domains.verdict" }
+      },
+      "intervention_points": {
+        "pre_tool_call": {
+          "policy_target": "$snap.tool_call.args",
+          "policy_target_kind": "tool_args",
+          "tool_name_from": "$snap.tool_call.name",
+          "policy": { "id": "approved-domains" }
+        }
+      },
+      "tools": {
+        "fetch_document": { "type": "retrieval", "security_labels": ["network_egress"] }
+      }
+    },
+    "acsRegos": [
+      { "regoName": "approved-domains" }
+    ]
+  }
+}

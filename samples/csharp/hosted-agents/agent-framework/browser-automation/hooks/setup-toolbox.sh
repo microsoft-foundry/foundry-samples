@@ -34,8 +34,8 @@ CONNECTION_ID="${PROJECT_ID}/connections/browserautomation"
 TOOLBOX_NAME="browser-automation-tools"
 TOOLBOX_BODY=$(printf '{
   "tools": [{
-    "type": "browser_automation_preview",
-    "browser_automation_preview": {
+    "type": "browser_automation",
+    "browser_automation": {
       "connection": { "project_connection_id": "%s" }
     }
   }]

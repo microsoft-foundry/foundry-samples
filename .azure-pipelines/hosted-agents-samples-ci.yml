@@ -393,6 +393,9 @@ stages:
             CI_AGENT_SESSION_ID: ado-ci-$(Build.BuildId)-$(System.JobAttempt)-${{ shard }}-$(System.JobPositionInPhase)
             HOSTED_AGENT_QUOTA_MAX_RETRIES: 5
             WORK_DIR: /tmp/ci-$(comboId)
+            # Native task retries recover Azure DevOps auth/TLS failures.
+            # The runner records phase exits so retries never replay sample work.
+            ADO_TASK_RETRY_STATE_DIR: $(Pipeline.Workspace)/hosted-agent-task-state/$(System.JobId)/$(System.JobAttempt)
           # Keep large bodies outside the expanded plan. Native steps retain
           # auth, failure and reporting boundaries; the runner only sequences
           # operations within each named phase.
@@ -426,6 +429,7 @@ stages:
                 PHASE_COMBO_ID: $(comboId)
             - task: AzureCLI@2
               displayName: Authenticate, scaffold and configure agent
+              retryCountOnTaskFailure: 3
               inputs:
                 azureSubscription: $(AZURE_SERVICE_CONNECTION)
                 visibleAzLogin: false
@@ -449,6 +453,7 @@ stages:
                 PHASE_SKIP_ACR_CREATION: $(skipAcrCreation)
             - task: AzureCLI@2
               displayName: Provision Azure resources
+              retryCountOnTaskFailure: 3
               condition: and(succeeded(), ne(variables['SKIP_PROVISION'], 'true'))
               timeoutInMinutes: 15
               inputs:
@@ -460,6 +465,7 @@ stages:
                 arguments: provision
             - task: AzureCLI@2
               displayName: Verify connections and prepare deployment
+              retryCountOnTaskFailure: 3
               inputs:
                 azureSubscription: $(AZURE_SERVICE_CONNECTION)
                 visibleAzLogin: false
@@ -469,6 +475,7 @@ stages:
                 arguments: prepare-deploy
             - task: AzureCLI@2
               displayName: Deploy agent
+              retryCountOnTaskFailure: 3
               name: deploy_agent
               timeoutInMinutes: 30
               inputs:
@@ -482,6 +489,7 @@ stages:
                 SKIP_ACR_CREATION: $(skipAcrCreation)
             - task: AzureCLI@2
               displayName: Verify deployed toolbox and agent environment
+              retryCountOnTaskFailure: 3
               timeoutInMinutes: 7
               inputs:
                 azureSubscription: $(AZURE_SERVICE_CONNECTION)
@@ -492,6 +500,7 @@ stages:
                 arguments: verify-deploy
             - task: AzureCLI@2
               displayName: Surface Foundry deploy error
+              retryCountOnTaskFailure: 3
               condition: failed()
               continueOnError: true
               timeoutInMinutes: 3
@@ -504,6 +513,7 @@ stages:
                 arguments: diagnose-deploy
             - task: AzureCLI@2
               displayName: Wait for readiness and create agent session
+              retryCountOnTaskFailure: 3
               timeoutInMinutes: 19
               inputs:
                 azureSubscription: $(AZURE_SERVICE_CONNECTION)
@@ -516,6 +526,7 @@ stages:
                 PHASE_REPO_ROOT: $(Build.SourcesDirectory)
             - task: AzureCLI@2
               displayName: Invoke agent
+              retryCountOnTaskFailure: 3
               timeoutInMinutes: 15
               inputs:
                 azureSubscription: $(AZURE_SERVICE_CONNECTION)
@@ -529,6 +540,7 @@ stages:
                 COMBO_ID: $(comboId)
             - task: AzureCLI@2
               displayName: Guardrail block test
+              retryCountOnTaskFailure: 3
               condition: and(succeeded(), contains(variables['SAMPLE_PATH'], 'content-safety-guardrail'), eq(variables['PROTOCOL'], 'responses'))
               timeoutInMinutes: 10
               inputs:
@@ -554,11 +566,14 @@ stages:
                 scriptPath: $(Build.SourcesDirectory)/.azure-pipelines/scripts/hosted-agents/run-hosted-agent.sh
                 arguments: voicelive
               env:
+                # Preserve the existing smoke-test retries, which replay the test.
+                ADO_TASK_RETRY_STATE_DIR: ""
                 REPO_ROOT: $(Build.SourcesDirectory)
                 AZURE_AI_PROJECT_ENDPOINT: $(AZURE_AI_PROJECT_ENDPOINT)
                 AZURE_AI_PROJECT_NAME: $(AZURE_AI_PROJECT_NAME)
             - task: AzureCLI@2
               displayName: Check agent status
+              retryCountOnTaskFailure: 3
               condition: always()
               timeoutInMinutes: 3
               inputs:
@@ -570,6 +585,7 @@ stages:
                 arguments: status
             - task: AzureCLI@2
               displayName: Check agent logs and feature assertions
+              retryCountOnTaskFailure: 3
               condition: always()
               timeoutInMinutes: 8
               inputs:
@@ -584,6 +600,7 @@ stages:
                 COMBO_ID: $(comboId)
             - task: AzureCLI@2
               displayName: Delete agent session
+              retryCountOnTaskFailure: 3
               condition: always()
               continueOnError: true
               timeoutInMinutes: 3
@@ -596,6 +613,7 @@ stages:
                 arguments: delete-session
             - task: AzureCLI@2
               displayName: Delete temporary toolboxes
+              retryCountOnTaskFailure: 3
               condition: always()
               timeoutInMinutes: 5
               inputs:
@@ -618,8 +636,10 @@ stages:
               artifact: cloud-e2e-results-$(comboId)-attempt-$(System.JobAttempt)
               displayName: Publish test artifacts
               condition: always()
+              retryCountOnTaskFailure: 3
             - task: AzureCLI@2
               displayName: Teardown Azure resources
+              retryCountOnTaskFailure: 3
               condition: and(always(), ne(variables['SKIP_PROVISION'], 'true'))
               timeoutInMinutes: 10
               inputs:

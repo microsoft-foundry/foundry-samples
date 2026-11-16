@@ -1,6 +1,7 @@
 # Tutorial: Tool Calling (Python)
 
-Create a tool-calling assistant (tutorial).
+Create an interactive tool-calling assistant using SDK v2 typed tool-call and
+tool-result items.
 
 > Part of the [Foundry Local samples for Python](../).
 

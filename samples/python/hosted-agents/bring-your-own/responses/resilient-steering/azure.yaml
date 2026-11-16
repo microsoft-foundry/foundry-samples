@@ -29,6 +29,8 @@ services:
         - Python
     project: src/resilient-steering
     language: python
+    env:
+      PYTHONNOUSERSITE: "1"
     codeConfiguration:
       runtime: python_3_13
       entryPoint: main.py

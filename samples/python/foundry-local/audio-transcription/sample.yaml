@@ -1,5 +1,5 @@
 name: Audio Transcription (Python)
-description: Transcribe audio files using the Whisper model.
+description: Transcribe audio files with the SDK v2 native AudioSession API.
 
-build: "pip install -r requirements.txt"
-validate: "python -m py_compile $(find . -maxdepth 3 -name '*.py' -not -path './.venv/*')"
+build: "python -m pip install -r requirements.txt"
+validate: "python -m compileall -q src"

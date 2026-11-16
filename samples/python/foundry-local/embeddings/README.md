@@ -1,6 +1,7 @@
 # Embeddings (Python)
 
-Generate single and batch text embeddings using the Foundry Local SDK.
+Generate single and batch text embeddings using the SDK v2 typed
+`EmbeddingsSession`, `TextItem`, and `TensorItem` APIs.
 
 > Part of the [Foundry Local samples for Python](../).
 

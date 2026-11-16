@@ -1,4 +1,4 @@
 name: Embeddings (C#)
 description: Generate single and batch text embeddings using the Foundry Local C# SDK.
 
-build: "dotnet restore ./*.csproj --source https://api.nuget.org/v3/index.json && dotnet build ./*.csproj --no-restore --verbosity minimal"
+build: "dotnet restore ./*.csproj && dotnet build ./*.csproj --no-restore --verbosity minimal"

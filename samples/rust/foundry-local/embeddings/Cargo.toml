@@ -5,8 +5,5 @@ edition = "2021"
 description = "Native SDK embeddings (single and batch) using the Foundry Local Rust SDK"
 
 [dependencies]
-foundry-local-sdk = "1.2"
+foundry-local-sdk.workspace = true
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-
-[target.'cfg(windows)'.dependencies]
-foundry-local-sdk = { version = "1.2", features = ["winml"] }

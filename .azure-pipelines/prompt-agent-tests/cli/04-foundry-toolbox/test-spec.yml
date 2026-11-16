@@ -1,0 +1,22 @@
+version: 1
+sample:
+  owner: zhihuan
+  experiences: [azd]
+tests:
+  - name: toolbox-web-search-cites-official-python-release
+    turns:
+      - input: >-
+          Search the web for the Python 3.13.0 final release date on python.org.
+          State the release year and include the official python.org release URL.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: '2024'
+          - source: assistant_text
+            type: regex
+            value: 'https?://(?:www\.)?python\.org/downloads/release/python-3130/?'
+          - source: assistant_text
+            type: regex
+            value: '(?i)traceback|unhandled exception'
+            min_matches: 0
+            max_matches: 0

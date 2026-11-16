@@ -154,6 +154,7 @@ The included Dockerfile also installs from `pyproject.toml` and `uv.lock`:
 ```bash
 docker build --platform=linux/amd64 -t uv-pyproject-agent src/uv-pyproject-python-responses
 docker run --rm -p 8088:8088 \
+  -e PYTHONNOUSERSITE=1 \
   -e FOUNDRY_PROJECT_ENDPOINT \
   -e AZURE_AI_MODEL_DEPLOYMENT_NAME \
   uv-pyproject-agent

@@ -29,6 +29,7 @@ services:
         - Python
     project: src/langgraph-workflows-responses
     language: python
+    startupCommand: uv run --no-sync python -m langchain_azure_ai.agents.hosting.run --protocol responses
     codeConfiguration:
       runtime: python_3_13
       entryPoint: '-m langchain_azure_ai.agents.hosting.run --protocol responses'
@@ -42,6 +43,7 @@ services:
       - protocol: responses
         version: 2.0.0
     env:
+      PYTHONNOUSERSITE: "1"
       AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
     container:
       resources:

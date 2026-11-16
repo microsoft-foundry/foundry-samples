@@ -5,7 +5,13 @@
 //
 // Usage: node app.js
 
-import { FoundryLocalManager } from 'foundry-local-sdk';
+import {
+    AudioSession,
+    FoundryLocalManager,
+    Item,
+    ItemQueue,
+    Request
+} from 'foundry-local-sdk';
 
 console.log('╔══════════════════════════════════════════════════════════╗');
 console.log('║   Foundry Local — Live Audio Transcription (JS SDK)      ║');
@@ -42,36 +48,42 @@ console.log('Loading model...');
 await model.load();
 console.log('✓ Model loaded');
 
-// Create live transcription session (same pattern as C# sample).
-const audioClient = model.createAudioClient();
-const session = audioClient.createLiveTranscriptionSession();
-
-session.settings.sampleRate = 16000;  // Default is 16000; shown here for clarity
-session.settings.channels = 1;
-session.settings.bitsPerSample = 16;
-session.settings.language = 'en';                  // English (default)
+// Create a native streaming audio session.
+const sampleRate = 16000;
+const channels = 1;
+const bitsPerSample = 16;
+const language = 'en';
 // Multi-lingual examples:
-// session.settings.language = 'de';     // German
-// session.settings.language = 'zh-CN';  // Chinese (Simplified)
-// session.settings.language = 'auto';   // Auto-detect language
+// const language = 'de';     // German
+// const language = 'zh-CN';  // Chinese (Simplified)
+// const language = 'auto';   // Auto-detect language
 
 console.log('Starting streaming session...');
-await session.start();
+const audioSession = new AudioSession(model);
+const audioQueue = new ItemQueue();
+const request = new Request()
+    .addItem(Item.audioDescriptor('pcm', sampleRate, channels))
+    .addItem(audioQueue)
+    .setOptions({ additionalOptions: { language } });
+const stream = audioSession.processStreamingRequest(request);
 console.log('✓ Session started');
 
 // Read transcription results in background
 const readPromise = (async () => {
     try {
-        for await (const result of session.getStream()) {
-            const text = result.content?.[0]?.text;
-            if (!text) continue;
-
-            // `is_final` is a transcript-state marker only. It should not stop the app.
-            if (result.is_final) {
-                process.stdout.write(`\n  [FINAL] ${text}\n`);
-            } else {
-                process.stdout.write(text);
+        for await (const item of stream) {
+            if (item.type === 'speechSegment' && item.text) {
+                if (item.kind === 'final') {
+                    process.stdout.write(`\n  [FINAL] ${item.text}\n`);
+                } else {
+                    process.stdout.write(item.text);
+                }
             }
+        }
+        const response = await stream.response;
+        const result = response.output.find((item) => item.type === 'speechResult');
+        if (result?.text) {
+            process.stdout.write(`\n  [TRANSCRIPT] ${result.text}\n`);
         }
     } catch (err) {
         if (err.name !== 'AbortError') {
@@ -84,8 +96,7 @@ const readPromise = (async () => {
 // This example uses naudiodon2 for cross-platform audio capture.
 // Install with: npm install naudiodon2
 //
-// If you prefer a different audio library, just push PCM bytes
-// (16-bit signed LE, mono, 16kHz) via session.append().
+// If you prefer a different audio library, push PCM byte chunks into audioQueue.
 
 let audioInput;
 try {
@@ -93,11 +104,11 @@ try {
 
     audioInput = portAudio.AudioIO({
         inOptions: {
-            channelCount: session.settings.channels,
-            sampleFormat: session.settings.bitsPerSample === 16
+            channelCount: channels,
+            sampleFormat: bitsPerSample === 16
                 ? portAudio.SampleFormat16Bit
                 : portAudio.SampleFormat32Bit,
-            sampleRate: session.settings.sampleRate,
+            sampleRate,
             // Larger chunk size lowers callback frequency and reduces overflow risk.
             framesPerBuffer: 3200,
             // Allow deeper native queue during occasional event-loop stalls.
@@ -115,7 +126,7 @@ try {
         try {
             while (appendQueue.length > 0) {
                 const pcm = appendQueue.shift();
-                await session.append(pcm);
+                audioQueue.push(Item.bytes(pcm));
             }
         } catch (err) {
             console.error('append error:', err.message);
@@ -161,7 +172,6 @@ try {
     console.warn();
 
     // Fallback: push 2 seconds of synthetic PCM (440Hz sine wave)
-    const sampleRate = session.settings.sampleRate;
     const duration = 2;
     const totalSamples = sampleRate * duration;
     const pcmBytes = new Uint8Array(totalSamples * 2);
@@ -176,14 +186,16 @@ try {
     const chunkSize = (sampleRate / 10) * 2;
     for (let offset = 0; offset < pcmBytes.length; offset += chunkSize) {
         const len = Math.min(chunkSize, pcmBytes.length - offset);
-        await session.append(pcmBytes.slice(offset, offset + len));
+        audioQueue.push(Item.bytes(pcmBytes.slice(offset, offset + len)));
     }
 
     console.log('✓ Synthetic audio pushed');
     console.log('Waiting briefly for final transcription results...');
     await new Promise((resolve) => setTimeout(resolve, 3000));
-    await session.stop();
+    audioQueue.markFinished();
     await readPromise;
+    audioQueue.dispose();
+    audioSession.dispose();
     await model.unload();
     console.log('✓ Done');
     process.exit(0);
@@ -195,8 +207,10 @@ process.on('SIGINT', async () => {
     if (audioInput) {
         audioInput.quit();
     }
-    await session.stop();
+    audioQueue.markFinished();
     await readPromise;
+    audioQueue.dispose();
+    audioSession.dispose();
     await model.unload();
     console.log('✓ Done');
     process.exit(0);

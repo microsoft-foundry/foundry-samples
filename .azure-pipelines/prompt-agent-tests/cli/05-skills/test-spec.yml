@@ -1,0 +1,37 @@
+version: 1
+sample:
+  owner: zhihuan
+  experiences: [azd]
+tests:
+  - name: lisbon-travel-guide-follows-skill-sections
+    turns:
+      - input: >-
+          Make me a 3-day travel guide for Lisbon focused on food and viewpoints.
+          Use the attached travel-guide skill and include all six required sections.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: Lisbon
+          - source: assistant_text
+            type: regex
+            value: '(?i)overview'
+          - source: assistant_text
+            type: regex
+            value: '(?i)day[- ]by[- ]day itinerary'
+          - source: assistant_text
+            type: regex
+            value: '(?i)neighborhoods'
+          - source: assistant_text
+            type: regex
+            value: '(?i)food\s*(?:&|and)\s*drink'
+          - source: assistant_text
+            type: regex
+            value: '(?i)practical tips'
+          - source: assistant_text
+            type: regex
+            value: '(?i)photo[- ]worthy stops'
+          - source: assistant_text
+            type: regex
+            value: '(?i)traceback|unhandled exception'
+            min_matches: 0
+            max_matches: 0

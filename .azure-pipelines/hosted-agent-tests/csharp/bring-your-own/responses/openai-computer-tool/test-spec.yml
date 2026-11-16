@@ -1,0 +1,14 @@
+version: 1
+
+sample:
+  owner: mrigankchugh
+  experiences: [azd, vscode]
+
+tests:
+  - name: openai-computer-tool-paint-smiley-csharp
+    turns:
+      - input: Draw a cheerful yellow smiley face centered on the Paint canvas and confirm when finished.
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: '(?i)(smiley|paint|canvas|saved|drew|drawn)'

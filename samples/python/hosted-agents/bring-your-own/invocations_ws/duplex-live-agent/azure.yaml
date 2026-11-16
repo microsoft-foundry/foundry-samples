@@ -33,6 +33,7 @@ services:
       - protocol: invocations_ws
         version: 2.0.0
     env:
+      PYTHONNOUSERSITE: "1"
       AZURE_VOICELIVE_MODEL: ${AZURE_VOICELIVE_MODEL}
       AZURE_VOICELIVE_VOICE: ${AZURE_VOICELIVE_VOICE}
       AZURE_TASK_MODEL: ${AZURE_TASK_MODEL}

@@ -8,6 +8,7 @@ or authorize an Azure DevOps pipeline.
 |---|---|---|
 | [hosted-agents-samples-ci.yml](hosted-agents-samples-ci.yml) | Python/C# hosted agents and their test fixtures | Changed samples on PRs; full discovery on relevant `main` pushes, daily at 09:00 UTC, and manual runs |
 | [private-bicep-pr-ci.yml](private-bicep-pr-ci.yml) | Bicep infrastructure templates and diagnostic tooling | Changed templates on PRs and `main` pushes; manual `samplePath` or `validateAll` |
+| [prompt-agents-samples-ci.yml](prompt-agents-samples-ci.yml) | CLI prompt/managed azd agents and their contracts | Changed samples on PRs; all eligible samples on relevant `main` pushes, daily at 09:00 UTC, and manual runs |
 
 The GitHub [policy checks](../.github/workflows/hosted-agent-policies.yml) remain
 credential-free. The public `trusted` check and
@@ -20,18 +21,27 @@ from these deployment pipelines.
 .azure-pipelines/
   hosted-agents-samples-ci.yml
   private-bicep-pr-ci.yml
+  prompt-agents-samples-ci.yml
   hosted-agent-tests/<language>/<full-sample-path>/
     test-spec.yml
     test-payload.txt
+  prompt-agent-tests/cli/<full-sample-path>/
+    test-spec.yml
   scripts/
     hosted-agents/
     bicep/
+    prompt-agents/
 ```
 
-Fixture paths preserve the complete path below `samples/<language>/hosted-agents/`.
+Fixture paths preserve the complete path below `samples/<language>/hosted-agents/`
+(under `hosted-agent-tests/<language>/`) or `samples/cli/prompt-agents/` (under
+`prompt-agent-tests/cli/`).
 The [test-spec reference](hosted-agent-tests/README.md) defines owners, turns,
-assertions, approvals, and supported evidence. Legacy payloads remain supported;
-`test-spec.yml` takes precedence when both exist.
+assertions, approvals, and supported evidence; the
+[prompt-agent runner docs](scripts/prompt-agents/README.md#azd-prompt-lifecycle)
+document the narrower `prompt` and `managed` profile capabilities (string inputs
+and `assistant_text` assertions only). Legacy payloads remain supported for
+hosted agents; `test-spec.yml` takes precedence when both exist.
 
 Both the GitHub policy and ADO runner use
 [`hosted_agent_fixture.py`](../.github/scripts/hosted_agent_fixture.py) and
@@ -149,6 +159,54 @@ deploys temporary resource groups. Pipeline/diagnostic-only changes select
 `00-basic` as a smoke template. A primary-region deployment failure remains a
 failure even if fallback-region diagnostics succeed.
 
+For Bicep sample `48-bring-own-model-private-ca`, CI runs the certificate
+bootstrap before deployment, creates the per-attempt Key Vault, and supplies
+the generated gateway certificate/key as secure parameters. The service
+connection needs permission to assign `Key Vault Secrets Officer` to itself.
+CI uses the attempt's region for Cosmos DB and Search and the configured CI
+model. Temporary certificate material and parameter files are removed on exit.
+
+### Temporary Bicep deployment exclusions
+
+The following samples are temporarily excluded from live deployment pending
+owner verification of CI readiness:
+
+- `00-basic`
+- `31-customer-managed-keys-standard-agent`
+- `40-basic-agent-setup`
+- `41-standard-agent-setup`
+- `42-basic-agent-setup-with-customization`
+- `43-standard-agent-setup-with-customization`
+
+These exclusions also apply to manual `samplePath` and `validateAll` runs.
+Manual paths are normalized relative to the checkout and must resolve to an
+existing directory below the Bicep root; equivalent paths receive the same exclusion.
+Static compilation remains required. Each selected deployment for these samples emits
+a warning that live deployment is not validated; other samples still deploy
+and their failures remain blocking.
+
+`00-basic` failed live deployment in
+[this run](https://msdata.visualstudio.com/Vienna/_build/results?buildId=243352325).
+While it is excluded, pipeline/diagnostic-only changes still compile the smoke
+template but do not perform a live smoke deployment.
+
+Sample 31 failed live deployment in the
+[README-only baseline PR](https://github.com/microsoft-foundry/foundry-samples/pull/1113)
+([run](https://msdata.visualstudio.com/Vienna/_build/results?buildId=243122086)).
+Sample 40 failed live deployment on
+[main](https://msdata.visualstudio.com/Vienna/_build/results?buildId=243156248).
+
+Sample 42 requires an existing Azure OpenAI resource, which CI does not
+supply. The [README-only baseline PR](https://github.com/microsoft-foundry/foundry-samples/pull/1115)
+demonstrates the resulting `existingAoaiResourceIdSubId` array-index failure
+independently of the Application Insights contribution.
+This specific failure has not been established for samples 41 and 43; their
+exclusion is an explicit coverage decision, not a diagnosis of the same error.
+Remove each explicit exclusion in `private-bicep-pr-ci.yml` once its owner
+verifies CI prerequisites and successful live deployment.
+
+### Bicep diagnostics
+
 Diagnostics use the existing public
 [diagnostic-agent sample](../samples/python/hosted-agents/bring-your-own/invocations/diagnostic-agent).
 When no Foundry project is deployed, or the runner cannot reach a private-only
@@ -179,3 +237,66 @@ python .azure-pipelines/scripts/bicep/test_bicep_pipeline.py
 Live coverage requires an authorized Azure DevOps run after setup. Successful
 offline tests do not claim that service connections, cloud quota, or deployments
 have been validated.
+
+## Prompt and managed agent E2E
+
+Register [prompt-agents-samples-ci.yml](prompt-agents-samples-ci.yml) as a separate
+Azure DevOps pipeline connected to this repository. Like the hosted-agent E2E
+pipeline, it runs for changes on PRs targeting `main`, relevant `main` pushes,
+and a daily full run at 09:00 UTC; it also supports manual runs. It does not
+post per-sample GitHub statuses or affect the public `trusted` check. Require
+maintainer approval before fork PR builds run, disable fork secrets and
+full-access tokens, and enforce resource approvals/checks on the service
+connection and variable group: PRs can edit pipeline YAML. Authorize a dedicated
+service connection and variable group `samples-prompt-agents-ci`:
+
+| Variable | Purpose |
+|---|---|
+| `AZURE_SERVICE_CONNECTION` | Service connection for the dedicated test subscription |
+| `SKIP_PROVISION` | Required: `true` borrows the existing project/model; `false` provisions a disposable project/model per cell |
+| `AZURE_AI_PROJECT_ID`, `AZURE_AI_PROJECT_ENDPOINT`, `AZURE_AI_MODEL_DEPLOYMENT_NAME` | Required when `SKIP_PROVISION=true`: existing Foundry project and deployment |
+| `AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION` | Required when `SKIP_PROVISION=false`: subscription and region for disposable project/model |
+
+The connection needs project data-plane rights to create, invoke, inspect,
+and delete agents/toolboxes, plus management-plane access for project/model
+resolution. `AzureCLI@2` authenticates azd through the Azure CLI session. Like
+hosted E2E, `SKIP_PROVISION=true` uses an existing project/model; the runner
+creates and deletes only its temporary agents (and owned toolboxes for managed
+samples). With `SKIP_PROVISION=false`, each cell creates a fresh resource group,
+provisions a project and the sample's declared model deployment with `azd`,
+then tears down the cell-owned resource group after agent cleanup. The latter
+requires permission to create/delete resource groups and model deployments,
+available quota in `AZURE_LOCATION`, and a dedicated disposable subscription.
+It fails closed if ownership or resource-group deletion cannot be verified.
+Registration, variable-group and service-connection authorization, resource
+approvals, and any required-check settings must be configured outside the YAML.
+
+By default, PRs run changed samples, while pushes, schedules, and manual runs
+run all eligible samples. `sampleFilter` defaults to `*` (all); a comma-separated
+list narrows the selection using case-insensitive OR substrings. `discoveryMode`
+defaults to `auto` and can be overridden with `all` or `changed` for manual
+runs; `baseRef` defaults to `origin/main`. Changed mode compares committed HEAD
+with the merge base; the PR target branch is explicitly fetched.
+Discovery scans prompt-agent `azure.yaml` manifests, applies
+[`blacklist.json`](scripts/prompt-agents/blacklist.json), and validates all
+non-skipped contracts before filtering. The prompt and managed matrices run one
+cell at a time per profile, not under a project-wide lock across pipeline runs.
+
+Each cell hydrates its record from `PromptAgentSamplesMatrix`, runs the azd
+lifecycle, and attempts recovery cleanup in an authenticated `always()` task.
+Provisioned cells run an additional authenticated `always()` teardown step;
+their summaries require verified resource-group deletion.
+Worker loss or late remote completion can still leave resources to reclaim.
+The matrix, per-cell `PromptAgentResult-<comboId>`, and `PromptAgentSummary`
+artifacts contain prompts, model output, project identifiers, and diagnostics;
+restrict access and do not publish azd authentication/config directories.
+No matches produce a `NoSamples` stage instead of a live job. See the
+[runner documentation](scripts/prompt-agents/README.md) for supported manifests,
+contract capabilities, and credential-free local commands.
+
+The published `01-basic` and `03-mcp-tools` manifests have contracts; the
+private `04-foundry-toolbox` contract is not included because that sample has
+no published manifest. Contract discovery fails closed on missing sample
+manifests or unsupported fixture paths, even with a manual filter. No managed
+sample manifest is currently published, so managed live
+coverage awaits a compatible public sample and contract.

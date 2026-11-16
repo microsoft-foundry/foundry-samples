@@ -1,0 +1,32 @@
+# ============================================================================
+# Copy to terraform.tfvars and fill in. Only subscription_id, tenant_id, and
+# apim_publisher_email are required; everything else has a working default.
+# ============================================================================
+
+subscription_id      = "00000000-0000-0000-0000-000000000000"
+tenant_id            = "00000000-0000-0000-0000-000000000000"
+apim_publisher_email = "admin@contoso.example"
+
+# Optional overrides (defaults shown):
+# existing_resource_group_name = ""      # reuse a group without managing its lifecycle
+# foundry_allowed_ip_ranges = []         # your client egress IP(s) to reach Foundry for testing
+# foundry_public_network_access_enabled = false  # open Foundry to all networks (prefer the IP list)
+# location            = "eastus2"          # avoid uksouth (trustedCertificates bug)
+# name_prefix         = "byomca"
+# foundry_model_name  = "gpt-4.1"          # pick a model offered in your region
+# foundry_model_version = "2025-04-14"
+# inference_api_version = "2024-10-21"     # reasoning models need 2025-04-01-preview+
+# apim_sku            = "StandardV2_1"
+# custom_domain_zone  = "byomca.internal"
+# custom_domain_host  = "gateway"
+# root_ca_common_name = "Contoso Internal Root CA"
+
+# Networking (defaults shown):
+# spoke_vnet_address_space       = "172.24.0.0/16"
+# agent_subnet_prefix            = "172.24.1.0/24"
+# spoke_pe_subnet_prefix         = "172.24.2.0/24"
+# hub_vnet_address_space         = "172.25.0.0/16"
+# hub_pe_subnet_prefix           = "172.25.1.0/24"
+# appgw_subnet_prefix            = "172.25.2.0/24"
+# appgw_private_ip               = "172.25.2.10"
+# apim_integration_subnet_prefix = "172.25.3.0/24"

@@ -1,9 +1,0 @@
-agent-framework-foundry
-agent-framework-foundry-hosting>=1.0.0b260813
-azure-ai-projects
-# azure-ai-projects imports httpx directly, while OpenAI 3 uses httpx2.
-openai<3
-httpx<1
-
-# debugpy enables local debugging of this agent with the Foundry Toolkit VS Code extension.
-debugpy

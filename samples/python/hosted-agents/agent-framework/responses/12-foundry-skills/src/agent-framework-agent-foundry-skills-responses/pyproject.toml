@@ -1,0 +1,13 @@
+[project]
+name = "agent-framework-agent-foundry-skills-responses"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent with Foundry skills."
+requires-python = ">=3.13"
+dependencies = [
+    "agent-framework-foundry==1.11.0",
+    "agent-framework-foundry-hosting==1.0.0b260813",
+    "azure-ai-projects==2.3.0",
+    "debugpy==1.8.21",
+    "httpx==0.28.1",
+    "openai==2.54.0",
+]

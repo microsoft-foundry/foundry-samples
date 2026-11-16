@@ -77,7 +77,11 @@ async function main() {
         console.log(`Model: ${model.id}`);
 
         manager.startWebService();
-        const endpoint = endpointUrl + "/v1";
+        const serviceUrl = manager.urls[0];
+        if (!serviceUrl) {
+            throw new Error("Foundry Local web service did not return an endpoint.");
+        }
+        const endpoint = serviceUrl.replace(/\/$/, "") + "/v1";
         console.log(`Endpoint: ${endpoint}\n`);
 
         // --- Create a BYOK session with Copilot's built-in tools ---

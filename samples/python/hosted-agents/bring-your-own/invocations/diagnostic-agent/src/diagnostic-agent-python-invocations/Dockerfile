@@ -1,6 +1,8 @@
 FROM ghcr.io/astral-sh/uv:0.11.7 AS uv
 FROM python:3.12-slim
 
+ENV PYTHONNOUSERSITE=1
+
 COPY --from=uv /uv /uvx /bin/
 
 # Network diagnostic CLIs that may be used by probes when exec'ing into the sandbox VM.

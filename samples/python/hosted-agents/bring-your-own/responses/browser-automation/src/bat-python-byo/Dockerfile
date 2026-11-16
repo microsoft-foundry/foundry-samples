@@ -1,6 +1,8 @@
 FROM ghcr.io/astral-sh/uv:0.11.7 AS uv
 FROM python:3.12-slim
 
+ENV PYTHONNOUSERSITE=1
+
 COPY --from=uv /uv /uvx /bin/
 
 ENV PYTHONUNBUFFERED=1 \
@@ -8,22 +10,6 @@ ENV PYTHONUNBUFFERED=1 \
     PORT=8088
 
 WORKDIR /app
-
-# Install Node 22 (required for playwright-cli)
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
-    && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" \
-        > /etc/apt/sources.list.d/nodesource.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends nodejs \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install playwright-cli
-RUN npm install -g @playwright/cli@latest \
-    && playwright-cli install --skills 2>/dev/null || true
 
 # Install Python dependencies
 WORKDIR /app/user_agent

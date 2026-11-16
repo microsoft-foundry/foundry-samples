@@ -47,6 +47,78 @@ class PipelineTests(unittest.TestCase):
         self.work = Path(self.directory.name)
         self.steps = {action(step): step for step in JOB["steps"] if action(step)}
 
+    def resolve_response_parents(self, tests, failed_turn=None, duplicate_turn=None):
+        setup = RUNNER[
+            RUNNER.index("declare -A response_ids=()"):
+            RUNNER.index("  line=$(jq -r '.serialized_input'", RUNNER.index("declare -A response_ids=()"))
+        ]
+        update_start = RUNNER.index(
+            '  if [ "$PROTOCOL" = "responses" ] && [ "$test_turn_count" -gt 1 ] && [ $turn_exit -eq 0 ]; then'
+        )
+        update = RUNNER[update_start:RUNNER.index("  # Persist only", update_start)]
+        turns = [
+            {"global_turn": global_turn, "turn": index, "test_turn_count": len(test), **record}
+            for global_turn, (index, test, record) in enumerate(
+                ((index, test, record) for test in tests
+                 for index, record in enumerate(test, start=1)), start=1
+            )
+        ]
+        (self.work / "turns.jsonl").write_text(
+            "".join(json.dumps(turn) + "\n" for turn in turns), encoding="utf-8"
+        )
+        script = f"""\
+PROTOCOL=responses
+overall_exit=0
+{setup}
+  printf '%s\\n' "$turn_record" >> observed.jsonl
+  turn_exit=0
+  [ "$turn" != "{failed_turn}" ] || turn_exit=1
+  result_file=result.json
+  printf '{{"response_id":"response-%s"}}\\n' "$turn" > "$result_file"
+  [ "$turn" != "{duplicate_turn}" ] || printf '{{"response_id":"response-1"}}\\n' > "$result_file"
+{update}
+  [ "$turn_exit" -eq 0 ] || overall_exit=1
+done < turns.jsonl
+exit "$overall_exit"
+"""
+        result = subprocess.run(
+            [BASH, "-c", script], cwd=self.work, capture_output=True,
+            encoding="utf-8", timeout=20,
+        )
+        observed = [
+            json.loads(line) for line in (self.work / "observed.jsonl").read_text().splitlines()
+        ]
+        return result, observed
+
+    def test_branching_rewind_and_regeneration_resolve_exact_parents(self):
+        result, turns = self.resolve_response_parents([
+            [{}, {"previous_turn": 1}, {"previous_turn": 1},
+             {"previous_turn": 2}, {}, {"previous_turn": 1}],
+            [{}, {}],
+        ])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            [turn.get("previous_response_id") for turn in turns],
+            [None, "response-1", "response-1", "response-2",
+             "response-4", "response-1", None, "response-7"],
+        )
+        self.assertTrue(all(turn["persist_response"] for turn in turns))
+
+    def test_missing_parent_fails_instead_of_starting_a_new_root(self):
+        result, turns = self.resolve_response_parents(
+            [[{}, {"previous_turn": 1}]], failed_turn=1
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("no successful stored response", result.stdout)
+        self.assertEqual(len(turns), 1)
+
+    def test_regeneration_requires_a_new_response_id(self):
+        result, _ = self.resolve_response_parents(
+            [[{}, {"previous_turn": 1}]], duplicate_turn=2
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("reused a response id", result.stdout)
+
     def run_phase(self, name, overrides=None, keep=(), env=None, shorten_timeout=False):
         overrides = overrides or {}
 
@@ -128,6 +200,7 @@ exit 60
                 self.assertIn(f"  {name})", RUNNER)
                 if "task" in step:
                     self.assertEqual(step["task"], "AzureCLI@2")
+                    self.assertEqual(step["retryCountOnTaskFailure"], 3)
                     self.assertEqual(step["inputs"]["scriptLocation"], "scriptPath")
                     self.assertTrue(step["inputs"]["scriptPath"].endswith("/run-hosted-agent.sh"))
                 else:
@@ -157,6 +230,8 @@ exit 60
         self.assertIn("bash", self.steps["results"])
         self.assertEqual(self.steps["results"]["env"]["JOB_STATUS"], "$(Agent.JobStatus)")
         self.assertEqual(JOB["steps"][-2]["condition"], "always()")
+        self.assertEqual(JOB["steps"][-2]["retryCountOnTaskFailure"], 3)
+        self.assertIn("$(System.JobId)/$(System.JobAttempt)", JOB["variables"]["ADO_TASK_RETRY_STATE_DIR"])
         self.assertEqual(
             JOB["steps"][-2]["artifact"],
             "cloud-e2e-results-$(comboId)-attempt-$(System.JobAttempt)",
@@ -179,6 +254,7 @@ exit 60
             self.steps["voicelive"]["condition"],
             "and(succeeded(), eq(variables['VOICE_LIVE'], 'true'))",
         )
+        self.assertEqual(self.steps["voicelive"]["env"]["ADO_TASK_RETRY_STATE_DIR"], "")
         for name, minutes in {
             "provision": 15, "deploy": 30, "diagnose-deploy": 3, "invoke": 15,
             "guardrail": 10, "voicelive": 20, "status": 3, "evidence": 8,
@@ -296,6 +372,35 @@ exit 60
                 ".github/scripts/hosted_agent_test_spec.py",
             ):
                 self.assertIn(path, paths)
+
+    def test_task_retries_preserve_phase_result_without_replay(self):
+        for exit_code in (0, 7):
+            with self.subTest(exit_code=exit_code):
+                state_dir = self.work / f"retry-state-{exit_code}"
+                executions = self.work / f"executions-{exit_code}"
+                overrides = {
+                    "STEP_VERIFY_AZURE_AUTH": (
+                        f'echo executed >> "{executions.name}"\nexit {exit_code}'
+                    ),
+                }
+                environment = {"ADO_TASK_RETRY_STATE_DIR": str(state_dir)}
+                first = self.run_phase("scaffold", overrides, env=environment)
+                retried = self.run_phase("scaffold", overrides, env=environment)
+                self.assertEqual(first.returncode, exit_code, first.stderr)
+                self.assertEqual(retried.returncode, exit_code, retried.stderr)
+                self.assertEqual(executions.read_text().splitlines(), ["executed"])
+                self.assertIn("without replay", retried.stdout)
+
+    def test_task_retry_refuses_interrupted_phase(self):
+        state_dir = self.work / "retry-state"
+        state_dir.mkdir()
+        (state_dir / "deploy.started").touch()
+        result = self.run_phase(
+            "deploy", env={"ADO_TASK_RETRY_STATE_DIR": str(state_dir)}
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("refusing to replay", result.stdout)
+        self.assertNotIn("ran:STEP_", result.stdout)
 
     def test_ado_tls_gate_retries_with_backoff(self):
         bin_dir = self.install_tls_mocks()

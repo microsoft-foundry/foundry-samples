@@ -72,6 +72,7 @@ services:
       - protocol: responses
         version: 2.0.0
     env:
+      PYTHONNOUSERSITE: "1"
       AZURE_AI_MODEL_DEPLOYMENT_NAME: gpt-5.4-mini
       SECRET_API_KEY: $${{connections.dummy-api-key.credentials.key}}
       TARGET: $${{connections.dummy-api-key.target}}

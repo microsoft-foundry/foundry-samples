@@ -1,0 +1,5 @@
+name: OpenAI Computer Tool Prompt Agent
+description: Provision and invoke an Azure AI Foundry Prompt Agent with the GA OpenAI Computer Tool (ComputerTool) and local desktop automation in C#.
+
+build: "dotnet restore src/openai-computer-tool/openai-computer-tool.csproj --source https://api.nuget.org/v3/index.json && dotnet build src/openai-computer-tool/openai-computer-tool.csproj --no-restore --verbosity minimal"
+validate: "dotnet build src/openai-computer-tool/openai-computer-tool.csproj --no-restore --verbosity minimal"

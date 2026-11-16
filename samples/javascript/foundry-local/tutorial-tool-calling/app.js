@@ -1,6 +1,11 @@
 // <complete_code>
 // <imports>
-import { FoundryLocalManager } from 'foundry-local-sdk';
+import {
+    ChatSession,
+    FoundryLocalManager,
+    Item,
+    Request
+} from 'foundry-local-sdk';
 import * as readline from 'readline';
 // </imports>
 
@@ -8,44 +13,37 @@ import * as readline from 'readline';
 // --- Tool definitions ---
 const tools = [
     {
-        type: 'function',
-        function: {
-            name: 'get_weather',
-            description: 'Get the current weather for a location',
-            parameters: {
-                type: 'object',
-                properties: {
-                    location: {
-                        type: 'string',
-                        description: 'The city or location'
-                    },
-                    unit: {
-                        type: 'string',
-                        enum: ['celsius', 'fahrenheit'],
-                        description: 'Temperature unit'
-                    }
+        name: 'get_weather',
+        description: 'Get the current weather for a location',
+        jsonSchema: JSON.stringify({
+            type: 'object',
+            properties: {
+                location: {
+                    type: 'string',
+                    description: 'The city or location'
                 },
-                required: ['location']
-            }
-        }
+                unit: {
+                    type: 'string',
+                    enum: ['celsius', 'fahrenheit'],
+                    description: 'Temperature unit'
+                }
+            },
+            required: ['location']
+        })
     },
     {
-        type: 'function',
-        function: {
-            name: 'calculate',
-            description: 'Perform a math calculation',
-            parameters: {
-                type: 'object',
-                properties: {
-                    expression: {
-                        type: 'string',
-                        description:
-                            'The math expression to evaluate'
-                    }
-                },
-                required: ['expression']
-            }
-        }
+        name: 'calculate',
+        description: 'Perform a math calculation',
+        jsonSchema: JSON.stringify({
+            type: 'object',
+            properties: {
+                expression: {
+                    type: 'string',
+                    description: 'The math expression to evaluate'
+                }
+            },
+            required: ['expression']
+        })
     }
 ];
 
@@ -83,35 +81,47 @@ const toolFunctions = {
 // </tool_definitions>
 
 // <tool_loop>
-async function processToolCalls(messages, response, chatClient) {
-    let choice = response.choices[0]?.message;
+async function processToolCalls(response, chatSession) {
+    let currentResponse = response;
 
-    while (choice?.tool_calls?.length > 0) {
-        messages.push(choice);
-
-        for (const toolCall of choice.tool_calls) {
-            const functionName = toolCall.function.name;
-            const args = JSON.parse(toolCall.function.arguments);
+    while (currentResponse.finishReason === 'toolCalls') {
+        const toolResults = [];
+        for (const toolCall of currentResponse.output.filter(
+            (item) => item.type === 'toolCall'
+        )) {
+            const functionName = toolCall.name;
+            const args = JSON.parse(toolCall.arguments);
             console.log(
                 `  Tool call: ${functionName}` +
                 `(${JSON.stringify(args)})`
             );
 
-            const result = toolFunctions[functionName](args);
-            messages.push({
-                role: 'tool',
-                tool_call_id: toolCall.id,
-                content: JSON.stringify(result)
-            });
+            const implementation = toolFunctions[functionName];
+            const result = implementation
+                ? implementation(args)
+                : { error: `Unknown tool: ${functionName}` };
+            toolResults.push(Item.toolResult(
+                toolCall.callId,
+                JSON.stringify(result)
+            ));
+        }
+        if (toolResults.length === 0) {
+            throw new Error('The model requested tools but returned no tool calls.');
         }
 
-        response = await chatClient.completeChat(
-            messages, tools
-        );
-        choice = response.choices[0]?.message;
+        const followUp = new Request()
+            .setOptions({ toolChoice: 'auto' });
+        for (const result of toolResults) {
+            followUp.addItem(result);
+        }
+        currentResponse = await chatSession.processRequest(followUp);
     }
 
-    return choice?.content ?? '';
+    return currentResponse.output
+        .map((item) => item.type === 'message'
+            ? item.content ?? item.parts?.map((part) => part.text ?? '').join('') ?? ''
+            : item.type === 'text' ? item.text : '')
+        .join('');
 }
 // </tool_loop>
 
@@ -145,16 +155,11 @@ console.log('\nModel downloaded.');
 await model.load();
 console.log('Model loaded and ready.');
 
-const chatClient = model.createChatClient();
-
-const messages = [
-    {
-        role: 'system',
-        content:
-            'You are a helpful assistant with access to tools. ' +
-            'Use them when needed to answer questions accurately.'
-    }
-];
+const chatSession = new ChatSession(model);
+for (const tool of tools) {
+    chatSession.addToolDefinition(tool);
+}
+let firstTurn = true;
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -185,19 +190,25 @@ while (true) {
         break;
     }
 
-    messages.push({ role: 'user', content: userInput });
+    const request = new Request().setOptions({ toolChoice: 'auto' });
+    if (firstTurn) {
+        request.addItem(Item.systemMessage(
+            'You are a helpful assistant with access to tools. ' +
+            'Use them when needed to answer questions accurately.'
+        ));
+        firstTurn = false;
+    }
+    request.addItem(Item.userMessage(userInput));
 
-    const response = await chatClient.completeChat(
-        messages, tools
-    );
+    const response = await chatSession.processRequest(request);
     const answer = await processToolCalls(
-        messages, response, chatClient
+        response, chatSession
     );
 
-    messages.push({ role: 'assistant', content: answer });
     console.log(`Assistant: ${answer}\n`);
 }
 
+chatSession.dispose();
 await model.unload();
 console.log('Model unloaded. Goodbye!');
 rl.close();

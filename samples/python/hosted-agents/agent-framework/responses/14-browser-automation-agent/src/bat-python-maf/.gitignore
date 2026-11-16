@@ -13,7 +13,6 @@ dist/
 *.log
 logs/
 .playwright/
-.playwright-cli/
 screenshots/
 downloads/
 traces/

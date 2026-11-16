@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.27.1'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.9'
+name: echo-dotnet-activity
+services:
+  ai-project:
+    host: azure.ai.project
+  echo-dotnet-activity:
+    host: azure.ai.agent
+    metadata:
+      tags:
+        - AI Agent Hosting
+        - Activity Protocol
+        - Bring Your Own
+        - .NET
+    project: src/echo-dotnet-activity
+    language: csharp
+    codeConfiguration:
+      runtime: dotnet_10
+      entryPoint: echo.dll
+    uses:
+      - ai-project
+    kind: hosted
+    name: echo-dotnet-activity
+    displayName: Echo (.NET, Activity)
+    description: >
+      Minimal C# Activity agent that echoes messages and welcomes new members.
+      Uses the Microsoft 365 Agents SDK for activity processing and outbound
+      channel delivery, hosted by Azure.AI.AgentServer.Activity.
+    protocols:
+      - protocol: activity
+        version: 2.0.0
+    agentEndpoint:
+      protocols:
+        - activity
+      authorizationSchemes:
+        - type: BotServiceRbac
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1Gi
+infra:
+  provider: microsoft.foundry

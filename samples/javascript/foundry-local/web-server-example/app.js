@@ -52,9 +52,13 @@ console.log('✓ Model loaded');
 console.log('\nStarting web service...');
 manager.startWebService();
 console.log('✓ Web service started');
+const endpoint = manager.urls[0];
+if (!endpoint) {
+    throw new Error('Foundry Local web service did not return an endpoint.');
+}
 
 const openai = new OpenAI({
-    baseURL: endpointUrl + '/v1',
+    baseURL: endpoint.replace(/\/$/, '') + '/v1',
     apiKey: 'notneeded',
 });
 

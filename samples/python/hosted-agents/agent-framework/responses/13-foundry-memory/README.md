@@ -46,6 +46,8 @@ It also sets `MEMORY_STORE_NAME` for you.
 
 ### 1. Install prerequisites
 
+**Python 3.13 or later** and [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment are required by the memory-store provisioning hook.
+
 1. **Azure Developer CLI (`azd`)** — [Install azd](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) (1.25 or later)
 2. Install the unified Foundry CLI extension bundle:
    ```bash
@@ -127,16 +129,16 @@ azd ai agent invoke "Do you remember my name and what I like to eat?"
 
 Prefer to run the step yourself (or skip the hook)? [`provision_memory_store.py`](src/agent-framework-agent-foundry-memory-responses/provision_memory_store.py) creates a Foundry Memory Store with the user-profile capability enabled (and chat-summary disabled) using `AIProjectClient.beta.memory_stores.create`. It is safe to re-run: if a store with the same name already exists, the script leaves it alone.
 
-From the project directory, with the venv activated and `az login` done:
+From `src/agent-framework-agent-foundry-memory-responses`, with Python 3.13 or later and uv installed and `az login` done:
 
 ```bash
-pip install azure-ai-projects azure-identity aiohttp python-dotenv
+uv sync --frozen
 
 export FOUNDRY_PROJECT_ENDPOINT="https://<account>.services.ai.azure.com/api/projects/<project>"
 export AZURE_AI_MODEL_DEPLOYMENT_NAME="gpt-5.4-mini"
 export AZURE_AI_EMBEDDING_MODEL_DEPLOYMENT_NAME="text-embedding-3-small"
 export MEMORY_STORE_NAME="agent_framework_memory"
-python provision_memory_store.py
+uv run --no-sync python provision_memory_store.py
 ```
 
 In PowerShell, use `$env:NAME="value"` instead of `export`. Then point the agent at the same store name:
@@ -162,20 +164,16 @@ Created memory store 'agent_framework_memory' (id=memstore_...).
 
 1. **VS Code** with the **[Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)** extension installed.
 2. For debugging Python in VS Code, install the **[Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)** extension pack.
+3. **Python 3.13 or later** and [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment.
 
 ### Set up the Python virtual environment
 
-- Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
-- Install dependencies in the virtual environment:
+- Create and synchronize the locked environment:
 
   ```bash
-  # use uv to accelerate
-  pip install uv
-  uv pip install -r requirements.txt
-
-  # or pure pip
-  pip install -r requirements.txt
+  uv sync --frozen
   ```
+- Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
 
 ### Run and debug the agent
 
@@ -184,7 +182,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 ### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
-2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
+2. Start the agent: `uv run --no-sync python main.py` (listens on `http://localhost:8088`).
 3. Command Palette (`Ctrl+Shift+P`) → **Foundry Toolkit: Open Agent Inspector**, then send a message to test.
 
 ### Deploy to Foundry

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
+  "type": "QuickStart",
+  "itemDisplayName": "APIM model connection with project identity and a secret header",
+  "description": "Creates an ApiManagement model connection authenticated with project managed identity and a CustomKeys companion holding an APIM subscription key. The parent stores a secretHeaders reference, never the header value.",
+  "summary": "Combine project managed identity with a secret APIM subscription-key header, supplied as a secure Bicep parameter.",
+  "githubUsername": "mukeshagmsft",
+  "dateUpdated": "2026-11-05",
+  "environments": [
+    "AzureCloud"
+  ]
+}

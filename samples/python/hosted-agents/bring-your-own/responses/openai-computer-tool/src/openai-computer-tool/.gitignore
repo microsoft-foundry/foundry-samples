@@ -1,0 +1,5 @@
+.venv/
+.env
+__pycache__/
+paint_smiley_*.png
+smiley_*.png

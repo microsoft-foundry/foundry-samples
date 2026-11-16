@@ -1,5 +1,8 @@
 # Agent Framework Samples
 
+See the shared [Python startup configuration](../README.md#python-startup-configuration)
+for deployment environments and dependency compatibility.
+
 This directory contains samples that demonstrate how to use the [Agent Framework](https://github.com/microsoft/agent-framework) to host agents with different capabilities and configurations. Each sample includes a README with instructions on how to set up, run, and interact with the agent.
 
 > [!IMPORTANT]
@@ -37,6 +40,7 @@ This directory contains samples that demonstrate how to use the [Agent Framework
 | 22  | [Foundry Toolbox MCP Skills](responses/22-foundry-toolbox-mcp-skills/)      | A self-contained agent that discovers MCP-based skills from a Foundry Toolbox (bundled `SKILL.md` sources + `toolbox.yaml`) and exposes them via a skills provider with progressive disclosure (advertise, load).                             |
 | 23  | [Resilient Workflow](responses/23-resilient-workflow/)                     | A model-backed workflow that restores a stored background response from a durable checkpoint after the hosted process is replaced.                                                                                                           |
 | 24  | [Steering](responses/24-steering/)                                         | A regular Agent Framework agent that accepts new input on the same conversation while an earlier stored background response remains active.                                                                                                   |
+| 25  | [Claude + Foundry Toolbox](responses/25-claude-foundry-toolbox/)           | An agent using an Anthropic Claude model through Azure AI Foundry (`AnthropicFoundryClient`) with tools discovered and invoked from an existing Foundry Toolbox MCP connection.                                                               |
 
 ### Invocations API
 
@@ -166,7 +170,7 @@ The extension also adds an **Agent Inspector** UI for chatting with a hosted age
 1. **Foundry Toolkit VS Code Extension** — [install from the VS Code marketplace](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent?pivots=vscode) and sign in to Azure.
 2. For debugging Python in VS Code, install the **[Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)** extension pack.
 3. Python 3.10 or later. The uv setup option requires Python 3.13 or later.
-4. [pipx](https://pipx.pypa.io/stable/installation/) if you use the uv setup option.
+4. [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment if you use the uv setup option.
 
 #### Set up the Python virtual environment
 
@@ -179,11 +183,10 @@ Use the setup option that matches the dependency files included with the sample.
 
 **Using uv**
 
-Install uv outside the project environment, then let uv create and synchronize the locked environment:
+Create and synchronize the locked environment:
 
 ```bash
-pipx install uv==0.11.7
-uv sync --frozen --python 3.13
+uv sync --frozen
 ```
 
 Open the Command Palette (`Ctrl+Shift+P`), run **Python: Select Interpreter**, and select the `.venv` created by uv.
@@ -210,7 +213,7 @@ Once the agent is running on `http://localhost:8088/` (via [`azd ai agent run`](
 2. A deployed model in your Foundry project
 3. Azure CLI installed and authenticated
 4. Python 3.10 or later. The uv setup option requires Python 3.13 or later.
-5. [pipx](https://pipx.pypa.io/stable/installation/) if you use the uv setup option
+5. [uv](https://docs.astral.sh/uv/getting-started/installation/) installed outside the project virtual environment if you use the uv setup option
 
 #### Running the Agent Host with Python
 
@@ -247,17 +250,11 @@ Use the setup option that matches the dependency files included with the sample.
 
 **Using uv**
 
-1. Install uv outside the project environment:
+Navigate to the sample's service directory (the `project` path in its `azure.yaml`), then create and synchronize the locked environment:
 
-   ```bash
-   pipx install uv==0.11.7
-   ```
-
-2. Navigate to the sample's service directory (the `project` path in its `azure.yaml`), then create and synchronize the locked environment:
-
-   ```bash
-   uv sync --frozen --python 3.13
-   ```
+```bash
+uv sync --frozen
+```
 
 After setting up the environment:
 

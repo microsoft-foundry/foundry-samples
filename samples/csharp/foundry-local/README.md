@@ -10,17 +10,16 @@ description: Foundry Local C# samples — chat, embeddings, audio, tool calling,
 
 # 🚀 Foundry Local C# Samples
 
-These samples demonstrate how to use the [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) C# SDK. Each sample uses a **unified project file** that automatically detects your operating system and selects the optimal NuGet package:
+These samples demonstrate how to use the [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) C# SDK v2. All projects reference the unified `Microsoft.AI.Foundry.Local` package:
 
-- **Windows**: Uses [`Microsoft.AI.Foundry.Local.WinML`](https://www.nuget.org/packages/Microsoft.AI.Foundry.Local.WinML) for hardware acceleration via Windows ML.
-- **macOS / Linux**: Uses [`Microsoft.AI.Foundry.Local`](https://www.nuget.org/packages/Microsoft.AI.Foundry.Local) for cross-platform support.
-
-Both packages provide the same APIs, so the same source code works on all platforms.
+- **Windows**: WinML 2.x acceleration and execution-provider management are included in the unified package.
+- **macOS / Linux**: The same package provides the cross-platform runtime and APIs.
 
 ## Prerequisites
 
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-- [Foundry Local](https://learn.microsoft.com/azure/foundry-local/) installed on your machine
+
+The SDK package includes the Foundry Local runtime; a separate CLI/runtime installation is not required.
 
 ## Samples
 
@@ -33,8 +32,8 @@ Both packages provide the same APIs, so the same source code works on all platfo
 | [tool-calling-foundry-local-sdk](tool-calling-foundry-local-sdk/) | Use tool calling with native chat completions. |
 | [tool-calling-foundry-local-web-server](tool-calling-foundry-local-web-server/) | Use tool calling with the local web server. |
 | [model-management-example](model-management-example/) | Manage models, variant selection, and updates. |
-| [live-audio-transcription](live-audio-transcription/) | Real-time microphone-to-text using NAudio (Windows). |
-| [verify-winml](verify-winml/) | Verify WinML 2.0 execution providers are correctly discovered, downloaded, and registered (Windows only). |
+| [live-audio-transcription](live-audio-transcription/) | Stream PCM audio through the native v2 audio session (NAudio microphone capture on Windows). |
+| [verify-winml](verify-winml/) | Verify the unified package's WinML capability and accelerated execution providers. |
 | [tutorial-chat-assistant](tutorial-chat-assistant/) | Build an interactive chat assistant (tutorial). |
 | [tutorial-document-summarizer](tutorial-document-summarizer/) | Summarize documents with AI (tutorial). |
 | [tutorial-tool-calling](tutorial-tool-calling/) | Create a tool-calling assistant (tutorial). |
@@ -57,4 +56,4 @@ Both packages provide the same APIs, so the same source code works on all platfo
    ```
 
 > [!TIP]
-> Shared helpers used by multiple samples live under [`Shared/`](Shared/). Central package versions are managed by [`Directory.Packages.props`](Directory.Packages.props), and the [`nuget.config`](nuget.config) restricts package sources to `nuget.org`.
+> Shared helpers used by multiple samples live under [`Shared/`](Shared/), and central package versions are managed by [`Directory.Packages.props`](Directory.Packages.props).

@@ -87,7 +87,8 @@ async def _ensure_session():
             return _session
 
         github_token = os.environ.get("GITHUB_TOKEN")
-        provider, model = _byok_provider()
+        # Token acquisition is blocking I/O; keep it off the event loop.
+        provider, model = await asyncio.to_thread(_byok_provider)
         if provider:
             _client = CopilotClient()
             auth_mode = "foundry_byok"

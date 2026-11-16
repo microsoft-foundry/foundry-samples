@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.20)
+project(integrate_examples LANGUAGES CXX)
+include(../cmake/FoundryLocalSample.cmake)
+add_foundry_local_sample(integrate-examples)
+if(WIN32)
+  target_link_libraries(integrate-examples PRIVATE ws2_32)
+endif()

@@ -1,5 +1,5 @@
-name: Tutorial: Chat Assistant (Rust)
-description: Build an interactive multi-turn chat assistant (tutorial).
+name: "Tutorial: Chat Assistant (Rust)"
+description: Build an interactive multi-turn chat assistant with the v2 session API.
 
 build: "cargo build --verbose"
 validate: "cargo check"

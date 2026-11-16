@@ -278,7 +278,7 @@ module aiAccount 'modules-network-secured/ai-account-identity.bicep' = {
   }
 }
 
-// Foundry resolves account-level trustedCertificates through the account identity.
+// Foundry resolves account-level trustedCertificateSources through the account identity.
 module keyVaultRoleAssignment 'modules-network-secured/key-vault-role-assignment.bicep' = if (enableKeyVault) {
   name: 'key-vault-ra-${uniqueSuffix}-deployment'
   scope: resourceGroup(keyVaultSubscriptionId, keyVaultResourceGroupName)

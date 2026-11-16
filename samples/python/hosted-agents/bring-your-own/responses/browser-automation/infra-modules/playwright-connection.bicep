@@ -57,9 +57,9 @@ resource connectionForNewWorkspace 'Microsoft.CognitiveServices/accounts/project
   name: connectionName
   properties: {
     category: 'PlaywrightWorkspace'
-    target: '${replace(playwrightWorkspace.properties.dataplaneUri, 'https://', 'wss://')}/browsers'
+    target: '${replace(playwrightWorkspace.properties.dataplaneUri, '.api.playwright.microsoft.com', '.mcp.playwright.microsoft.com')}/mcp'
     authType: authType
-    audience: 'https://management.core.windows.net'
+    audience: 'https://mcp.playwright.microsoft.com'
     isSharedToAll: true
     credentials: null
     metadata: {
@@ -83,9 +83,9 @@ resource connectionForExistingWorkspace 'Microsoft.CognitiveServices/accounts/pr
   name: connectionName
   properties: {
     category: 'PlaywrightWorkspace'
-    target: '${replace(existingPwwLookup.outputs.dataplaneUri, 'https://', 'wss://')}/browsers'
+    target: '${replace(existingPwwLookup.outputs.dataplaneUri, '.api.playwright.microsoft.com', '.mcp.playwright.microsoft.com')}/mcp'
     authType: authType
-    audience: 'https://management.core.windows.net'
+    audience: 'https://mcp.playwright.microsoft.com'
     isSharedToAll: true
     credentials: authType == 'ApiKey' ? {
       key: apiKey

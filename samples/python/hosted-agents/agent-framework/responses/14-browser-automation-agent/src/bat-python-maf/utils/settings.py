@@ -16,7 +16,6 @@ class AgentSettings:
     azure_scope: str
     toolbox_name: str
     mcp_timeout_seconds: int
-    playwright_cli_timeout_seconds: int
     verbose: bool
 
 
@@ -92,8 +91,5 @@ def make_settings() -> AgentSettings:
         or DEFAULT_AZURE_SCOPE,
         toolbox_name=DEFAULT_TOOLBOX_NAME,
         mcp_timeout_seconds=int_env("BROWSER_AGENT_MCP_TIMEOUT_SECONDS", 120),
-        playwright_cli_timeout_seconds=int_env(
-            "BROWSER_AGENT_PLAYWRIGHT_CLI_TIMEOUT_SECONDS", 180
-        ),
         verbose=bool_env("BROWSER_AGENT_VERBOSE"),
     )

@@ -1,0 +1,14 @@
+{
+  "spec": "agent-hooks/0.1",
+  "interception_point": "pre_tool_call",
+  "timestamp": "2026-11-04T12:00:00Z",
+  "sequence": 0,
+  "agent": { "id": "catalog-agent", "framework": "custom" },
+  "session": { "id": "sample-approved-tool" },
+  "tool_call": {
+    "id": "search-1",
+    "name": "search_catalog",
+    "args": { "query": "replacement parts" }
+  },
+  "target": { "query": "replacement parts" }
+}
