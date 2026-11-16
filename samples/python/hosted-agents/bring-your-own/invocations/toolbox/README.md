@@ -100,11 +100,12 @@ See [`.env.example`](src/toolbox-python-invocations/.env.example) or `.env` for 
 |----------|----------|-------------|
 | `FOUNDRY_PROJECT_ENDPOINT` | Yes | Foundry project endpoint. Auto-injected in hosted containers; set automatically by `azd ai agent run` locally. |
 | `AZURE_AI_MODEL_DEPLOYMENT_NAME` | Yes | Model deployment name — must match your Foundry project deployment. Declared in `azure.yaml`. |
-| `TOOLBOX_ENDPOINT` | Yes | Versioned toolbox MCP endpoint. The agent service maps it from `TOOLBOX_MY_TOOLBOX_MCP_ENDPOINT` on deployment. For standalone local Python/VS Code runs, set it in `.env` using the endpoint from the provisioned project. |
+| `TOOLBOX_MY_TOOLBOX_MCP_ENDPOINT` | VS Code setup | Versioned toolbox deployment input. Set it in the source directory's `.env` using `azd env get-value TOOLBOX_MY_TOOLBOX_MCP_ENDPOINT`. azd deployment obtains this output automatically. |
+| `TOOLBOX_ENDPOINT` | Yes | Runtime toolbox MCP endpoint. Hosted deployment maps it from `TOOLBOX_MY_TOOLBOX_MCP_ENDPOINT`; local Python derives it from the alias in `.env.example`. |
 | `TOOLBOX_NAME` | Optional | Toolbox name. If `TOOLBOX_ENDPOINT` isn't set, the agent builds the latest-version endpoint from this and `FOUNDRY_PROJECT_ENDPOINT`. |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | Recommended | Enables telemetry. Auto-injected in hosted containers; set manually for local dev. |
 
-Set `TOOLBOX_ENDPOINT` to the full MCP URL. Two forms are supported:
+Set `TOOLBOX_MY_TOOLBOX_MCP_ENDPOINT` to the full MCP URL. Two forms are supported:
 ```
 # Latest version:
 https://<account>.services.ai.azure.com/api/projects/<project>/toolboxes/<toolbox-name>/mcp?api-version=v1
@@ -112,7 +113,7 @@ https://<account>.services.ai.azure.com/api/projects/<project>/toolboxes/<toolbo
 # Pinned to a specific version:
 https://<account>.services.ai.azure.com/api/projects/<project>/toolboxes/<toolbox-name>/versions/<version>/mcp?api-version=v1
 ```
-The deployed agent gets this endpoint from `azure.yaml`; a standalone local process needs it in `.env`. `azd ai agent run` reads the initialized project's environment but does not provision missing resources.
+Keep `TOOLBOX_ENDPOINT=${TOOLBOX_MY_TOOLBOX_MCP_ENDPOINT}` unchanged in `.env`. The VS Code deploy wizard reads the deployment input referenced by `azure.yaml`, while Python dotenv expands the runtime alias for local execution. `azd ai agent run` reads the initialized project's environment but does not provision missing resources.
 
 ### Running the Sample
 
@@ -146,7 +147,7 @@ The agent starts on `http://localhost:8088`.
 
 **Prepare remote dependencies**
 
-Run `azd up` from the initialized project directory first. For F5/standalone Python runs, configure `.env` with the resulting project's `FOUNDRY_PROJECT_ENDPOINT` and `TOOLBOX_ENDPOINT` (available via `azd env get-value TOOLBOX_MY_TOOLBOX_MCP_ENDPOINT`). The VS Code deploy wizard deploys the agent but does not create the toolbox declared in `azure.yaml`; use `azd deploy --all` to update both.
+Run `azd up` from the initialized project directory first. For VS Code deployment, F5, or standalone Python, configure the source directory's `.env` with the resulting project's `FOUNDRY_PROJECT_ENDPOINT` and `TOOLBOX_MY_TOOLBOX_MCP_ENDPOINT` (available via `azd env get-value TOOLBOX_MY_TOOLBOX_MCP_ENDPOINT`). Leave the `TOOLBOX_ENDPOINT` alias unchanged. The VS Code deploy wizard deploys the agent but does not create the toolbox declared in `azure.yaml`; use `azd deploy --all` to update both.
 
 **Run and debug the agent**
 
@@ -166,8 +167,7 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 cd src/toolbox-python-invocations
 
 cp .env.example .env  # skip if .env already exists
-# Edit .env and fill in your values, then:
-export $(grep -v '^#' .env | xargs)
+# Edit .env and fill in your values; Python loads it automatically.
 
 pipx install uv==0.11.7
 uv sync --frozen --python 3.12
