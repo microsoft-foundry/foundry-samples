@@ -17,6 +17,7 @@ from test_conversation_engine import (
     chat_reply,
     frame,
     output,
+    presentation_reply,
     send,
     start,
     tool,
@@ -91,7 +92,7 @@ def test_real_sdk_cancel_does_not_deliver_late_worker_answer_and_next_turn_can_f
             tool("start_task", request_summary="Find panels", ack_message="Looking."),
             tool("cancel_task", task_id="latest", ack_message="Stopping."),
             tool("get_task_result", task_id="latest"),
-            chat_reply("Retrieved late answer."),
+            presentation_reply("Retrieved late answer."),
         ),
         Responses(blocked_model),
         "test",
@@ -133,17 +134,19 @@ def test_real_sdk_cancel_does_not_deliver_late_worker_answer_and_next_turn_can_f
 
 @pytest.mark.parametrize("status", [TaskStatus.COMPLETED, TaskStatus.DELIVERED])
 @pytest.mark.parametrize(
-    "user_request,presented",
+    "user_request,presented,convey_result",
     [
-        ("请把结果翻译成中文", "中文译文：保留最后一步。"),
-        ("Summarize the result", "Summary: retain the final step."),
+        ("请把结果翻译成中文", "中文译文：保留最后一步。", True),
+        ("Summarize the result", "Summary: retain the final step.", True),
+        ("Is it ready? Do not read the result.", "Yes, it is ready.", False),
     ],
-    ids=["translate", "summarize"],
+    ids=["translate", "summarize", "status-only"],
 )
 async def test_real_model_sdk_receives_full_result_and_current_request_before_presentation(
     status: TaskStatus,
     user_request: str,
     presented: str,
+    convey_result: bool,
 ) -> None:
     conversation = Conversation()
     task = conversation.tasks.create_task("Procedure")
@@ -161,6 +164,7 @@ async def test_real_model_sdk_receives_full_result_and_current_request_before_pr
             return httpx.Response(200, json=selected.model_dump(mode="json"))
         assert len(requests) == 2  # There is no open-ended tool/presentation loop.
         assert data["tool_choice"] == "none"
+        assert data["response_format"] == {"type": "json_object"}
         assert {"role": "user", "content": user_request} in data["messages"]
         result_message = data["messages"][-1]
         previous_call = data["messages"][-2]["tool_calls"][0]
@@ -171,7 +175,12 @@ async def test_real_model_sdk_receives_full_result_and_current_request_before_pr
         assert result_message["tool_call_id"] == previous_call["id"]
         payload = json.loads(result_message["content"])
         assert payload["task_id"] == task.task_id and payload["result"] == task.result
-        return httpx.Response(200, json=chat_reply(presented).model_dump(mode="json"))
+        return httpx.Response(
+            200,
+            json=presentation_reply(presented, result_conveyed=convey_result).model_dump(
+                mode="json"
+            ),
+        )
 
     async with AsyncOpenAI(
         api_key="offline-test",
@@ -185,7 +194,9 @@ async def test_real_model_sdk_receives_full_result_and_current_request_before_pr
     assert "".join(chunks) == presented
     assert task.result not in "".join(chunks)
     assert task.status is status
-    assert turn.delivered_task_ids == ({task.task_id} if status is TaskStatus.COMPLETED else set())
+    assert turn.delivered_task_ids == (
+        {task.task_id} if status is TaskStatus.COMPLETED and convey_result else set()
+    )
     state = SessionState()
     state.try_begin_start()
     state.activate()
@@ -201,7 +212,7 @@ async def test_real_model_sdk_receives_full_result_and_current_request_before_pr
         )
     assert task.status is status
     await session.send(ResponseDone(response_id=turn.response_id))
-    assert task.status is TaskStatus.DELIVERED
+    assert task.status is (TaskStatus.DELIVERED if convey_result else status)
     assert conversation.history[-1].content == presented
 
 
@@ -225,7 +236,7 @@ async def test_invalid_presentation_does_not_commit_and_can_be_retried(bad_reply
             tool("get_task_result", task_id=task.task_id),
             bad_reply,
             tool("get_task_result", task_id=task.task_id),
-            chat_reply("Translated answer"),
+            presentation_reply("Translated answer"),
         ),
         Responses(),
         "test",
@@ -269,7 +280,7 @@ async def test_failed_cancel_ack_keeps_accepted_cancellation_and_allows_later_re
         Chat(
             tool("cancel_task", task_id="latest", ack_message="Stopping."),
             tool("get_task_result", task_id="latest"),
-            chat_reply("Saved late result"),
+            presentation_reply("Saved late result"),
         ),
         Responses(),
         "test",
@@ -313,7 +324,7 @@ async def test_result_ready_while_acknowledgment_streams_is_presented_once(route
     async def present(kwargs):
         assert json.loads(kwargs["messages"][-1]["content"])["result"] == "Original procedure"
         assert {"role": "user", "content": "Translate the result"} in kwargs["messages"]
-        return chat_reply("Translated procedure")
+        return presentation_reply("Translated procedure")
 
     agent = ForegroundBackgroundAgent(
         Chat(
@@ -380,7 +391,7 @@ def test_presentation_interruption_keeps_result_pending_and_replacement_can_tran
             tool("get_task_result", task_id="latest"),
             interrupted_presentation,
             tool("get_task_result", task_id="latest"),
-            chat_reply("Translated result."),
+            presentation_reply("Translated result."),
             tool("respond_directly", message="Welcome."),
         ),
         Responses(),

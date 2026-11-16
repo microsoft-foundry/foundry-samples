@@ -59,6 +59,13 @@ def chat_reply(text: str | None, *, finish_reason: str = "stop", **fields: Any) 
     )
 
 
+def presentation_reply(text: str, *, result_conveyed: bool = True, **fields: Any) -> Any:
+    return chat_reply(
+        json.dumps({"message": text, "result_conveyed": result_conveyed}, ensure_ascii=False),
+        **fields,
+    )
+
+
 class Chat:
     def __init__(self, *steps: Any) -> None:
         self.steps = list(steps)
@@ -661,7 +668,7 @@ async def test_result_completed_during_router_is_delivered_once(route: str) -> N
 
     chat = Chat(
         finish_during_routing,
-        *([chat_reply("Use OS2 on panel 1.")] if route != "respond_directly" else []),
+        *([presentation_reply("Use OS2 on panel 1.")] if route != "respond_directly" else []),
         tool("respond_directly", message="You're welcome."),
     )
     agent = ForegroundBackgroundAgent(chat, Responses(), "test")

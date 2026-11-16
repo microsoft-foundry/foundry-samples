@@ -114,8 +114,13 @@ spoken verbatim before the requested translation or summary can be applied. This
 results becoming ready while the lookup waits. The presentation request replaces the earlier
 task-context block with one retained result (at most 8,000 characters, plus tool metadata), keeps
 the bounded conversation snapshot and current user request, and cannot call tools or start work.
-Empty, refused, incomplete, failed, or interrupted presentations do not commit delivery; a later
-turn can retry. Failed/cancelled business tasks still use fixed sanitized status messages.
+It returns a JSON object with nonblank `message` text and a boolean `result_conveyed`; only
+the text is spoken. Status-only replies set the flag to false and leave the result pending,
+even after a successful `response.done`. Summaries and translations that convey the result
+can set it to true, but still require a successful `response.done` before delivery is committed.
+Missing or incorrectly typed fields, empty text, refusals, incomplete responses, errors, or
+interruptions do not commit delivery; a later turn can retry. Failed/cancelled business tasks
+still use fixed sanitized status messages.
 Retained `COMPLETED` and `DELIVERED` IDs are both valid for repetition or translation;
 replaying a delivered result does not reset or repeat its delivery-state transition.
 This is transport-level delivery, not proof that all audio was heard. Playback corrections still
@@ -144,7 +149,8 @@ its business stream uses cancellable asynchronous calls and ordinary synchronous
 - Python 3.13 or later and [uv](https://docs.astral.sh/uv/) 0.11.7 or later.
 - Azure Developer CLI and Foundry extension versions meeting `azure.yaml`'s `requiredVersions`.
 - A Foundry project and model deployment, or permission to provision the declared
-  `gpt-5.4-mini` deployment.
+  `gpt-5.4-mini` deployment. The Router requires Chat Completions with function calling and
+  JSON-object response format for result presentation.
 - A signed-in local Azure CLI identity for model-backed tests, or the Hosted Agent's managed
   identity after deployment. The identity needs appropriate Foundry/model-inference access.
 - For deployment, matching Hosted Agent ingress and Voice Live support for

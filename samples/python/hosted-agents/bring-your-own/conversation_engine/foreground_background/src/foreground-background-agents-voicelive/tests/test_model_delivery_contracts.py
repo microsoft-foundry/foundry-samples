@@ -17,8 +17,8 @@ from test_conversation_engine import (
     RecordingSession,
     Responses,
     answer,
-    chat_reply,
     output,
+    presentation_reply,
     send,
     start,
     tool,
@@ -170,7 +170,7 @@ async def test_recall_after_history_eviction_keeps_full_result_or_requires_looku
         )
 
     agent = ForegroundBackgroundAgent(
-        Chat(recall, *([chat_reply(task.result)] if large else [])),
+        Chat(recall, *([presentation_reply(task.result)] if large else [])),
         Responses(),
         "test",
     )
@@ -312,7 +312,7 @@ async def test_real_sdk_worker_final_outcomes_are_truthful(
     agent = ForegroundBackgroundAgent(
         Chat(
             tool("get_task_result", task_id=task.task_id),
-            *([chat_reply(task.result)] if success else []),
+            *([presentation_reply(task.result)] if success else []),
         ),
         Responses(),
         "test",

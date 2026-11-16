@@ -49,7 +49,9 @@ Hosted ingress is now the CE WebSocket protocol, not the Responses HTTP protocol
   Worker outcomes. An in-flight final answer is retained for a later request.
 - Result/status lookup may wait for its Worker, then presents its complete result according
   to the current user request. Only successfully sent presentation text enters history;
-  only successful `response.done` commits delivery. Failed/interrupted presentation can retry.
+  the model explicitly reports whether that text conveys the result. Status-only answers
+  leave results pending. Only a result-conveying answer plus successful `response.done`
+  commits delivery. Failed/interrupted presentation can retry.
 - While waiting, optional status updates run every five seconds, up to five times, with a
   one-second model deadline. A newly ready result takes precedence over optional status speech.
 - Foreground cancellation stops that CE response. Workers continue until they finish or the

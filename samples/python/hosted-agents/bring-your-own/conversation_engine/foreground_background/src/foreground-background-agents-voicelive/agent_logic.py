@@ -121,7 +121,9 @@ class ForegroundBackgroundAgent:
         self.workers.add(worker)
         worker.add_done_callback(self.workers.discard)
 
-    async def _present_result(self, messages: list[dict], tool_call: Any, task: Task) -> str:
+    async def _present_result(
+        self, messages: list[dict], tool_call: Any, task: Task
+    ) -> tuple[str, bool]:
         # One bounded, tool-free follow-up: the Router must see the retrieved body
         # before it can translate, summarize, or repeat it for this request.
         response = await self.chat.create(
@@ -133,7 +135,12 @@ class ForegroundBackgroundAgent:
                         "Answer the current user request using the retrieved task result. "
                         "Apply any requested translation, summary, or other presentation; "
                         "if no transformation is requested, relay the complete result. "
-                        "Preserve the facts; do not invent missing details or start more work."
+                        "Preserve the facts; do not invent missing details or start more work. "
+                        'Return a JSON object with "message" (nonblank spoken text) and '
+                        '"result_conveyed" (boolean). Set result_conveyed to true only when '
+                        "the message conveys the result's content, including a translation or "
+                        "summary. Set it to false for status-only replies or acknowledgments. "
+                        "If the user asks only whether it is ready, do not read the result."
                     ),
                 },
                 # Replace the earlier task-context block with this one complete result.
@@ -153,6 +160,7 @@ class ForegroundBackgroundAgent:
                 },
             ],
             tool_choice="none",
+            response_format={"type": "json_object"},
         )
         if not response.choices:
             raise ValueError("Result presentation returned no choice")
@@ -166,7 +174,15 @@ class ForegroundBackgroundAgent:
             or not message.content.strip()
         ):
             raise ValueError("Result presentation did not produce a complete answer")
-        return message.content
+        presented = json.loads(message.content)
+        if (
+            not isinstance(presented, dict)
+            or not isinstance(presented.get("message"), str)
+            or not presented["message"].strip()
+            or not isinstance(presented.get("result_conveyed"), bool)
+        ):
+            raise ValueError("Result presentation requires text and an explicit delivery claim")
+        return presented["message"], presented["result_conveyed"]
 
     async def respond(
         self,
@@ -300,15 +316,14 @@ class ForegroundBackgroundAgent:
                 TaskStatus.FAILED,
                 TaskStatus.CANCELLED,
             ):
-                message = (
-                    await self._present_result(messages, tool_call, task)
-                    if task.status in (TaskStatus.COMPLETED, TaskStatus.DELIVERED)
-                    else task_message(task)
-                )
+                if task.status in (TaskStatus.COMPLETED, TaskStatus.DELIVERED):
+                    message, result_conveyed = await self._present_result(messages, tool_call, task)
+                    if task.status is TaskStatus.COMPLETED and result_conveyed:
+                        turn.delivered_task_ids.add(task.task_id)
+                else:
+                    message = task_message(task)
                 # This lookup already conveys the terminal outcome; do not repeat it below.
                 active = [candidate for candidate in active if candidate is not task]
-                if task.status is TaskStatus.COMPLETED:
-                    turn.delivered_task_ids.add(task.task_id)
             else:
                 message = arguments.get("ack_message") or data.get("error", "Still working on it.")
         for chunk in text_chunks(message):
@@ -364,12 +379,11 @@ class ForegroundBackgroundAgent:
                 logger.warning("Status update skipped; error_type=%s", type(error).__name__)
         for task in active:
             if task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
-                text = (
-                    await self._present_result(messages, tool_call, task)
-                    if task is retrieved_task and task.status is TaskStatus.COMPLETED
-                    else task_message(task)
-                )
-                if task.status is TaskStatus.COMPLETED:
+                if task is retrieved_task and task.status is TaskStatus.COMPLETED:
+                    text, result_conveyed = await self._present_result(messages, tool_call, task)
+                else:
+                    text, result_conveyed = task_message(task), task.status is TaskStatus.COMPLETED
+                if result_conveyed:
                     turn.delivered_task_ids.add(task.task_id)
                 if has_output:
                     yield "\n\n"
