@@ -324,6 +324,7 @@ stages:
                   local rg_name
                   local deployment_name
 
+                  last_arm_error_code=""
                   dir="$(dirname "$deployment_file")"
                   base="$(basename "$deployment_file")"
                   extension="${base##*.}"
@@ -365,6 +366,45 @@ stages:
                     else
                       deployment_args+=(--parameters "$param_name=$param_value")
                     fi
+                  }
+
+                  report_deployment_failure() {
+                    local deployment_error_code
+
+                    echo "##[group]ARM deployment failure details: $deployment_name"
+                    echo "Template: $deployment_file"
+                    echo "Location: $location ($deployment_slot)"
+                    echo "Resource group: $rg_name"
+
+                    if deployment_error_code="$(az deployment group show \
+                      --resource-group "$rg_name" \
+                      --name "$deployment_name" \
+                      --query 'properties.error.details[0].code || properties.error.code' -o tsv)"; then
+                      if [[ "$deployment_error_code" =~ ^[[:alnum:]_.-]+$ ]] && [ "$deployment_error_code" != "None" ]; then
+                        last_arm_error_code="$deployment_error_code"
+                      else
+                        echo "ARM deployment error code is unavailable; see the details below."
+                      fi
+                    else
+                      echo "##vso[task.logissue type=warning]Could not retrieve the ARM deployment error code for $deployment_name."
+                    fi
+
+                    echo "Deployment status and correlation ID:"
+                    if ! az deployment group show \
+                      --resource-group "$rg_name" \
+                      --name "$deployment_name" \
+                      --query '{state:properties.provisioningState,correlationId:properties.correlationId,error:properties.error}' -o json; then
+                      echo "##vso[task.logissue type=warning]Could not retrieve ARM deployment status for $deployment_name; it may not have been recorded."
+                    fi
+
+                    echo "Deployment operations and resource errors:"
+                    if ! az deployment operation group list \
+                      --resource-group "$rg_name" \
+                      --name "$deployment_name" \
+                      --query '[].{operationId:operationId,target:properties.targetResource.id,operation:properties.provisioningOperation,state:properties.provisioningState,statusCode:properties.statusCode,timestamp:properties.timestamp,duration:properties.duration,serviceRequestId:properties.serviceRequestId,error:properties.statusMessage.error}' -o json; then
+                      echo "##vso[task.logissue type=warning]Could not retrieve ARM deployment operations for $deployment_name."
+                    fi
+                    echo "##[endgroup]"
                   }
 
                   prepare_ci_key_version() {
@@ -469,10 +509,13 @@ stages:
                     add_parameter_override modelVersion "$ci_model_version"
                     prepare_ci_gateway_certificate || return 1
 
-                    az deployment group create \
+                    if ! az deployment group create \
                       --resource-group "$rg_name" \
                       --name "$deployment_name" \
-                      --parameters "$temp_param" || return 1
+                      --parameters "$temp_param"; then
+                      report_deployment_failure
+                      return 1
+                    fi
                     rm -f "$temp_param"
                   else
                     deployment_args=(
@@ -503,19 +546,23 @@ stages:
                     add_parameter_override modelVersion "$ci_model_version"
                     prepare_ci_gateway_certificate || return 1
 
-                    az deployment group create "${deployment_args[@]}" || return 1
+                    if ! az deployment group create "${deployment_args[@]}"; then
+                      report_deployment_failure
+                      return 1
+                    fi
                   fi
 
-                  provisioning_state="$(az deployment group show \
+                  if ! provisioning_state="$(az deployment group show \
                     --resource-group "$rg_name" \
                     --name "$deployment_name" \
-                    --query properties.provisioningState -o tsv)" || return 1
+                    --query properties.provisioningState -o tsv)"; then
+                    echo "##vso[task.logissue type=error]Could not retrieve provisioning state for deployment $deployment_name."
+                    report_deployment_failure
+                    return 1
+                  fi
                   if [ "$provisioning_state" != "Succeeded" ]; then
                     echo "##vso[task.logissue type=error]Deployment $deployment_name provisioningState=$provisioning_state."
-                    az deployment group show \
-                      --resource-group "$rg_name" \
-                      --name "$deployment_name" \
-                      --query properties.error -o json || true
+                    report_deployment_failure
                     return 1
                   fi
 
@@ -534,6 +581,9 @@ stages:
                       "$location" \
                       "$deployment_file"; then
                     echo "##vso[task.logissue type=error]Data-plane diagnostics failed for $deployment_name."
+                    if [ "$deployment_slot" = "fallback" ]; then
+                      return 1
+                    fi
                     exit 1
                   fi
                   echo "Data-plane diagnostics completed for $deployment_name."
@@ -593,12 +643,31 @@ stages:
                     continue
                   fi
 
+                  primary_error_code="${last_arm_error_code:-}"
                   echo "##vso[task.logissue type=error]Deployment failed in $primary_location for $deployment_file."
-                  echo "Retrying in $fallback_location to collect fallback-region validation evidence."
+                  if [ "$fallback_location" = "$primary_location" ]; then
+                    echo "Fallback region $fallback_location matches the primary region; retrying in a separate resource group to collect validation evidence."
+                  else
+                    echo "Retrying in $fallback_location to collect fallback-region validation evidence."
+                  fi
+                  fallback_outcome="skipped"
+                  fallback_failure_detail=""
                   if bicepparam_supports_location "$deployment_file" "$fallback_location"; then
-                    deploy_with_location "$deployment_file" "$fallback_location" "fallback" || true
+                    if deploy_with_location "$deployment_file" "$fallback_location" "fallback"; then
+                      fallback_outcome="succeeded"
+                    else
+                      fallback_outcome="failed"
+                      if [ -n "${last_arm_error_code:-}" ]; then
+                        fallback_failure_detail=" (ARM error: $last_arm_error_code)"
+                      fi
+                    fi
                   else
                     echo "##vso[task.logissue type=warning]Skipping fallback deployment because $deployment_file does not allow location '$fallback_location'."
                   fi
+                  primary_failure_detail="see earlier error output"
+                  if [ -n "$primary_error_code" ]; then
+                    primary_failure_detail="ARM error: $primary_error_code"
+                  fi
+                  echo "##vso[task.logissue type=error]Primary deployment for $deployment_file in $primary_location failed ($primary_failure_detail). Fallback $fallback_outcome in $fallback_location$fallback_failure_detail; the primary failure remains blocking. See ARM deployment failure details above when available."
                   exit 1
                 done

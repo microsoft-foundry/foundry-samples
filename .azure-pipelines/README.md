@@ -157,7 +157,10 @@ their resources, and to configure the diagnostic project's data-plane access.
 The pipeline compiles selected Bicep files, validates the Azure connection, then
 deploys temporary resource groups. Pipeline/diagnostic-only changes select
 `00-basic` as a smoke template. A primary-region deployment failure remains a
-failure even if fallback-region diagnostics succeed.
+failure even if fallback-region diagnostics succeed. Before cleanup, failed ARM
+deployments report their correlation ID and resource-level operations when
+available; the final error summarizes the primary failure and fallback outcome.
+If Azure cannot provide the deployment details, the job reports that explicitly.
 
 For Bicep sample `48-bring-own-model-private-ca`, CI runs the certificate
 bootstrap before deployment, creates the per-attempt Key Vault, and supplies

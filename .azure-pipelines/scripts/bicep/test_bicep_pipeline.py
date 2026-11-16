@@ -360,6 +360,159 @@ bash() { :; }
                     self.assertIn(f"-KeyVaultName\n{vault_name}\n", bootstrap_args)
                     self.assertNotIn("fixture-private-key", result.stdout + result.stderr)
 
+    def test_arm_failure_reports_operations_and_fallback_outcome(self):
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "Bash is required for pipeline deployment checks")
+        script = self.pipeline["stages"][2]["jobs"][0]["steps"][1]["inputs"]["inlineScript"]
+        start = script.index("deploy_with_location() {")
+        end = script.index('for deployment_file in "${deployment_files[@]}"; do', start)
+        deployment = script[start:end].replace("$(BICEP_ROOT)", SAMPLE_ROOT)
+        deployment = deployment.replace("$(Build.BuildId)", "123").replace("$(System.JobAttempt)", "1")
+        deployment = deployment.replace("$(AZURE_SUBSCRIPTION_ID)", "test-subscription")
+        loop = script[end:].replace("$(BICEP_ROOT)", SAMPLE_ROOT)
+        stub = """
+set -euo pipefail
+rg_prefix=ci-rg
+deployment_prefix=ci-deploy
+ci_model_name=gpt-5-mini
+ci_model_version=2025-08-07
+primary_location=westus
+fallback_location=westus
+cleanup_files=()
+cleanup_groups=()
+az() {
+    printf '%s\\n' "$*" >> az-calls.txt
+    case "$1 $2 $3" in
+        "deployment group create")
+            if { [[ "$*" == *"-p-04-disable-local-auth"* ]] && [ "$PRIMARY_CREATE_OK" = 0 ]; } ||
+               { [[ "$*" == *"-f-04-disable-local-auth"* ]] && [ "$FALLBACK_FAIL" = 1 ]; }; then
+                echo "ERROR: RequestConflict" >&2
+                return 1
+            fi
+            ;;
+        "deployment group show")
+            if [[ "$*" == *"-p-04-disable-local-auth"* ]] || [ "$FALLBACK_FAIL" = 1 ]; then
+                if [[ "$*" == *"--query properties.provisioningState"* ]]; then
+                    if [ "$STATE_QUERY_FAIL" = 1 ]; then
+                        echo "ERROR: provisioning state unavailable" >&2
+                        return 1
+                    fi
+                    printf 'Failed\\n'
+                    return 0
+                fi
+                if [ "$LOOKUP_FAIL" = 1 ]; then
+                    echo "ERROR: deployment not found" >&2
+                    return 1
+                fi
+                case "$*" in
+                    *"properties.error.details[0].code"*)
+                        if [[ "$*" == *"-f-04-disable-local-auth"* ]]; then
+                            printf 'FallbackError\\n'
+                        else
+                            printf 'RequestConflict\\n'
+                        fi
+                        ;;
+                    *) printf '{"correlationId":"correlation-123","error":{"code":"RequestConflict"}}\\n' ;;
+                esac
+            else
+                printf 'Succeeded\\n'
+            fi
+            ;;
+        "deployment operation group")
+            if [ "$LOOKUP_FAIL" = 1 ]; then
+                echo "ERROR: deployment operations unavailable" >&2
+                return 1
+            fi
+            if [[ "$*" != *"serviceRequestId:properties.serviceRequestId"* ]]; then
+                echo "ERROR: operation request ID was not queried" >&2
+                return 1
+            fi
+            printf '[{"target":"account/project","state":"Failed","serviceRequestId":"request-123","error":{"code":"RequestConflict"}}]\\n'
+            ;;
+        "resource list --resource-group") printf '1\\n' ;;
+        "bicep build-params --file")
+            if [ "$SKIP_FALLBACK" = 1 ]; then
+                echo "ERROR: unsupported location" >&2
+                return 1
+            fi
+            ;;
+    esac
+}
+bash() {
+    if [ "$FALLBACK_DIAGNOSTIC_FAIL" = 1 ] && [[ "$*" == *"-f-04-disable-local-auth"* ]]; then
+        echo "ERROR: fallback diagnostics failed" >&2
+        return 1
+    fi
+}
+"""
+        for extension, fallback_fail, lookup_fail, primary_create_ok, state_query_fail, skip_fallback, diag_fail in (
+            ("bicep", False, False, False, False, False, False),
+            ("bicepparam", False, False, False, False, False, False),
+            ("bicep", True, False, False, False, False, False),
+            ("bicep", False, True, False, False, False, False),
+            ("bicep", False, False, True, False, False, False),
+            ("bicep", False, False, True, True, False, False),
+            ("bicepparam", False, False, False, False, True, False),
+            ("bicep", False, False, False, False, False, True),
+        ):
+            with self.subTest(extension=extension, fallback_fail=fallback_fail, lookup_fail=lookup_fail,
+                              primary_create_ok=primary_create_ok, state_query_fail=state_query_fail,
+                              skip_fallback=skip_fallback, diag_fail=diag_fail):
+                with tempfile.TemporaryDirectory() as directory:
+                    repo = Path(directory)
+                    sample_dir = repo / SAMPLE_ROOT / "04-disable-local-auth"
+                    sample_dir.mkdir(parents=True)
+                    (sample_dir / "main.bicep").write_text(
+                        "param location string\nparam aiFoundryName string\n", encoding="utf-8"
+                    )
+                    if extension == "bicepparam":
+                        (sample_dir / "main.bicepparam").write_text(
+                            "using './main.bicep'\nparam location = 'eastus'\n", encoding="utf-8"
+                        )
+                    deployment_file = f"{SAMPLE_ROOT}/04-disable-local-auth/main.{extension}"
+                    result = subprocess.run(
+                        [bash],
+                        input=stub + deployment + f'\ndeployment_files=("{deployment_file}")\n' + loop,
+                        cwd=repo,
+                        env={**os.environ, "FALLBACK_FAIL": str(int(fallback_fail)),
+                             "LOOKUP_FAIL": str(int(lookup_fail)),
+                             "PRIMARY_CREATE_OK": str(int(primary_create_ok)),
+                             "STATE_QUERY_FAIL": str(int(state_query_fail)),
+                             "SKIP_FALLBACK": str(int(skip_fallback)),
+                             "FALLBACK_DIAGNOSTIC_FAIL": str(int(diag_fail))},
+                        capture_output=True, text=True,
+                    )
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    if not primary_create_ok:
+                        self.assertIn("ERROR: RequestConflict", result.stderr)
+                    elif state_query_fail:
+                        self.assertIn("Could not retrieve provisioning state", result.stdout)
+                    else:
+                        self.assertIn("provisioningState=Failed", result.stdout)
+                    self.assertIn("matches the primary region", result.stdout)
+                    fallback_outcome = "skipped" if skip_fallback else "failed" if fallback_fail or diag_fail else "succeeded"
+                    self.assertIn(
+                        f"Fallback {fallback_outcome} in westus",
+                        result.stdout,
+                    )
+                    self.assertIn(f"Primary deployment for {deployment_file} in westus failed", result.stdout)
+                    calls = (repo / "az-calls.txt").read_text(encoding="utf-8")
+                    self.assertIn("deployment operation group list --resource-group", calls)
+                    if lookup_fail:
+                        self.assertIn("Could not retrieve ARM deployment operations", result.stdout)
+                        self.assertIn("Could not retrieve the ARM deployment error code", result.stdout)
+                        self.assertIn("Could not retrieve ARM deployment status", result.stdout)
+                        self.assertIn("failed (see earlier error output)", result.stdout)
+                    else:
+                        self.assertIn("ARM error: RequestConflict", result.stdout)
+                        self.assertIn("correlation-123", result.stdout)
+                        self.assertIn("account/project", result.stdout)
+                        self.assertIn("request-123", result.stdout)
+                    if fallback_fail:
+                        self.assertIn("Fallback failed in westus (ARM error: FallbackError)", result.stdout)
+                    if diag_fail:
+                        self.assertIn("Data-plane diagnostics failed", result.stdout)
+
     def test_live_deployment_exclusion_is_sample_specific_and_preserves_failures(self):
         bash = shutil.which("bash")
         self.assertIsNotNone(bash, "Bash is required for pipeline deployment checks")
