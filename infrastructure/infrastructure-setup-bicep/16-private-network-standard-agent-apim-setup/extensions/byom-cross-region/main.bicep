@@ -141,6 +141,9 @@ param backendModelDeployments array = [
 @description('Foundry portal name for the AI Gateway connection. Shows up as <connectionName>/<deploymentName> in agent code.')
 param connectionName string = 'ai-gateway'
 
+@description('Optional model name advertised by the Foundry connection that APIM handles locally with a deterministic response. Leave empty (default) to disable the mock route; set to e.g. mock-model for connectivity testing.')
+param mockModelName string = ''
+
 @description('Inference API version sent to the backend by Foundry SDK calls.')
 param inferenceApiVersion string = '2024-10-21'
 
@@ -209,6 +212,31 @@ var storagePassedIn = !empty(azureStorageAccountResourceId)
 var searchPassedIn = !empty(aiSearchResourceId)
 var cosmosPassedIn = !empty(azureCosmosDBAccountResourceId)
 var existingVnetPassedIn = !empty(existingVnetResourceId)
+var realGatewayModels = [for deployment in backendModelDeployments: {
+  name: deployment.name
+  properties: {
+    model: {
+      name: deployment.name
+      version: deployment.version
+      format: deployment.format
+    }
+  }
+}]
+var gatewayModels = concat(
+  empty(mockModelName) ? [] : [
+    {
+      name: mockModelName
+      properties: {
+        model: {
+          name: mockModelName
+          version: '1'
+          format: 'OpenAI'
+        }
+      }
+    }
+  ],
+  realGatewayModels
+)
 
 var acsParts = split(aiSearchResourceId, '/')
 var aiSearchServiceSubscriptionId = searchPassedIn ? acsParts[2] : subscription().subscriptionId
@@ -462,6 +490,7 @@ module inferenceApi 'modules/apim-inference-api.bicep' = {
     backendAccountName: backendAccount.outputs.accountName
     backendRegion: backendLocation
     projectRegion: location
+    mockModelName: mockModelName
   }
   dependsOn: [
     apimBackendRole
@@ -603,16 +632,7 @@ module byomConnection '../../../01-connections/apim/connection-apim.bicep' = {
     isSharedToAll: true
     deploymentInPath: 'true'
     inferenceAPIVersion: inferenceApiVersion
-    staticModels: [for d in backendModelDeployments: {
-      name: d.name
-      properties: {
-        model: {
-          name: d.name
-          version: d.version
-          format: d.format
-        }
-      }
-    }]
+    staticModels: gatewayModels
   }
   dependsOn: [
     addProjectCapabilityHost
@@ -682,6 +702,8 @@ output projectId string = aiProject.outputs.projectId
 output apimGatewayUrl string = shouldCreateApim ? apimService!.outputs.apimGatewayUrl : 'https://${effectiveApimName}.azure-api.net'
 output backendAccountId string = backendAccount.outputs.accountId
 output byomConnectionName string = byomConnection.outputs.connectionName
+output mockModelReference string = empty(mockModelName) ? '' : '${byomConnection.outputs.connectionName}/${mockModelName}'
+output realModelReferences array = [for deployment in backendModelDeployments: '${byomConnection.outputs.connectionName}/${deployment.name}']
 output directFoundryConnectionName string = enableDirectFoundryConnection ? directFoundryConnection!.outputs.connectionName : ''
 output thirdPartyConnectionName string = enableThirdPartyConnection ? thirdPartyConnection!.outputs.connectionName : ''
 output backendPrivateEndpointId string = backendPe.outputs.privateEndpointId

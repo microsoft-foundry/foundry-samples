@@ -76,6 +76,23 @@
           return body.ToString();
         }</set-body>
       </when>
+      <when condition="@(((string)context.Variables[&quot;deploymentName&quot;]) == &quot;${mock_alias}&quot;)">
+        <!-- Diagnostic constant-latency backend. No upstream call: returns a
+             valid OpenAI chat.completions body immediately so client-side A/B
+             timing isolates the data-proxy hop from model/backend variance.
+             Same APIM policy runs for injected and non-injected callers, so
+             the paired delta is the honest data-proxy tax. -->
+        <set-variable name="vendor" value="mock" />
+        <return-response>
+          <set-status code="200" reason="OK" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-body>@{
+            return "{\"id\":\"chatcmpl-mock\",\"object\":\"chat.completion\",\"created\":" + DateTimeOffset.UtcNow.ToUnixTimeSeconds() + ",\"model\":\"mock\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"hello\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1,\"total_tokens\":2}}";
+          }</set-body>
+        </return-response>
+      </when>
       <otherwise>
         <set-variable name="vendor" value="unknown" />
         <return-response>
