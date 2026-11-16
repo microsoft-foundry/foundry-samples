@@ -18,6 +18,7 @@ from response_telemetry import ResponseTelemetry
 
 MAX_TRACKED_PLAYBACK_RESPONSES = 64
 MAX_MESSAGE_CHARACTERS = 8_000
+MAX_OUTPUT_BYTES = 512 * 1024
 MAX_ACTIVE_RESPONSES = 8
 MAX_TERMINAL_SENDS = 8
 MAX_PENDING_PROACTIVE = 8
@@ -157,8 +158,12 @@ class SessionState:
         """Synchronize only responses this connection has actually tracked."""
         if response_id not in self.heard_text_by_response and response_id not in self.responses:
             return
+        # Playback describes response output, not user input. Bound both the UTF-8
+        # payload and temporary allocation; malformed escapes must not block cancellation.
+        encoded = heard_text[:MAX_OUTPUT_BYTES].encode("utf-8", errors="replace")
+        bounded = encoded[:MAX_OUTPUT_BYTES].decode("utf-8", errors="ignore")
         self.track_response(response_id)
-        self.heard_text_by_response[response_id] = heard_text[:MAX_MESSAGE_CHARACTERS]
+        self.heard_text_by_response[response_id] = bounded
 
     @property
     def terminating(self) -> bool:

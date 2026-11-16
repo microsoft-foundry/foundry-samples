@@ -1,0 +1,35 @@
+[project]
+name = "foreground-background-agents-voicelive"
+version = "0.1.0"
+description = "A foreground/background conversation engine for Voice Live."
+requires-python = ">=3.13"
+dependencies = [
+    "azure-ai-agentserver-invocations==1.3.0b1",
+    "azure-ai-agentserver-core==2.3.0b2",
+    "azure-ai-projects==2.0.1",
+    "azure-identity==1.25.3",
+    "opentelemetry-api==1.45.1",
+    # Keep the original Foundry Projects/OpenAI 2 model-client compatibility.
+    "httpx==0.28.1",
+    "openai==2.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx2==2.12.0",
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "ruff==0.16.5",
+    "websockets==17.1",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "ASYNC"]
