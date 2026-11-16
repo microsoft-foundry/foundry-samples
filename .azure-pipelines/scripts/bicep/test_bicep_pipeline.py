@@ -174,6 +174,84 @@ class BicepPipelineTests(unittest.TestCase):
                         else:
                             self.assertIn("##vso[task.logissue type=error]", result.stdout)
 
+    def test_deployment_names_do_not_end_with_truncated_hyphens(self):
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "Bash is required for pipeline deployment checks")
+        script = self.pipeline["stages"][2]["jobs"][0]["steps"][1]["inputs"]["inlineScript"]
+        deploy = script[script.index("deploy_with_location() {"):script.index("bicepparam_supports_location() {")]
+        deploy = deploy.replace("$(BICEP_ROOT)", SAMPLE_ROOT)
+        deploy = deploy.replace("$(System.JobAttempt)", "1")
+        stub = """
+set -euo pipefail
+rg_prefix=ci-rg
+deployment_prefix=ci-deploy
+ci_model_name=gpt-5-mini
+ci_model_version=2025-08-07
+fallback_location=westus
+cleanup_files=()
+cleanup_groups=()
+az() {
+    case "$1 $2 $3" in
+        "deployment group create")
+            printf '%s\\n' "$@" > deployment-args.txt
+            while [ "$#" -gt 1 ]; do
+                if [ "$1" = "--parameters" ] && [ -f "$2" ]; then
+                    cat "$2" > deployed-parameters.txt
+                fi
+                shift
+            done
+            ;;
+        "deployment group show") printf 'Succeeded\\n' ;;
+        "resource list --resource-group") printf '1\\n' ;;
+    esac
+}
+bash() { :; }
+"""
+        for sample, extension, slot, build_id, expected in (
+            ("03-custom-dns", "bicep", "fallback", "247092626",
+             "fsci2470926261bc54d5westusf03-custom"),
+            ("03-custom-dns", "bicepparam", "fallback", "247092626",
+             "fsci247092626164926awestusf03-custom"),
+            ("03-custom---dns", "bicep", "fallback", "24709262",
+             "fsci247092621933c50westusf03-custom"),
+            ("02-storage-speech-language", "bicep", "primary", "247092626",
+             "fsci2470926261d90c61westusp02-storage"),
+            ("short", "bicep", "primary", "247092626",
+             "fsci24709262619f3f00westuspshort"),
+        ):
+            with self.subTest(sample=sample, extension=extension, slot=slot):
+                with tempfile.TemporaryDirectory() as directory:
+                    repo = Path(directory)
+                    sample_dir = repo / SAMPLE_ROOT / sample
+                    sample_dir.mkdir(parents=True)
+                    (sample_dir / "main.bicep").write_text(
+                        "param location string\nparam aiFoundryName string\n"
+                        "param customDNSName string\nparam backendAccountName string\n",
+                        encoding="utf-8",
+                    )
+                    if extension == "bicepparam":
+                        (sample_dir / "main.bicepparam").write_text(
+                            "using './main.bicep'\nparam location = 'eastus'\n", encoding="utf-8"
+                        )
+                    deployment_file = f"{SAMPLE_ROOT}/{sample}/main.{extension}"
+                    result = subprocess.run(
+                        [bash],
+                        input=stub + deploy.replace("$(Build.BuildId)", build_id)
+                        + f'\ndeploy_with_location "{deployment_file}" westus {slot}\n',
+                        cwd=repo, capture_output=True, text=True,
+                    )
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                    captured = repo / ("deployed-parameters.txt" if extension == "bicepparam"
+                                       else "deployment-args.txt")
+                    inputs = captured.read_text(encoding="utf-8")
+                    for param, value in (
+                        ("aiFoundryName", expected),
+                        ("customDNSName", f"{expected}-alt"),
+                        ("backendAccountName", f"{expected}-backend"),
+                    ):
+                        line = f"param {param} = '{value}'" if extension == "bicepparam" else f"{param}={value}"
+                        self.assertIn(f"{line}\n", inputs)
+
     def test_private_ca_bootstrap_supplies_deployment_inputs_and_cleans_up(self):
         bash = shutil.which("bash")
         self.assertIsNotNone(bash, "Bash is required for pipeline deployment checks")

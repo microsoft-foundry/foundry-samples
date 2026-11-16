@@ -335,7 +335,7 @@ stages:
                   safe_location="$(printf '%s' "$location" | tr -cd '[:alnum:]' | cut -c1-8)"
                   safe_slot="$(printf '%s' "$deployment_slot" | tr -cd '[:alnum:]' | cut -c1-1)"
                   deployment_hash="$(printf '%s:%s' "$deployment_file" "$safe_slot" | sha256sum | cut -c1-6)"
-                  unique_name="$(printf 'fsci%s%s%s%s%s%s' "$(Build.BuildId)" "$(System.JobAttempt)" "$deployment_hash" "$safe_location" "$safe_slot" "$safe_name" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]-' | cut -c1-37)"
+                  unique_name="$(printf 'fsci%s%s%s%s%s%s' "$(Build.BuildId)" "$(System.JobAttempt)" "$deployment_hash" "$safe_location" "$safe_slot" "$safe_name" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]-' | cut -c1-37 | sed 's/-*$//')"
                   unique_ai_prefix="$(printf 'fs%s%s%s' "$(Build.BuildId)" "$(System.JobAttempt)" "$deployment_hash" | tr -cd '[:alnum:]' | cut -c1-13)"
                   unique_key_vault_name="$(printf 'fsci%s%s%s%s%s%s' "$(Build.BuildId)" "$(System.JobAttempt)" "$deployment_hash" "$safe_location" "$safe_slot" "$safe_name" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]-' | cut -c1-24)"
                   unique_storage_name="$(printf 'fsci%s%s%s%s%s%s' "$(Build.BuildId)" "$(System.JobAttempt)" "$deployment_hash" "$safe_location" "$safe_slot" "$safe_name" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]' | cut -c1-24)"

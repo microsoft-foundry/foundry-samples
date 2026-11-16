@@ -219,8 +219,9 @@ The deployment job schedules resource-group cleanup on exit.
 
 The existing [scripts self-test workflow](../.github/workflows/scripts-selftest.yml)
 runs the migrated Python/shell harnesses, checks all published fixture mappings
-and schemas, exercises Bicep file selection with a mocked Azure CLI, and parses
-shell scripts. These tests do not authenticate to Azure or deploy samples.
+and schemas, exercises Bicep file selection and generated deployment names with
+a mocked Azure CLI, and parses shell scripts. These tests do not authenticate to
+Azure or deploy samples.
 
 Run from the repository root on Linux or Git Bash with Python 3.13, Bash, Git,
 `jq`, and Mike Farah's `yq` available:
