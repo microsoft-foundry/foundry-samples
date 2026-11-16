@@ -136,6 +136,7 @@ python governance.py guardrail --fixture good --expect allowed
 python governance.py guardrail --fixture no-egress --expect allowed
 python governance.py guardrail --fixture bad-source --expect allowed
 python governance.py agent --fixture none --image "$AGENT_IMAGE" --expect allowed
+python governance.py agent --fixture bad-source --image "$AGENT_IMAGE" --expect allowed
 ```
 
 Audit does not block these writes. After assignment propagation, use
@@ -165,6 +166,7 @@ python governance.py guardrail --fixture bad-source --expect denied --member bas
 python governance.py guardrail --fixture no-egress --expect allowed
 python governance.py agent --fixture none --image "$AGENT_IMAGE" --expect denied
 python governance.py agent --fixture no-egress --image "$AGENT_IMAGE" --expect denied
+python governance.py agent --fixture bad-source --image "$AGENT_IMAGE" --expect denied
 python governance.py agent --fixture good --image "$AGENT_IMAGE" --expect allowed
 ```
 

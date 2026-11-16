@@ -29,6 +29,23 @@ class GovernanceTests(unittest.TestCase):
             },
         }
 
+    def test_agent_cli_accepts_the_unapproved_source_guardrail_fixture(self):
+        with patch.object(g, "load", return_value=self.state), patch.object(
+            g, "agent"
+        ) as create:
+            g.main(
+                [
+                    "agent",
+                    "--fixture",
+                    "bad-source",
+                    "--expect",
+                    "denied",
+                    "--image",
+                    "registry.azurecr.io/probe@sha256:" + "a" * 64,
+                ]
+            )
+        self.assertEqual(create.call_args.args[0].fixture, "bad-source")
+
     def test_denial_requires_intended_assignment_definition_and_error(self):
         assignment = (
             self.state["account"]

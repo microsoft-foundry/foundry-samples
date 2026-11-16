@@ -445,7 +445,14 @@ def main(argv=None):
     hosted = commands.add_parser("agent")
     hosted.add_argument(
         "--fixture",
-        choices=["good", "no-egress", "bad-rewrite", "bad-headers", "none"],
+        choices=[
+            "good",
+            "bad-source",
+            "no-egress",
+            "bad-rewrite",
+            "bad-headers",
+            "none",
+        ],
         required=True,
     )
     hosted.add_argument("--expect", choices=["allowed", "denied"], required=True)
