@@ -42,17 +42,19 @@ def main() -> None:
         name=f"{AGENT_NAME}-trace-eval",
         data_source_config={"type": "azure_ai_source", "scenario": "traces"},
         testing_criteria=[
+            # The two recommended agent evaluators: answer quality and tool use. Mapping
+            # messages (not query/response) passes the tool calls and results they check.
             {
                 "type": "azure_ai_evaluator",
-                "name": "intent_resolution",
-                "evaluator_name": "builtin.intent_resolution",
+                "name": name,
+                "evaluator_name": f"builtin.{name}",
                 "data_mapping": {
-                    "query": "{{item.query}}",
-                    "response": "{{item.response}}",
+                    "messages": "{{item.messages}}",
                     "tool_definitions": "{{item.tool_definitions}}",
                 },
                 "initialization_parameters": {"deployment_name": EVAL_DEPLOYMENT},
-            },
+            }
+            for name in ("output_quality", "tool_use_quality")
         ],
     )
 

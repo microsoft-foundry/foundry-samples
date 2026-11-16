@@ -173,8 +173,9 @@ python run_trace_eval.py
 
 This:
 
-1. Creates an OpenAI-compatible eval group with the built-in trace
-   evaluator `intent_resolution`.
+1. Creates an OpenAI-compatible eval group with the two recommended agent
+   evaluators: `output_quality` (is the answer good) and `tool_use_quality`
+   (did the agent use its tools well).
 2. Creates an `azure_ai_trace_data_source` `agent_filter` run scoped
    to that agent over the last 24 hours.
 3. Polls until completion and prints per-criterion pass/fail counts.
