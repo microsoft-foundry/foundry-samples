@@ -129,9 +129,8 @@ class A2AInvocationTests(unittest.TestCase):
             def transport(arguments):
                 self.assertIn("--a2a-version", arguments)
                 self.assertEqual(arguments[arguments.index("--a2a-version") + 1], "1.0")
-                self.assertEqual(
-                    arguments[arguments.index("--session-id") + 1], "cell-session"
-                )
+                self.assertEqual(arguments[arguments.index("--version") + 1], "2")
+                self.assertNotIn("--session-id", arguments)
                 self.assertEqual(arguments[4], "cell-agent")
                 request = json.loads(
                     Path(arguments[arguments.index("--input-file") + 1]).read_text()
@@ -161,6 +160,7 @@ class A2AInvocationTests(unittest.TestCase):
                 environment={
                     "CI_AGENT_SESSION_ID": "cell-session",
                     "FOUNDRY_AGENT_NAME": "cell-agent",
+                    "DEPLOYED_AGENT_VERSION": "2",
                 },
                 transport=transport,
                 temp_dir=work,
@@ -182,6 +182,18 @@ class A2AInvocationTests(unittest.TestCase):
             served = work / "evidence" / invoke.SERVED_SESSIONS_FILE
             self.served_sessions = served.read_text() if served.exists() else None
             return outcome, text, raw
+
+    def test_a2a_invoke_requires_deployed_version(self):
+        for version in (None, "", "  "):
+            with self.subTest(version=version):
+                environment = {"FOUNDRY_AGENT_NAME": "cell-agent"}
+                if version is not None:
+                    environment["DEPLOYED_AGENT_VERSION"] = version
+                with self.assertRaisesRegex(ValueError, "DEPLOYED_AGENT_VERSION"):
+                    invoke.invoke_turn(
+                        1, Path("input"), Path("turn"), Path("evidence"), 1,
+                        environment=environment,
+                    )
 
     def test_served_a2a_session_header_is_recorded_once_and_validated(self):
         header = "X-Agent-Session-Id: 04edede55b0213d000k5HPbYfw\r\n"
@@ -708,6 +720,8 @@ class A2ARunnerTests(unittest.TestCase):
                 "    print(json.dumps({'version': '2'}))\n"
                 "elif args[:3] == ['ai', 'agent', 'invoke']:\n"
                 "    assert args[3] == 'cell-agent'\n"
+                "    assert args[args.index('--version') + 1] == '2'\n"
+                "    assert '--session-id' not in args\n"
                 "    assert os.environ['AZD_ALPHA_ENABLE_AGENTS_A2A'] == 'true'\n"
                 "    req = json.loads(Path(args[args.index('--input-file') + 1]).read_text())\n"
                 "    counter = Path('invoke-count')\n"
@@ -805,6 +819,8 @@ class A2ARunnerTests(unittest.TestCase):
                 "if args[:3] == ['ai', 'agent', 'show']:\n"
                 "    print(json.dumps({'version': '2'}))\n"
                 "elif args[:3] == ['ai', 'agent', 'invoke']:\n"
+                "    assert args[args.index('--version') + 1] == '2'\n"
+                "    assert '--session-id' not in args\n"
                 "    req = json.loads(Path(args[args.index('--input-file') + 1]).read_text())\n"
                 "    body = {'jsonrpc':'2.0','id':req['id'],'result':{'task':{'id':'task-1','status':{'state':'TASK_STATE_COMPLETED'},'artifacts':[{'parts':[{'text':'Echo: hello'}]}]}}}\n"
                 "    print('HTTP/2.0 200 OK\\nX-Agent-Session-Id: served-1\\nContent-Type: application/json\\n\\n' + json.dumps(body))\n"

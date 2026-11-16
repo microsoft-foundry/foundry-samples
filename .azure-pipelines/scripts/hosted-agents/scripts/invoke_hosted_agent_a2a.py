@@ -33,8 +33,8 @@ SESSION_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
 def record_served_session(headers: str, evidence_dir: Path) -> str:
     """Record the platform session that served the A2A request.
 
-    A2A requests are not routed by azd's --session-id, so console logs and
-    cleanup must target the session named by the response header.
+    Console logs and cleanup must target the session named by the response
+    header, which may differ from the pipeline's explicitly created session.
     """
     for line in headers.splitlines()[1:]:
         name, separator, value = line.partition(":")
@@ -157,10 +157,10 @@ def invoke_turn(
     transport: Callable[[Sequence[str]], subprocess.CompletedProcess[str]] = _run,
     temp_dir: Path = Path("/tmp"),
 ) -> dict[str, Any]:
-    session = environment.get("CI_AGENT_SESSION_ID")
     agent = environment.get("FOUNDRY_AGENT_NAME")
-    if not session or not agent:
-        raise ValueError("CI_AGENT_SESSION_ID and FOUNDRY_AGENT_NAME are required")
+    version = environment.get("DEPLOYED_AGENT_VERSION")
+    if not agent or not version or not version.strip():
+        raise ValueError("FOUNDRY_AGENT_NAME and DEPLOYED_AGENT_VERSION are required")
     record = json.loads(turn_record_file.read_text(encoding="utf-8"))
     if not isinstance(record, dict):
         raise ValueError("A2A turn record must be an object")
@@ -210,8 +210,8 @@ def invoke_turn(
                 "1.0",
                 "--input-file",
                 str(request_file),
-                "--session-id",
-                session,
+                "--version",
+                version,
                 "--output",
                 "raw",
                 "--no-prompt",
