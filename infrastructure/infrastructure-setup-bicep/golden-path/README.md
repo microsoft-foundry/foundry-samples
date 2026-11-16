@@ -106,8 +106,7 @@ variant you deployed).
   **inbound-public + outbound-VNet-integrated** — the gateway endpoint stays reachable by the managed
   Agent Service inference plane while it reaches the private hub over the VNet. It is **self-contained
   and one-shot**: a single deployment stands up the full private foundation (steps 1–3) *and* the AI
-  Gateway tier (steps 4–5), so there is no separate `11`/`15`/`16` run. Deploy it in one AIGateway
-  preview region (East US 2 / Sweden Central).
+  Gateway tier (steps 4–5), so there is no separate `11`/`15`/`16` run. Deploy it in Sweden Central.
 - **Steps 4 + 5, direct and third-party paths** — the extension reuses the shared
   [`01-connections/model-gateway`](../01-connections/model-gateway/) module. These connected-model
   calls originate from the managed Agent Service inference plane, not the delegated agent subnet,

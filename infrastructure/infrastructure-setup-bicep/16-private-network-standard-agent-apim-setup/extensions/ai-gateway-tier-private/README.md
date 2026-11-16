@@ -40,8 +40,8 @@ The gateway is **inbound-public, outbound-private** (the same posture as `byom-c
 
 > [!IMPORTANT]
 > The AI Gateway tier is a **release-gated public preview** (`AIGateway` SKU, `2025-09-01-preview`),
-> available only in **East US 2** and **Sweden Central**. The whole sample deploys in **one** region
-> (the `region` parameter, default `swedencentral`) because outbound integration requires the VNet in
+> and this sample supports only **Sweden Central**. The whole sample deploys in **one** region
+> (the `region` parameter, `swedencentral`) because outbound integration requires the VNet in
 > the **same region** as the gateway. `az bicep build` emits **BCP081** warnings for the preview
 > provider/model/apiKey types (expected); the networking property shapes are verified against the
 > live AIGateway SKU.
@@ -63,7 +63,7 @@ A single deployment, in one resource group and region:
 
 ## Prerequisites
 
-1. **A resource group** in **East US 2** or **Sweden Central** (or let the deploy target an existing
+1. **A resource group** in **Sweden Central** (or let the deploy target an existing
    one). Nothing needs to be deployed into it first.
 2. **Azure CLI** logged in (`az login`) with the **`AIGateway` preview enabled** in that region.
 3. Quota for the model (default `gpt-5.4`, `GlobalStandard`) in the region — the consumer account and
@@ -95,7 +95,7 @@ project this sample creates). The private connectivity is already established by
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `region` | `swedencentral` | Single region for every resource. Must be an AIGateway preview region (`eastus2` / `swedencentral`). |
+| `region` | `swedencentral` | Single region for every resource. Only `swedencentral` is allowed. |
 | `aiServices` | `aiservices` | Base name for the Foundry account (a unique suffix is appended). |
 | `firstProjectName` | `project` | Base name for the project. |
 | `modelName` / `modelFormat` / `modelVersion` | `gpt-5.4` / `OpenAI` / `2026-03-05` | Model deployed on the consumer account and the private hub; the gateway imports the hub deployment. |
