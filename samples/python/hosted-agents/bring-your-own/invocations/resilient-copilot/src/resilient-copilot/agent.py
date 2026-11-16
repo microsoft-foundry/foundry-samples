@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 import json
 import logging
@@ -718,7 +719,7 @@ async def copilot_agent(ctx: TaskContext[dict]) -> None:
                 await asyncio.gather(cancel_wait, shutdown_wait, return_exceptions=True)
 
         watcher = asyncio.create_task(watch_stop())
-        async for event in harness.events():
+        async for event in _events_until_stop_failure(harness.events(), watcher):
             if ctx.cancel.is_set() or ctx.shutdown.is_set():
                 break
             if isinstance(event, TodoCheckpointRequest):
@@ -860,6 +861,41 @@ async def copilot_agent(ctx: TaskContext[dict]) -> None:
         if _HARNESS_SLOTS.get(session_id) is slot:
             _HARNESS_SLOTS.pop(session_id, None)
         _CLIENT_CANCEL_REQUESTED.discard(session_id)
+
+
+async def _events_until_stop_failure(
+    events: AsyncIterator[Any], watcher: asyncio.Task[None]
+) -> AsyncIterator[Any]:
+    """Yield harness events, re-raising a failed stop watcher.
+
+    The watcher aborts the Copilot turn on cancel or shutdown. If that abort
+    fails, the harness may never emit its idle boundary, so waiting only on the
+    next event would hang the turn. Race each event against the watcher.
+    """
+    iterator = aiter(events)
+    while True:
+        next_event = asyncio.ensure_future(anext(iterator))
+        try:
+            if not watcher.done():
+                await asyncio.wait(
+                    {next_event, watcher}, return_when=asyncio.FIRST_COMPLETED
+                )
+            if (
+                watcher.done()
+                and not watcher.cancelled()
+                and watcher.exception() is not None
+            ):
+                raise watcher.exception()
+            event = await next_event
+        except StopAsyncIteration:
+            return
+        finally:
+            if not next_event.done():
+                next_event.cancel()
+                await asyncio.gather(next_event, return_exceptions=True)
+            elif not next_event.cancelled():
+                next_event.exception()
+        yield event
 
 
 def _maybe_crash(emitted: int, *, enabled: bool = True) -> None:

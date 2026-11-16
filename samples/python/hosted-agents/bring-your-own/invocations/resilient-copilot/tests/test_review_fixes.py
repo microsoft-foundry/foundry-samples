@@ -1596,6 +1596,31 @@ class AgentTaskTests(unittest.IsolatedAsyncioTestCase):
         ]
         self.assertEqual(pending, [])
 
+    async def test_failed_abort_fails_the_turn_instead_of_hanging(self):
+        class FailingAbortHarness(QueueHarness):
+            async def _abort(self):
+                raise RuntimeError("abort failed")
+
+        with self.assertRaisesRegex(RuntimeError, "abort failed"):
+            await asyncio.wait_for(
+                self.run_task(
+                    context=self.context(cancel=True),
+                    harness=FailingAbortHarness,
+                    invocation_store=self.invocation_store,
+                ),
+                2,
+            )
+        self.assertEqual(
+            self.invocation_store.records["invocation"]["status"], "failed"
+        )
+        await asyncio.sleep(0)
+        pending = [
+            task
+            for task in asyncio.all_tasks()
+            if task is not asyncio.current_task() and not task.done()
+        ]
+        self.assertEqual(pending, [])
+
     async def test_sequential_turns_keep_independent_invocation_status(self):
         statuses = FakeInvocationStore()
         await self.run_task(
