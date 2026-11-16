@@ -483,11 +483,13 @@ trap 'rm -rf "$work_dir" "$hosts_file"' EXIT
 agent_name="$(printf 'ci-diag-%s-%s-%s' "$build_id" "$job_attempt" "$account_name" \
   | tr '[:upper:]' '[:lower:]' \
   | tr -cd '[:alnum:]-' \
-  | cut -c1-63)"
+  | cut -c1-63 \
+  | sed -e 's/^-*//' -e 's/-*$//')"
 azd_env_name="$(printf 'fsci-dp-%s-%s' "$build_id" "$job_attempt" \
   | tr '[:upper:]' '[:lower:]' \
   | tr -cd '[:alnum:]-' \
-  | cut -c1-32)"
+  | cut -c1-32 \
+  | sed -e 's/^-*//' -e 's/-*$//')"
 
 begin_group "Scaffold diagnostic hosted agent"
 cd "$work_dir"
