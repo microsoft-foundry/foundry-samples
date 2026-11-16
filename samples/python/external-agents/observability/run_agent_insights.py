@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import time
 import uuid
 from pathlib import Path
 
@@ -57,6 +58,21 @@ def get_or_create_monitor(project_client: AIProjectClient, model: str):
     )
 
 
+def delete_monitor(monitors, monitor_id: str, attempts: int = 20) -> None:
+    """Delete a monitor, waiting for any active run to finish first (the service returns a conflict until then)."""
+    for _ in range(attempts):
+        try:
+            monitors.delete(monitor_id)
+            print(f"Deleted monitor {monitor_id}")
+            return
+        except ResourceExistsError:
+            print(f"Monitor {monitor_id} has a run in progress; retrying in 30s...")
+            time.sleep(30)
+    raise SystemExit(
+        f"Monitor {monitor_id} still has an active run. Try --delete later."
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--lookback-hours", type=float, default=24)
@@ -74,14 +90,7 @@ def main() -> None:
         monitors = project_client.agent_insight_monitors
         if args.delete:
             for existing in monitors.list(agent_name=AGENT_NAME):
-                try:
-                    monitors.delete(existing.id)
-                except ResourceExistsError:
-                    raise SystemExit(
-                        f"Monitor {existing.id} has a run in progress. "
-                        "Wait for it to finish, then run --delete again."
-                    )
-                print(f"Deleted monitor {existing.id}")
+                delete_monitor(monitors, existing.id)
             return
 
         monitor = get_or_create_monitor(project_client, analysis_model())
