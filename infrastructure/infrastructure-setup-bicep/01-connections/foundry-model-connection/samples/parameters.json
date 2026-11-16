@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "accountName": { "value": "<source-foundry-account>" },
+    "projectName": { "value": "<source-project>" },
+    "targetAccountResourceId": {
+      "value": "/subscriptions/<target-subscription>/resourceGroups/<target-resource-group>/providers/Microsoft.CognitiveServices/accounts/<target-foundry-account>"
+    },
+    "targetOpenAIBaseUrl": {
+      "value": "https://<target-foundry-subdomain>.services.ai.azure.com/openai/v1"
+    },
+    "modelDeploymentName": { "value": "<existing-target-deployment>" },
+    "connectionName": { "value": "foundry-models" },
+    "assignBackendRole": { "value": true }
+  }
+}

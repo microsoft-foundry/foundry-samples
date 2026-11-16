@@ -68,6 +68,16 @@
 /samples/REST/quickstart/quickstart-chat-with-agent.sh @microsoft-foundry/AI-Platform-Docs
 /samples/REST/quickstart/quickstart-create-agent.sh @microsoft-foundry/AI-Platform-Docs
 /samples/REST/quickstart/quickstart-responses.sh @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/audio-transcription/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/embeddings/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/integrate-examples/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/live-audio-transcription/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/native-chat-completions/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/tool-calling/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/tutorial-chat-assistant/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/tutorial-document-summarizer/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/tutorial-tool-calling-assistant/main.cpp @microsoft-foundry/AI-Platform-Docs
+/samples/cpp/foundry-local/tutorial-voice-to-text/main.cpp @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/VoiceAgents/realtime-image-input/RealtimeImageInput.cs @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/enterprise-agent-tutorial/1-idea-to-prototype/Evaluate/Program.cs @microsoft-foundry/AI-Platform-Docs
 /samples/csharp/enterprise-agent-tutorial/1-idea-to-prototype/ModernWorkplaceAssistant/Program.cs @microsoft-foundry/AI-Platform-Docs
@@ -157,6 +167,8 @@
 /samples/python/hosted-agents/bring-your-own/invocations/github-copilot/       @ankitbko @huimiu
 /samples/python/hosted-agents/bring-your-own/invocations/human-in-the-loop/    @ankitbko @huimiu
 /samples/python/hosted-agents/bring-your-own/responses/langgraph-toolbox/      @antriksh30 @lindazqli
+/samples/python/hosted-agents/langgraph/responses/11-deep-agents/              @microsoft-foundry/hosted-agents @Jiahui-Gu
+/.azure-pipelines/hosted-agent-tests/python/langgraph/responses/11-deep-agents/ @microsoft-foundry/hosted-agents @Jiahui-Gu
 
 # Migration scripts — v1-to-v2 migration tooling (issue #807)
 /migration/ @nikhowlettMicrosoft

@@ -5,13 +5,18 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy project file and restore dependencies first (layer caching)
+# Copy project file and restore dependencies first (layer caching).
+# The runtime identifier and ReadyToRun flag must match between restore and
+# publish, otherwise publish fails with NETSDK1094.
 COPY openai-computer-tool.csproj .
-RUN dotnet restore
+RUN dotnet restore -r linux-x64 -p:PublishReadyToRun=true
 
-# Copy remaining source and publish
+# Copy remaining source and publish ReadyToRun: precompile IL to native code
+# for the target runtime so the JIT does far less work during container start.
+# --self-contained false keeps the framework-dependent layout, so this costs
+# image size but not a runtime dependency.
 COPY . .
-RUN dotnet publish -c Release -o /app --no-restore
+RUN dotnet publish -c Release -r linux-x64 --self-contained false -p:PublishReadyToRun=true -o /app --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app

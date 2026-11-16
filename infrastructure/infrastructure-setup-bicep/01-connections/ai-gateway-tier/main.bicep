@@ -12,7 +12,7 @@
   This template creates the HUB only:
     - Foundry account (AIServices, system-assigned identity, keyless backend) + a hub
       project (admin workspace) + a gpt model deployment.
-    - AI Gateway tier instance (Microsoft.ApiManagement/service, AIGateway SKU) with a
+    - Standalone AI Gateway instance (Microsoft.ApiManagement/aigateways) with a
       system-assigned identity and a Foundry model provider that imports the account
       over MANAGED IDENTITY (the gateway MI gets Foundry User on the account).
     - The model registered on the gateway with a token-limit policy, plus a runtime key.
@@ -21,7 +21,7 @@
   gatewayName + gatewayModelsBaseUrl + modelName), then create a prompt agent that
   references the model as <connectionName>/<modelName> via the Responses API.
 
-  Release-gated preview: the AIGateway SKU deploys only where it is enabled
+  Release-gated preview: AI Gateway deploys only where it is enabled
   (East US 2, Sweden Central) — kept on its own gatewayLocation so the account and
   model can live elsewhere (e.g. a CI region).
 
@@ -57,7 +57,7 @@ param location string = 'eastus2'
   'eastus2'
   'swedencentral'
 ])
-@description('Region for the AI Gateway tier (AIGateway SKU), release-gated to eastus2 / swedencentral. Separate from location so the account and model can deploy in another region while the gateway stays supported.')
+@description('Region for the standalone AI Gateway, release-gated to eastus2 / swedencentral. Separate from location so the account and model can deploy in another region while the gateway stays supported.')
 param gatewayLocation string = 'eastus2'
 
 // ---------------------------------------------------------------------------
@@ -81,14 +81,9 @@ param modelCapacity int = 1
 // ---------------------------------------------------------------------------
 // AI Gateway tier
 // ---------------------------------------------------------------------------
-@description('Globally unique AI Gateway name. Resolves to <name>.azure-api.net. Leave empty to auto-generate.')
+@description('AI Gateway resource name: 3-24 lowercase letters, digits or hyphens, starting and ending with a letter or digit. The service returns its runtime hostname. Leave empty to auto-generate.')
+@maxLength(24)
 param gatewayName string = ''
-
-@description('Publisher email required by the API Management service at create time.')
-param publisherEmail string = 'noreply@example.com'
-
-@description('Publisher organization name required by the API Management service at create time.')
-param publisherName string = 'AI Gateway tier hub'
 
 @description('Tokens-per-minute budget enforced on the model by the gateway token-limit policy. Low by default so a burst test visibly throttles (HTTP 429).')
 param tokensPerMinute int = 100
@@ -165,28 +160,24 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
 }
 
 // ===========================================================================
-// AI Gateway tier instance — Microsoft.ApiManagement/service with the AIGateway
-// SKU. Release-gated preview: deploys only where the SKU is enabled (East US 2,
+// Standalone AI Gateway instance — Microsoft.ApiManagement/aigateways.
+// Release-gated preview: deploys only where AI Gateway is enabled (East US 2,
 // Sweden Central).
 // ===========================================================================
 var effectiveGatewayName = empty(gatewayName) ? 'aigw${uniqueSuffix}' : gatewayName
 var foundryUserRoleId = '53ca6127-db72-4b80-b1b0-d745d6d5456d'
 var foundryEndpoint = endsWith(account.properties.endpoint, '/') ? account.properties.endpoint : '${account.properties.endpoint}/'
 
-resource aiGateway 'Microsoft.ApiManagement/service@2025-09-01-preview' = {
+resource aiGateway 'Microsoft.ApiManagement/aigateways@2026-11-01' = {
   name: effectiveGatewayName
   location: gatewayLocation
   identity: {
     type: 'SystemAssigned'
   }
   sku: {
-    name: 'AIGateway'
-    capacity: 1
+    name: 'Standard'
   }
-  properties: {
-    publisherEmail: publisherEmail
-    publisherName: publisherName
-  }
+  properties: {}
 }
 
 // Grant the gateway's managed identity Foundry User on the account (keyless backend).
@@ -200,14 +191,15 @@ resource foundryUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = 
   }
 }
 
-// The AIGateway SKU auto-creates a 'default' workspace that holds providers/models.
-resource defaultWorkspace 'Microsoft.ApiManagement/service/workspaces@2025-09-01-preview' existing = {
+// Child operations use the preview API independently of the parent gateway API.
+// AI Gateway auto-creates a 'default' workspace that holds providers/models.
+resource defaultWorkspace 'Microsoft.ApiManagement/aigateways/workspaces@2026-09-01-preview' existing = {
   parent: aiGateway
   name: 'default'
 }
 
 // Foundry model provider — imports from the account using managed identity.
-resource foundryProvider 'Microsoft.ApiManagement/service/workspaces/modelProviders@2025-09-01-preview' = {
+resource foundryProvider 'Microsoft.ApiManagement/aigateways/workspaces/modelProviders@2026-09-01-preview' = {
   parent: defaultWorkspace
   name: 'foundry'
   properties: {
@@ -233,12 +225,11 @@ resource foundryProvider 'Microsoft.ApiManagement/service/workspaces/modelProvid
 }
 
 // Register the deployment as a gateway model, with a token-limit policy.
-resource gatewayModel 'Microsoft.ApiManagement/service/workspaces/modelProviders/models@2025-09-01-preview' = {
+resource gatewayModel 'Microsoft.ApiManagement/aigateways/workspaces/modelProviders/models@2026-09-01-preview' = {
   parent: foundryProvider
   name: modelName
   properties: {
     displayName: modelName
-    apiFormat: 'OpenAIChatCompletions'
     supportedEndpoints: [
       '/openai/v1/chat/completions'
       '/openai/v1/responses'
@@ -253,14 +244,33 @@ resource gatewayModel 'Microsoft.ApiManagement/service/workspaces/modelProviders
         type: 'tokenLimit'
         period: 'minute'
         count: tokensPerMinute
-        counterKey: 'Identity'
+        counterKey: [
+          'identity'
+        ]
       }
     ]
   }
 }
 
+resource gatewayAlias 'Microsoft.ApiManagement/aigateways/workspaces/aliases@2026-09-01-preview' = {
+  parent: defaultWorkspace
+  name: replace(modelName, '.', '-')
+  properties: {
+    aliasName: modelName
+    backendModels: [
+      {
+        resourceId: gatewayModel.id
+        priority: 0
+      }
+    ]
+    selectionOrder: [
+      'priority'
+    ]
+  }
+}
+
 // A runtime access key that spoke connections send in the api-key header.
-resource runtimeKey 'Microsoft.ApiManagement/service/apiKeys@2025-09-01-preview' = {
+resource runtimeKey 'Microsoft.ApiManagement/aigateways/apiKeys@2026-09-01-preview' = {
   parent: aiGateway
   name: 'default'
   properties: {
@@ -277,7 +287,8 @@ output accountName string = account.name
 output accountId string = account.id
 output projectName string = project.name
 output gatewayName string = aiGateway.name
-output gatewayModelsBaseUrl string = '${aiGateway.properties.gatewayUrl}/default/models/openai/v1'
+output gatewayId string = aiGateway.id
+output gatewayModelsBaseUrl string = 'https://${aiGateway.properties.frontend.defaultHostname}/default/models/openai/v1'
 output modelName string = modelName
 output modelVersion string = modelVersion
 output modelFormat string = modelFormat

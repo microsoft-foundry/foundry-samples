@@ -1,0 +1,12 @@
+{
+  "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
+  "type": "QuickStart",
+  "itemDisplayName": "Connect a Foundry project to Foundry models with project managed identity",
+  "description": "Creates an ApiManagement-category connection directly to an existing Foundry account and optionally grants the source project's managed identity Foundry User on that account. A prompt agent invokes an existing model deployment as connection/deployment through the Responses API. No API Management service or model deployment is created.",
+  "summary": "Keyless project-to-Foundry model connection with project-managed-identity authentication and target-account RBAC.",
+  "githubUsername": "mukeshagmsft",
+  "dateUpdated": "2026-11-03",
+  "environments": [
+    "AzureCloud"
+  ]
+}

@@ -1,0 +1,27 @@
+# CE needs a dedicated WebSocket/audio client. The shared HTTP deployment runner
+# skips this sample; planning as invocations validates raw assertions only.
+version: 1
+sample:
+  owner: wujin
+  experiences: [azd]
+tests:
+  - name: foreground-direct-response
+    turns:
+      - input: Say exactly "Ready for field operations." Do not start background work.
+        assertions:
+          - source: raw
+            type: contains
+            value: Ready for field operations.
+          - source: raw
+            type: regex
+            value: '"type"\s*:\s*"response\.done"'
+  - name: background-tool-result
+    turns:
+      - input: Find the fiber panel specifications for Quincy North using search_site_specs.
+        assertions:
+          - source: raw
+            type: regex
+            value: '(?i)OS2|OM4|Row C'
+          - source: raw
+            type: regex
+            value: '"type"\s*:\s*"response\.done"'

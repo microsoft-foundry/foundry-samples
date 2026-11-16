@@ -1,0 +1,202 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.48.1.52935",
+      "templateHash": "12627546456249312225"
+    }
+  },
+  "parameters": {
+    "accountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing Foundry account in THIS deployment resource group."
+      }
+    },
+    "projectName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing project under accountName. The project must have a system-assigned managed identity."
+      }
+    },
+    "targetAccountResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the existing target Foundry account hosting the model. May be in another resource group or subscription in the same tenant."
+      }
+    },
+    "targetOpenAIBaseUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Target Foundry OpenAI base URL, including /openai/v1 and no trailing slash. Use the actual endpoint, not the target ARM resource ID."
+      }
+    },
+    "modelDeploymentName": {
+      "type": "string",
+      "metadata": {
+        "description": "Existing model deployment name on the target account, not the underlying catalog model name."
+      }
+    },
+    "connectionName": {
+      "type": "string",
+      "defaultValue": "foundry-models",
+      "metadata": {
+        "description": "Project connection name. Agents reference <connectionName>/<modelDeploymentName>."
+      }
+    },
+    "assignBackendRole": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Grant Foundry User on the target account to the source PROJECT managed identity. Requires roleAssignments/write at the target account and deployment permissions in its resource group. Set false only if access is already provisioned."
+      }
+    },
+    "audience": {
+      "type": "string",
+      "defaultValue": "https://cognitiveservices.azure.com",
+      "metadata": {
+        "description": "Cognitive Services token audience for the target cloud. The default is for AzureCloud."
+      }
+    },
+    "foundryDataPlaneSuffix": {
+      "type": "string",
+      "defaultValue": "services.ai.azure.com",
+      "metadata": {
+        "description": "Foundry data-plane hostname suffix for the source cloud. Used only for the project endpoint output; the default is for AzureCloud."
+      }
+    }
+  },
+  "variables": {
+    "targetIdParts": "[split(parameters('targetAccountResourceId'), '/')]",
+    "targetAccountName": "[variables('targetIdParts')[8]]",
+    "targetSubscriptionId": "[variables('targetIdParts')[2]]",
+    "targetResourceGroupName": "[variables('targetIdParts')[4]]",
+    "discoveryBaseUrl": "[replace(parameters('targetOpenAIBaseUrl'), '/openai/v1', '/openai')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}/{2}', parameters('accountName'), parameters('projectName'), parameters('connectionName'))]",
+      "properties": {
+        "category": "ApiManagement",
+        "target": "[parameters('targetOpenAIBaseUrl')]",
+        "authType": "ProjectManagedIdentity",
+        "audience": "[parameters('audience')]",
+        "credentials": {},
+        "isSharedToAll": false,
+        "metadata": {
+          "ApiType": "Azure",
+          "ResourceId": "[parameters('targetAccountResourceId')]",
+          "displayName": "[parameters('connectionName')]",
+          "upstreamSurface": "responses",
+          "deploymentInPath": "false",
+          "deploymentAPIVersion": "2022-12-01",
+          "customHeaders": "{}",
+          "models": "[[]",
+          "modelDiscovery": "[string(createObject('listModelsEndpoint', format('{0}/deployments', variables('discoveryBaseUrl')), 'getModelEndpoint', format('{0}/deployments/{{deploymentName}}', variables('discoveryBaseUrl')), 'deploymentProvider', 'OpenAI'))]"
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', variables('targetSubscriptionId'), variables('targetResourceGroupName')), 'Microsoft.Resources/deployments', format('foundry-model-role-{0}', uniqueString(resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('accountName'), parameters('projectName')), parameters('connectionName'), parameters('targetAccountResourceId'))))]"
+      ]
+    },
+    {
+      "condition": "[parameters('assignBackendRole')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('foundry-model-role-{0}', uniqueString(resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('accountName'), parameters('projectName')), parameters('connectionName'), parameters('targetAccountResourceId')))]",
+      "subscriptionId": "[variables('targetSubscriptionId')]",
+      "resourceGroup": "[variables('targetResourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "targetAccountName": {
+            "value": "[variables('targetAccountName')]"
+          },
+          "projectPrincipalId": {
+            "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('accountName'), parameters('projectName')), '2025-04-01-preview', 'full').identity.principalId]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "13985353306192642666"
+            }
+          },
+          "parameters": {
+            "targetAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Existing target Foundry account in this module deployment resource group."
+              }
+            },
+            "projectPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Principal/object ID of the source project managed identity, not the account identity or the deploying user."
+              }
+            }
+          },
+          "variables": {
+            "foundryUserRoleId": "53ca6127-db72-4b80-b1b0-d745d6d5456d"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('targetAccountName'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('targetAccountName')), parameters('projectPrincipalId'), variables('foundryUserRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('foundryUserRoleId'))]",
+                "principalId": "[parameters('projectPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ],
+          "outputs": {
+            "roleAssignmentId": {
+              "type": "string",
+              "value": "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', parameters('targetAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('targetAccountName')), parameters('projectPrincipalId'), variables('foundryUserRoleId')))]"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "connectionId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', parameters('accountName'), parameters('projectName'), parameters('connectionName'))]"
+    },
+    "connectionName": {
+      "type": "string",
+      "value": "[parameters('connectionName')]"
+    },
+    "modelReference": {
+      "type": "string",
+      "value": "[format('{0}/{1}', parameters('connectionName'), parameters('modelDeploymentName'))]"
+    },
+    "projectEndpoint": {
+      "type": "string",
+      "value": "[format('https://{0}.{1}/api/projects/{2}', reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('accountName')), '2025-04-01-preview').customSubDomainName, parameters('foundryDataPlaneSuffix'), parameters('projectName'))]"
+    },
+    "targetEndpoint": {
+      "type": "string",
+      "value": "[parameters('targetOpenAIBaseUrl')]"
+    },
+    "roleAssignmentId": {
+      "type": "string",
+      "value": "[if(parameters('assignBackendRole'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', variables('targetSubscriptionId'), variables('targetResourceGroupName')), 'Microsoft.Resources/deployments', format('foundry-model-role-{0}', uniqueString(resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('accountName'), parameters('projectName')), parameters('connectionName'), parameters('targetAccountResourceId')))), '2025-04-01').outputs.roleAssignmentId.value, '')]"
+    }
+  }
+}

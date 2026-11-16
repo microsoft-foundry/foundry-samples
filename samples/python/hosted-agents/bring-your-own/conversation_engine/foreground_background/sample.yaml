@@ -1,0 +1,13 @@
+name: Foreground + Background Conversation Engine
+description: A model-backed Router/Worker sample on the Voice Live CE protocol.
+build: >-
+  cd src/foreground-background-agents-voicelive &&
+  uv sync --frozen
+validate: >-
+  cd src/foreground-background-agents-voicelive &&
+  uv run --no-sync python -m compileall -q -x '[.]venv' . &&
+  uv run --no-sync python -c "import main" &&
+  uv run --no-sync ruff check .
+test: >-
+  cd src/foreground-background-agents-voicelive &&
+  uv run --no-sync python -m pytest -q
