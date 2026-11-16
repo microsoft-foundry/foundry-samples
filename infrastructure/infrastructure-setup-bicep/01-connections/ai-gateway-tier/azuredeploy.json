@@ -80,7 +80,7 @@
     },
     "gatewayLocation": {
       "type": "string",
-      "defaultValue": "eastus2",
+      "defaultValue": "swedencentral",
       "allowedValues": [
         "eastus2",
         "swedencentral"

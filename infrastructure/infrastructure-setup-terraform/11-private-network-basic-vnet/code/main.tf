@@ -83,6 +83,14 @@ resource "azapi_resource" "ai_foundry" {
   name                      = "aifoundry${random_string.unique.result}"
   parent_id                 = azurerm_resource_group.rg.id
   location                  = coalesce(var.foundry_location, azurerm_resource_group.rg.location)
+
+  lifecycle {
+    precondition {
+      condition     = coalesce(var.foundry_location, azurerm_resource_group.rg.location) == var.location
+      error_message = "The Foundry account must be in the same region as the injected VNet (var.location)."
+    }
+  }
+  
   schema_validation_enabled = false
 
   body = {
