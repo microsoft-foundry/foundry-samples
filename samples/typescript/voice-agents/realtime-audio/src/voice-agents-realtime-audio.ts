@@ -8,7 +8,7 @@
  */
 
 import "dotenv/config";
-import { AIProjectClient, isRestError } from "@azure/ai-projects";
+import { AIProjectClient, isRestError, type VoiceAgentDefinition } from "@azure/ai-projects";
 import { DefaultAzureCredential } from "@azure/identity";
 import { once } from "node:events";
 import { createReadStream, createWriteStream } from "node:fs";
@@ -41,12 +41,12 @@ const trailingSilenceDurationInMs = 1_000;
 
 type VoiceAgent = Awaited<ReturnType<AIProjectClient["agents"]["get"]>>;
 type AgentDefinition = VoiceAgent["versions"]["latest"]["definition"];
-type VoiceDefinition = Extract<AgentDefinition, { kind: "voice" }>;
+type VoiceDefinition = VoiceAgentDefinition;
 type SessionAudioInput = NonNullable<VoiceDefinition["audio"]>["input"];
 type TurnDetection = NonNullable<SessionAudioInput>["turn_detection"];
 
 type VoiceAgentRealtimeConnection = Awaited<
-  ReturnType<AIProjectClient["beta"]["voiceAgents"]["realtime"]["connect"]>
+  ReturnType<AIProjectClient["voiceAgents"]["realtime"]["connect"]>
 >;
 type VoiceAgentRealtimeEvent = VoiceAgentRealtimeConnection extends AsyncIterable<infer TEvent>
   ? TEvent
@@ -57,7 +57,7 @@ async function main(): Promise<void> {
   const { definition, created } = await getOrCreateVoiceAgent(project);
 
   try {
-    const connection = await project.beta.voiceAgents.realtime.connect(agentName);
+    const connection = await project.voiceAgents.realtime.connect(agentName);
     const audioOutput = createWriteStream(audioOutputPath);
     let textCharacterCount = 0;
     let inputAudioByteCount = 0;
@@ -245,13 +245,16 @@ async function getOrCreateVoiceAgent(
 function getVoiceDefinition(agent: VoiceAgent): VoiceDefinition {
   const definition = agent.versions.latest.definition;
   if (!isVoiceAgentDefinition(definition)) {
-    throw new Error(`Agent ${agent.name} is not a voice agent.`);
+    throw new Error(`Agent ${agent.name} is not a Realtime voice agent.`);
   }
   return definition;
 }
 
 function withTurnDetectionOverrides(turnDetection: TurnDetection | undefined) {
-  if (!turnDetection) {
+  if (turnDetection === null) {
+    throw new Error("This sample requires automatic turn detection; the agent has it disabled.");
+  }
+  if (turnDetection === undefined) {
     return {
       type: "server_vad" as const,
       create_response: true,
@@ -273,6 +276,7 @@ function withTurnDetectionOverrides(turnDetection: TurnDetection | undefined) {
 function isVoiceAgentDefinition(definition: AgentDefinition): definition is VoiceDefinition {
   return (
     definition.kind === "voice" &&
+    !("sub_protocol" in definition && definition.sub_protocol === "live") &&
     "model_type" in definition &&
     (definition.model_type === "managed" || definition.model_type === "self_deployed") &&
     "model" in definition &&

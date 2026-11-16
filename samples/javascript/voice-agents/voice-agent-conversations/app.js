@@ -31,7 +31,7 @@ async function main() {
 
   try {
     const conversationId = await runStoredConversation(project);
-    const conversations = project.beta.voiceAgents.conversations;
+    const conversations = project.voiceAgents.conversations;
 
     console.log(`\nFetching conversation ${conversationId}...`);
     const conversation = await conversations.get(agentName, conversationId, restOptions);
@@ -69,22 +69,23 @@ async function main() {
       console.log(`  - ${response.id} (${response.output?.length ?? 0} output item(s))`);
     }
 
-    const firstResponse = responses[0];
-    if (firstResponse) {
-      console.log(`\nFetching response ${firstResponse.id} directly...`);
+    // Persisted response IDs are optional; only responses with an ID can be fetched directly.
+    const firstResponseId = responses.find((response) => response.id)?.id;
+    if (firstResponseId) {
+      console.log(`\nFetching response ${firstResponseId} directly...`);
       const fetchedResponse = await conversations.getResponse(
         agentName,
         conversationId,
-        firstResponse.id,
+        firstResponseId,
         restOptions,
       );
       console.log(`  Output item(s): ${fetchedResponse.output?.length ?? 0}`);
 
-      console.log(`\nItems produced by response ${firstResponse.id} (from listResponseItems)...`);
+      console.log(`\nItems produced by response ${firstResponseId} (from listResponseItems)...`);
       for await (const item of conversations.listResponseItems(
         agentName,
         conversationId,
-        firstResponse.id,
+        firstResponseId,
         restOptions,
       )) {
         console.log(`  ${summarizeItem(item)}`);
@@ -107,7 +108,7 @@ async function main() {
 
 async function runStoredConversation(project) {
   console.log("Opening a realtime session with conversation storage enabled...");
-  const connection = await project.beta.voiceAgents.realtime.connect(agentName, { store: true });
+  const connection = await project.voiceAgents.realtime.connect(agentName, { store: true });
   let conversationId;
 
   try {

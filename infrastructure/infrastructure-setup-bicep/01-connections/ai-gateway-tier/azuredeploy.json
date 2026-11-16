@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.46.1.21595",
-      "templateHash": "2257742962386746331"
+      "version": "0.49.2.45890",
+      "templateHash": "1224238146732485709"
     }
   },
   "parameters": {
@@ -53,7 +53,7 @@
         "swedencentral"
       ],
       "metadata": {
-        "description": "Region for the AI Gateway tier (AIGateway SKU), release-gated to eastus2 / swedencentral. Separate from location so the account and model can deploy in another region while the gateway stays supported."
+        "description": "Region for the standalone AI Gateway, release-gated to eastus2 / swedencentral. Separate from location so the account and model can deploy in another region while the gateway stays supported."
       }
     },
     "modelName": {
@@ -94,22 +94,9 @@
     "gatewayName": {
       "type": "string",
       "defaultValue": "",
+      "maxLength": 24,
       "metadata": {
-        "description": "Globally unique AI Gateway name. Resolves to <name>.azure-api.net. Leave empty to auto-generate."
-      }
-    },
-    "publisherEmail": {
-      "type": "string",
-      "defaultValue": "noreply@example.com",
-      "metadata": {
-        "description": "Publisher email required by the API Management service at create time."
-      }
-    },
-    "publisherName": {
-      "type": "string",
-      "defaultValue": "AI Gateway tier hub",
-      "metadata": {
-        "description": "Publisher organization name required by the API Management service at create time."
+        "description": "AI Gateway resource name: 3-24 lowercase letters, digits or hyphens, starting and ending with a letter or digit. The service returns its runtime hostname. Leave empty to auto-generate."
       }
     },
     "tokensPerMinute": {
@@ -188,40 +175,36 @@
       ]
     },
     {
-      "type": "Microsoft.ApiManagement/service",
-      "apiVersion": "2025-09-01-preview",
+      "type": "Microsoft.ApiManagement/aigateways",
+      "apiVersion": "2026-11-01",
       "name": "[variables('effectiveGatewayName')]",
       "location": "[parameters('gatewayLocation')]",
       "identity": {
         "type": "SystemAssigned"
       },
       "sku": {
-        "name": "AIGateway",
-        "capacity": 1
+        "name": "Standard"
       },
-      "properties": {
-        "publisherEmail": "[parameters('publisherEmail')]",
-        "publisherName": "[parameters('publisherName')]"
-      }
+      "properties": {}
     },
     {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[resourceId('Microsoft.CognitiveServices/accounts', variables('accountName'))]",
-      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('accountName')), resourceId('Microsoft.ApiManagement/service', variables('effectiveGatewayName')), variables('foundryUserRoleId'))]",
+      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('accountName')), resourceId('Microsoft.ApiManagement/aigateways', variables('effectiveGatewayName')), variables('foundryUserRoleId'))]",
       "properties": {
-        "principalId": "[reference(resourceId('Microsoft.ApiManagement/service', variables('effectiveGatewayName')), '2025-09-01-preview', 'full').identity.principalId]",
+        "principalId": "[reference(resourceId('Microsoft.ApiManagement/aigateways', variables('effectiveGatewayName')), '2026-11-01', 'full').identity.principalId]",
         "principalType": "ServicePrincipal",
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('foundryUserRoleId'))]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('accountName'))]",
-        "[resourceId('Microsoft.ApiManagement/service', variables('effectiveGatewayName'))]"
+        "[resourceId('Microsoft.ApiManagement/aigateways', variables('effectiveGatewayName'))]"
       ]
     },
     {
-      "type": "Microsoft.ApiManagement/service/workspaces/modelProviders",
-      "apiVersion": "2025-09-01-preview",
+      "type": "Microsoft.ApiManagement/aigateways/workspaces/modelProviders",
+      "apiVersion": "2026-09-01-preview",
       "name": "[format('{0}/{1}/{2}', variables('effectiveGatewayName'), 'default', 'foundry')]",
       "properties": {
         "kind": "Foundry",
@@ -241,18 +224,17 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('accountName'))]",
-        "[resourceId('Microsoft.ApiManagement/service', variables('effectiveGatewayName'))]",
-        "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('accountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', variables('accountName')), resourceId('Microsoft.ApiManagement/service', variables('effectiveGatewayName')), variables('foundryUserRoleId')))]",
+        "[resourceId('Microsoft.ApiManagement/aigateways', variables('effectiveGatewayName'))]",
+        "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('accountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', variables('accountName')), resourceId('Microsoft.ApiManagement/aigateways', variables('effectiveGatewayName')), variables('foundryUserRoleId')))]",
         "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('accountName'), parameters('modelName'))]"
       ]
     },
     {
-      "type": "Microsoft.ApiManagement/service/workspaces/modelProviders/models",
-      "apiVersion": "2025-09-01-preview",
+      "type": "Microsoft.ApiManagement/aigateways/workspaces/modelProviders/models",
+      "apiVersion": "2026-09-01-preview",
       "name": "[format('{0}/{1}/{2}/{3}', variables('effectiveGatewayName'), 'default', 'foundry', parameters('modelName'))]",
       "properties": {
         "displayName": "[parameters('modelName')]",
-        "apiFormat": "OpenAIChatCompletions",
         "supportedEndpoints": [
           "/openai/v1/chat/completions",
           "/openai/v1/responses"
@@ -267,24 +249,47 @@
             "type": "tokenLimit",
             "period": "minute",
             "count": "[parameters('tokensPerMinute')]",
-            "counterKey": "Identity"
+            "counterKey": [
+              "identity"
+            ]
           }
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.ApiManagement/service/workspaces/modelProviders', variables('effectiveGatewayName'), 'default', 'foundry')]",
+        "[resourceId('Microsoft.ApiManagement/aigateways/workspaces/modelProviders', variables('effectiveGatewayName'), 'default', 'foundry')]",
         "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('accountName'), parameters('modelName'))]"
       ]
     },
     {
-      "type": "Microsoft.ApiManagement/service/apiKeys",
-      "apiVersion": "2025-09-01-preview",
+      "type": "Microsoft.ApiManagement/aigateways/workspaces/aliases",
+      "apiVersion": "2026-09-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('effectiveGatewayName'), 'default', replace(parameters('modelName'), '.', '-'))]",
+      "properties": {
+        "aliasName": "[parameters('modelName')]",
+        "backendModels": [
+          {
+            "resourceId": "[resourceId('Microsoft.ApiManagement/aigateways/workspaces/modelProviders/models', variables('effectiveGatewayName'), 'default', 'foundry', parameters('modelName'))]",
+            "priority": 0
+          }
+        ],
+        "selectionOrder": [
+          "priority"
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/aigateways', variables('effectiveGatewayName'))]",
+        "[resourceId('Microsoft.ApiManagement/aigateways/workspaces/modelProviders/models', variables('effectiveGatewayName'), 'default', 'foundry', parameters('modelName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.ApiManagement/aigateways/apiKeys",
+      "apiVersion": "2026-09-01-preview",
       "name": "[format('{0}/{1}', variables('effectiveGatewayName'), 'default')]",
       "properties": {
         "displayName": "AI Gateway tier hub runtime key"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.ApiManagement/service', variables('effectiveGatewayName'))]"
+        "[resourceId('Microsoft.ApiManagement/aigateways', variables('effectiveGatewayName'))]"
       ]
     }
   ],
@@ -313,9 +318,13 @@
       "type": "string",
       "value": "[variables('effectiveGatewayName')]"
     },
+    "gatewayId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.ApiManagement/aigateways', variables('effectiveGatewayName'))]"
+    },
     "gatewayModelsBaseUrl": {
       "type": "string",
-      "value": "[format('{0}/default/models/openai/v1', reference(resourceId('Microsoft.ApiManagement/service', variables('effectiveGatewayName')), '2025-09-01-preview').gatewayUrl)]"
+      "value": "[format('https://{0}/default/models/openai/v1', reference(resourceId('Microsoft.ApiManagement/aigateways', variables('effectiveGatewayName')), '2026-11-01').frontend.defaultHostname)]"
     },
     "modelName": {
       "type": "string",
@@ -331,7 +340,7 @@
     },
     "gatewayPrincipalId": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.ApiManagement/service', variables('effectiveGatewayName')), '2025-09-01-preview', 'full').identity.principalId]"
+      "value": "[reference(resourceId('Microsoft.ApiManagement/aigateways', variables('effectiveGatewayName')), '2026-11-01', 'full').identity.principalId]"
     },
     "location": {
       "type": "string",

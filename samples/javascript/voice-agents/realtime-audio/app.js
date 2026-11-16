@@ -47,7 +47,7 @@ async function main() {
   const { definition, created } = await getOrCreateVoiceAgent(project);
 
   try {
-    const connection = await project.beta.voiceAgents.realtime.connect(agentName);
+    const connection = await project.voiceAgents.realtime.connect(agentName);
     const audioOutput = createWriteStream(audioOutputPath);
     let textCharacterCount = 0;
     let inputAudioByteCount = 0;
@@ -236,7 +236,7 @@ async function getOrCreateVoiceAgent(project) {
 function getVoiceDefinition(agent) {
   const definition = agent.versions.latest.definition;
   if (!isVoiceAgentDefinition(definition)) {
-    throw new Error(`Agent ${agent.name} is not a voice agent.`);
+    throw new Error(`Agent ${agent.name} is not a Realtime voice agent.`);
   }
   return definition;
 }
@@ -245,7 +245,10 @@ function withTurnDetectionOverrides(turnDetection) {
   // Turn-detection type is a session default set when the agent was configured and cannot change
   // at connect time, so the agent's own type and fields are preserved here; only this sample's
   // chosen overrides are layered on top.
-  if (!turnDetection) {
+  if (turnDetection === null) {
+    throw new Error("This sample requires automatic turn detection; the agent has it disabled.");
+  }
+  if (turnDetection === undefined) {
     return {
       type: "server_vad",
       create_response: true,
@@ -268,6 +271,7 @@ function withTurnDetectionOverrides(turnDetection) {
 function isVoiceAgentDefinition(definition) {
   return (
     definition.kind === "voice" &&
+    definition.sub_protocol !== "live" &&
     "model_type" in definition &&
     (definition.model_type === "managed" || definition.model_type === "self_deployed") &&
     "model" in definition &&
