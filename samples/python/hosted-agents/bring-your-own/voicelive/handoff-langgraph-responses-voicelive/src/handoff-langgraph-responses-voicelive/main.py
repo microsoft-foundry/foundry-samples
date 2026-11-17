@@ -92,6 +92,8 @@ llm = ChatOpenAI(
     model=os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"],
     use_responses_api=True,
     streaming=True,
+    # The application manages message history instead of the model service.
+    store=False,
 )
 
 # ---------------------------------------------------------------------------
