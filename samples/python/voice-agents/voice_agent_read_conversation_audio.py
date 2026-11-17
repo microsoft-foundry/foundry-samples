@@ -1,7 +1,7 @@
 """
 DESCRIPTION:
     This sample demonstrates reading the persisted audio of a voice
-    conversation via `project_client.beta.voice_agents.conversations`, both the
+    conversation via `project_client.voice_agents.conversations`, both the
     merged whole-call recording and a single turn's audio segment. For each it
     reads the metadata first, then streams the WAV bytes to a local file. The
     merged recording is stereo: the caller on the left channel and the agent
@@ -9,8 +9,9 @@ DESCRIPTION:
 
     Audio is available only after the session has ended and only when the
     agent was configured with `store=True`. For bring-your-own-storage (BYOS)
-    accounts the metadata carries a `blob_uri` instead, and the bytes are read
-    from your own storage rather than streamed here.
+    accounts the metadata carries a `blob_uri`; BlobClient downloads it using
+    the caller's DefaultAzureCredential, which needs Storage Blob Data Reader.
+    No SAS token or project-managed-storage fallback is used.
 
     Runs with no setup beyond the endpoint: if FOUNDRY_VOICE_CONVERSATION_ID is
     not set, this sample creates a temporary voice agent, holds one short
@@ -28,7 +29,7 @@ USAGE:
 
     Before running the sample:
 
-    pip install "azure-ai-projects[voice]==2.7.0" python-dotenv
+    pip install "azure-ai-projects[voice]==2.11.0" python-dotenv
 
     Set these environment variables with your own values:
     1) FOUNDRY_PROJECT_ENDPOINT - The Azure AI Project endpoint.
@@ -44,10 +45,16 @@ USAGE:
        version.
     4) FOUNDRY_VOICE_AGENT_MODEL - Optional. The realtime model deployment name,
        used only when creating the temporary agent. Defaults to "gpt-realtime".
+    5) FOUNDRY_VOICE_AUDIO_OUTPUT_DIR - Optional existing output directory.
+       Defaults to the current directory. Existing files are never overwritten.
 """
 
 import os
+from collections.abc import Iterable
+from pathlib import Path
+
 from dotenv import load_dotenv
+from azure.core.credentials import TokenCredential
 from azure.core.exceptions import HttpResponseError
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
@@ -59,33 +66,46 @@ from azure.ai.projects.models import (
     VoiceOutputModality,
     VoiceType,
 )
+from azure.ai.projects.operations import VoiceAgentsConversationsOperations
 
-from voice_agent_util import hold_sample_conversation
+from voice_agent_util import (
+    hold_sample_conversation,
+    require_new_agent,
+    sample_agent_name,
+)
+from voice_agent_storage_util import (
+    audio_output_path,
+    save_recording,
+    write_audio_file,
+)
 
-load_dotenv()
 
-
-def stream_to_wav(stream, output_path) -> None:
+def stream_to_wav(chunks: Iterable[bytes], output_path: str | Path) -> None:
     """Write a streamed audio-content response to a local WAV file.
 
-    :param stream: An iterable of audio byte chunks.
+    :param chunks: An iterable of audio byte chunks.
     :param output_path: The local output path.
-    :type stream: collections.abc.Iterable[bytes]
+    :type chunks: collections.abc.Iterable[bytes]
     :type output_path: str
     """
-    with open(output_path, "wb") as f:
-        for chunk in stream:
-            f.write(chunk)
-    print(f"Wrote {output_path}")
+    saved = write_audio_file(chunks, output_path)
+    print(f"Wrote {saved}")
 
 
-def read_merged_recording(conversations, agent_name, conversation_id) -> None:
+def read_merged_recording(
+    conversations: VoiceAgentsConversationsOperations,
+    agent_name: str,
+    conversation_id: str,
+    *,
+    credential: TokenCredential | None = None,
+    output_dir: str | Path = ".",
+) -> Path:
     """Read the merged whole-call stereo recording (left=user, right=agent).
 
     :param conversations: The conversation operations client.
     :param agent_name: The voice agent name.
     :param conversation_id: The persisted conversation id.
-    :type conversations: azure.ai.projects.operations.BetaVoiceAgentsConversationsOperations
+    :type conversations: azure.ai.projects.operations.VoiceAgentsConversationsOperations
     :type agent_name: str
     :type conversation_id: str
     """
@@ -95,8 +115,9 @@ def read_merged_recording(conversations, agent_name, conversation_id) -> None:
         # A 404 means no merged recording exists for this conversation, for example because the
         # agent was configured with `store=False`, or the session has not finished finalizing yet.
         if e.status_code == 404:
-            print("No merged whole-call recording is available for this conversation.")
-            return
+            raise RuntimeError(
+                "No merged recording is available. Use a completed conversation with store=True."
+            ) from e
         raise
 
     print(
@@ -104,69 +125,93 @@ def read_merged_recording(conversations, agent_name, conversation_id) -> None:
         f"channels={recording.channels}, duration_ms={recording.duration_ms}"
     )
 
-    if recording.blob_uri:
-        # Bring-your-own-storage: download from your own storage using the returned URI.
-        print(f"Recording is stored in your own storage at: {recording.blob_uri}")
-        return
+    saved = save_recording(
+        audio_output_path(output_dir, conversation_id),
+        credential=credential,
+        blob_uri=recording.blob_uri,
+        download=lambda: conversations.download_audio(agent_name, conversation_id),
+    )
+    print(f"Wrote {saved}")
+    return saved
 
-    # Foundry-managed storage: stream the bytes and write them to a local WAV file.
-    stream = conversations.download_audio(agent_name, conversation_id)
-    stream_to_wav(stream, f"{conversation_id}.wav")
 
-
-def read_first_item_audio(conversations, agent_name, conversation_id) -> None:
+def read_first_item_audio(
+    conversations: VoiceAgentsConversationsOperations,
+    agent_name: str,
+    conversation_id: str,
+    *,
+    credential: TokenCredential | None = None,
+    output_dir: str | Path = ".",
+) -> Path:
     """Read the audio segment of the first conversation item that has one.
 
     :param conversations: The conversation operations client.
     :param agent_name: The voice agent name.
     :param conversation_id: The persisted conversation id.
-    :type conversations: azure.ai.projects.operations.BetaVoiceAgentsConversationsOperations
+    :type conversations: azure.ai.projects.operations.VoiceAgentsConversationsOperations
     :type agent_name: str
     :type conversation_id: str
     """
-    for item in conversations.list_items(agent_name, conversation_id):
-        # `.id` is declared per concrete item subtype (not on the shared base), so read it with
-        # getattr.
-        item_id = getattr(item, "id", None)
-        if not item_id:
+    for item in conversations.list_items(agent_name, conversation_id, order="asc"):
+        item_id = item.get("id")
+        if not isinstance(item_id, str) or not item_id:
             continue
         try:
-            metadata = conversations.get_audio_item(agent_name, conversation_id, item_id)
+            metadata = conversations.get_audio_item(
+                agent_name, conversation_id, item_id
+            )
         except HttpResponseError as e:
             # A 404 means this item has no persisted audio (for example, a text-only turn).
             if e.status_code == 404:
                 continue
             raise
 
-        print(f"Item {item_id}: role={metadata.role}, duration_ms={metadata.duration_ms}")
-        if metadata.blob_uri:
-            print(f"Item audio is stored in your own storage at: {metadata.blob_uri}")
-            return
+        print(
+            f"Item {item_id}: role={metadata.role}, duration_ms={metadata.duration_ms}"
+        )
+        saved = save_recording(
+            audio_output_path(output_dir, conversation_id, item_id),
+            credential=credential,
+            blob_uri=metadata.blob_uri,
+            download=lambda: conversations.download_audio_item(
+                agent_name, conversation_id, item_id
+            ),
+        )
+        print(f"Wrote {saved}")
+        return saved
 
-        stream = conversations.download_audio_item(agent_name, conversation_id, item_id)
-        stream_to_wav(stream, f"{conversation_id}_{item_id}.wav")
-        return
-
-    print("No conversation item with audio was found.")
+    raise RuntimeError("No conversation item with persisted audio was found.")
 
 
 def main() -> None:
+    load_dotenv()
     endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
-    agent_name = os.environ.get("FOUNDRY_VOICE_AGENT_NAME")
-    conversation_id = os.environ.get("FOUNDRY_VOICE_CONVERSATION_ID")
+    agent_name = os.environ.get("FOUNDRY_VOICE_AGENT_NAME") or None
+    conversation_id = os.environ.get("FOUNDRY_VOICE_CONVERSATION_ID") or None
+    if conversation_id and not agent_name:
+        raise ValueError(
+            "FOUNDRY_VOICE_AGENT_NAME is required with FOUNDRY_VOICE_CONVERSATION_ID."
+        )
     model = os.environ.get("FOUNDRY_VOICE_AGENT_MODEL") or "gpt-realtime"
+    output_dir = Path(os.environ.get("FOUNDRY_VOICE_AUDIO_OUTPUT_DIR") or ".")
+    if not output_dir.is_dir():
+        raise ValueError(
+            "FOUNDRY_VOICE_AUDIO_OUTPUT_DIR must be an existing directory."
+        )
     # Only create (and later clean up) a temporary agent when the caller didn't name their own --
     # creating a version on someone's existing agent could unexpectedly mutate it, and deleting
     # that version afterward could delete the agent entirely if it was its only version.
     owns_agent = not agent_name
-    agent_name = agent_name or "sample-read-conversation-audio-agent"
+    agent_name = agent_name or sample_agent_name("sample-read-conversation-audio-agent")
 
     with (
         DefaultAzureCredential() as credential,
-        AIProjectClient(endpoint=endpoint, credential=credential, allow_preview=True) as project_client,
+        AIProjectClient(endpoint=endpoint, credential=credential) as project_client,
     ):
-        conversations = project_client.beta.voice_agents.conversations
+        conversations = project_client.voice_agents.conversations
         created_version = None
+        created_conversation_id = None
+        written_paths: list[Path] = []
         try:
             if not conversation_id:
                 print(
@@ -174,6 +219,7 @@ def main() -> None:
                     f"'{agent_name}' first..."
                 )
                 if owns_agent:
+                    require_new_agent(project_client, agent_name)
                     created_version = project_client.agents.create_version(
                         agent_name=agent_name,
                         definition=VoiceAgentDefinition(
@@ -182,7 +228,8 @@ def main() -> None:
                             instructions="You are a friendly voice assistant. Keep replies short and natural.",
                             audio=VoiceAgentAudioConfig(
                                 output=VoiceAgentAudioOutputConfig(
-                                    voice="en-US-AvaNeural", voice_type=VoiceType.AZURE_STANDARD
+                                    voice="en-US-AvaNeural",
+                                    voice_type=VoiceType.AZURE_STANDARD,
                                 ),
                             ),
                             output_modalities=[VoiceOutputModality.AUDIO],
@@ -190,17 +237,48 @@ def main() -> None:
                         ),
                     )
                 conversation_id = hold_sample_conversation(project_client, agent_name)
+                created_conversation_id = conversation_id
                 print(f"Created conversation: {conversation_id}")
 
-            read_merged_recording(conversations, agent_name, conversation_id)
-            read_first_item_audio(conversations, agent_name, conversation_id)
-        except HttpResponseError as e:
-            # 404: not persisted / not ready. 409: session still in progress.
-            print(f"Service responded with an error: {e.status_code} {e.reason}")
+            written_paths.append(
+                read_merged_recording(
+                    conversations,
+                    agent_name,
+                    conversation_id,
+                    credential=credential,
+                    output_dir=output_dir,
+                )
+            )
+            written_paths.append(
+                read_first_item_audio(
+                    conversations,
+                    agent_name,
+                    conversation_id,
+                    credential=credential,
+                    output_dir=output_dir,
+                )
+            )
+        except BaseException as error:
+            for path in written_paths:
+                path.unlink(missing_ok=True)
+            if isinstance(error, HttpResponseError):
+                print(
+                    f"Service responded with an error: {error.status_code} {error.reason}"
+                )
+            raise
         finally:
-            if created_version is not None:
-                project_client.agents.delete_version(agent_name=agent_name, agent_version=created_version.version)
-                print(f"Deleted temporary voice agent version: {created_version.version}")
+            try:
+                if created_conversation_id is not None:
+                    conversations.delete(agent_name, created_conversation_id)
+                    print(f"Deleted sample conversation: {created_conversation_id}")
+            finally:
+                if created_version is not None:
+                    project_client.agents.delete_version(
+                        agent_name=agent_name, agent_version=created_version.version
+                    )
+                    print(
+                        f"Deleted temporary voice agent version: {created_version.version}"
+                    )
 
 
 if __name__ == "__main__":

@@ -301,7 +301,7 @@ def validate_spec(document: Any) -> dict[str, Any]:
     sample = _require_mapping(document["sample"], "document.sample")
     _require_keys(
         sample,
-        {"owner", "experiences"},
+        {"owner", "experiences", "service", "endpoints", "toolbox"},
         "document.sample",
         {"owner", "experiences"},
     )
@@ -310,6 +310,23 @@ def validate_spec(document: Any) -> dict[str, Any]:
         raise SpecError(
             "document.sample.owner must be a Microsoft alias without @microsoft.com"
         )
+    if "service" in sample:
+        _require_string(sample["service"], "document.sample.service")
+    if "endpoints" in sample:
+        endpoints = _require_mapping(sample["endpoints"], "document.sample.endpoints")
+        for key, service in endpoints.items():
+            if not re.fullmatch(r"[A-Z][A-Z0-9_]*", key):
+                raise SpecError("document.sample.endpoints keys must be environment variable names")
+            _require_string(service, f"document.sample.endpoints.{key}")
+    if "toolbox" in sample:
+        toolbox = _require_string(sample["toolbox"], "document.sample.toolbox")
+        if (
+            PurePosixPath(toolbox).is_absolute()
+            or "\\" in toolbox
+            or ":" in toolbox
+            or any(part in {"", ".", ".."} for part in toolbox.split("/"))
+        ):
+            raise SpecError("document.sample.toolbox must be a relative file inside the sample")
     experiences = sample["experiences"]
     if not isinstance(experiences, list) or not experiences:
         raise SpecError("document.sample.experiences must be a non-empty sequence")
@@ -413,6 +430,10 @@ def build_plan(
     protocol: str = "responses",
     profile: str = "hosted",
 ) -> dict[str, Any]:
+    if protocol not in {"responses", "invocations", "a2a"}:
+        raise SpecError(f"unsupported protocol: {protocol}")
+    if protocol != "a2a" and {"service", "endpoints", "toolbox"} & document["sample"].keys():
+        raise SpecError("sample.service/endpoints/toolbox deployment settings require A2A")
     if profile not in PROFILE_SOURCES:
         raise SpecError(f"unsupported execution profile: {profile}")
     if profile != "hosted" and protocol != "responses":
@@ -449,14 +470,14 @@ def build_plan(
             raise SpecError(
                 "turn approvals are supported only for the Responses protocol"
             )
-        if any(
+        if protocol != "a2a" and any(
             assertion.get("source") == "assistant_text"
             for test in document["tests"]
             for turn in test["turns"]
             for assertion in turn.get("assertions", [])
         ):
             raise SpecError(
-                "assistant_text assertions are supported only for the Responses protocol"
+                "assistant_text assertions are supported only for the Responses or A2A protocol"
             )
 
     tests: list[dict[str, Any]] = []
@@ -1077,7 +1098,7 @@ def _build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--toolbox-label", default="")
     plan.add_argument("--toolbox-query", default="")
     plan.add_argument(
-        "--protocol", choices=("responses", "invocations"), default="responses"
+        "--protocol", choices=("responses", "invocations", "a2a"), default="responses"
     )
     plan.add_argument("--profile", choices=tuple(PROFILE_SOURCES), default="hosted")
     plan.add_argument("--output", type=Path, required=True)

@@ -1,8 +1,6 @@
 """
 DESCRIPTION:
-    End-to-end typed conversation using the ``client.beta.voice_agents.realtime`` namespace added
-    on top of the generated azure-ai-projects client (see
-    ``azure.ai.projects.aio.operations.AsyncBetaRealtime``).
+    Hold a typed conversation using the async ``client.voice_agents.realtime``.
 
       1. Create a voice agent with conversation persistence enabled
          (`store=True`) so the conversation can be read back afterward.
@@ -17,7 +15,7 @@ DESCRIPTION:
     ``pyaudio`` is installed; runs headless otherwise. For a hands-free mic
     conversation with barge-in, see voice_agent_realtime_audio_conversation_async.py.
 
-      pip install "azure-ai-projects[voice]==2.7.0" azure-identity pyaudio
+      pip install "azure-ai-projects[voice]==2.11.0" azure-identity python-dotenv
 
 USAGE:
     python voice_agent_realtime_text_conversation_async.py
@@ -27,8 +25,8 @@ USAGE:
        https://<account>.services.ai.azure.com/api/projects/<project>
     2) FOUNDRY_VOICE_AGENT_MODEL - Optional. The realtime model deployment name.
        Defaults to "gpt-realtime".
-    3) FOUNDRY_VOICE_AGENT_NAME - Optional. Name for the agent created by this
-       sample. Defaults to "sample-realtime-text-conversation-agent-async".
+    3) FOUNDRY_VOICE_AGENT_NAME - Optional unused name. Otherwise a unique
+       sample-owned name is generated.
 
     Authenticates with DefaultAzureCredential, so sign in first (e.g. `az login`).
 """
@@ -41,10 +39,7 @@ from dotenv import load_dotenv
 from azure.core.exceptions import HttpResponseError
 from azure.identity.aio import DefaultAzureCredential
 
-# AsyncBetaRealtimeConnection is re-exported dynamically via aio/operations/_patch.py's `__all__`;
-# pylint's static import resolution cannot trace that, but the symbol is valid (verified by
-# Pyright/mypy).
-from azure.ai.projects.aio.operations import AsyncBetaRealtimeConnection  # pylint: disable=no-name-in-module
+from azure.ai.projects.aio.operations import AsyncRealtimeConnection
 from azure.ai.projects.aio import AIProjectClient
 from azure.ai.projects.models import (
     RealtimeConversationItemMessageUser,
@@ -65,7 +60,13 @@ from azure.ai.projects.models import (
     VoiceType,
 )
 
-from voice_agent_util import format_conversation_item, safe_print
+from voice_agent_util import (
+    format_conversation_item,
+    require_new_agent_async,
+    safe_print,
+    sample_agent_name,
+    wait_for_conversation_async,
+)
 
 load_dotenv()
 
@@ -163,7 +164,9 @@ class _CancellationNotConfirmed(Exception):
     ``_RESPONSE_TIMEOUT``, leaving the stream in an unknown state."""
 
 
-async def _drain_cancelled_response(conn: "AsyncBetaRealtimeConnection", response_id: Optional[str]) -> None:
+async def _drain_cancelled_response(
+    conn: "AsyncRealtimeConnection", response_id: Optional[str]
+) -> None:
     """Wait (bounded) for a just-cancelled response's terminal event, discarding it and any of
     its trailing content events, so the next turn's ``pump()`` doesn't mistake this stale
     completion for its own.
@@ -172,7 +175,7 @@ async def _drain_cancelled_response(conn: "AsyncBetaRealtimeConnection", respons
     :param response_id: The id of the response that was just cancelled, if it was captured from
      that response's ``response.created`` event. If None, the first terminal event seen is
      accepted, since there is nothing more specific to correlate against.
-    :type conn: ~azure.ai.projects.aio.AsyncBetaRealtimeConnection
+    :type conn: ~azure.ai.projects.aio.operations.AsyncRealtimeConnection
     :type response_id: str or None
     :raises _CancellationNotConfirmed: If no matching terminal event arrives in time.
     """
@@ -184,12 +187,17 @@ async def _drain_cancelled_response(conn: "AsyncBetaRealtimeConnection", respons
                     return
                 # A stray completion for some other response id; keep draining.
             elif isinstance(event, RealtimeServerEventError):
-                print(f"Session error while confirming cancellation: {event.error.message}")
+                raise _CancellationNotConfirmed(event.error.message)
+        raise _CancellationNotConfirmed(
+            "The connection closed before cancellation was confirmed."
+        )
 
     try:
         await asyncio.wait_for(_drain(), timeout=_RESPONSE_TIMEOUT)
     except asyncio.TimeoutError as exc:
-        raise _CancellationNotConfirmed("Timed out waiting to confirm the cancelled response finished.") from exc
+        raise _CancellationNotConfirmed(
+            "Timed out waiting to confirm the cancelled response finished."
+        ) from exc
 
 
 async def _run_text_conversation(  # pylint: disable=too-many-statements
@@ -215,10 +223,11 @@ async def _run_text_conversation(  # pylint: disable=too-many-statements
 
     try:
         # Open the realtime session on the voice agent's dedicated route.
-        async with client.beta.voice_agents.realtime.connect(agent_name=agent_name) as conn:
+        async with client.voice_agents.realtime.connect(agent_name=agent_name) as conn:
 
             async def pump() -> None:
                 nonlocal conversation_id, audio_delta_count, active_response_id
+                active_response_id = None
                 async for event in conn:
                     if isinstance(event, RealtimeServerEventSessionCreated):
                         # The persisted conversation id (only present when conversation
@@ -227,16 +236,27 @@ async def _run_text_conversation(  # pylint: disable=too-many-statements
                     if isinstance(event, RealtimeServerEventResponseCreated):
                         active_response_id = event.response.id
                     if isinstance(event, RealtimeServerEventResponseDone):
+                        if (
+                            active_response_id is not None
+                            and event.response.id != active_response_id
+                        ):
+                            continue
+                        if event.response.status != "completed":
+                            raise RuntimeError(
+                                f"Voice response ended with status {event.response.status}."
+                            )
                         return
                     if isinstance(event, RealtimeServerEventError):
-                        print(f"Session error: {event.error.message}")
-                        return
+                        raise RuntimeError(event.error.message)
                     if isinstance(event, RealtimeServerEventResponseAudioDelta):
                         # Each delta is a decoded PCM16 chunk; play it.
                         audio_delta_count += 1
                         player.play(event.delta)
-                    elif isinstance(event, RealtimeServerEventResponseAudioTranscriptDone):
+                    elif isinstance(
+                        event, RealtimeServerEventResponseAudioTranscriptDone
+                    ):
                         safe_print(f"Agent: {event.transcript}")
+                raise RuntimeError("The connection closed before response.done.")
 
             if has_greeting:
                 # The service sends the configured greeting as its own response cycle the
@@ -249,15 +269,14 @@ async def _run_text_conversation(  # pylint: disable=too-many-statements
                 try:
                     await asyncio.wait_for(pump(), timeout=_RESPONSE_TIMEOUT)
                 except asyncio.TimeoutError:
-                    print("Timed out waiting for the agent's greeting.")
-                    await conn.response.cancel(response_id=active_response_id)
-                    # Consume the cancellation's own terminal event now, before the next turn
-                    # starts: otherwise a late response.done for *this* cancelled response could
-                    # be mistaken by the next pump() call for its own, ending it early and
-                    # silently dropping the real next reply.
-                    await _drain_cancelled_response(conn, active_response_id)
+                    if active_response_id is not None:
+                        await conn.response.cancel(response_id=active_response_id)
+                        await _drain_cancelled_response(conn, active_response_id)
+                    raise TimeoutError("Timed out waiting for the agent's greeting.")
 
-            print("Type a message and press Enter. Blank line (or 'exit') ends the session.")
+            print(
+                "Type a message and press Enter. Blank line (or 'exit') ends the session."
+            )
 
             while True:
                 # input() blocks, so read it off the loop in a worker thread.
@@ -269,7 +288,11 @@ async def _run_text_conversation(  # pylint: disable=too-many-statements
                 await conn.conversation.item.create(
                     item=RealtimeConversationItemMessageUser(
                         type=RealtimeConversationItemType.MESSAGE,
-                        content=[RealtimeConversationItemMessageUserContent(type="input_text", text=prompt)],
+                        content=[
+                            RealtimeConversationItemMessageUserContent(
+                                type="input_text", text=prompt
+                            )
+                        ],
                     )
                 )
                 await conn.response.create()
@@ -277,26 +300,30 @@ async def _run_text_conversation(  # pylint: disable=too-many-statements
                 try:
                     await asyncio.wait_for(pump(), timeout=_RESPONSE_TIMEOUT)
                 except asyncio.TimeoutError:
-                    print("Timed out waiting for the agent's reply.")
                     # The server-side response is still active even though we stopped waiting
                     # locally; cancel it so the next turn's response.create() isn't rejected.
                     # Then consume its terminal event now, before the next turn starts:
                     # otherwise a late response.done for *this* cancelled response could be
                     # mistaken by the next pump() call for its own, ending it early and
                     # silently dropping the real next reply.
-                    await conn.response.cancel(response_id=active_response_id)
-                    await _drain_cancelled_response(conn, active_response_id)
+                    if active_response_id is not None:
+                        await conn.response.cancel(response_id=active_response_id)
+                        await _drain_cancelled_response(conn, active_response_id)
+                    raise TimeoutError("Timed out waiting for the agent's reply.")
     except (KeyboardInterrupt, asyncio.CancelledError):
         print("\n(ending session...)")
     except _CancellationNotConfirmed:
         print("Could not confirm a cancelled response finished; ending the session.")
+        raise
     finally:
         played = player.enabled
         player.close()
 
     detail = "played" if played else "received"
     output_bytes = player.bytes_received
-    print(f"(streamed {audio_delta_count} audio chunks, {detail} {player.seconds:.2f}s of audio)")
+    print(
+        f"(streamed {audio_delta_count} audio chunks, {detail} {player.seconds:.2f}s of audio)"
+    )
     print(
         f"Output audio: format=PCM16, sample_rate={_SAMPLE_RATE} Hz, channels=1, "
         f"duration={player.seconds:.2f}s, size={_format_size(output_bytes)}"
@@ -306,7 +333,9 @@ async def _run_text_conversation(  # pylint: disable=too-many-statements
     return conversation_id
 
 
-async def _read_conversation(client: AIProjectClient, agent_name: str, conversation_id: str) -> None:
+async def _read_conversation(
+    client: AIProjectClient, agent_name: str, conversation_id: str
+) -> None:
     """Read the persisted conversation back over the read-only conversation API.
 
     :param client: The Foundry project client.
@@ -316,25 +345,32 @@ async def _read_conversation(client: AIProjectClient, agent_name: str, conversat
     :type agent_name: str
     :type conversation_id: str
     """
-    conversations = client.beta.voice_agents.conversations
+    conversations = client.voice_agents.conversations
 
-    conversation = await conversations.get(agent_name, conversation_id)
-    print(f"Conversation {conversation.id}: status={conversation.status}, created_at={conversation.created_at}")
+    conversation = await wait_for_conversation_async(
+        client, agent_name, conversation_id
+    )
+    print(
+        f"Conversation {conversation.id}: status={conversation.status}, created_at={conversation.created_at}"
+    )
 
     print("Items (transcript):")
-    async for item in conversations.list_items(agent_name, conversation_id):
+    async for item in conversations.list_items(
+        agent_name, conversation_id, order="asc"
+    ):
         safe_print(f"  - {format_conversation_item(item)}")
 
 
 async def text_conversation() -> None:
     endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
     model = os.environ.get("FOUNDRY_VOICE_AGENT_MODEL") or "gpt-realtime"
-    agent_name = os.environ.get("FOUNDRY_VOICE_AGENT_NAME") or "sample-realtime-text-conversation-agent-async"
+    agent_name = sample_agent_name("sample-realtime-text-conversation-agent-async")
 
     async with (
         DefaultAzureCredential() as credential,
-        AIProjectClient(endpoint=endpoint, credential=credential, allow_preview=True) as project_client,
+        AIProjectClient(endpoint=endpoint, credential=credential) as project_client,
     ):
+        await require_new_agent_async(project_client, agent_name)
         created_version = None
         try:
             # 1) Create a voice agent with conversation persistence enabled (`store=True`) so the
@@ -344,10 +380,14 @@ async def text_conversation() -> None:
                 model=model,
                 instructions="You are a friendly voice assistant. Keep replies short and natural.",
                 audio=VoiceAgentAudioConfig(
-                    output=VoiceAgentAudioOutputConfig(voice="en-US-AvaNeural", voice_type=VoiceType.AZURE_STANDARD),
+                    output=VoiceAgentAudioOutputConfig(
+                        voice="en-US-AvaNeural", voice_type=VoiceType.AZURE_STANDARD
+                    ),
                 ),
                 output_modalities=[VoiceOutputModality.AUDIO],
-                greeting=VoiceAgentTemplateGreetingConfig(text="Hi, I'm here to help. What can I do for you?"),
+                greeting=VoiceAgentTemplateGreetingConfig(
+                    text="Hi, I'm here to help. What can I do for you?"
+                ),
                 store=True,
             )
             created_version = await project_client.agents.create_version(
@@ -357,17 +397,22 @@ async def text_conversation() -> None:
 
             # 2) Hold the realtime conversation against the freshly created agent.
             print(f"Starting realtime session with agent: {agent_name}")
-            conversation_id = await _run_text_conversation(project_client, agent_name, has_greeting=True)
+            conversation_id = await _run_text_conversation(
+                project_client, agent_name, has_greeting=True
+            )
 
             # 3) Fetch the persisted conversation back by id.
             if conversation_id:
                 print(f"Reading persisted conversation {conversation_id}...")
                 try:
-                    await _read_conversation(project_client, agent_name, conversation_id)
+                    await _read_conversation(
+                        project_client, agent_name, conversation_id
+                    )
                 except HttpResponseError as e:
                     print(f"Could not read conversation: {e.status_code} {e.reason}")
+                    raise
                 # To fetch this session's audio afterward, use
-                # `project_client.beta.voice_agents.conversations`:
+                # `project_client.voice_agents.conversations`:
                 #   - get_audio(agent_name, conversation_id) for the merged
                 #     whole-call stereo recording's metadata, then
                 #     download_audio(agent_name, conversation_id) to stream
@@ -381,10 +426,13 @@ async def text_conversation() -> None:
                 print("No conversation id was returned; nothing to read.")
         except HttpResponseError as e:
             print(f"Service responded with an error: {e.status_code} {e.reason}")
+            raise
         finally:
             # 4) Clean up the agent created for this sample.
             if created_version is not None:
-                await project_client.agents.delete_version(agent_name=agent_name, agent_version=created_version.version)
+                await project_client.agents.delete_version(
+                    agent_name=agent_name, agent_version=created_version.version
+                )
                 print(f"Deleted voice agent version: {created_version.version}")
 
 
