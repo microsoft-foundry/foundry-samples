@@ -16,6 +16,7 @@ SAMPLE_ROOT = "infrastructure/infrastructure-setup-bicep"
 EXCLUDED_SAMPLES = (
     "00-basic",
     "31-customer-managed-keys-standard-agent",
+    "32-customer-managed-keys-user-assigned-identity",
     "40-basic-agent-setup",
     "41-standard-agent-setup",
     "42-basic-agent-setup-with-customization",

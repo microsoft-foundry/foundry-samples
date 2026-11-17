@@ -176,6 +176,8 @@ owner verification of CI readiness:
 
 - `00-basic`
 - `31-customer-managed-keys-standard-agent`
+- `32-customer-managed-keys-user-assigned-identity` (requires a pre-provisioned
+  user-assigned identity with Key Vault key access, which CI does not create)
 - `40-basic-agent-setup`
 - `41-standard-agent-setup`
 - `42-basic-agent-setup-with-customization`
