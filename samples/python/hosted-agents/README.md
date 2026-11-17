@@ -345,7 +345,12 @@ That's it. Both `azd ai agent init` and the Foundry Toolkit VS Code extension wi
 
 ## Contributing
 
-This project welcomes contributions and suggestions.
+For new samples and updates, follow the [sample authoring instructions](AGENTS.md)
+and start with the [README template](README-template.md) and
+[coding-agent instructions template](AGENTS-template.md). Keep the documented
+`azd` and Foundry Toolkit paths self-contained and aligned with the sample's
+deployment mode. Framework-specific instructions, such as the
+[LangGraph authoring instructions](langgraph/AGENTS.md), add to these shared rules.
 
 ## Trademarks
 

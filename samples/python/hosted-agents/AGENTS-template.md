@@ -10,13 +10,17 @@ How to use:
 
 # Coding Agent Instructions - {{sample name}}
 
+Follow the [shared sample authoring instructions](https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/AGENTS.md)
+and any framework-specific `AGENTS.md` before editing. The instructions below
+describe this sample's supported workflow and differences.
+
 This sample is a **Microsoft Foundry hosted agent**. {{Describe the agent, its
 framework, and the protocol or scenario it demonstrates in one sentence.}} It runs in
 [Foundry Agent Service](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents),
 which manages hosting, security, scaling, and observability so contributors can focus on
 the agent logic.
 
-## Deployment mode
+## Deployment Mode
 
 Keep the bullet that matches this sample's `azure.yaml`:
 
@@ -25,7 +29,7 @@ Keep the bullet that matches this sample's `azure.yaml`:
 - **Container deployment:** `docker.path` points to the Dockerfile that defines the
   agent image.
 
-## Key files
+## Key Files
 
 - `azure.yaml` - `azd` manifest for the Foundry project, hosted agent, dependencies,
   environment variables, and deployment mode
@@ -39,7 +43,7 @@ Keep the bullet that matches this sample's `azure.yaml`:
 Add or remove entries so this list matches the sample. Do not commit `.vscode` launch or
 task files generated when the Foundry Toolkit scaffolds a local workspace.
 
-## Dependency workflow
+## Dependency Workflow
 
 Follow the shared Python Hosted Agent dependency policy at
 `samples/python/hosted-agents/DEPENDENCY_POLICY.md`.
@@ -52,7 +56,7 @@ whenever a dependency input changes. Run the policy checker, including its
 `--resolve` closure check when network access is available, before completing
 dependency changes.
 
-## Runtime logging
+## Runtime Logging
 
 Use the standard `logging` module for diagnostics emitted by the running hosted
 agent. Prefer `logger.info()`, `logger.warning()`, and `logger.exception()` over
@@ -64,7 +68,7 @@ script, local test utility, or tool-result contract. If stdout is required from 
 long-running process, flush it explicitly. E2E log assertions must target a
 deliberate sample-owned log event, not mutable framework or dependency wording.
 
-## Development workflow
+## Development Workflow
 
 The **Azure Developer CLI (`azd`)** manages the hosted-agent lifecycle. From an
 initialized agent project:
