@@ -290,8 +290,7 @@ and routine-delivery handlers on `host.agent_app`; the host serves
 shutdown. Hosted storage is supplied by Foundry; local runs use memory.
 Requests remain stateless and routine records stay in the Routines service.
 
-The host initializes logging and OpenTelemetry. There is no separate sample
-telemetry bootstrap, middleware compatibility adapter or traceback filter.
+The native host manages logging and OpenTelemetry.
 
 | Setting | Meaning |
 | --- | --- |
@@ -301,8 +300,7 @@ telemetry bootstrap, middleware compatibility adapter or traceback filter.
 
 Edit the service's `env` mapping in `azure.yaml` for hosted settings.
 The host uses Foundry's Application Insights configuration when available.
-Telemetry resource names and instrumentation defaults now come from the SDK;
-they are not an exact reproduction of the previous sample telemetry stream.
+The SDK provides telemetry resource names and instrumentation defaults.
 Only the unused OpenAI Agents SDK instrumentation is explicitly disabled.
 Application errors log their operation, exception type and available HTTP status,
 not message text, exception bodies or credentials. The application error handler
@@ -327,6 +325,18 @@ Existing hosted sessions can remain pinned to an older version; inspect
 `azd ai agent sessions stop <session-id> --no-prompt`. Stopping preserves logical
 session state. Republish only when publication metadata or the app manifest
 changes. Do not stop unrelated sessions or tear down shared environments.
+
+## Local offline checks
+
+After installing the sample dependencies, run from this directory:
+
+```shell
+python -m unittest discover -s tests -v
+```
+
+These synthetic SDK and model fixtures check lifecycle reconciliation, ownership
+and process-local ordering without credentials or network access. They do not
+qualify model interpretation, service behavior or Teams delivery.
 
 ## Troubleshooting and verification
 
