@@ -17,8 +17,8 @@ samples and changed parts of existing samples.
   across code, configuration, and documentation. Declare required versions and extras.
 - Keep credentials out of committed files. Label simulated tools and data, and
   preserve input validation, error handling, and resource cleanup.
-- Keep blocking I/O off the async event loop; use async SDK calls or
-  `asyncio.to_thread` for necessary synchronous calls.
+- Keep blocking I/O, including credential token acquisition, off the async event
+  loop; use async SDK calls or `asyncio.to_thread` for necessary synchronous calls.
 
 ## Starting a new sample
 
@@ -145,13 +145,17 @@ Most samples follow the shared template,
 - For container deployment, include a Dockerfile and `.dockerignore`. Exclude
   local environments, caches, and secrets from the build context.
 - Install dependencies before copying application code to preserve Docker layer caching.
-- With uv, use `uv sync --compile-bytecode` for dependencies and `compileall` for
-  the standard library and application code at build time, using the runtime
-  interpreter and final paths. Dependency and standard-library compilation is
-  best-effort; application compilation must fail the build on syntax errors and
-  exclude `.venv`.
+- Precompile Python bytecode for the standard library, dependencies, and
+  application code at image build time, using the runtime interpreter and final
+  paths. Dependency and standard-library compilation is best-effort; application
+  compilation must fail the build on syntax errors and exclude `.venv`.
+- With uv, use `uv sync --compile-bytecode` for dependencies; uv does not compile
+  bytecode by default. Use `compileall` for the standard library and application.
 - With pip, use `--no-cache-dir`. Pip compiles dependency bytecode by default;
-  avoid redundant dependency-wide `compileall` steps.
+  use `compileall` for the standard library and application, avoiding redundant
+  dependency-wide compilation.
+- Keep the generated `.pyc` files in the final image. `PYTHONDONTWRITEBYTECODE=1`
+  does not prevent Python from reading precompiled bytecode.
 
 Example uv Dockerfile fragment for a sample run directly from source, assuming uv
 is installed. Copy any runtime-specific uv configuration with the dependency files.
@@ -174,6 +178,11 @@ RUN .venv/bin/python -m compileall -q \
 - For startup changes, verify readiness and that the host stays running.
 - When changing telemetry or image builds, check default tracing initialization,
   dependency-layer order, and bytecode in the resulting image as applicable.
+- For cold-start performance claims, compare repeated before/after runs with the
+  same CPU, memory, and environment settings. Measure actual container readiness;
+  a published port can accept connections before the agent is ready. Label
+  import-only timings separately from server startup and local results separately
+  from hosted results.
 - Use the existing dependency-policy and cloud E2E tooling for their respective
   checks. Report actual results and distinguish source inspection, offline/mock
   checks, live Foundry validation, and Toolkit/Inspector UI validation.
