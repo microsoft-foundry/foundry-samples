@@ -35,6 +35,13 @@ class Capture(logging.Handler):
 
 def main() -> None:
     marker = "PRIVATE-REPORT-CONTENT-NOT-FOR-TELEMETRY-6137"
+    user_marker = "SYNTHETIC-USER-MESSAGE-FOR-TRACING-8241"
+    capture_content = (
+        os.environ.get(
+            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true"
+        ).lower()
+        == "true"
+    )
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
@@ -54,8 +61,6 @@ def main() -> None:
                 "AGENTSERVER_STATE_ROOT": directory,
                 "REPORT_STORAGE_ACCOUNT_URL": "https://reports.blob.core.windows.net",
                 "REPORT_STORAGE_CONTAINER": "reports",
-                "AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED": "false",
-                "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "false",
             },
         ),
         patch("report_export.BlobServiceClient", return_value=storage),
@@ -86,7 +91,7 @@ def main() -> None:
             handler = Capture()
             logging.getLogger().addHandler(handler)
             try:
-                result = response(client, False, input="Publish my private report")
+                result = response(client, False, input=user_marker)
             finally:
                 logging.getLogger().removeHandler(handler)
             assert result["status"] == "completed"
@@ -107,7 +112,9 @@ def main() -> None:
             default=str,
         )
         assert spans, "No spans emitted by stock host"
-        assert marker not in material and marker not in "\n".join(handler.messages)
+        assert (marker in material) == capture_content
+        assert (user_marker in material) == capture_content
+        assert marker not in "\n".join(handler.messages)
         assert any(
             "Published report report-v1.md" in message for message in handler.messages
         )
@@ -117,7 +124,8 @@ def main() -> None:
                 {
                     "telemetry_enabled": True,
                     "publication_span_count": 1,
-                    "sensitive_content_absent": True,
+                    "message_content_captured": user_marker in material,
+                    "tool_content_captured": marker in material,
                 }
             )
         )

@@ -11,10 +11,18 @@ from pathlib import Path
 
 
 class DefaultTelemetryTests(unittest.TestCase):
-    def test_stock_host_emits_spans_and_logs_without_sensitive_content(self) -> None:
+    def test_stock_host_records_content_by_default(self) -> None:
+        self.check_content_capture(None)
+
+    def test_explicit_opt_out_keeps_spans_and_logs_without_content(self) -> None:
+        self.check_content_capture("false")
+
+    def check_content_capture(self, setting: str | None) -> None:
         environment = dict(os.environ)
         for key in (
             "OTEL_SDK_DISABLED",
+            "AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED",
+            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT",
             "APPLICATIONINSIGHTS_CONNECTION_STRING",
             "APPLICATION_INSIGHTS_CONNECTION_STRING",
             "OTEL_EXPORTER_OTLP_ENDPOINT",
@@ -23,6 +31,11 @@ class DefaultTelemetryTests(unittest.TestCase):
             "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
         ):
             environment.pop(key, None)
+        if setting is not None:
+            environment["AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED"] = setting
+            environment["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = setting
+        else:
+            environment["AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED"] = "true"
         result = subprocess.run(
             [sys.executable, str(Path(__file__).with_name("telemetry_probe.py"))],
             env=environment,
@@ -41,7 +54,8 @@ class DefaultTelemetryTests(unittest.TestCase):
         summary = summaries[0]
         self.assertTrue(summary["telemetry_enabled"])
         self.assertEqual(summary["publication_span_count"], 1)
-        self.assertTrue(summary["sensitive_content_absent"])
+        self.assertEqual(summary["message_content_captured"], setting is None)
+        self.assertEqual(summary["tool_content_captured"], setting is None)
 
 
 if __name__ == "__main__":

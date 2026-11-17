@@ -26,8 +26,9 @@ logger = logging.getLogger(__name__)
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
-    os.environ.setdefault("AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED", "false")
-    os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "false")
+    # Keep core's default message capture and enable SDK content recording.
+    # In production, assess privacy requirements and disable content capture as needed.
+    os.environ.setdefault("AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED", "true")
     async with FoundryCheckpointSaver() as checkpointer:
         tools = await load_tools()
         with DefaultAzureCredential() as credential:
