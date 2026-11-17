@@ -77,6 +77,8 @@ llm = AzureAIOpenAIApiChatModel(
     credential=DefaultAzureCredential(),
     model=MODEL_DEPLOYMENT_NAME,
     streaming=True,
+    # LangGraph manages message history instead of the model service.
+    store=False,
 )
 
 # ── Toolbox MCP helpers ────────────────────────────────────────────────────
