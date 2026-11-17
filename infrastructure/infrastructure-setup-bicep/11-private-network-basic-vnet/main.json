@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.43.8.12551",
-      "templateHash": "12427516200668814305"
+      "version": "0.46.1.21595",
+      "templateHash": "7143387210936827187"
     }
   },
   "parameters": {
@@ -218,11 +218,18 @@
         "description": "Zone Names for Validation of existing Private Dns Zones"
       }
     },
+    "createProjectCapabilityHost": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Create a project capability host explicitly. Leave false for basic setups that use the platform-managed host. Set true only when the project has no capability host."
+      }
+    },
     "projectCapHost": {
       "type": "string",
       "defaultValue": "caphostproj",
       "metadata": {
-        "description": "The name of the project capability host to be created"
+        "description": "The name of the project capability host to be created when createProjectCapabilityHost is true"
       }
     }
   },
@@ -304,8 +311,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "13272353057643143267"
+              "version": "0.46.1.21595",
+              "templateHash": "14734091743182868019"
             }
           },
           "parameters": {
@@ -418,8 +425,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.43.8.12551",
-                      "templateHash": "6615847355060514198"
+                      "version": "0.46.1.21595",
+                      "templateHash": "10073991698149931912"
                     }
                   },
                   "parameters": {
@@ -591,8 +598,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.43.8.12551",
-                      "templateHash": "16683796064862859220"
+                      "version": "0.46.1.21595",
+                      "templateHash": "5675077355101359900"
                     }
                   },
                   "parameters": {
@@ -681,8 +688,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.43.8.12551",
-                              "templateHash": "11349014942847443024"
+                              "version": "0.46.1.21595",
+                              "templateHash": "13658469154589346601"
                             }
                           },
                           "parameters": {
@@ -764,8 +771,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.43.8.12551",
-                              "templateHash": "11349014942847443024"
+                              "version": "0.46.1.21595",
+                              "templateHash": "13658469154589346601"
                             }
                           },
                           "parameters": {
@@ -939,8 +946,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "10415108349705677394"
+              "version": "0.46.1.21595",
+              "templateHash": "13131870682986651869"
             }
           },
           "parameters": {
@@ -1085,8 +1092,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "17632575172686207895"
+              "version": "0.46.1.21595",
+              "templateHash": "3368300676531738015"
             }
           },
           "parameters": {
@@ -1320,7 +1327,7 @@
             "value": "[variables('uniqueSuffix')]"
           },
           "existingDnsZoneResourceGroup": {
-            "value": "[parameters('existingDnsZones')['privatelink.azurecr.io']]"
+            "value": "[coalesce(tryGet(parameters('existingDnsZones'), 'privatelink.azurecr.io'), '')]"
           },
           "dnsZonesSubscriptionId": {
             "value": "[variables('resolvedDnsZonesSubscriptionId')]"
@@ -1338,8 +1345,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "8801411756251170105"
+              "version": "0.46.1.21595",
+              "templateHash": "10443719127646863764"
             }
           },
           "parameters": {
@@ -1567,8 +1574,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "14903937882087600421"
+              "version": "0.46.1.21595",
+              "templateHash": "17476962054545386013"
             }
           },
           "parameters": {
@@ -1733,8 +1740,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "2109142665252549485"
+              "version": "0.46.1.21595",
+              "templateHash": "17948137728312142875"
             }
           },
           "parameters": {
@@ -1944,6 +1951,7 @@
       ]
     },
     {
+      "condition": "[parameters('createProjectCapabilityHost')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('capabilityHost-configuration-{0}-deployment', variables('uniqueSuffix'))]",
@@ -1969,8 +1977,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "6174217467753452418"
+              "version": "0.46.1.21595",
+              "templateHash": "1175666319261126032"
             }
           },
           "parameters": {

@@ -25,7 +25,7 @@ This template combines:
 - **Basic agent configuration** — No BYO resources, no connections to external search/storage/cosmos services
 - **VNet injection** — Custom virtual network with subnet delegation for agent workloads (`Microsoft.App/environments`)
 - **Private endpoints** — Network-secured access to the AI Services account only
-- **Capability host** — Basic agent capability host without BYO connections
+- **Capability host** — Uses the platform-managed basic agent capability host without BYO connections; explicit creation is opt-in
 
 ### What Gets Deployed
 
@@ -38,7 +38,7 @@ This template combines:
 | **Private Endpoint** | Secure private connectivity to AI Services |
 | **Private DNS Zones** (x3) | DNS resolution for `privatelink.services.ai.azure.com`, `privatelink.openai.azure.com`, `privatelink.cognitiveservices.azure.com` |
 | **AI Foundry Project** | Project with system-assigned managed identity |
-| **Capability Host** | Basic agent capability host (platform-managed storage) |
+| **Capability Host** | Platform-managed basic agent capability host; the template does not create an additional host by default |
 | **Model Deployment** | gpt-4.1 (configurable) |
 | **Azure Container Registry** *(optional)* | Premium SKU ACR with private endpoint, DNS zone (`privatelink.azurecr.io`), and AcrPull role for the project identity |
 
@@ -119,7 +119,7 @@ Use the table below to choose the right infrastructure template for your scenari
 
   > **Notes:** 
   - If you do not provide an existing virtual network, the template will create a new virtual network with the default address spaces and subnets described above. If you use an existing virtual network, make sure it already contains two subnets (Agent and Private Endpoint) before deploying the template.
-  - You must ensure the Foundry account was successfully created so that underlying caphost has also succeeded. Then proceed to deploying the project caphost bicep.
+  - Basic setups use the platform-managed capability host. Leave `createProjectCapabilityHost` set to `false` for normal deployments. Enable explicit creation only when the project has no capability host; each project supports only one host, so creating or renaming an additional host causes a conflict.
   - You must ensure the subnet is exclusively delegated to __Microsoft.App/environments__ and cannot be used by any other Azure resources.
 
 ### Limitations / Known Issues
@@ -166,7 +166,8 @@ Before deleting an **Account** resource, it is essential to first delete the ass
 | `vnetAddressPrefix` | Address space for new VNet | `192.168.0.0/16` | No |
 | `dnsZonesSubscriptionId` | Subscription ID for existing DNS zones | `''` (current sub) | No |
 | `existingDnsZones` | Map of DNS zone names to resource groups | All empty (creates new) | No |
-| `projectCapHost` | Name of the project capability host | `caphostproj` | No |
+| `createProjectCapabilityHost` | Explicitly create a project capability host. Leave disabled for basic setups using the platform-managed host; enable only when the project has no capability host. | `false` | No |
+| `projectCapHost` | Name of the project capability host, used only when `createProjectCapabilityHost` is `true` | `caphostproj` | No |
 | `enableContainerRegistry` | When `true`, creates an Azure Container Registry (Premium SKU) with a private endpoint in the PE subnet, a `privatelink.azurecr.io` DNS zone, and an AcrPull role assignment for the project managed identity. | `true` | No |
 | `developerIpCidr` | Developer IP CIDR to allowlist for ACR push access (e.g., `203.0.113.0/26`). When set, enables public network access with a deny-all default + an IP allowlist rule so developers can push images. When empty, public access remains fully disabled. | `''` | No |
 
@@ -184,7 +185,10 @@ To use an existing VNet and subnets, set the `existingVnetResourceId` parameter 
 - `param existingDnsZones = {`
   `'privatelink.services.ai.azure.com': 'privzoneRG'` (add resource group name where your private DNS zone is located)
   `'privatelink.openai.azure.com': ''` (leave empty to create new private DNS zone)
-  `'privatelink.cognitiveservices.azure.com': ''` `}`
+  `'privatelink.cognitiveservices.azure.com': ''`
+  `'privatelink.azurecr.io': ''` `}`
+
+The optional `privatelink.azurecr.io` entry is used when `enableContainerRegistry` is `true`. Leave it empty or omit it to create a new ACR private DNS zone; supply a resource group name to reuse an existing zone.
 
 > **Tip**: If subnet information is provided, make sure the subnets exist within the specified VNet to avoid deployment errors. If subnet information is not provided, the template will create subnets with the default address space.
 

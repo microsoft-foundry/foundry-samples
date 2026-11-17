@@ -135,7 +135,10 @@ param dnsZoneNames array = [
   'privatelink.azurecr.io'
 ]
 
-@description('The name of the project capability host to be created')
+@description('Create a project capability host explicitly. Leave false for basic setups that use the platform-managed host. Set true only when the project has no capability host.')
+param createProjectCapabilityHost bool = false
+
+@description('The name of the project capability host to be created when createProjectCapabilityHost is true')
 param projectCapHost string = 'caphostproj'
 
 
@@ -224,7 +227,7 @@ module acr 'modules-network-secured/container-registry.bicep' = if (enableContai
     peSubnetId: vnet.outputs.peSubnetId
     vnetId: vnet.outputs.virtualNetworkId
     suffix: uniqueSuffix
-    existingDnsZoneResourceGroup: existingDnsZones['privatelink.azurecr.io']
+    existingDnsZoneResourceGroup: existingDnsZones[?'privatelink.azurecr.io'] ?? ''
     dnsZonesSubscriptionId: resolvedDnsZonesSubscriptionId
     developerIpCidr: developerIpCidr
     projectPrincipalId: project.identity.principalId
@@ -293,11 +296,10 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
 }
 
 /*
-  Step 5: Create the Capability Host for the project
-  - Basic agent capability host (no BYO connections)
-  - Platform-managed resources are used for thread storage, file storage, and vector store
+  Step 5 (optional): Create a capability host only when the project has none.
+  Basic setups use the platform-managed host; creating a second host conflicts.
 */
-module addProjectCapabilityHost 'modules-network-secured/add-project-capability-host.bicep' = {
+module addProjectCapabilityHost 'modules-network-secured/add-project-capability-host.bicep' = if (createProjectCapabilityHost) {
   name: 'capabilityHost-configuration-${uniqueSuffix}-deployment'
   params: {
     accountName: aiAccount.outputs.accountName

@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.44.1.10279",
-      "templateHash": "2110640118335440235"
+      "version": "0.46.1.21595",
+      "templateHash": "7143387210936827187"
     }
   },
   "parameters": {
@@ -218,11 +218,18 @@
         "description": "Zone Names for Validation of existing Private Dns Zones"
       }
     },
+    "createProjectCapabilityHost": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Create a project capability host explicitly. Leave false for basic setups that use the platform-managed host. Set true only when the project has no capability host."
+      }
+    },
     "projectCapHost": {
       "type": "string",
       "defaultValue": "caphostproj",
       "metadata": {
-        "description": "The name of the project capability host to be created"
+        "description": "The name of the project capability host to be created when createProjectCapabilityHost is true"
       }
     }
   },
@@ -304,8 +311,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "8059749215340377460"
+              "version": "0.46.1.21595",
+              "templateHash": "14734091743182868019"
             }
           },
           "parameters": {
@@ -418,8 +425,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.44.1.10279",
-                      "templateHash": "1661897848166677911"
+                      "version": "0.46.1.21595",
+                      "templateHash": "10073991698149931912"
                     }
                   },
                   "parameters": {
@@ -591,8 +598,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.44.1.10279",
-                      "templateHash": "13739336036803555258"
+                      "version": "0.46.1.21595",
+                      "templateHash": "5675077355101359900"
                     }
                   },
                   "parameters": {
@@ -681,8 +688,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.44.1.10279",
-                              "templateHash": "4074506216227302224"
+                              "version": "0.46.1.21595",
+                              "templateHash": "13658469154589346601"
                             }
                           },
                           "parameters": {
@@ -764,8 +771,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.44.1.10279",
-                              "templateHash": "4074506216227302224"
+                              "version": "0.46.1.21595",
+                              "templateHash": "13658469154589346601"
                             }
                           },
                           "parameters": {
@@ -911,6 +918,9 @@
           "accountName": {
             "value": "[variables('accountName')]"
           },
+          "location": {
+            "value": "[parameters('location')]"
+          },
           "modelName": {
             "value": "[parameters('modelName')]"
           },
@@ -936,12 +946,15 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "14793506092119170443"
+              "version": "0.46.1.21595",
+              "templateHash": "13131870682986651869"
             }
           },
           "parameters": {
             "accountName": {
+              "type": "string"
+            },
+            "location": {
               "type": "string"
             },
             "modelName": {
@@ -972,7 +985,7 @@
               "type": "Microsoft.CognitiveServices/accounts",
               "apiVersion": "2025-04-01-preview",
               "name": "[parameters('accountName')]",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('location')]",
               "sku": {
                 "name": "S0"
               },
@@ -1079,8 +1092,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "1726454167409390985"
+              "version": "0.46.1.21595",
+              "templateHash": "3368300676531738015"
             }
           },
           "parameters": {
@@ -1314,7 +1327,7 @@
             "value": "[variables('uniqueSuffix')]"
           },
           "existingDnsZoneResourceGroup": {
-            "value": "[parameters('existingDnsZones')['privatelink.azurecr.io']]"
+            "value": "[coalesce(tryGet(parameters('existingDnsZones'), 'privatelink.azurecr.io'), '')]"
           },
           "dnsZonesSubscriptionId": {
             "value": "[variables('resolvedDnsZonesSubscriptionId')]"
@@ -1332,8 +1345,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "4699943037135843809"
+              "version": "0.46.1.21595",
+              "templateHash": "10443719127646863764"
             }
           },
           "parameters": {
@@ -1561,8 +1574,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "10644740557362119851"
+              "version": "0.46.1.21595",
+              "templateHash": "17476962054545386013"
             }
           },
           "parameters": {
@@ -1727,8 +1740,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "14873214704014114490"
+              "version": "0.46.1.21595",
+              "templateHash": "17948137728312142875"
             }
           },
           "parameters": {
@@ -1938,6 +1951,7 @@
       ]
     },
     {
+      "condition": "[parameters('createProjectCapabilityHost')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('capabilityHost-configuration-{0}-deployment', variables('uniqueSuffix'))]",
@@ -1963,8 +1977,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "11310150420706974479"
+              "version": "0.46.1.21595",
+              "templateHash": "1175666319261126032"
             }
           },
           "parameters": {
