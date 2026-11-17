@@ -239,7 +239,9 @@ After deployment, verify readiness and a spoken echo through the Voice wrapper.
   `state.py` owns connection state and response/input-ID correlation.
 - `user.barge_in` and `response.cancelled` synchronize caller-heard text and cancel pending output.
   `response.timeout` cancels work selected by response ID or input IDs.
-- Playback state is bounded to 64 known responses with up to 8,000 characters of heard text each.
+- Playback state is bounded to 64 known responses, each with at most 512 KiB of UTF-8 heard text,
+  matching the response output budget rather than the 8,000-character input limit. Larger values
+  are cut only at complete Unicode characters; string/object overhead is additional to this budget.
   Session termination clears it together with pending work.
 - Response operations contain protocol bookkeeping, not `prompt` or `use_model` flags.
 - Runtime dependencies are locked in `uv.lock`; OpenAI, LangChain, and LangGraph clients

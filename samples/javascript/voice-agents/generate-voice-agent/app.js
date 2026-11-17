@@ -25,7 +25,7 @@ async function main() {
   };
 
   console.log("Generating a voice agent from a goal...");
-  const agent = await project.beta.agents.createFromPrompt(
+  const agent = await project.agents.createFromPrompt(
     {
       kind: "voice",
       name: `sample-generated-voice-${Date.now()}`,

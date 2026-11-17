@@ -1,0 +1,11 @@
+**/__pycache__/
+**/*.py[cod]
+.venv/
+.agent-state/
+.git/
+.dockerignore
+Dockerfile
+
+# Local environment (never bake credentials into the image)
+.env
+.env.*

@@ -1,5 +1,5 @@
 name: Voice Agents (Python)
-description: Create, manage, and converse with Microsoft Foundry Voice Agents (preview), including text, audio, image, and tool turns.
+description: Use azure-ai-projects 2.11.0 for Voice Agent management, Realtime/Live audio, tools, subagents, media, storage, and telephony.
 
 build: "pip install -r requirements.txt"
 validate: "python -m py_compile *.py"

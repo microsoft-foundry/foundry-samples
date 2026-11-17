@@ -1305,7 +1305,7 @@ public class VoiceAgentTests
 
     [TestCase(8_000)]
     [TestCase(8_001)]
-    public void HeardTextBudget_MatchesAcceptedUnicodeScalars(int count)
+    public void HeardTextBudget_DoesNotApplyInputLimit(int count)
     {
         var state = new VoiceConnectionState();
         state.TryBeginStart();
@@ -1314,8 +1314,35 @@ public class VoiceAgentTests
         Assert.That(state.TryReserveOperation(operation), Is.True);
         state.RecordHeardText("r_unicode", string.Concat(Enumerable.Repeat("👋", count)));
         Assert.That(state.TryGetHeardText("r_unicode", out var heard), Is.True);
-        Assert.That(heard, Is.EqualTo(string.Concat(Enumerable.Repeat("👋", 8_000))));
+        Assert.That(heard, Is.EqualTo(string.Concat(Enumerable.Repeat("👋", count))));
         Assert.That(state.TryRemoveOperation("r_unicode", out _), Is.True);
+    }
+
+    [TestCase("x", 524_288)]
+    [TestCase("👋", 131_072)]
+    [TestCase("界", 174_762)]
+    public void HeardTextBudget_PreservesWholeRunesWithinOutputBytes(string unit, int count)
+    {
+        var state = new VoiceConnectionState();
+        state.TryBeginStart();
+        state.Activate();
+        using var operation = new ResponseOperation("r_budget", "in_budget");
+        Assert.That(state.TryReserveOperation(operation), Is.True);
+        var prefix = string.Concat(Enumerable.Repeat(unit, count));
+        state.RecordHeardText("r_budget", prefix + unit);
+        Assert.That(state.TryGetHeardText("r_budget", out var heard), Is.True);
+        Assert.That(heard.Length, Is.EqualTo(prefix.Length));
+        Assert.That(heard, Is.EqualTo(prefix));
+        Assert.That(System.Text.Encoding.UTF8.GetByteCount(heard), Is.LessThanOrEqualTo(512 * 1024));
+        state.RecordHeardText("r_unknown", prefix);
+        Assert.That(state.TryGetHeardText("r_unknown", out _), Is.False);
+        state.RecordHeardText("r_budget", string.Empty);
+        Assert.That(state.TryGetHeardText("r_budget", out heard), Is.True);
+        Assert.That(heard, Is.Empty);
+        state.RecordHeardText("r_budget", "retry");
+        Assert.That(state.TryGetHeardText("r_budget", out heard), Is.True);
+        Assert.That(heard, Is.EqualTo("retry"));
+        Assert.That(state.TryRemoveOperation("r_budget", out _), Is.True);
     }
 
     private static TestableVoiceAgent CreateAgent() =>

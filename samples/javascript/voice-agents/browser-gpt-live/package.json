@@ -1,0 +1,24 @@
+{
+  "name": "foundry-samples-voice-agents-browser-gpt-live",
+  "version": "1.0.0",
+  "description": "JavaScript Microsoft Foundry Voice Agents sample - full-duplex GPT-Live voice conversation in the browser",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@azure/ai-projects": "2.11.0"
+  },
+  "devDependencies": {
+    "@azure/identity": "^4.13.0",
+    "@types/node": "^22.0.0",
+    "typescript": "~6.0.2",
+    "vite": "^7.3.3"
+  }
+}

@@ -30,6 +30,7 @@ require no model call.
 | --- | --- | --- |
 | Python | [Voice Live — Adapter Mode](adapter_mode/) | Recommended for reusing an invocation handler: a CE-only Agent calls a streaming HTTP-shaped Echo handler in process. |
 | Python | [Voice Live Bridge — Basic Python](basic/) | A framework-free Python hosted agent using `azure-ai-agentserver-invocations`. |
+| Python | [Foreground + Background Conversation Engine](foreground_background/) | Model-backed foreground Router and background tool Worker; CE counterpart to the retained Responses VoiceLive sample. |
 | Python | [Voice Live Bridge — LangChain Python](langchain/) | Model-free async story stream; legacy directory/Agent names retained. |
 | Python | [Voice Live Bridge — LangGraph Python](langgraph/) | Model-free async story stream; legacy directory/Agent names retained. |
 | C# | [Voice Live — Adapter Mode](../../../../csharp/hosted-agents/bring-your-own/conversation_engine/adapter_mode/) | The equivalent in-process adapter and streaming Echo handler for .NET. |
@@ -37,6 +38,11 @@ require no model call.
 
 All implementations demonstrate the same Bridge Protocol behavior so you can start with the
 language that matches your application.
+
+The foreground/background sample differs from the model-free story/Echo samples: it retains
+its Foundry model deployment, Router meta-tools, and mock domain tools. Worker tasks and bounded
+conversation history are isolated per physical connection. See its README for interruption,
+delivery, shutdown, and deployment prerequisites.
 
 ## Choose an integration style
 
@@ -49,6 +55,7 @@ language that matches your application.
 - **Native CE mode:** use `basic`, `langchain`, or `langgraph` when you want to implement typed
   Voice callbacks directly and manage the application-owned protocol state. These existing
   samples retain their fixed story behavior; the legacy variant names do not add framework clients.
+  Use `foreground_background` for the model-backed Router/Worker version of native CE.
 
 Adapter mode does not take over a replacement handler's business history or roll back side effects.
 Its Echo is stateless; persistence and any reconciliation of unheard text remain business concerns.
@@ -61,7 +68,7 @@ Caller audio
     → Voice Live (STT, VAD, TTS, and barge-in)
     → Bridge Protocol 1.0 over voice_conversation_engine
     → hosted text agent
-    → Echo text (adapter mode) or a thirty-word story (native CE) streamed back to Voice Live
+    → Echo/story output, or model-backed Router/Worker output, streamed back to Voice Live
 ```
 
 The caller connects to a Foundry **voice agent**, not directly to the hosted text agent. The voice
@@ -86,6 +93,8 @@ protocol and is versioned independently from the Hosted Agent WebSocket ingress.
 Adapter mode echoes each valid input verbatim in streaming chunks, preserving whitespace and
 Unicode. Native CE samples stream the same thirty-word story for every valid input.
 Slash-prefixed text such as `/help` or `/end` is ordinary text, not a command, in both styles.
+The foreground/background variant instead routes the caller's text to its model-backed business
+workflow; it does not produce the fixed story or Echo reply.
 
 The samples demonstrate the Protocol `1.0` customer surface:
 

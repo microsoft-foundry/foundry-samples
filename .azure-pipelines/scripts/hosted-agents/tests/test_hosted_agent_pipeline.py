@@ -373,6 +373,25 @@ exit 60
             ):
                 self.assertIn(path, paths)
 
+    def test_actions_receive_task_scoped_inputs_they_use(self):
+        # Job variables reach every task, but these are only set per task
+        # `env`; an action that reads one without receiving it fails under
+        # `set -u` before doing any work.
+        for name, step in self.steps.items():
+            start = RUNNER.index(f"\n  {name})\n")
+            body = RUNNER[start:RUNNER.index("\n    ;;\n", start)]
+            env = step.get("env", {})
+            for variable in ("REPO_ROOT", "COMBO_ID"):
+                if not re.search(rf"\$\{{?{variable}\b", body):
+                    continue
+                with self.subTest(action=name, variable=variable):
+                    phase = f"PHASE_{variable}"
+                    self.assertTrue(
+                        variable in env
+                        or (phase in env and f'{variable}="${phase}"' in body),
+                        f"{name} reads {variable} but its pipeline task does not pass it",
+                    )
+
     def test_task_retries_preserve_phase_result_without_replay(self):
         for exit_code in (0, 7):
             with self.subTest(exit_code=exit_code):
