@@ -29,7 +29,7 @@ import logging
 import os
 import pathlib
 import re
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote
 
 from dotenv import load_dotenv
 
@@ -146,27 +146,6 @@ async def quickstart():
     toolbox = AzureAIProjectToolbox(toolbox_name=toolbox_name)
     tools = await toolbox.get_tools()
 
-    # Enable error handling so that tool-call failures are returned as tool
-    # messages instead of raising ToolException (which breaks the agent's
-    # conversation state when tool_calls lack matching tool_messages).
-    for t in tools:
-        t.handle_tool_error = True
-
-    # Sanitize tool schemas — some MCP servers (e.g. gitmcp.io) return tools
-    # with missing or empty 'properties', which the framework rejects for object types.
-    for t in tools:
-        schema = t.args_schema if isinstance(t.args_schema, dict) else None
-        if schema is None:
-            continue
-        if schema.get("type") == "object" and "properties" not in schema:
-            schema["properties"] = {}
-        props = schema.get("properties", {})
-        required = schema.get("required", [])
-        if required and not props:
-            for field_name in required:
-                props[field_name] = {"type": "string"}
-            schema["properties"] = props
-
     logger.info(f"Loaded {len(tools)} tools from MCP")
     return create_agent(llm, tools), toolbox, tools
 
@@ -192,62 +171,6 @@ def _extract_assistant_text(result: dict) -> str:
             if parts:
                 return "\n".join(parts)
     return ""
-
-
-# Consent-URL error code returned by the Foundry MCP gateway.
-_CONSENT_ERROR_CODE = -32006
-_CONSENT_HOST = "consent.azure-apim.net"
-
-
-def _contains_consent_host(text: str) -> bool:
-    """Return True if *text* contains a URL whose hostname is the consent host."""
-    for token in re.findall(r"https?://[^\s'\"<>]+", text):
-        host = urlparse(token).hostname
-        if host and (host == _CONSENT_HOST or host.endswith(f".{_CONSENT_HOST}")):
-            return True
-    return False
-
-
-def _extract_allowed_consent_url(text: str) -> str | None:
-    """Return the first URL in *text* whose hostname is exactly consent.azure-apim.net."""
-    for candidate in re.findall(r"https?://[^\s)>\]\"']+", text):
-        parsed = urlparse(candidate)
-        if parsed.hostname == "consent.azure-apim.net":
-            return candidate
-    return None
-
-
-def _is_consent_error(exc: BaseException) -> bool:
-    """Return True if *exc* (or any nested sub-exception) is an MCP consent-URL error."""
-    # mcp.McpError carries an .error.code attribute
-    error_data = getattr(exc, "error", None)
-    if error_data is not None and getattr(error_data, "code", None) == _CONSENT_ERROR_CODE:
-        return True
-    # Fallback: parse URL(s) from the exception text and validate host
-    if _contains_consent_host(str(exc)):
-        return True
-    # Recurse into ExceptionGroup / BaseExceptionGroup sub-exceptions
-    if hasattr(exc, "exceptions"):
-        return any(_is_consent_error(sub) for sub in exc.exceptions)
-    return False
-
-
-def _extract_consent_url(exc: BaseException) -> str:
-    """Walk nested exceptions and return the consent URL string."""
-    error_data = getattr(exc, "error", None)
-    if error_data is not None and getattr(error_data, "code", None) == _CONSENT_ERROR_CODE:
-        message = getattr(error_data, "message", str(exc))
-        return _extract_allowed_consent_url(message) or message
-    msg = str(exc)
-    matched_url = _extract_allowed_consent_url(msg)
-    if matched_url:
-        return matched_url
-    if hasattr(exc, "exceptions"):
-        for sub in exc.exceptions:
-            url = _extract_consent_url(sub)
-            if url:
-                return url
-    return str(exc)
 
 
 def _get_input_text(request: CreateResponse) -> str | None:

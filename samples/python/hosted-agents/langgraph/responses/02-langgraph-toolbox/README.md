@@ -45,13 +45,9 @@ following the `azd` or VS Code steps below.
 
 The compiled graph is built with `langchain.agents.create_agent(model, tools=tools, system_prompt=...)`, which returns a compiled LangGraph runnable implementing the standard ReAct loop. The system prompt instructs the agent to ground answers in tool-provided sources and include a brief Sources section when URLs are present.
 
-### OAuth consent handling
+### SDK-managed tool handling
 
-If a toolbox connection ever needs additional consent (for example, an MCP server backed by an OAuth connection), the Foundry MCP gateway raises an MCP error with code `-32006` and a URL on `consent.azure-apim.net`. The sample installs a `handle_tool_error` callback on every loaded tool that detects this case and returns a friendly tool message containing the consent URL — the agent surfaces it to the caller, and the conversation continues instead of crashing.
-
-### Tool schema sanitization
-
-Some MCP servers return tools with malformed JSON schemas (e.g. `object`-type schemas with no `properties` field), which the OpenAI tool format rejects. The sample patches missing or empty `properties` before handing the tools to LangGraph.
+The sample uses the SDK's default tool error handling and schema sanitization. If consent is required while loading tools, `AzureAIProjectToolbox` returns a fallback tool with authorization instructions. Tool invocation errors are returned as tool messages.
 
 ### Agent Hosting
 
@@ -233,18 +229,12 @@ using the `azd` or VS Code steps above.
 
 ### OAuth consent required
 
-If a toolbox connection needs additional consent, the gateway returns an MCP error with code `-32006` and a URL on `consent.azure-apim.net`. The agent surfaces this URL through a tool message of the form:
-
-```
-OAuth consent required. Open this URL in a browser to authorize the toolbox connection, then retry the request: https://consent.azure-apim.net/...
-```
-
-Open the URL, complete the consent flow, then retry the original request.
+For a toolbox connection that requires OAuth, follow the consent URL returned in the tool output. If consent was required during tool loading, restart the agent after authorization so the SDK can load the actual tools. If it was required during a tool call, retry the request after authorization.
 
 ### Tool call failures don't crash the agent
 
-A `handle_tool_error` callback is installed on every loaded tool, so MCP tool errors are returned as tool messages rather than raising exceptions that would break conversation state.
+The SDK handles tool invocation errors by returning tool messages, so the sample does not need a custom error callback.
 
 ### Tool schemas rejected by OpenAI
 
-The sample sanitizes malformed schemas from MCP servers (missing `properties` on `object`-type schemas) at load time. If you see `400 Invalid tool schema` errors anyway, inspect the raw tool schema returned by your MCP server — there may be additional shape issues.
+The SDK sanitizes malformed schemas from MCP servers (missing `properties` on `object`-type schemas) at load time. If you see `400 Invalid tool schema` errors anyway, inspect the raw tool schema returned by your MCP server — there may be additional shape issues.
