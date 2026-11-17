@@ -8,16 +8,17 @@ How to use:
   4. Delete this comment block.
 
 Follow AGENTS.md in this directory and any framework-specific authoring instructions.
-Write in plain, concise English and use title case for headings. Keep run/deploy
-steps self-contained. Document sample-specific limits, persistence, content exposure,
-and cleanup beside the affected steps. Keep review history and plans in the PR.
+Write in plain, concise English and retain this template's heading names and
+sentence case. Keep run/deploy steps self-contained. Document sample-specific
+limits, persistence, content exposure, and cleanup beside the affected steps.
+Keep review history and plans in the PR.
 -->
 
-# What This Sample Demonstrates
+# What this sample demonstrates
 
 {{What the agent demonstrates, which framework it uses, when to use it, and the expected outcome.}}
 
-## How It Works
+## How it works
 
 {{Short description of how the agent is wired.}} See `main.py` for the implementation.
 
@@ -64,7 +65,7 @@ path (`azd` or the VS Code Foundry Toolkit) is listed under its option below.
    azd auth login
    ```
 
-### Initialize the Agent Project
+### Initialize the agent project
 
 No cloning required. Create a new folder and initialize from the manifest:
 
@@ -75,7 +76,7 @@ azd ai agent init -m {{URL to your sample's azure.yaml on GitHub}}
 
 Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one.
 
-### Provision Azure Resources (If Needed)
+### Provision Azure resources (if needed)
 
 If you don't already have a Foundry project and model deployment:
 
@@ -83,7 +84,7 @@ If you don't already have a Foundry project and model deployment:
 azd provision
 ```
 
-### Run the Agent Locally
+### Run the agent locally
 
 ```bash
 azd ai agent run
@@ -91,7 +92,7 @@ azd ai agent run
 
 The agent host will start on `http://localhost:8088`.
 
-### Invoke the Local Agent
+### Invoke the local agent
 
 In a separate terminal, from the project directory:
 
@@ -118,7 +119,7 @@ azd deploy
 
 For the full deployment guide, see [Deploy a hosted agent](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/deploy-hosted-agent).
 
-### Invoke the Deployed Agent
+### Invoke the deployed agent
 
 ```bash
 azd ai agent invoke "{{prompt}}"
@@ -132,7 +133,7 @@ azd ai agent invoke "{{prompt}}"
 2. For debugging Python in VS Code, install the **[Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)** extension pack.
 3. **Azure CLI** — [Install Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), then run `az login` in the VS Code integrated terminal.
 
-### Set Up the Python Virtual Environment
+### Set up the Python virtual environment
 
 - Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment...** to create a virtual environment in the workspace (or **Python: Select Interpreter** to use an existing one).
 - Install the complete, resolved dependency graph from the sample's committed dependency artifact. New samples use `pyproject.toml` with `uv.lock` by default; `requirements.txt` remains the backward-compatible fallback. When authoring or updating a sample, see the [Python Hosted Agent dependency policy](https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/DEPENDENCY_POLICY.md).
@@ -145,11 +146,11 @@ azd ai agent invoke "{{prompt}}"
   pip install -r requirements.txt
   ```
 
-### Run and Debug the Agent
+### Run and debug the agent
 
 Press **F5** to start the agent. The agent starts and the **Agent Inspector** opens automatically. Chat with the agent in the Inspector.
 
-### Or Run Manually, Then Open the Inspector
+### Or run manually, then open the Inspector
 
 1. Set the required environment variables and sign in to Azure with the Azure CLI (`az login`).
 2. Start the agent: `python main.py` (listens on `http://localhost:8088`).
@@ -183,7 +184,7 @@ Delete this comment and add the real sections your sample needs.
 
 {{Symptom → cause → fix.}}
 
-## Next Steps
+## Next steps
 
 - [Quickstart: Create a hosted agent](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/quickstart-hosted-agent)
 - {{Links to related samples.}}

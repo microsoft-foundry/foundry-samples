@@ -1,11 +1,11 @@
-# Coding Agent Instructions — Python Hosted Agent Samples
+# Coding Agent Instructions — Python hosted-agent samples
 
 Conventions for creating or editing samples under
 `samples/python/hosted-agents/`. Follow these shared instructions and any
 framework- or sample-specific `AGENTS.md`. Apply new requirements to new
 samples and changed parts of existing samples.
 
-## Sample Code
+## Sample code
 
 - Read the target README and relevant shared README before editing.
 - Give each sample one clear goal. Use native framework and hosting SDK features;
@@ -20,7 +20,7 @@ samples and changed parts of existing samples.
 - Keep blocking I/O off the async event loop; use async SDK calls or
   `asyncio.to_thread` for necessary synchronous calls.
 
-## Starting a New Sample
+## Starting a new sample
 
 Copy both shared templates into the new sample:
 
@@ -43,7 +43,7 @@ commands or inside `main.py`.
 See the shared [Python startup configuration](./README.md#python-startup-configuration)
 for deployment environment and dependency guidance.
 
-## Python Dependency Policy
+## Python dependency policy
 
 Follow [`DEPENDENCY_POLICY.md`](./DEPENDENCY_POLICY.md) whenever you create a
 Python Hosted Agent runtime or change its dependencies.
@@ -68,7 +68,7 @@ A uv-native sample may omit `requirements.txt`. Keep `pyproject.toml` and
 `uv.lock` synchronized, and run the frozen resolution check before submitting
 dependency changes.
 
-## Cloud E2E Contract for New Samples
+## Cloud E2E contract for new samples
 
 Every new Python hosted-agent sample must add a public `test-spec.yml` with a
 responsible Microsoft owner alias, supported experiences, deterministic turns,
@@ -80,7 +80,7 @@ onboarding checklist](../../../.azure-pipelines/hosted-agent-tests/README.md).
 Run both the documented `validate` and protocol-aware `plan` commands before
 submitting changes.
 
-## Runtime Logging
+## Runtime logging
 
 Use the standard `logging` module for diagnostics emitted by a running hosted
 agent. Prefer `logger.info()`, `logger.warning()`, and `logger.exception()` over
@@ -92,17 +92,18 @@ script, local test utility, or tool-result contract. If stdout is required from 
 long-running process, flush it explicitly. E2E log assertions must target a
 deliberate sample-owned log event, not mutable framework or dependency wording.
 
-## README Conventions
+## README conventions
 
 Write in plain, concise English. Open with what the sample demonstrates, when
-to use it, and the expected outcome. Use title case for headings.
+to use it, and the expected outcome. Follow the shared template's heading names
+and sentence case.
 
 Most samples follow the shared template,
 [`README-template.md`](./README-template.md). It keeps a familiar section flow:
 
-1. What This Sample Demonstrates
-2. How It Works — plus any sample-specific background (e.g. "Environment
-   Variables", "Architecture", "Features")
+1. What this sample demonstrates
+2. How it works — plus any sample-specific background (e.g. "Environment
+   variables", "Architecture", "Features")
 3. Prerequisites — what the *sample* needs: a Foundry project + model deployment,
    its declared Python version, and (only if applicable) RBAC roles, extra Azure
    resources, and environment variables / secrets
@@ -113,7 +114,7 @@ Most samples follow the shared template,
    → open the Agent Inspector → deploy
 6. Any sample-specific deep-dive sections (customization, advanced demos, reference)
 7. Troubleshooting
-8. Next Steps
+8. Next steps
 
 - Explain only what the reader needs for the sample's goal. Link to related
   samples or shared reference material for other topics while keeping the
@@ -136,7 +137,7 @@ Most samples follow the shared template,
 - Document exporter and content-recording defaults for each supported run path.
   Telemetry enablement does not require enabling content capture.
 
-## Build and Startup
+## Build and startup
 
 - When the default `main.py` command does not start the host, set `startupCommand`
   in `azure.yaml` to the actual local hosting command. `codeConfiguration.entryPoint`
@@ -177,7 +178,7 @@ RUN .venv/bin/python -m compileall -q \
   checks. Report actual results and distinguish source inspection, offline/mock
   checks, live Foundry validation, and Toolkit/Inspector UI validation.
 
-## Conventions Worth Keeping
+## Conventions worth keeping
 
 - Prefer the current CLI commands (the template reflects these; avoid older
   forms such as `azd ext install azure.ai.agents`).
@@ -186,7 +187,7 @@ RUN .venv/bin/python -m compileall -q \
 - Keep Toolkit-generated `.vscode` launch/task files out of the sample; document
   that the Toolkit creates them in the scaffolded workspace.
 
-## When a Sample Legitimately Differs
+## When a sample legitimately differs
 
 Not every sample fits the two-option shape, and that's fine — adapt rather than
 force it:

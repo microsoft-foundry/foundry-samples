@@ -1,11 +1,11 @@
-# LangGraph Hosted Agent Samples
+# Coding Agent Instructions — LangGraph hosted-agent samples
 
 Applies to this directory and its descendants. Follow the
 [shared Python hosted-agent instructions](../AGENTS.md) and any sample-specific
 instructions. Apply new requirements to new samples and changed parts of
 existing samples.
 
-## Sample Code
+## Sample code
 
 - Read the target README and [shared LangGraph README](README.md) before editing.
 - Keep the existing `responses/NN-name/`, `invocations/NN-name/`, and `a2a/`
@@ -28,7 +28,7 @@ existing samples.
   limits beside the interaction steps. For approvals, recovery, or downloads,
   provide a runnable client using the real host protocol.
 
-## Startup and Telemetry
+## Startup and telemetry
 
 - When `main.py` only exports a graph, set `startupCommand` in `azure.yaml` to
   `uv run --no-sync python -m langchain_azure_ai.agents.hosting.run` with the

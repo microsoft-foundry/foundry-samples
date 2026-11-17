@@ -7,7 +7,7 @@ This directory contains samples that demonstrate how to use [LangGraph](https://
 
 Use the configuration-driven `langchain_azure_ai.agents.hosting.run` entrypoint by default. Use a protocol-specific host class only when the agent must customize request translation, unsupported protocol options, readiness behavior, or the lifetime of async resources. The [Responses Custom Host](responses/12-custom-host/) and [Invocations Custom Host](invocations/04-custom-host/) samples demonstrate the request-translation case.
 
-## Authoring Samples
+## Authoring samples
 
 For new samples and updates, follow the [LangGraph authoring instructions](AGENTS.md)
 and the [shared Python hosted-agent instructions](../AGENTS.md). Use the shared
