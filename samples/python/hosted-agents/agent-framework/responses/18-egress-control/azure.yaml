@@ -16,7 +16,7 @@ services:
           version: '2025-04-14'
         sku:
           name: GlobalStandard
-          capacity: 10
+          capacity: 50
   agent-framework-egress-control-responses:
     host: azure.ai.agent
     metadata:

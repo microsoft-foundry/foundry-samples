@@ -17,7 +17,7 @@ services:
           version: '2026-03-17'
         sku:
           name: GlobalStandard
-          capacity: 10
+          capacity: 50
   support-style:
     host: azure.ai.skill
     uses:

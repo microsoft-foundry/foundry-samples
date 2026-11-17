@@ -18,7 +18,7 @@ services:
           version: '2026-09-22'
         sku:
           name: GlobalStandard
-          capacity: 10
+          capacity: 50
   bat-csharp-maf:
     host: azure.ai.agent
     uses:

@@ -16,7 +16,7 @@ services:
           version: '2026-03-17'
         sku:
           name: GlobalStandard
-          capacity: 10
+          capacity: 50
   dummy-api-key:
     host: azure.ai.connection
     uses:

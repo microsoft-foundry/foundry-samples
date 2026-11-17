@@ -12,7 +12,7 @@ services:
           version: '2026-06-01'
         sku:
           name: GlobalStandard
-          capacity: 10
+          capacity: 250
   openai-computer-agent:
     host: azure.ai.agent
     project: ./src/openai-computer-tool

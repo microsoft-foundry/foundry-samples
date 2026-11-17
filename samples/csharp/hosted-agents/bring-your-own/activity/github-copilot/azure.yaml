@@ -16,7 +16,7 @@ services:
           version: '2025-08-07'
         sku:
           name: GlobalStandard
-          capacity: 20
+          capacity: 50
   github-copilot-dotnet-activity:
     host: azure.ai.agent
     metadata:

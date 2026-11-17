@@ -18,7 +18,7 @@ services:
           version: "2026-06-01"
         sku:
           name: GlobalStandard
-          capacity: 10
+          capacity: 50
   openai-computer-tool-dotnet-responses:
     host: azure.ai.agent
     uses:

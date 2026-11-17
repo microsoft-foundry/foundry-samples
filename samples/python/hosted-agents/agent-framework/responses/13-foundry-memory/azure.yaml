@@ -16,7 +16,7 @@ services:
           version: '2026-03-17'
         sku:
           name: GlobalStandard
-          capacity: 10
+          capacity: 50
       - name: text-embedding-3-small
         model:
           format: OpenAI
@@ -24,7 +24,7 @@ services:
           version: '1'
         sku:
           name: GlobalStandard
-          capacity: 10
+          capacity: 50
   agent-framework-agent-foundry-memory-responses:
     host: azure.ai.agent
     metadata:

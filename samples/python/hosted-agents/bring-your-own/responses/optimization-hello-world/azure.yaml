@@ -16,7 +16,7 @@ services:
           version: '2026-03-17'
         sku:
           name: GlobalStandard
-          capacity: 10
+          capacity: 50
       - name: gpt-5.4
         model:
           format: OpenAI
@@ -24,7 +24,7 @@ services:
           version: '2025-04-14'
         sku:
           name: GlobalStandard
-          capacity: 10
+          capacity: 50
   optimization-hello-world-python-responses:
     host: azure.ai.agent
     metadata:

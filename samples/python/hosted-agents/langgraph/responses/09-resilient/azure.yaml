@@ -16,7 +16,7 @@ services:
           version: "2026-03-17"
         sku:
           name: GlobalStandard
-          capacity: 10
+          capacity: 50
 
   langchain-azure-resilient-responses-steerable:
     host: azure.ai.agent
