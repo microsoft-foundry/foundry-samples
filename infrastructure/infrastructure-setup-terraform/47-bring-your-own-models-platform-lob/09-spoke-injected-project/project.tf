@@ -226,18 +226,18 @@ resource "azapi_resource" "connection_gateway" {
 # ---- Destroy-time purge so the delegated agent subnet can be removed ----
 # Injection creates /subnets/snet-agent/serviceAssociationLinks/legionservicelink.
 # Purging the soft-deleted account clears the SAL so the subnet destroy does
-# not hit InUseSubnetCannotBeDeleted. The account depends on purge_cooldown,
-# so destroy runs account delete -> cooldown -> purge -> subnet delete.
+# not hit InUseSubnetCannotBeDeleted. Wait after purge for background cleanup
+# before removing the subnet's routing association and the subnet itself.
 resource "azapi_resource_action" "purge_foundry_agent_account" {
   method      = "DELETE"
   type        = "Microsoft.CognitiveServices/locations/resourceGroups/deletedAccounts@2021-04-30"
   resource_id = "/subscriptions/${var.spoke_subscription_id}/providers/Microsoft.CognitiveServices/locations/${local.location}/resourceGroups/${local.spoke_rg_name}/deletedAccounts/${local.foundry_agent_account_name}"
   when        = "destroy"
 
-  depends_on = [azurerm_subnet.agent]
+  depends_on = [time_sleep.purge_cooldown]
 }
 
 resource "time_sleep" "purge_cooldown" {
   destroy_duration = "900s"
-  depends_on       = [azapi_resource_action.purge_foundry_agent_account]
+  depends_on       = [azurerm_subnet_route_table_association.agent]
 }

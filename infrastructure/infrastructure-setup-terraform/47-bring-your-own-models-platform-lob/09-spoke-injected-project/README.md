@@ -183,4 +183,6 @@ VNet-injected and the data-proxy is in the path.
 terraform destroy
 ```
 
-The destroy waits out the purge cooldown before removing `snet-agent`.
+Destroy deletes the Foundry account, purges the soft-deleted account, then waits
+15 minutes for the purge-triggered service-association-link cleanup before
+removing the agent subnet's route association and `snet-agent`.
