@@ -507,8 +507,9 @@ class SessionSnapshotStore:
         sqlite_paths.update(
             path for path in required if path.suffix in _SQLITE_SUFFIXES
         )
+        # Only the CLI-owned event log is truncated to its last complete record;
+        # declared continuation files are app-owned and must round-trip as-is.
         jsonl_paths = {workspace_relative / "events.jsonl"}
-        jsonl_paths.update(path for path in required if path.suffix == ".jsonl")
         return selected, sqlite_paths, jsonl_paths, declaration, frozen_files
 
     async def save(

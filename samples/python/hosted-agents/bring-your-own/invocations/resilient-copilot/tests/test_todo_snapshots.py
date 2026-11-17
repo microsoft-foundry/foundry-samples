@@ -331,6 +331,25 @@ class RequiredOnlySnapshotTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertFalse((restored / "session-state" / "test" / "cache.db").exists())
 
+    async def test_declared_jsonl_without_trailing_newline_roundtrips_unchanged(self):
+        config, workspace = create_core_layout(self.root)
+        record = b'{"next_step":"continue"}'
+        (workspace / "notes.jsonl").write_bytes(record)
+        (workspace / "continuation-files.json").write_text(
+            json.dumps({"schema": _PIN_SCHEMA, "paths": ["notes.jsonl"]}),
+            encoding="utf-8",
+        )
+        store = SessionSnapshotStore(self.root / "snapshots")
+        store._use_state_store = False
+        await store.save("test", config, live=True)
+        restored = self.root / "restored"
+        self.assertTrue(await store.restore("test", restored))
+        restored_workspace = restored / "session-state" / "test"
+        self.assertEqual((restored_workspace / "notes.jsonl").read_bytes(), record)
+        self.assertEqual(
+            (restored_workspace / "events.jsonl").read_bytes(), b'{"saved":true}\n'
+        )
+
     async def test_explicit_lock_names_and_executable_mode_roundtrip(self):
         config, workspace = create_core_layout(self.root, plan=False)
         nested = workspace / "pins"
