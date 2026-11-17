@@ -12,7 +12,7 @@
     "start": "node app.js"
   },
   "dependencies": {
-    "@azure/ai-projects": "2.7.0",
+    "@azure/ai-projects": "2.11.0",
     "@azure/identity": "^4.13.0",
     "dotenv": "^17.2.1"
   }

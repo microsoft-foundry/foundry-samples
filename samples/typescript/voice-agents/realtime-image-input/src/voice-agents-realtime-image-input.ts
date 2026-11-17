@@ -147,7 +147,7 @@ async function main(): Promise<void> {
   const prompt = process.env.FOUNDRY_VOICE_AGENT_IMAGE_PROMPT || defaultImagePrompt;
   const event = buildImageEvent(await imageDataUrl(imagePath), prompt);
   const project = new AIProjectClient(endpoint, new DefaultAzureCredential());
-  const connection = await project.beta.voiceAgents.realtime.connect(agentName);
+  const connection = await project.voiceAgents.realtime.connect(agentName);
 
   try {
     await sendImageTurn(connection, event);
@@ -162,7 +162,10 @@ async function main(): Promise<void> {
         );
       } else if (serverEvent.type === "response.done") {
         if (serverEvent.response.status !== "completed") {
-          throw new Error(`Response status: ${serverEvent.response.status}`);
+          const details = serverEvent.response.status_details;
+          throw new Error(
+            `Response status: ${serverEvent.response.status}: ${details?.error?.message ?? details?.reason ?? "No further details"}`,
+          );
         }
         await connection.close();
         return;
