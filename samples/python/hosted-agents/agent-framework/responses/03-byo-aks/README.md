@@ -82,8 +82,7 @@ cluster and pool are provisioned and their nodes are ready.
 
 If you already have a compatible cluster, record its Azure resource ID and
 continue to [Configure and provision Foundry](#configure-and-provision-foundry).
-Otherwise, use the scripts to create a cluster and sandbox pool. They first
-show a preview and require an explicit supported Kubernetes version.
+Otherwise, use the scripts to create a cluster and sandbox pool. 
 
 Clone this repository and change to the sample directory:
 
@@ -174,7 +173,14 @@ provisioning. For this path, don't pre-create it or set
 
 ### Administrator-prepared supporting resources
 
-Skip this subsection when Foundry can create the supporting resources.
+If your account cannot create the supporting resources or assign their required roles. Ask your subscription administrator to prepare the resources and permissions listed below, then provide their resource IDs. Your account still needs permission to provision the Foundry account. 
+| Resource                                | Required configuration or permissions                                                                                                                                         |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hosting user-assigned managed identity  | Reader and Kubernetes Extension Contributor on the AKS cluster; Managed Identity Federated Identity Credential Contributor on the workload identity.                          |
+| Workload user-assigned managed identity | A separate identity for session snapshots, with Storage Blob Data Contributor on the storage account.                                                                         |
+| Storage account                         | A dedicated `StorageV2` account with Hot tier, HTTPS only, TLS 1.2 or later, shared-key access disabled, anonymous blob access disabled, and hierarchical namespace disabled. |
+
+
 Otherwise, add these properties under `services.ai-project.agentHosting` in
 `azure.yaml`, keeping `clusterResourceId` and the rest of the manifest:
 
