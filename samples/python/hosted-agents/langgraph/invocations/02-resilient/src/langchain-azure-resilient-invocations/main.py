@@ -130,6 +130,8 @@ def build_real_model() -> BaseChatModel:
         streaming=True,
         use_responses_api=True,
         output_version="responses/v1",
+        # LangGraph manages message history instead of the model service.
+        store=False,
     )
 
 

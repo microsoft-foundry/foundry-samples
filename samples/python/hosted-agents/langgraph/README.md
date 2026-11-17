@@ -7,6 +7,19 @@ This directory contains samples that demonstrate how to use [LangGraph](https://
 
 Use the configuration-driven `langchain_azure_ai.agents.hosting.run` entrypoint by default. Use a protocol-specific host class only when the agent must customize request translation, unsupported protocol options, readiness behavior, or the lifetime of async resources. The [Responses Custom Host](responses/12-custom-host/) and [Invocations Custom Host](invocations/04-custom-host/) samples demonstrate the request-translation case.
 
+## Model history
+
+Each sample sets `store=False` on its model because LangGraph supplies the
+message history, including tool calls and results, on each model request.
+Within a turn, graph state holds this history even without a checkpointer.
+Across turns, the Responses host loads stored conversation history when there
+is no checkpointer; a configured checkpointer restores graph state instead.
+
+This model setting is separate from the hosted agent's Responses storage.
+Keep hosted request storage enabled where required for `previous_response_id`,
+branching, and resilient recovery. Graph checkpoints and custom stores keep
+their existing configuration.
+
 ## Samples
 
 ### Responses API

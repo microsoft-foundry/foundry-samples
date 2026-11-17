@@ -45,6 +45,8 @@ async def main() -> None:
             ),
             use_responses_api=True,
             output_version="responses/v1",
+            # LangGraph manages message history instead of the model service.
+            store=False,
         )
         with model.root_client:
             async with (

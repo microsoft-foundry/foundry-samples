@@ -46,6 +46,8 @@ def _build_chat_model() -> AzureAIOpenAIApiChatModel:
         project_endpoint=os.environ["FOUNDRY_PROJECT_ENDPOINT"],
         credential=DefaultAzureCredential(),
         model=os.environ.get("AZURE_AI_MODEL_DEPLOYMENT_NAME", "gpt-4o"),
+        # LangGraph manages message history instead of the model service.
+        store=False,
     )
 
 
