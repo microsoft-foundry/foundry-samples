@@ -246,7 +246,9 @@ This sample leaves the core host's
 `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` unset (the host defaults to
 `true`) and sets the SDK's `AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED=true`.
 The SDK's automatic tracer otherwise defaults its own content recording to `false`;
-these are separate settings, not inverse privacy switches. Traces can include
+these are separate settings, not inverse privacy switches. Setting a content flag
+does not register another tracer: this sample uses only the host's instrumentation.
+Do not also register an SDK callback tracer for the same operations. Traces can include
 user messages, model responses, and tool inputs/outputs.
 Use non-sensitive test data. Before production use, assess privacy, consent,
 access controls, and retention requirements to decide whether to record content.

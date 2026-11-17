@@ -140,29 +140,35 @@ class ReportExportTests(unittest.TestCase):
         self.assertEqual(self.blobs[0].upload_blob.call_args.args, (REPORT.encode(),))
 
     def test_expected_blob_failures_are_explicit_handled_tool_errors(self) -> None:
-        for error_type in (
-            HttpResponseError,
-            ServiceRequestError,
-            ServiceResponseError,
-        ):
-            with self.subTest(error=error_type.__name__):
-                blob = MagicMock(
-                    url="https://reports.blob.core.windows.net/reports/test.md"
-                )
-                self.storage.get_blob_client.side_effect = None
-                self.storage.get_blob_client.return_value = blob
-                blob.upload_blob.side_effect = error_type(
-                    "sensitive-token-must-not-be-echoed"
-                )
-                before = copy.deepcopy(self.files)
-                result = self.publish()
-                self.assertEqual(result.status, "error")
-                self.assertIn("/report-v1.md", result.content)
-                self.assertIn("remains available for editing", result.content)
-                self.assertIn("No download link", result.content)
-                self.assertNotIn("sensitive-token", result.content)
-                self.assertNotIn("sig=", result.content)
-                self.assertEqual(self.files, before)
+        for operation in ("container", "upload"):
+            for error_type in (
+                HttpResponseError,
+                ServiceRequestError,
+                ServiceResponseError,
+            ):
+                with self.subTest(operation=operation, error=error_type.__name__):
+                    properties = self.storage.get_container_client.return_value.get_container_properties
+                    properties.side_effect = None
+                    blob = MagicMock(
+                        url="https://reports.blob.core.windows.net/reports/test.md"
+                    )
+                    self.storage.get_blob_client.side_effect = None
+                    self.storage.get_blob_client.return_value = blob
+                    target = (
+                        properties if operation == "container" else blob.upload_blob
+                    )
+                    target.side_effect = error_type(
+                        "sensitive-token-must-not-be-echoed"
+                    )
+                    before = copy.deepcopy(self.files)
+                    result = self.publish()
+                    self.assertEqual(result.status, "error")
+                    self.assertIn("/report-v1.md", result.content)
+                    self.assertIn("remains available for editing", result.content)
+                    self.assertIn("No download link", result.content)
+                    self.assertNotIn("sensitive-token", result.content)
+                    self.assertNotIn("sig=", result.content)
+                    self.assertEqual(self.files, before)
 
     def test_invalid_names_do_not_access_blob_storage(self) -> None:
         for report_name in (

@@ -6,28 +6,19 @@ Samples for building, deploying, and managing hosted agents on [Microsoft Foundr
 
 ## Telemetry and logging
 
-The standard Python/C# Agent Server hosts configure console logging and
-OpenTelemetry by default. Keep that default enabled when adapting a sample;
-Python startup diagnostics emitted before host construction should initialize
-`logging` at INFO. Let the host own instrumentation/export rather than also
-configuring another provider or instrumenting the same framework twice.
+Standard Agent Server hosts configure console logging and OpenTelemetry by
+default. Reuse the host's instrumentation and exporters; registering another
+tracer for the same framework can duplicate spans. Custom runtimes configure
+telemetry in their own entry points, as documented by each sample.
 
-For Application Insights export, connect the resource to the Foundry project
-and verify the injected `APPLICATIONINSIGHTS_CONNECTION_STRING`. For local
-runs, provide your own connection string or an OTLP destination. Check actual
-logs/spans in the destination; an absent environment variable, a warning, or a
-successful model response is not evidence that remote telemetry was exported.
-Protocol-only, externally hosted, and framework-specific samples may configure
-observability explicitly; inspect their documented entry point instead of
-requiring one universal initialization call.
+For hosted export, connect Application Insights to the Foundry project and
+verify the injected `APPLICATIONINSIGHTS_CONNECTION_STRING`. For local runs,
+provide that connection string or an OTLP destination. Verify logs and traces
+in the destination separately from console output.
 
-Telemetry enabled does not mean sensitive content must be recorded. Keep
-prompts, report bodies, tool payloads, secrets, bearer tokens, and SAS URLs out
-of default logs. Message-content capture is a separate opt-in setting; do not
-turn `AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED` or
-`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` on solely to enable logging.
-Tests and offline replay utilities may suppress telemetry deliberately; do not
-copy those opt-outs into production entry points.
+Message-content recording is separate from logging and can include sensitive
+user/model/tool data. Defaults vary by sample; review its settings and assess
+privacy, access controls, and retention before production use.
 
 ### Quickstart
 

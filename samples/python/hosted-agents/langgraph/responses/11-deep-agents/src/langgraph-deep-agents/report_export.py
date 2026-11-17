@@ -96,9 +96,6 @@ def create_report_export_tool(credential: TokenCredential) -> BaseTool:
         blob_name = f"{uuid4().hex}/{report_name}"
         try:
             with BlobServiceClient(account_url, credential=credential) as storage:
-                account_name = storage.account_name
-                if not account_name:
-                    raise ValueError("Configure the Azure Blob Storage account URL.")
                 properties = storage.get_container_client(
                     container_name
                 ).get_container_properties()
