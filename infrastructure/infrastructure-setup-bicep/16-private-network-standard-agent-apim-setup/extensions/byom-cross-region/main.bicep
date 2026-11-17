@@ -278,33 +278,6 @@ module vnet 'modules/vnet-with-backend-subnet.bicep' = {
   }
 }
 
-// Add the apim-outbound subnet alongside the others. Separate resource to
-// avoid racing the vnet module on subnet collection writes.
-resource apimOutboundSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' = {
-  name: '${vnetName}/${apimOutboundSubnetName}'
-  properties: {
-    addressPrefix: apimOutboundSubnetPrefix
-    // defaultOutboundAccess: false closes the implicit egress path Azure
-    // assigns to subnets that lack explicit outbound (NAT GW / LB).
-    // APIM's outbound traffic is brokered by the SV2 platform, so the
-    // subnet itself does not need default outbound — and disabling it
-    // also satisfies subscription-level guardrails that require
-    // defaultOutboundAccess=false on every subnet.
-    defaultOutboundAccess: false
-    delegations: [
-      {
-        name: 'Microsoft.Web/serverFarms'
-        properties: {
-          serviceName: 'Microsoft.Web/serverFarms'
-        }
-      }
-    ]
-  }
-  dependsOn: [
-    vnet
-  ]
-}
-
 // ===========================================================================
 // Project-region Foundry account + project (delegated to template 16 modules)
 // ===========================================================================
