@@ -1,0 +1,7 @@
+.azure/
+.deploy/
+.test-results/
+**/bin/
+**/obj/
+*.user
+.env

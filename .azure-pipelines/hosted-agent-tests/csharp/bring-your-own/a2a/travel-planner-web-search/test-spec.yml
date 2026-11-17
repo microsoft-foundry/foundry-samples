@@ -1,0 +1,23 @@
+version: 1
+sample:
+  owner: hkunkanoor
+  experiences: [azd]
+# Target the planner service. Full cloud research additionally needs its
+# configured specialist endpoints, model and Toolbox web_search permissions.
+tests:
+  - name: cited-saved-trip
+    turns:
+      - input: Research a refundable trip from Seattle to London, departing 2027-03-15 and returning 2027-03-19, one traveler, arrive by 2027-03-16T09:00:00+00:00, public office landmark King's Cross station, hotel within 2 km, total budget USD 3500. Save the cited recommendation as unverified; no booking.
+        assertions:
+          - {source: assistant_text, type: contains, value: "Verified task IDs"}
+          - {source: assistant_text, type: contains, value: "Flight Agent"}
+          - {source: assistant_text, type: contains, value: "Hotel Agent"}
+          - {source: assistant_text, type: contains, value: "Verified saved plan"}
+          - {source: assistant_text, type: contains, value: "unverified"}
+  - name: clarify-incomplete-trip
+    turns:
+      - input: I need a trip. Ask me for the missing travel dates, route, travelers, budget and public office landmark. Do not create or recommend an itinerary yet.
+        assertions:
+          - source: assistant_text
+            type: regex
+            value: "(?i)(office|landmark)"

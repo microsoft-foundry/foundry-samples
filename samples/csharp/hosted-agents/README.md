@@ -174,6 +174,13 @@ Already built an agent with your own .NET code? The protocol SDKs (`Azure.AI.Age
 | **[Notetaking Agent](bring-your-own/invocations/notetaking-agent/)** | Note-taking agent with the Invocations protocol. |
 | **[Human-in-the-Loop](bring-your-own/invocations/human-in-the-loop/)** | Long-running agent that pauses for human approval before continuing. |
 
+### Native A2A protocol
+
+| Sample | What it shows |
+|--------|--------------|
+| **[Echo and explicit streaming](bring-your-own/a2a/echo/)** | Deterministic completed A2A Tasks, GetTask and measured incremental SSE using published AgentServer alpha packages; no model or Toolbox. |
+| **[Travel planner with web search](bring-your-own/a2a/travel-planner-web-search/)** | Copilot SDK planner discovers native Flight/Hotel agents and saves cited, unverified research with user isolation and plan-version protection. |
+
 ### Activity protocol
 
 These samples use `Azure.AI.AgentServer.Activity` to host native Microsoft 365
