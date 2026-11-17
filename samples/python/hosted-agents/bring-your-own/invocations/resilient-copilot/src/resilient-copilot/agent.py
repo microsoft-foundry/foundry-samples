@@ -156,6 +156,10 @@ _HARNESS_SLOTS: dict[str, _HarnessSlot] = {}
 _CLIENT_CANCEL_REQUESTED: set[str] = set()
 
 
+class HarnessStartingError(RuntimeError):
+    """The live Copilot harness is still starting; the caller should retry."""
+
+
 async def get_invocation_status(invocation_id: str) -> dict[str, Any] | None:
     """Return one invocation's durable polling record."""
     return await _INVOCATION_STORE.get(invocation_id)
@@ -196,8 +200,16 @@ async def _ready_harness(session_id: str) -> CopilotHarness | None:
         harness = await asyncio.wait_for(
             asyncio.shield(slot.ready), _READY_TIMEOUT_SECONDS
         )
-    except (TimeoutError, HarnessClosingError):
+    except HarnessClosingError:
         return None
+    except TimeoutError:
+        if slot.closing:
+            return None
+        # Startup or snapshot restore is still running. Starting another
+        # framework input here would bypass Copilot's native controls.
+        raise HarnessStartingError(
+            "The Copilot session is still starting; retry shortly."
+        ) from None
     if slot.closing:
         return None
     return harness
@@ -821,6 +833,15 @@ async def copilot_agent(ctx: TaskContext[dict]) -> None:
         if not slot.ready.done():
             slot.ready.set_exception(exc)
             slot.ready.exception()
+        if stream is None:
+            # Startup failed before the turn acquired its stream; acquire it
+            # now so SSE subscribers still receive a terminal frame.
+            try:
+                stream = await streams.get_or_create(inv_id)
+                seq = await stream.last_cursor() or 0
+            except Exception:  # pylint: disable=broad-except
+                logger.exception("failed to open invocation stream for failure frame")
+                stream = None
         if stream is not None:
             try:
                 seq += 1

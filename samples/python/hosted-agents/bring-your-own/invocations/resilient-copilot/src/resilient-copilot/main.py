@@ -60,6 +60,7 @@ from azure.ai.agentserver.invocations import InvocationAgentServerHost
 
 try:
     from .agent import (
+        HarnessStartingError,
         copilot_agent,
         fail_harness_start,
         get_invocation_status,
@@ -72,6 +73,7 @@ try:
     from .store import validate_session_id
 except ImportError:  # allow `python main.py` from inside this directory
     from agent import (
+        HarnessStartingError,
         copilot_agent,
         fail_harness_start,
         get_invocation_status,
@@ -120,6 +122,14 @@ def _validate_input_id(value: Any = _MISSING) -> str:
 def _invalid_session_response(exc: ValueError) -> JSONResponse:
     return JSONResponse(
         {"error": "invalid_request", "message": str(exc)}, status_code=400
+    )
+
+
+def _busy_response(exc: HarnessStartingError) -> JSONResponse:
+    return JSONResponse(
+        {"error": "busy", "message": str(exc)},
+        status_code=503,
+        headers={"Retry-After": "5"},
     )
 
 
@@ -224,6 +234,8 @@ async def handle_invoke(request: Request) -> Response:
         delivered = await submit_native_input(
             session_id, input_id, prompt, mode or "enqueue"
         )
+    except HarnessStartingError as exc:
+        return _busy_response(exc)
     except ValueError as exc:
         return JSONResponse(
             {"error": "input_rejected", "message": str(exc)}, status_code=409
@@ -438,6 +450,8 @@ async def handle_elicit(request: Request) -> Response:
         result = await submit_elicitation_decision(
             session_id, elicitation_id, action, content
         )
+    except HarnessStartingError as exc:
+        return _busy_response(exc)
     except ValueError as exc:
         return JSONResponse(
             {"error": "invalid_request", "message": str(exc)}, status_code=409

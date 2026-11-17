@@ -870,9 +870,10 @@ class AgentTaskTests(unittest.IsolatedAsyncioTestCase):
         snapshot_side_effect=None,
         log=None,
         invocation_store=None,
+        stream=None,
     ):
         context = context or self.context()
-        stream = FakeStream()
+        stream = stream or FakeStream()
         state_store = FakeStateStore(state, log)
         snapshot = SimpleNamespace(
             restore=AsyncMock(return_value=restore),
@@ -1596,6 +1597,26 @@ class AgentTaskTests(unittest.IsolatedAsyncioTestCase):
         ]
         self.assertEqual(pending, [])
 
+    async def test_early_startup_failure_terminates_the_invocation_stream(self):
+        stream = FakeStream()
+        context = self.context(
+            native_input_id="oversized",
+            mode="enqueue",
+            prompt="x" * (600 * 1024),
+        )
+        with self.assertRaisesRegex(ValueError, "512 KiB"):
+            await self.run_task(
+                context=context,
+                harness=QueueHarness,
+                invocation_store=self.invocation_store,
+                stream=stream,
+            )
+        self.assertEqual(
+            self.invocation_store.records["invocation"]["status"], "failed"
+        )
+        self.assertEqual(stream.frames[-1]["type"], "turn_failed")
+        stream.close.assert_awaited()
+
     async def test_failed_abort_fails_the_turn_instead_of_hanging(self):
         class FailingAbortHarness(QueueHarness):
             async def _abort(self):
@@ -2230,6 +2251,33 @@ class HttpValidationTests(unittest.IsolatedAsyncioTestCase):
                     )
                     self.assertEqual(response.status_code, 400)
             start.assert_not_awaited()
+
+    async def test_starting_harness_returns_busy_without_new_framework_input(self):
+        slot = agent.reserve_harness("session")
+        self.addCleanup(agent._HARNESS_SLOTS.pop, "session", None)
+        with patch.object(agent, "_READY_TIMEOUT_SECONDS", 0.01), patch.object(
+            main.streams, "get_or_create", AsyncMock(return_value=SimpleNamespace())
+        ), patch.object(
+            main.copilot_agent, "start", AsyncMock()
+        ) as start:
+            invoke = await main.handle_invoke(
+                self.request({"input": "hello", "input_id": "retry-1"})
+            )
+            elicit = await main.handle_elicit(
+                self.request(
+                    {
+                        "session_id": "session",
+                        "elicitation_id": "question-1",
+                        "action": "accept",
+                    }
+                )
+            )
+        self.assertFalse(slot.ready.done())
+        for response in (invoke, elicit):
+            self.assertEqual(response.status_code, 503)
+            self.assertEqual(json.loads(response.body)["error"], "busy")
+            self.assertIn("retry-after", response.headers)
+        start.assert_not_awaited()
 
     async def test_absent_input_id_is_generated_once(self):
         generated = uuid.UUID("00000000-0000-0000-0000-000000000123")
