@@ -91,6 +91,11 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-
       version: '2025-04-14'
     }
   }
+  // Ordered after the project to avoid intermittent RequestConflict races from
+  // overlapping writes on the same account; not a strict platform requirement.
+  dependsOn: [
+    aiProject
+  ]
 }
 
 /*

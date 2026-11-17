@@ -142,8 +142,11 @@ resource aiAccountPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01
   // Wait for project; account PUT returns in 'Accepted' state and binding a
   // PE before the backend converges fails with AccountProvisioningStateInvalid.
   // Project creation only succeeds post-convergence, so it acts as a sync point.
+  // Also wait for the model deployment to avoid intermittent RequestConflict
+  // races from overlapping writes on the account.
   dependsOn: [
     project
+    modelDeployment
   ]
 }
 
@@ -253,6 +256,11 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-
       version: '2024-07-18'
     }
   }
+  // Ordered after the project to avoid intermittent RequestConflict races from
+  // overlapping writes on the same account; not a strict platform requirement.
+  dependsOn: [
+    project
+  ]
 }
 
 /*

@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.48.1.52935",
-      "templateHash": "9333187855641087974"
+      "version": "0.46.1.21595",
+      "templateHash": "14553619493539855846"
     }
   },
   "parameters": {
@@ -153,6 +153,7 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('aiFoundryName'), 'gpt-4o-mini')]",
         "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('aiFoundryName'), parameters('defaultProjectName'))]",
         "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"
       ]
@@ -275,7 +276,8 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]"
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('aiFoundryName'), parameters('defaultProjectName'))]"
       ]
     },
     {

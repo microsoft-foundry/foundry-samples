@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.39.26.7824",
-      "templateHash": "16150214514525244564"
+      "version": "0.46.1.21595",
+      "templateHash": "16540974679108678606"
     }
   },
   "parameters": {
@@ -115,7 +115,8 @@
         "description": "My first project"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]"
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]",
+        "[resourceId('Microsoft.Resources/deployments', 'updateEncryption')]"
       ]
     },
     {
@@ -134,7 +135,8 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]"
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiFoundryName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('aiFoundryName'), parameters('aiProjectName'))]"
       ]
     },
     {
@@ -175,8 +177,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "10984074837058238866"
+              "version": "0.46.1.21595",
+              "templateHash": "4132314459523141706"
             }
           },
           "parameters": {

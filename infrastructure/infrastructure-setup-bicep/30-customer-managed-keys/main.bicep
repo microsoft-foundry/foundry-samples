@@ -101,6 +101,11 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
     displayName: 'project'
     description: 'My first project'
   }
+  // Ordered after the CMK update, which also writes to the account, to avoid
+  // intermittent RequestConflict races; not a strict platform requirement.
+  dependsOn: [
+    encryptionUpdate
+  ]
 }
 
 // Set up customer-managed key encryption once the system-assigned managed identities are created
@@ -134,6 +139,11 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-
       version: '2025-04-14'
     }
   }
+  // Ordered after the project to avoid intermittent RequestConflict races from
+  // overlapping writes on the same account; not a strict platform requirement.
+  dependsOn: [
+    project
+  ]
 }
 
 output accountId string = account.id
