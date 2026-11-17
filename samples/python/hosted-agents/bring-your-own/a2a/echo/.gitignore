@@ -1,0 +1,7 @@
+.azure/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+.agent-state/

@@ -10,14 +10,14 @@ USAGE:
 
     Before running the sample:
 
-    pip install "azure-ai-projects==2.7.0" python-dotenv
+    pip install "azure-ai-projects==2.11.0" python-dotenv
 
     Set these environment variables with your own values:
     1) FOUNDRY_PROJECT_ENDPOINT - The Azure AI Project endpoint.
     2) FOUNDRY_VOICE_AGENT_MODEL - Optional. The realtime model deployment name.
        Defaults to "gpt-realtime".
-    3) FOUNDRY_VOICE_AGENT_NAME - Optional. The name of the voice agent. If not
-       set, defaults to "sample-versioned-voice-agent".
+    3) FOUNDRY_VOICE_AGENT_NAME - Optional unused name. Otherwise a unique
+       sample-owned name is generated.
 """
 
 import os
@@ -26,22 +26,27 @@ from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import VoiceAgentDefinition, VoiceModelType
 
+from voice_agent_util import require_new_agent, sample_agent_name
+
 load_dotenv()
 
 endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
 model = os.environ.get("FOUNDRY_VOICE_AGENT_MODEL") or "gpt-realtime"
-agent_name = os.environ.get("FOUNDRY_VOICE_AGENT_NAME") or "sample-versioned-voice-agent"
+agent_name = sample_agent_name("sample-versioned-voice-agent")
 
 
 def make_definition(instructions: str) -> VoiceAgentDefinition:
     # Each version differs only by its instructions; the rest is identical.
-    return VoiceAgentDefinition(model_type=VoiceModelType.MANAGED, model=model, instructions=instructions)
+    return VoiceAgentDefinition(
+        model_type=VoiceModelType.MANAGED, model=model, instructions=instructions
+    )
 
 
 with (
     DefaultAzureCredential() as credential,
-    AIProjectClient(endpoint=endpoint, credential=credential, allow_preview=True) as project_client,
+    AIProjectClient(endpoint=endpoint, credential=credential) as project_client,
 ):
+    require_new_agent(project_client, agent_name)
     created_versions = []
     try:
         # Create the initial agent (this is version 1).
@@ -55,7 +60,9 @@ with (
         # Create a new version with updated instructions.
         new_version = project_client.agents.create_version(
             agent_name=agent_name,
-            definition=make_definition("You are a helpful voice assistant. Always greet the caller by name."),
+            definition=make_definition(
+                "You are a helpful voice assistant. Always greet the caller by name."
+            ),
             description="Added a personalized greeting.",
         )
         created_versions.append(new_version)
@@ -65,9 +72,12 @@ with (
         # 'latest' resolution and from version listings unless include_drafts=True.
         draft_version = project_client.agents.create_version(
             agent_name=agent_name,
-            definition=make_definition("You are a helpful voice assistant. Experimental draft persona."),
+            definition=make_definition(
+                "You are a helpful voice assistant. Experimental draft persona."
+            ),
             description="Candidate persona under review.",
             draft=True,
+            headers={"Foundry-Features": "DraftAgents=V1Preview"},
         )
         created_versions.append(draft_version)
         print(f"Created draft version: {draft_version.version}")
@@ -79,15 +89,23 @@ with (
 
         # List including drafts.
         print(f"All versions of '{agent_name}' (including drafts):")
-        for version in project_client.agents.list_versions(agent_name=agent_name, include_drafts=True):
+        for version in project_client.agents.list_versions(
+            agent_name=agent_name, include_drafts=True
+        ):
             print(f"  - version {version.version} (draft={version.draft})")
 
         # Read a single version back. `definition` is typed as the base `AgentDefinition`;
         # narrow to `VoiceAgentDefinition` to access voice-specific fields like `instructions`.
-        fetched = project_client.agents.get_version(agent_name=agent_name, agent_version=new_version.version)
+        fetched = project_client.agents.get_version(
+            agent_name=agent_name, agent_version=new_version.version
+        )
         if isinstance(fetched.definition, VoiceAgentDefinition):
-            print(f"Fetched version {fetched.version}: {fetched.definition.instructions}")
+            print(
+                f"Fetched version {fetched.version}: {fetched.definition.instructions}"
+            )
     finally:
         for version in reversed(created_versions):
-            project_client.agents.delete_version(agent_name=agent_name, agent_version=version.version)
+            project_client.agents.delete_version(
+                agent_name=agent_name, agent_version=version.version
+            )
             print(f"Deleted agent version: {version.version}")
