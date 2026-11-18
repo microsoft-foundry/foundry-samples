@@ -23,6 +23,7 @@
     },
 
     "connectionName": { "value": "ai-gateway" },
+    "mockModelName": { "value": "" },
     "inferenceApiVersion": { "value": "2024-10-21" },
     "enableDirectFoundryConnection": {"value": false},
     "directFoundryConnectionName": {"value": "foundry-direct"},

@@ -1,0 +1,11 @@
+name: Connected Model with Responses API
+description: Use an existing Responses-configured connected model through a Microsoft Foundry prompt agent.
+
+build: "pip install -r requirements.txt"
+validate: "python -m py_compile connected-model-responses.py"
+live_service_validation:
+  command: "python connected-model-responses.py"
+  required_env:
+    - AZURE_AI_PROJECT_ENDPOINT
+    - CONNECTED_MODEL_CONNECTION_NAME
+    - CONNECTED_MODEL_NAME

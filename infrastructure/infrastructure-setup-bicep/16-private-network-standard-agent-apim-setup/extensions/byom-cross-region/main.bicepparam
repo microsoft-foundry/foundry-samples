@@ -72,6 +72,8 @@ param backendModelDeployments = [
 // BYOM connection
 // ---------------------------------------------------------------------------
 param connectionName = 'ai-gateway'
+// Optional deterministic APIM mock model for connectivity testing. Empty disables it.
+param mockModelName = ''
 param inferenceApiVersion = '2024-10-21'
 
 // Scenario 2: direct connection to the backend Foundry account. Enabling this
