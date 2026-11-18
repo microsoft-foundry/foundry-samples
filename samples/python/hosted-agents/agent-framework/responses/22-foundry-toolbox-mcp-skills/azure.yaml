@@ -16,7 +16,7 @@ services:
           version: '2026-03-17'
         sku:
           name: GlobalStandard
-          capacity: 50
+          capacity: 10
   agent-framework-agent-foundry-toolbox-mcp-skills-responses:
     host: azure.ai.agent
     metadata:

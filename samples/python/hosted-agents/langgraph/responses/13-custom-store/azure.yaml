@@ -16,7 +16,7 @@ services:
           version: '2026-07-09'
         sku:
           name: GlobalStandard
-          capacity: 50
+          capacity: 1
   custom-store:
     host: azure.ai.agent
     metadata:

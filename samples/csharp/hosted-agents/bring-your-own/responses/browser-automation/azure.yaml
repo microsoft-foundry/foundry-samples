@@ -18,7 +18,7 @@ services:
           version: '2026-09-22'
         sku:
           name: GlobalStandard
-          capacity: 50
+          capacity: 10
   bat-csharp-byo:
     host: azure.ai.agent
     metadata:

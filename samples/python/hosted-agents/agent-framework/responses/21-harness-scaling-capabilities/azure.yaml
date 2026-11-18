@@ -16,7 +16,7 @@ services:
           version: '2026-03-17'
         sku:
           name: GlobalStandard
-          capacity: 50
+          capacity: 10
   harness-scaling-capabilities:
     host: azure.ai.agent
     project: src/harness-scaling-capabilities-responses

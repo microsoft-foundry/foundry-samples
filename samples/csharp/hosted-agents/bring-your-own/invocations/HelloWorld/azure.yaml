@@ -16,7 +16,7 @@ services:
           version: '2026-03-17'
         sku:
           name: GlobalStandard
-          capacity: 50
+          capacity: 10
   hello-world-dotnet-invocations:
     host: azure.ai.agent
     metadata:
