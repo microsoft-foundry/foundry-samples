@@ -1,0 +1,560 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.46.1.21595",
+      "templateHash": "10448650762687324955"
+    },
+    "description": "Assigns Microsoft Foundry built-in Azure Policy controls for agents, models, tools and agent safety at subscription or resource group scope."
+  },
+  "definitions": {
+    "effect": {
+      "type": "string",
+      "allowedValues": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ],
+      "metadata": {
+        "description": "Effect for controls that can block requests."
+      }
+    },
+    "agentControls": {
+      "type": "object",
+      "properties": {
+        "effect": {
+          "$ref": "#/definitions/effect",
+          "nullable": true,
+          "metadata": {
+            "description": "Audit (default), Deny or Disabled."
+          }
+        },
+        "allowedAgentKinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "nullable": true,
+          "metadata": {
+            "description": "Only these agent kinds are allowed, for example [\"prompt\", \"hosted\", \"workflow\"]. Empty = not assigned."
+          }
+        },
+        "deniedAgentKinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "nullable": true,
+          "metadata": {
+            "description": "These agent kinds are denied, for example [\"external\"]. Empty = not assigned."
+          }
+        },
+        "allowedContainerImages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "nullable": true,
+          "metadata": {
+            "description": "Hosted agents may only use these images, for example [\"contoso.azurecr.io/*\"]. Empty = not assigned."
+          }
+        },
+        "deniedContainerImages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "nullable": true,
+          "metadata": {
+            "description": "Hosted agents may not use these images, for example [\"docker.io/*\"]. Empty = not assigned."
+          }
+        }
+      },
+      "metadata": {
+        "description": "Agent kind and hosted-agent container image controls."
+      }
+    },
+    "modelControls": {
+      "type": "object",
+      "properties": {
+        "effect": {
+          "$ref": "#/definitions/effect",
+          "nullable": true,
+          "metadata": {
+            "description": "Audit (default), Deny or Disabled."
+          }
+        },
+        "allowedPublishers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "nullable": true,
+          "metadata": {
+            "description": "Approved model publishers, for example [\"OpenAI\", \"Microsoft\"]. Use the publisher name from the model card."
+          }
+        },
+        "allowedAssetIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "nullable": true,
+          "metadata": {
+            "description": "Approved model asset IDs or prefixes, for example [\"azureml://registries/azure-openai/models/gpt-4.1/\"]. Matched with \"contains\"."
+          }
+        },
+        "denyPreviewModels": {
+          "type": "bool",
+          "nullable": true,
+          "metadata": {
+            "description": "Block models whose lifecycle status is Preview."
+          }
+        },
+        "onlyAllowDirectFromAzure": {
+          "type": "bool",
+          "nullable": true,
+          "metadata": {
+            "description": "Only allow models that are distributed directly from Azure."
+          }
+        }
+      },
+      "metadata": {
+        "description": "Model deployment controls."
+      }
+    },
+    "toolControls": {
+      "type": "object",
+      "properties": {
+        "effect": {
+          "$ref": "#/definitions/effect",
+          "nullable": true,
+          "metadata": {
+            "description": "Audit (default), Deny or Disabled."
+          }
+        },
+        "approvedToolTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "nullable": true,
+          "metadata": {
+            "description": "Approved tool types, for example [\"web_search\", \"file_search\", \"code_interpreter\"]. Adding \"mcp\" approves every MCP server."
+          }
+        },
+        "approvedMcpEndpoints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "nullable": true,
+          "metadata": {
+            "description": "Approved MCP server URLs. Case-insensitive; one \"*\" per value, for example \"https://learn.microsoft.com/api/mcp*\"."
+          }
+        },
+        "approvedMcpConnectors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "nullable": true,
+          "metadata": {
+            "description": "Approved MCP connector IDs."
+          }
+        },
+        "deniedToolTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "nullable": true,
+          "metadata": {
+            "description": "Denied tool types, for example [\"browser_automation\", \"browser_automation_preview\"]."
+          }
+        },
+        "deniedMcpEndpoints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "nullable": true,
+          "metadata": {
+            "description": "Denied MCP server URLs, for example [\"https://mcp.example.com/*\"]."
+          }
+        },
+        "deniedMcpConnectors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "nullable": true,
+          "metadata": {
+            "description": "Denied MCP connector IDs."
+          }
+        }
+      },
+      "metadata": {
+        "description": "Tool controls for agents and toolboxes."
+      }
+    },
+    "safetyControls": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "bool",
+          "nullable": true,
+          "metadata": {
+            "description": "Assign the agent prompt content filter policy. Default: false."
+          }
+        },
+        "effect": {
+          "type": "string",
+          "allowedValues": [
+            "Audit",
+            "Disabled"
+          ],
+          "nullable": true,
+          "metadata": {
+            "description": "Audit (default) or Disabled. This policy does not support Deny."
+          }
+        },
+        "filterName": {
+          "type": "string",
+          "allowedValues": [
+            "Indirect Attack Spotlighting",
+            "Indirect Attack",
+            "Jailbreak",
+            "Profanity"
+          ],
+          "nullable": true,
+          "metadata": {
+            "description": "Prompt content filter that must be enabled and blocking. Default: Jailbreak."
+          }
+        },
+        "entityKinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "nullable": true,
+          "metadata": {
+            "description": "Agent entity kinds evaluated by the policy. Default: [\"prompt\", \"hosted\"]."
+          }
+        }
+      },
+      "metadata": {
+        "description": "Agent safety: audit that agents keep a required prompt content filter on. Audit-only."
+      }
+    },
+    "plannedAssignment": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "policyDefinitionId": {
+          "type": "string"
+        },
+        "definitionVersion": {
+          "type": "string",
+          "metadata": {
+            "description": "Major-version selector: 1.*.*-preview for preview built-ins, 1.*.* for GA built-ins."
+          }
+        },
+        "parameters": {
+          "type": "object"
+        }
+      },
+      "metadata": {
+        "description": "One planned policy assignment."
+      }
+    }
+  },
+  "functions": [
+    {
+      "namespace": "__bicep",
+      "members": {
+        "builtIn": {
+          "parameters": [
+            {
+              "type": "string",
+              "name": "policyId"
+            }
+          ],
+          "output": {
+            "type": "string",
+            "value": "[format('/providers/Microsoft.Authorization/policyDefinitions/{0}', parameters('policyId'))]"
+          }
+        },
+        "listOrEmpty": {
+          "parameters": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "nullable": true,
+              "name": "value"
+            }
+          ],
+          "output": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "value": "[coalesce(parameters('value'), createArray())]"
+          }
+        },
+        "agentAssignments": {
+          "parameters": [
+            {
+              "$ref": "#/definitions/agentControls",
+              "name": "c"
+            }
+          ],
+          "output": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/plannedAssignment"
+            },
+            "value": "[concat(if(empty(__bicep.listOrEmpty(tryGet(parameters('c'), 'allowedAgentKinds'))), createArray(), createArray(createObject('key', 'agent-kinds-allow', 'displayName', 'Agents use only allowed agent kinds', 'policyDefinitionId', __bicep.builtIn('85455646-5d02-433e-a42d-265151140427'), 'definitionVersion', '1.*.*-preview', 'parameters', createObject('effect', createObject('value', coalesce(tryGet(parameters('c'), 'effect'), 'Audit')), 'allowedAgentKinds', createObject('value', __bicep.listOrEmpty(tryGet(parameters('c'), 'allowedAgentKinds'))))))), if(empty(__bicep.listOrEmpty(tryGet(parameters('c'), 'deniedAgentKinds'))), createArray(), createArray(createObject('key', 'agent-kinds-deny', 'displayName', 'Agents do not use denied agent kinds', 'policyDefinitionId', __bicep.builtIn('b6ca2367-8597-4a3f-ab19-48f58d6d9278'), 'definitionVersion', '1.*.*-preview', 'parameters', createObject('effect', createObject('value', coalesce(tryGet(parameters('c'), 'effect'), 'Audit')), 'deniedAgentKinds', createObject('value', __bicep.listOrEmpty(tryGet(parameters('c'), 'deniedAgentKinds'))))))), if(empty(__bicep.listOrEmpty(tryGet(parameters('c'), 'allowedContainerImages'))), createArray(), createArray(createObject('key', 'agent-images-allow', 'displayName', 'Hosted agents use only allowed container images', 'policyDefinitionId', __bicep.builtIn('d0d9ac6c-628b-46c1-a177-eb22b12ce588'), 'definitionVersion', '1.*.*-preview', 'parameters', createObject('effect', createObject('value', coalesce(tryGet(parameters('c'), 'effect'), 'Audit')), 'allowedContainerImages', createObject('value', __bicep.listOrEmpty(tryGet(parameters('c'), 'allowedContainerImages'))))))), if(empty(__bicep.listOrEmpty(tryGet(parameters('c'), 'deniedContainerImages'))), createArray(), createArray(createObject('key', 'agent-images-deny', 'displayName', 'Hosted agents do not use denied container images', 'policyDefinitionId', __bicep.builtIn('215c2c77-3afb-4f55-be2f-709b60dc8d53'), 'definitionVersion', '1.*.*-preview', 'parameters', createObject('effect', createObject('value', coalesce(tryGet(parameters('c'), 'effect'), 'Audit')), 'deniedContainerImages', createObject('value', __bicep.listOrEmpty(tryGet(parameters('c'), 'deniedContainerImages'))))))))]"
+          }
+        },
+        "modelAssignments": {
+          "parameters": [
+            {
+              "$ref": "#/definitions/modelControls",
+              "name": "c"
+            }
+          ],
+          "output": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/plannedAssignment"
+            },
+            "value": "[concat(if(and(empty(__bicep.listOrEmpty(tryGet(parameters('c'), 'allowedPublishers'))), empty(__bicep.listOrEmpty(tryGet(parameters('c'), 'allowedAssetIds')))), createArray(), createArray(createObject('key', 'models-approved', 'displayName', 'Model deployments use only approved models', 'policyDefinitionId', __bicep.builtIn('aafe3651-cb78-4f68-9f81-e7e41509110f'), 'definitionVersion', '1.*.*', 'parameters', createObject('effect', createObject('value', coalesce(tryGet(parameters('c'), 'effect'), 'Audit')), 'allowedPublishers', createObject('value', __bicep.listOrEmpty(tryGet(parameters('c'), 'allowedPublishers'))), 'allowedAssetIds', createObject('value', __bicep.listOrEmpty(tryGet(parameters('c'), 'allowedAssetIds'))))))), if(and(not(coalesce(tryGet(parameters('c'), 'denyPreviewModels'), false())), not(coalesce(tryGet(parameters('c'), 'onlyAllowDirectFromAzure'), false()))), createArray(), createArray(createObject('key', 'models-eligibility', 'displayName', 'Model deployments meet eligibility requirements', 'policyDefinitionId', __bicep.builtIn('8791d062-ba96-4c34-b604-8538f7e30ca0'), 'definitionVersion', '1.*.*', 'parameters', createObject('effect', createObject('value', coalesce(tryGet(parameters('c'), 'effect'), 'Audit')), 'denyPreviewModels', createObject('value', coalesce(tryGet(parameters('c'), 'denyPreviewModels'), false())), 'onlyAllowDirectFromAzure', createObject('value', coalesce(tryGet(parameters('c'), 'onlyAllowDirectFromAzure'), false())))))))]"
+          }
+        },
+        "toolAssignments": {
+          "parameters": [
+            {
+              "$ref": "#/definitions/toolControls",
+              "name": "c"
+            }
+          ],
+          "output": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/plannedAssignment"
+            },
+            "value": "[concat(if(and(and(empty(__bicep.listOrEmpty(tryGet(parameters('c'), 'approvedToolTypes'))), empty(__bicep.listOrEmpty(tryGet(parameters('c'), 'approvedMcpEndpoints')))), empty(__bicep.listOrEmpty(tryGet(parameters('c'), 'approvedMcpConnectors')))), createArray(), createArray(createObject('key', 'tools-approved', 'displayName', 'Agents and toolboxes use only approved tools', 'policyDefinitionId', __bicep.builtIn('e7352ad2-6c86-4a07-9573-47f67b557ba8'), 'definitionVersion', '1.*.*-preview', 'parameters', createObject('effect', createObject('value', coalesce(tryGet(parameters('c'), 'effect'), 'Audit')), 'approvedToolTypes', createObject('value', __bicep.listOrEmpty(tryGet(parameters('c'), 'approvedToolTypes'))), 'approvedMcpEndpoints', createObject('value', __bicep.listOrEmpty(tryGet(parameters('c'), 'approvedMcpEndpoints'))), 'approvedMcpConnectors', createObject('value', __bicep.listOrEmpty(tryGet(parameters('c'), 'approvedMcpConnectors'))))))), if(and(and(empty(__bicep.listOrEmpty(tryGet(parameters('c'), 'deniedToolTypes'))), empty(__bicep.listOrEmpty(tryGet(parameters('c'), 'deniedMcpEndpoints')))), empty(__bicep.listOrEmpty(tryGet(parameters('c'), 'deniedMcpConnectors')))), createArray(), createArray(createObject('key', 'tools-denied', 'displayName', 'Agents and toolboxes do not use denied tools', 'policyDefinitionId', __bicep.builtIn('7740c22b-07ef-4bac-9f5a-e38d188f80b7'), 'definitionVersion', '1.*.*-preview', 'parameters', createObject('effect', createObject('value', coalesce(tryGet(parameters('c'), 'effect'), 'Audit')), 'deniedToolTypes', createObject('value', __bicep.listOrEmpty(tryGet(parameters('c'), 'deniedToolTypes'))), 'deniedMcpEndpoints', createObject('value', __bicep.listOrEmpty(tryGet(parameters('c'), 'deniedMcpEndpoints'))), 'deniedMcpConnectors', createObject('value', __bicep.listOrEmpty(tryGet(parameters('c'), 'deniedMcpConnectors'))))))))]"
+          }
+        },
+        "safetyAssignments": {
+          "parameters": [
+            {
+              "$ref": "#/definitions/safetyControls",
+              "name": "c"
+            }
+          ],
+          "output": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/plannedAssignment"
+            },
+            "value": "[if(not(coalesce(tryGet(parameters('c'), 'enabled'), false())), createArray(), createArray(createObject('key', 'agent-prompt-filter', 'displayName', format('Agents keep the {0} prompt filter on', coalesce(tryGet(parameters('c'), 'filterName'), 'Jailbreak')), 'policyDefinitionId', __bicep.builtIn('9224c1cc-34fc-44f1-ad08-5c4b079c9ce6'), 'definitionVersion', '1.*.*-preview', 'parameters', createObject('effect', createObject('value', coalesce(tryGet(parameters('c'), 'effect'), 'Audit')), 'filterName', createObject('value', coalesce(tryGet(parameters('c'), 'filterName'), 'Jailbreak')), 'entityKind', createObject('value', coalesce(tryGet(parameters('c'), 'entityKinds'), createArray('prompt', 'hosted'))), 'allowedEnabledForPrompt', createObject('value', createArray('true')), 'allowedBlockingForPrompt', createObject('value', createArray('true'))))))]"
+          }
+        }
+      }
+    }
+  ],
+  "parameters": {
+    "resourceGroupName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional. Resource group in this subscription to scope the assignments to. Empty = whole subscription."
+      }
+    },
+    "assignmentPrefix": {
+      "type": "string",
+      "defaultValue": "fg",
+      "minLength": 1,
+      "maxLength": 10,
+      "metadata": {
+        "description": "Prefix for assignment names (<prefix>-<control>)."
+      }
+    },
+    "displayNamePrefix": {
+      "type": "string",
+      "defaultValue": "Foundry governance",
+      "metadata": {
+        "description": "Prefix for assignment display names. Foundry shows the display name when a request is blocked."
+      }
+    },
+    "enforcementMode": {
+      "type": "string",
+      "defaultValue": "Default",
+      "allowedValues": [
+        "Default",
+        "DoNotEnforce"
+      ],
+      "metadata": {
+        "description": "Default enforces the effects. DoNotEnforce evaluates and reports compliance without blocking (what-if mode)."
+      }
+    },
+    "notScopes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "defaultValue": [],
+      "metadata": {
+        "description": "Resource IDs inside the scope to exclude, for example a sandbox resource group or Foundry account."
+      }
+    },
+    "agents": {
+      "$ref": "#/definitions/agentControls",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Agent kind and hosted-agent container image controls."
+      }
+    },
+    "models": {
+      "$ref": "#/definitions/modelControls",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Model deployment controls."
+      }
+    },
+    "tools": {
+      "$ref": "#/definitions/toolControls",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tool controls for agents and toolboxes."
+      }
+    },
+    "safety": {
+      "$ref": "#/definitions/safetyControls",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Agent safety (audit-only) controls."
+      }
+    }
+  },
+  "variables": {
+    "copy": [
+      {
+        "name": "assignmentDefinitions",
+        "count": "[length(variables('plan'))]",
+        "input": {
+          "name": "[format('{0}-{1}', parameters('assignmentPrefix'), variables('plan')[copyIndex('assignmentDefinitions')].key)]",
+          "properties": {
+            "displayName": "[format('{0}: {1}', parameters('displayNamePrefix'), variables('plan')[copyIndex('assignmentDefinitions')].displayName)]",
+            "description": "Assigned by the Microsoft Foundry governance template (06-foundry-governance).",
+            "policyDefinitionId": "[variables('plan')[copyIndex('assignmentDefinitions')].policyDefinitionId]",
+            "definitionVersion": "[variables('plan')[copyIndex('assignmentDefinitions')].definitionVersion]",
+            "enforcementMode": "[parameters('enforcementMode')]",
+            "notScopes": "[parameters('notScopes')]",
+            "parameters": "[variables('plan')[copyIndex('assignmentDefinitions')].parameters]",
+            "metadata": {
+              "source": "foundry-samples/06-foundry-governance"
+            }
+          }
+        }
+      }
+    ],
+    "plan": "[concat(__bicep.agentAssignments(parameters('agents')), __bicep.modelAssignments(parameters('models')), __bicep.toolAssignments(parameters('tools')), __bicep.safetyAssignments(parameters('safety')))]"
+  },
+  "resources": {
+    "subscriptionAssignments": {
+      "copy": {
+        "name": "subscriptionAssignments",
+        "count": "[length(if(empty(parameters('resourceGroupName')), variables('assignmentDefinitions'), createArray()))]"
+      },
+      "type": "Microsoft.Authorization/policyAssignments",
+      "apiVersion": "2024-04-01",
+      "name": "[if(empty(parameters('resourceGroupName')), variables('assignmentDefinitions'), createArray())[copyIndex()].name]",
+      "properties": "[if(empty(parameters('resourceGroupName')), variables('assignmentDefinitions'), createArray())[copyIndex()].properties]"
+    },
+    "resourceGroupAssignments": {
+      "condition": "[not(empty(parameters('resourceGroupName')))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('{0}-foundry-governance', parameters('assignmentPrefix'))]",
+      "resourceGroup": "[if(empty(parameters('resourceGroupName')), 'unused', parameters('resourceGroupName'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "assignments": {
+            "value": "[variables('assignmentDefinitions')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.46.1.21595",
+              "templateHash": "16668476229241541063"
+            }
+          },
+          "parameters": {
+            "assignments": {
+              "type": "array",
+              "metadata": {
+                "description": "Assignments to create: [{ name, properties }], built by main.bicep."
+              }
+            }
+          },
+          "resources": [
+            {
+              "copy": {
+                "name": "policyAssignments",
+                "count": "[length(parameters('assignments'))]"
+              },
+              "type": "Microsoft.Authorization/policyAssignments",
+              "apiVersion": "2024-04-01",
+              "name": "[parameters('assignments')[copyIndex()].name]",
+              "properties": "[parameters('assignments')[copyIndex()].properties]"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "outputs": {
+    "scope": {
+      "type": "string",
+      "metadata": {
+        "description": "Scope the policies were assigned to."
+      },
+      "value": "[if(empty(parameters('resourceGroupName')), subscription().id, format('{0}/resourceGroups/{1}', subscription().id, parameters('resourceGroupName')))]"
+    },
+    "assignments": {
+      "type": "array",
+      "metadata": {
+        "description": "Assignments that were created or updated."
+      },
+      "copy": {
+        "count": "[length(variables('assignmentDefinitions'))]",
+        "input": {
+          "name": "[variables('assignmentDefinitions')[copyIndex()].name]",
+          "displayName": "[variables('assignmentDefinitions')[copyIndex()].properties.displayName]",
+          "policyDefinitionId": "[variables('assignmentDefinitions')[copyIndex()].properties.policyDefinitionId]"
+        }
+      }
+    }
+  }
+}
