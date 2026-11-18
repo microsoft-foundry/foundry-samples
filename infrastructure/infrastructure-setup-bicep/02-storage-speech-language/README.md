@@ -1,6 +1,6 @@
 # Bring Your Own Azure Storage for Speech and Language capabilities (Preview)
 
-Use this template to associate your Azure Storage account to a new Foundry resource. This template allows you to bring an existing Azure Storage account as the storage for your Speech and Language usecases. Learn more about this feature's restrictions via our public documentation. 
+Use this template to create a Foundry resource and project, then associate an Azure Storage account with the resource for Speech and Language use cases. You can use an existing storage account or create one with the template. Learn more about this feature's restrictions via our public documentation.
 
 ## Advanced implementation details  
 ### How is this setup different from an Azure Storage connection in Foundry?

@@ -9,7 +9,40 @@
 param aiFoundryName string = 'foundrypnadisabled-${uniqueString(resourceGroup().id)}'
 
 @description('Location for all resources.')
-param location string = 'eastus'
+@allowed([
+  'australiaeast'
+  'brazilsouth'
+  'canadacentral'
+  'canadaeast'
+  'centralindia'
+  'centralus'
+  'eastasia'
+  'eastus'
+  'francecentral'
+  'germanywestcentral'
+  'italynorth'
+  'japaneast'
+  'koreacentral'
+  'northcentralus'
+  'northeurope'
+  'norwayeast'
+  'qatarcentral'
+  'southafricanorth'
+  'southcentralus'
+  'southindia'
+  'southeastasia'
+  'spaincentral'
+  'swedencentral'
+  'switzerlandnorth'
+  'uaenorth'
+  'uksouth'
+  'westeurope'
+  'westus'
+  'westus3'
+  'usgovarizona'
+  'usgovvirginia'
+])
+param location string = any(resourceGroup().location)
 
 @description('Name of the first project')
 param defaultProjectName string = '${aiFoundryName}-proj'
@@ -89,7 +122,7 @@ Step 3: Create a private endpoint to access your private resource
 // - Establishes private connection to AI Services account
 resource aiAccountPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
   name: '${aiFoundryName}-private-endpoint'
-  location: resourceGroup().location
+  location: location
   properties: {
     subnet: {
       id: subnet.id                    // Deploy in customer hub subnet
@@ -109,8 +142,11 @@ resource aiAccountPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01
   // Wait for project; account PUT returns in 'Accepted' state and binding a
   // PE before the backend converges fails with AccountProvisioningStateInvalid.
   // Project creation only succeeds post-convergence, so it acts as a sync point.
+  // Also wait for the model deployment to avoid intermittent RequestConflict
+  // races from overlapping writes on the account.
   dependsOn: [
     project
+    modelDeployment
   ]
 }
 
@@ -220,6 +256,11 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-
       version: '2024-07-18'
     }
   }
+  // Ordered after the project to avoid intermittent RequestConflict races from
+  // overlapping writes on the same account; not a strict platform requirement.
+  dependsOn: [
+    project
+  ]
 }
 
 /*
