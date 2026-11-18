@@ -12,7 +12,7 @@ az deployment group create \
 
 Optional parameters:
 - connectedResourceName: Name of the target Azure AI Foundry resource (default: foundry-{aiFoundryName})
-- location: Target account location when newOrExisting=new (default: deployment resource group location)
+- location: Target account location when newOrExisting=new; must support Azure AI Foundry (default: deployment resource group location)
 - newOrExisting: Whether to create new or use existing Azure AI Foundry resource (default: new)
 - authType: Authentication type - ApiKey or AAD (default: ApiKey)
 - isSharedToAll: Share connection with all users (default: true)
