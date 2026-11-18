@@ -53,6 +53,34 @@ class BicepPipelineTests(unittest.TestCase):
         self.assertNotIn("internal/tools/", PIPELINE.read_text(encoding="utf-8"))
         self.assertNotIn("internal/tools/", diagnostic.read_text(encoding="utf-8"))
 
+    def test_diagnostic_agent_name_does_not_end_with_hyphen(self):
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "Bash is required for diagnostic naming checks")
+        diagnostic = ROOT / ".azure-pipelines/scripts/bicep/run-data-plane-diagnostics.sh"
+        source = diagnostic.read_text(encoding="utf-8")
+        start = source.index('agent_name="$(printf')
+        end = source.index("\nazd_env_name=", start)
+        name_assignment = source[start:end]
+
+        for account_name in (
+            "fsci2473695581bc54d5eastusf03-custom-",
+            f"{'a' * 70}---",
+        ):
+            with self.subTest(account_name=account_name):
+                result = subprocess.run(
+                    [
+                        bash,
+                        "-c",
+                        "build_id=247369558; job_attempt=1; "
+                        f"account_name={account_name!r}; {name_assignment}; "
+                        'printf "%s" "$agent_name"',
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                self.assertRegex(result.stdout, r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
+
     def test_push_and_helper_changes_select_templates_without_azure(self):
         bash = shutil.which("bash")
         self.assertIsNotNone(bash, "Bash is required for pipeline selection checks")
