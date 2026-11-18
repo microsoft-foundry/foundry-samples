@@ -22,8 +22,8 @@ The sample leaves the harness-native tools enabled, matching the quickstart. The
   and `azure.ai.projects` 1.0.0-beta.14.
 - Python 3.10 or later for the automated smoke test.
 - An Azure subscription with Copilot harness access and Global Standard quota for
-  `gpt-5.4-mini` in the selected Foundry region. The sample requests 100 capacity units
-  (100,000 tokens per minute).
+  `gpt-5.4-mini` in the selected Foundry region. The sample requests 250 capacity units
+  (250,000 tokens per minute).
 - Contributor plus `Microsoft.Authorization/roleAssignments/write` permission, such as **User Access
   Administrator** or **Owner**, to create the isolated resources and initial project access.
 - The **Foundry User** role on the deployed project for Agent inspection and invocation.
