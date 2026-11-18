@@ -22,6 +22,7 @@ from test_conversation_engine import (
     answer,
     frame,
     output,
+    presentation_reply,
     send,
     start,
     tool,
@@ -372,7 +373,7 @@ async def test_task_context_is_bounded_and_full_retained_result_can_still_be_fet
         task = conversation.tasks.create_task(f"Query {index}")
         task.status, task.result, task.finished_at = TaskStatus.COMPLETED, "界" * 8000, time.time()
     latest = conversation.tasks.get("latest")
-    chat = Chat(tool("get_task_result", task_id="latest"))
+    chat = Chat(tool("get_task_result", task_id="latest"), presentation_reply(latest.result))
     agent = ForegroundBackgroundAgent(chat, Responses(), "test")
     turn = Turn("r_full_result")
     assert (
@@ -474,7 +475,13 @@ async def test_unseen_result_claim_is_rejected_atomically_then_can_be_retrieved(
         return tool("respond_directly", message="Still checking.", delivered_task_ids=reported)
 
     agent = ForegroundBackgroundAgent(
-        Chat(finish_and_report, tool("get_task_result", task_id=task.task_id)), Responses(), "test"
+        Chat(
+            finish_and_report,
+            tool("get_task_result", task_id=task.task_id),
+            presentation_reply("Panel result"),
+        ),
+        Responses(),
+        "test",
     )
     turn = Turn("r_became_ready")
     with pytest.raises(ValueError):

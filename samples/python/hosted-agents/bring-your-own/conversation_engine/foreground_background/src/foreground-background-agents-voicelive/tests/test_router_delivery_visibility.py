@@ -20,6 +20,7 @@ from test_conversation_engine import (
     answer,
     frame,
     output,
+    presentation_reply,
     send,
     start,
     tool,
@@ -58,7 +59,9 @@ async def test_claims_follow_complete_context_not_task_store(
         assert ("Result bodies omitted" in context[0]) is over_budget
         return tool("respond_directly", message=claimed_text, delivered_task_ids=[task.task_id])
 
-    chat = Chat(route, tool("get_task_result", task_id=task.task_id))
+    chat = Chat(
+        route, tool("get_task_result", task_id=task.task_id), presentation_reply(task.result)
+    )
     agent = ForegroundBackgroundAgent(chat, Responses(), "test")
     turn = Turn("r_context")
     if over_budget:
@@ -133,7 +136,9 @@ def test_real_worker_finishing_after_router_snapshot_cannot_be_falsely_delivered
     chat = Chat(
         tool("start_task", request_summary="Find panels", ack_message="Looking."),
         finish_during_routing,
+        *([presentation_reply(result)] if route != "respond_directly" else []),
         tool("get_task_result", task_id="latest"),
+        presentation_reply(result),
         tool("respond_directly", message="You're welcome."),
     )
     agent = ForegroundBackgroundAgent(chat, Responses(blocked_model), "test")
@@ -198,6 +203,7 @@ def test_index_only_result_claim_fails_before_speech_then_sdk_lookup_delivers() 
             tool("respond_directly", message="Hello."),
             claim_index_only,
             tool("get_task_result", task_id="latest"),
+            presentation_reply("x" * 8000),
             tool("respond_directly", message="Welcome."),
         ),
         Responses(),
@@ -252,7 +258,13 @@ async def test_cancelled_router_does_not_authorize_delivery_and_next_turn_can_re
         return tool("respond_directly", message="Panel summary", delivered_task_ids=[task.task_id])
 
     agent = ForegroundBackgroundAgent(
-        Chat(held_router, tool("get_task_result", task_id=task.task_id)), Responses(), "test"
+        Chat(
+            held_router,
+            tool("get_task_result", task_id=task.task_id),
+            presentation_reply(task.result),
+        ),
+        Responses(),
+        "test",
     )
     turn = Turn("r_cancelled")
     stream = agent.respond(conversation, turn, "Summarize")

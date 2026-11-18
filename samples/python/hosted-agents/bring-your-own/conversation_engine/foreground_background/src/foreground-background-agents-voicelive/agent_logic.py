@@ -121,6 +121,69 @@ class ForegroundBackgroundAgent:
         self.workers.add(worker)
         worker.add_done_callback(self.workers.discard)
 
+    async def _present_result(
+        self, messages: list[dict], tool_call: Any, task: Task
+    ) -> tuple[str, bool]:
+        # One bounded, tool-free follow-up: the Router must see the retrieved body
+        # before it can translate, summarize, or repeat it for this request.
+        response = await self.chat.create(
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Answer the current user request using the retrieved task result. "
+                        "Apply any requested translation, summary, or other presentation; "
+                        "if no transformation is requested, relay the complete result. "
+                        "Preserve the facts; do not invent missing details or start more work. "
+                        'Return a JSON object with "message" (nonblank spoken text) and '
+                        '"result_conveyed" (boolean). Set result_conveyed to true only when '
+                        "the message conveys the result's content, including a translation or "
+                        "summary. Set it to false for status-only replies or acknowledgments. "
+                        "If the user asks only whether it is ready, do not read the result."
+                    ),
+                },
+                # Replace the earlier task-context block with this one complete result.
+                *(item for item in messages[1:] if item["role"] != "system"),
+                {"role": "assistant", "tool_calls": [tool_call.model_dump(exclude_none=True)]},
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": json.dumps(
+                        {
+                            "task_id": task.task_id,
+                            "status": task.status.value,
+                            "result": task.result,
+                        },
+                        ensure_ascii=False,
+                    ),
+                },
+            ],
+            tool_choice="none",
+            response_format={"type": "json_object"},
+        )
+        if not response.choices:
+            raise ValueError("Result presentation returned no choice")
+        choice = response.choices[0]
+        message = choice.message
+        if (
+            choice.finish_reason != "stop"
+            or message.tool_calls
+            or message.refusal
+            or not isinstance(message.content, str)
+            or not message.content.strip()
+        ):
+            raise ValueError("Result presentation did not produce a complete answer")
+        presented = json.loads(message.content)
+        if (
+            not isinstance(presented, dict)
+            or not isinstance(presented.get("message"), str)
+            or not presented["message"].strip()
+            or not isinstance(presented.get("result_conveyed"), bool)
+        ):
+            raise ValueError("Result presentation requires text and an explicit delivery claim")
+        return presented["message"], presented["result_conveyed"]
+
     async def respond(
         self,
         conversation: Conversation,
@@ -162,15 +225,15 @@ class ForegroundBackgroundAgent:
         context = "\n\n".join(part for part in context_parts if part)
         # Only complete result bodies in this request authorize Router delivery claims.
         # Do not let Worker completion during Router I/O grant that authority retroactively.
-        visible_result_ids = {
-            task.task_id for task in completed + store.delivered_tasks()
-        }
+        visible_result_ids = {task.task_id for task in completed + store.delivered_tasks()}
         if len(context) > MAX_TASK_CONTEXT_CHARACTERS:
             # Do not present a clipped result as a complete, deliverable answer.
             visible_result_ids.clear()
             tasks = (
-                active + list(reversed(completed))
-                + store.terminal_tasks() + store.delivered_tasks()
+                active
+                + list(reversed(completed))
+                + store.terminal_tasks()
+                + store.delivered_tasks()
             )
             context = "\n".join(
                 f'{task.status.value.upper()} task {task.task_id}: "{task.query[:200]}"'
@@ -180,7 +243,7 @@ class ForegroundBackgroundAgent:
                 "\n[Result bodies omitted to fit task context. Use get_task_result for full "
                 "retained results; do not guess or deliver partial results from this index.]"
             )
-            context = context[:MAX_TASK_CONTEXT_CHARACTERS - len(notice)] + notice
+            context = context[: MAX_TASK_CONTEXT_CHARACTERS - len(notice)] + notice
         messages = [{"role": "system", "content": ROUTER_SYSTEM_PROMPT}]
         messages.extend({"role": item["role"], "content": item["content"]} for item in input_items)
         if context:
@@ -203,8 +266,10 @@ class ForegroundBackgroundAgent:
         calls = response.choices[0].message.tool_calls or []
         if len(calls) != 1:
             raise ValueError("Router must return exactly one tool call")
-        call = calls[0].function
+        tool_call = calls[0]
+        call = tool_call.function
         arguments = json.loads(call.arguments)
+        retrieved_task = None
         if call.name == "respond_directly":
             message = arguments.get("message", "")
             reported = arguments.get("delivered_task_ids")
@@ -222,6 +287,8 @@ class ForegroundBackgroundAgent:
             result, new_task = execute_router_tool(call.name, arguments, store)
             data = json.loads(result)
             task = store.get(arguments.get("task_id", "latest"))
+            if call.name in ("get_task_result", "check_task_status"):
+                retrieved_task = task
             if call.name == "start_task":
                 if new_task is not None:
                     self.start_worker(
@@ -233,10 +300,13 @@ class ForegroundBackgroundAgent:
                 else:
                     message = "I'm busy; I haven't started another task."
             elif call.name == "cancel_task":
+                # This turn acknowledges cancellation only. An in-flight call may
+                # still finish successfully; leave its result for a later request.
+                active = []
                 message = (
                     (arguments.get("ack_message") or "Cancellation requested.")
                     if data["cancelled"]
-                    else "There is no active work to cancel."
+                    else "There is no matching active work to cancel."
                 )
             elif task is None:
                 message = data.get("error", "No task found")
@@ -246,11 +316,14 @@ class ForegroundBackgroundAgent:
                 TaskStatus.FAILED,
                 TaskStatus.CANCELLED,
             ):
-                message = task_message(task)
+                if task.status in (TaskStatus.COMPLETED, TaskStatus.DELIVERED):
+                    message, result_conveyed = await self._present_result(messages, tool_call, task)
+                    if task.status is TaskStatus.COMPLETED and result_conveyed:
+                        turn.delivered_task_ids.add(task.task_id)
+                else:
+                    message = task_message(task)
                 # This lookup already conveys the terminal outcome; do not repeat it below.
                 active = [candidate for candidate in active if candidate is not task]
-                if task.status is TaskStatus.COMPLETED:
-                    turn.delivered_task_ids.add(task.task_id)
             else:
                 message = arguments.get("ack_message") or data.get("error", "Still working on it.")
         for chunk in text_chunks(message):
@@ -306,10 +379,14 @@ class ForegroundBackgroundAgent:
                 logger.warning("Status update skipped; error_type=%s", type(error).__name__)
         for task in active:
             if task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
-                if task.status is TaskStatus.COMPLETED:
+                if task is retrieved_task and task.status is TaskStatus.COMPLETED:
+                    text, result_conveyed = await self._present_result(messages, tool_call, task)
+                else:
+                    text, result_conveyed = task_message(task), task.status is TaskStatus.COMPLETED
+                if result_conveyed:
                     turn.delivered_task_ids.add(task.task_id)
                 if has_output:
                     yield "\n\n"
-                for chunk in text_chunks(task_message(task)):
+                for chunk in text_chunks(text):
                     yield chunk
                 has_output = True
