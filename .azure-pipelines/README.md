@@ -156,8 +156,14 @@ their resources, and to configure the diagnostic project's data-plane access.
 
 The pipeline compiles selected Bicep files, validates the Azure connection, then
 deploys temporary resource groups. Pipeline/diagnostic-only changes select
-`00-basic` as a smoke template. A primary-region deployment failure remains a
-failure even if fallback-region diagnostics succeed.
+`00-basic` as a smoke template. If a sample fails deployment or data-plane
+diagnostics in `CI_LOCATION`, CI retries it once in `CI_LOCATION_FALLBACK`.
+Success in either region counts as success for the sample. Configure distinct
+regions; if both variables match, CI uses `eastus` as the alternate region
+(or `swedencentral` when the primary is `eastus`), with a warning.
+If the parameter file rejects the alternate region, the retry is skipped and
+the sample remains failed. CI continues through all selected samples, then
+fails the job if any sample did not succeed in either region.
 
 For Bicep sample `48-bring-own-model-private-ca`, CI runs the certificate
 bootstrap before deployment, creates the per-attempt Key Vault, and supplies

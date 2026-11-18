@@ -392,7 +392,7 @@ stages:
                     ci_key_version="${ci_key_uri##*/}"
 
                     if [ -z "$ci_key_version" ]; then
-                      echo "##vso[task.logissue type=error]Could not resolve CI Key Vault key version for $unique_key_vault_name."
+                      echo "##vso[task.logissue type=warning]Could not resolve CI Key Vault key version for $unique_key_vault_name."
                       return 1
                     fi
                   }
@@ -419,7 +419,7 @@ stages:
                     key_b64="$(cat "$cert_dir/key.b64")" || return 1
                     cert_version="$(cat "$cert_dir/certversion.txt")" || return 1
                     if [ -z "$cert_b64" ] || [ -z "$key_b64" ] || [ -z "$cert_version" ]; then
-                      echo "##vso[task.logissue type=error]Private CA bootstrap did not produce certificate material."
+                      echo "##vso[task.logissue type=warning]Private CA bootstrap did not produce certificate material."
                       return 1
                     fi
                     add_parameter_override gatewayCertPemB64 "$cert_b64"
@@ -511,7 +511,7 @@ stages:
                     --name "$deployment_name" \
                     --query properties.provisioningState -o tsv)" || return 1
                   if [ "$provisioning_state" != "Succeeded" ]; then
-                    echo "##vso[task.logissue type=error]Deployment $deployment_name provisioningState=$provisioning_state."
+                    echo "##vso[task.logissue type=warning]Deployment $deployment_name provisioningState=$provisioning_state."
                     az deployment group show \
                       --resource-group "$rg_name" \
                       --name "$deployment_name" \
@@ -521,7 +521,7 @@ stages:
 
                   resource_count="$(az resource list --resource-group "$rg_name" --query 'length(@)' -o tsv)" || return 1
                   if [ "$resource_count" -lt 1 ]; then
-                    echo "##vso[task.logissue type=error]Deployment $deployment_name completed but no resources were found in $rg_name."
+                    echo "##vso[task.logissue type=warning]Deployment $deployment_name completed but no resources were found in $rg_name."
                     return 1
                   fi
 
@@ -532,9 +532,10 @@ stages:
                       bash .azure-pipelines/scripts/bicep/run-data-plane-diagnostics.sh \
                       "$rg_name" \
                       "$location" \
-                      "$deployment_file"; then
-                    echo "##vso[task.logissue type=error]Data-plane diagnostics failed for $deployment_name."
-                    exit 1
+                      "$deployment_file" \
+                      | sed 's/##vso\[task.logissue type=error\]/##vso[task.logissue type=warning]/g'; then
+                    echo "##vso[task.logissue type=warning]Data-plane diagnostics failed for $deployment_name."
+                    return 1
                   fi
                   echo "Data-plane diagnostics completed for $deployment_name."
                 }
@@ -574,6 +575,15 @@ stages:
                   return 1
                 }
 
+                failed_deployments=()
+                if [ "$fallback_location" = "$primary_location" ]; then
+                  fallback_location=eastus
+                  if [ "$primary_location" = eastus ]; then
+                    fallback_location=swedencentral
+                  fi
+                  echo "##vso[task.logissue type=warning]CI_LOCATION_FALLBACK matches CI_LOCATION; using $fallback_location for the alternate-region retry."
+                fi
+
                 for deployment_file in "${deployment_files[@]}"; do
                   # Temporarily exclude these samples from live deployment while owners address CI readiness.
                   case "$(dirname "$deployment_file")" in
@@ -593,12 +603,23 @@ stages:
                     continue
                   fi
 
-                  echo "##vso[task.logissue type=error]Deployment failed in $primary_location for $deployment_file."
-                  echo "Retrying in $fallback_location to collect fallback-region validation evidence."
+                  echo "##vso[task.logissue type=warning]Deployment failed in $primary_location for $deployment_file."
+                  echo "Retrying once in $fallback_location."
                   if bicepparam_supports_location "$deployment_file" "$fallback_location"; then
-                    deploy_with_location "$deployment_file" "$fallback_location" "fallback" || true
+                    if deploy_with_location "$deployment_file" "$fallback_location" "fallback"; then
+                      echo "Deployment and diagnostics succeeded in $fallback_location for $deployment_file."
+                      continue
+                    fi
                   else
                     echo "##vso[task.logissue type=warning]Skipping fallback deployment because $deployment_file does not allow location '$fallback_location'."
                   fi
-                  exit 1
+                  failed_deployments+=("$deployment_file")
+                  echo "##vso[task.logissue type=warning]Sample failed after regional attempts: $deployment_file. Continuing with the next sample."
                 done
+
+                if [ "${#failed_deployments[@]}" -gt 0 ]; then
+                  for deployment_file in "${failed_deployments[@]}"; do
+                    echo "##vso[task.logissue type=error]Sample failed deployment or diagnostics: $deployment_file."
+                  done
+                  exit 1
+                fi

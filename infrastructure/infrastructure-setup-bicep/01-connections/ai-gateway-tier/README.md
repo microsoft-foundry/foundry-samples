@@ -177,7 +177,7 @@ budget is throttling; wait for its retry interval before sending another prompt.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `location` | `eastus2` | Region for the account, project, and model. Any region; can differ from `gatewayLocation`. |
+| `location` | Resource group location | Region for the account, project, and model. Any region; can differ from `gatewayLocation`. |
 | `gatewayLocation` | `eastus2` | Region for the standalone AI Gateway — `eastus2` or `swedencentral`. |
 | `aiServicesName` | `hub` | Base name for the hub account (a unique suffix is appended). |
 | `projectName` | `hub-project` | Hub project (admin workspace) created under the account. |

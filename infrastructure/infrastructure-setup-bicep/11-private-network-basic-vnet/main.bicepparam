@@ -25,4 +25,5 @@ param existingDnsZones = {
   'privatelink.services.ai.azure.com': ''
   'privatelink.openai.azure.com': ''
   'privatelink.cognitiveservices.azure.com': ''
+  'privatelink.azurecr.io': ''
 }
