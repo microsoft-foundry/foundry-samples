@@ -29,5 +29,11 @@ resource "azurerm_api_management_api_policy" "inference" {
     groq_alias    = local.render.groq_alias
     groq_upstream = local.render.groq_upstream
     groq_model    = local.render.groq_model
+
+    # Diagnostic mock alias. Kept as a literal (not local.render.mock_alias) so
+    # this policy render never depends on a fresh hub-workload output — a
+    # targeted `04` apply (used to avoid the KV 403) need not refresh outputs.
+    # Must match the "mock" catalog entry in 04-hub-workload/locals.tf.
+    mock_alias = "mock"
   })
 }
