@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.37.4.10188",
-      "templateHash": "10842231687547934134"
+      "version": "0.46.1.21595",
+      "templateHash": "15548575301609367916"
     }
   },
   "parameters": {
@@ -19,40 +19,7 @@
     },
     "location": {
       "type": "string",
-      "defaultValue": "[resourceGroup().location]",
-      "allowedValues": [
-        "australiaeast",
-        "brazilsouth",
-        "canadacentral",
-        "canadaeast",
-        "centralindia",
-        "centralus",
-        "eastasia",
-        "eastus",
-        "francecentral",
-        "germanywestcentral",
-        "italynorth",
-        "japaneast",
-        "koreacentral",
-        "northcentralus",
-        "northeurope",
-        "norwayeast",
-        "qatarcentral",
-        "southafricanorth",
-        "southcentralus",
-        "southindia",
-        "southeastasia",
-        "spaincentral",
-        "swedencentral",
-        "switzerlandnorth",
-        "uaenorth",
-        "uksouth",
-        "westeurope",
-        "westus",
-        "westus3",
-        "usgovarizona",
-        "usgovvirginia"
-      ]
+      "defaultValue": "[resourceGroup().location]"
     },
     "newOrExisting": {
       "type": "string",
