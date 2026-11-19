@@ -46,17 +46,17 @@ Set these environment variables before using the Node.js client for live evaluat
 | `AGENT_CONTROL_ENDPOINT` | Yes | The serving account's HTTPS origin. |
 | `AGENT_CONTROL_POLICY_ID` | Yes | The full ARM resource ID of the named policy. |
 
-### September runtime contract
+### Request and response contract
 
-The JSON files in `requests` remain Agent Hooks **host contexts**, not HTTP request bodies. The client adapts them to the September contract without changing the policy, agent, session, or tool-call identifiers:
+The JSON files in `requests` are Agent Hooks **host contexts**, not HTTP request bodies. The client converts them to Unified Moderate request bodies:
 
-- Send `policyId` in the JSON body, not the query string. Do not URL-encode the ID inside JSON.
+- Send `policyId` in the JSON body. Do not URL-encode the ID inside JSON.
 - For `input` and `output`, `content` is nonempty plain text. Input uses the `user` role.
 - For `pre_tool_call`, `content` is a string containing the JSON-encoded arguments object; send `toolName` and `toolCallId` separately.
 - For `post_tool_call`, `content` is the JSON-encoded result; also send the original JSON-encoded `toolArguments`, tool identifiers, error flag, and optional duration. JSON-null results are not supported.
 - For model events, send `modelId`, optional `modelRequestId`, and a JSON-encoded object containing `messages`/optional `tools` or the model response. Lifecycle content is the JSON-encoded startup or shutdown object.
 
-For example, the client sends `requests/pre-tool.json` as follows, substituting the unchanged value of `AGENT_CONTROL_POLICY_ID`:
+For example, the client sends `requests/pre-tool.json` as follows, substituting the value of `AGENT_CONTROL_POLICY_ID`:
 
 ```http
 POST {endpoint}/contentsafety/content:unifiedModerate?api-version=2026-09-01-preview
@@ -87,11 +87,11 @@ An illustrative allow response is:
 }
 ```
 
-`verdict` is `allowed` or `blocked`; `acsVerdict.decision` is `allow`, `deny`, or `transform`. A transform is already applied to the returned `content`; the client validates and uses that final value rather than applying the transform metadata again. A deny remains blocked even when it includes approval metadata.
+`verdict` is `allowed` or `blocked`; `acsVerdict.decision` is `allow`, `deny`, or `transform`. For a transform, the client validates and uses the returned `content`. A deny remains blocked even when it includes approval metadata.
 
-September does not return the October evaluation receipt or evaluation ID. This client therefore cannot verify receipt-based request binding, producer identity, policy revisions, or required-point coverage. The service reconstructs context rather than preserving the complete host context, including its framework and timestamp. Use policies compatible with that reconstruction.
+The client does not send the original host values for fields such as `framework` and `timestamp`. The service reconstructs policy context from the request fields, so use policies compatible with that context.
 
-The eight-point demo and policies are unchanged. Model and lifecycle events require a serving deployment supporting those September extensions; the published September schema documents only input, output, pre-tool, and post-tool sources. Verify the complete demo on the intended account before rollout. Unsupported events fail rather than being skipped. Full ARM policy selectors also need account-specific qualification: the hierarchy-enrolled September path requires policy names. Do not silently substitute a name or policy binding for the configured selector.
+Model and lifecycle sources may not be enabled on every account; verify the demo on your account before rollout. The published API schema documents input, output, pre-tool, and post-tool sources. Unsupported events fail rather than being skipped. The documented full ARM policy ID was tested on one account. Hierarchy-enrolled accounts require policy names; this sample has not been qualified with that selector form. Do not silently substitute a name or policy binding for the configured selector.
 
 ## Policy templates
 
@@ -251,7 +251,7 @@ Keep these files in the directory containing this README.
 
 | File | Purpose |
 | --- | --- |
-| [agent-control.mjs](./agent-control.mjs) | Adapt a host context to September, validate the enforced result, and gate an application action. |
+| [agent-control.mjs](./agent-control.mjs) | Convert a host context to a Unified Moderate request, validate the enforced result, and gate an application action. |
 | [agent-control.test.mjs](./agent-control.test.mjs) | Test the client with synthetic responses and a local test server. |
 | [demo.mjs](./demo.mjs) | Exercise all eight intervention points and demonstrate a blocked simulated refund. |
 | [evaluate.mjs](./evaluate.mjs) | Evaluate a request file without dispatching a tool or releasing output. |

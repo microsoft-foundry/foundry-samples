@@ -35,7 +35,7 @@ function client(fetch, extra = {}) {
   });
 }
 
-test("September sends the unchanged policy ID and encoded tool arguments in the body", async () => {
+test("the configured policy ID and encoded tool arguments are sent in the body", async () => {
   let calls = 0;
   const instance = client(async (url, options) => {
     calls += 1;
@@ -179,7 +179,7 @@ test("HTTP failures stop execution instead of becoming policy allows", async () 
   }
 });
 
-test("invalid or inconsistent September responses stop execution", async () => {
+test("invalid or inconsistent API responses stop execution", async () => {
   const changes = [
     (result) => { result.verdict = "unknown"; },
     (result) => { result.verdict = { decision: "allow" }; },
@@ -303,7 +303,7 @@ test("the operation deadline aborts an in-flight HTTP request", async () => {
   }
 });
 
-test("the unchanged host fixtures are adapted to September HTTP requests", async () => {
+test("host fixtures are converted to Unified Moderate HTTP requests", async () => {
   for (const name of [
     "input", "output", "pre-tool", "pre-tool-denied",
     "approved-tool", "approved-url", "output-commitment",

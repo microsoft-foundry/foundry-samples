@@ -56,14 +56,14 @@ function toRequest(context, policyId) {
   let content = context.target;
   if (source === "input" || source === "output") {
     assert(nonempty(content.content), "Input and output require nonempty text");
-    if (source === "input") assert(content.role === "user", "September input requires the user role");
+    if (source === "input") assert(content.role === "user", "Input source requires the user role");
     content = content.content;
   } else {
     if (source === "pre_model_call") {
       content = { messages: context.messages };
       if (context.tools !== undefined) content.tools = context.tools;
     }
-    assert(content !== null, "September content must not be JSON null");
+    assert(content !== null, "Content must not be JSON null");
     content = JSON.stringify(content);
   }
   const request = {
@@ -116,7 +116,7 @@ export function verifyEvaluation(result, context, request) {
     return context;
   }
   assert(textSource || request.source === "pre_tool_call" || request.source === "post_tool_call",
-    "September model and lifecycle transforms are not supported");
+    "Model and lifecycle transforms are not supported");
   const transform = result.acsVerdict.transform;
   assert(nonempty(transform?.path) && typeof transform.value === "string", "Invalid transform metadata");
   assert(textSource ? transform.path === "$target.content" :
@@ -127,7 +127,7 @@ export function verifyEvaluation(result, context, request) {
   validateTransformCtx(context, transform.path, replacement);
   assert(textSource ? nonempty(content) : content !== null, "Invalid transformed content");
   if (request.source === "pre_tool_call") assert(isObject(content), "Transformed tool arguments must be an object");
-  // September has already applied the transform; replace the target with its final content.
+  // The service has applied the transform; replace the target with its final content.
   return applyTransformCtx(context, textSource ? "$target.content" : "$target", content);
 }
 
