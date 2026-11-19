@@ -1,15 +1,13 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { DefaultAzureCredential } from "@azure/identity";
 import {
   applyTransformCtx,
   contextIdentity,
   InterceptionPoint,
-  validateVerdict,
+  validateTransformCtx,
 } from "@responsibleai/agent-hooks";
-import canonicalize from "canonicalize";
 
-export const API_VERSION = "2026-10-15-preview";
+export const API_VERSION = "2026-09-01-preview";
 const SCOPE = "https://cognitiveservices.azure.com/.default";
 const LIMIT = 1_048_576;
 const POINTS = Object.values(InterceptionPoint);
@@ -23,10 +21,8 @@ const TARGET_FIELDS = {
   output: ["output"],
   agent_shutdown: ["summary"],
 };
-const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const nonempty = (value) => typeof value === "string" && value.trim().length > 0;
-const sameResource = (left, right) =>
-  nonempty(left) && nonempty(right) && left.toLowerCase() === right.toLowerCase();
+const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 
 export function validateJson(value, depth = 0) {
   if (value === null || typeof value === "boolean") return;
@@ -55,70 +51,84 @@ export function validateJson(value, depth = 0) {
   }
 }
 
-export function requestDigest(context, policyId) {
-  return `sha256:${createHash("sha256")
-    .update(canonicalize({
-      apiVersion: API_VERSION,
-      context,
-      selectors: { policyId },
-    }), "utf8")
-    .digest("hex")}`;
+function toRequest(context, policyId) {
+  const source = context.interception_point;
+  let content = context.target;
+  if (source === "input" || source === "output") {
+    assert(nonempty(content.content), "Input and output require nonempty text");
+    if (source === "input") assert(content.role === "user", "September input requires the user role");
+    content = content.content;
+  } else {
+    if (source === "pre_model_call") {
+      content = { messages: context.messages };
+      if (context.tools !== undefined) content.tools = context.tools;
+    }
+    assert(content !== null, "September content must not be JSON null");
+    content = JSON.stringify(content);
+  }
+  const request = {
+    policyId,
+    source,
+    content,
+    context: {
+      agentId: context.agent.id,
+      sessionId: context.session.id,
+      sequence: context.sequence,
+    },
+  };
+  if (context.extensions !== undefined) {
+    request.context.extensions = JSON.stringify(context.extensions);
+  }
+  if (source === "pre_model_call" || source === "post_model_call") {
+    request.modelId = context.model.id;
+    if (context.request_id !== undefined) request.modelRequestId = context.request_id;
+  }
+  if (source === "pre_tool_call" || source === "post_tool_call") {
+    request.toolName = context.tool_call.name;
+    request.toolCallId = context.tool_call.id;
+  }
+  if (source === "post_tool_call") {
+    request.toolArguments = JSON.stringify(context.tool_call.args);
+    request.toolResultIsError = context.tool_result.is_error;
+    if (context.tool_result.duration_ms !== undefined) {
+      request.toolDurationMs = context.tool_result.duration_ms;
+    }
+  }
+  return request;
 }
 
-export function verifyEvaluation(result, context, config) {
-  validateVerdict(result?.verdict);
-  const receipt = result.receipt;
-  assert(receipt?.receiptVersion === API_VERSION, "Unexpected receipt version");
-  assert(receipt.profile === "namedPolicy", "Unexpected evaluation profile");
-  assert(nonempty(receipt.evaluationId), "Missing evaluation ID");
-  assert(Number.isSafeInteger(receipt.attempt) && receipt.attempt > 0, "Invalid attempt");
-  assert(receipt.requestBinding?.algorithm === "sha256", "Unexpected digest algorithm");
-  assert(receipt.requestBinding?.canonicalization === "rfc8785", "Unexpected canonicalization");
+export function verifyEvaluation(result, context, request) {
+  assert(["allowed", "blocked"].includes(result?.verdict), "Invalid enforcement verdict");
+  const decision = result.acsVerdict?.decision;
+  assert(["allow", "deny", "transform"].includes(decision), "Invalid ACS decision");
   assert(
-    receipt.requestBinding.digest === requestDigest(context, config.policyId),
-    "Receipt does not match the request",
+    (result.verdict === "blocked") === (decision === "deny"),
+    "The enforcement verdict and ACS decision disagree",
   );
-  assert(
-    receipt.evaluatedInterventionPoint === context.interception_point,
-    "Receipt does not match the interception point",
-  );
-  assert(
-    Array.isArray(receipt.requiredInterventionPoints) &&
-      receipt.requiredInterventionPoints.includes(context.interception_point) &&
-      receipt.requiredInterventionPoints.every((point) => POINTS.includes(point)),
-    "The policy requires an unsupported interception point",
-  );
-  assert(nonempty(receipt.hostProfileVersion), "Missing host profile version");
-  assert(
-    sameResource(receipt.authenticatedProducerResourceId, config.producerResourceId),
-    "Unexpected authenticated producer",
-  );
-  assert(
-    Array.isArray(receipt.evaluatedPolicyLayers) && receipt.evaluatedPolicyLayers.length > 0,
-    "No policy layers were evaluated",
-  );
-  for (const layer of receipt.evaluatedPolicyLayers) {
-    assert(nonempty(layer.kind) && nonempty(layer.policyResourceId), "Incomplete policy layer");
-    assert(nonempty(layer.policyRevision), "Missing policy revision");
-    assert(DIGEST.test(layer.policySemanticDigest), "Invalid policy digest");
-    assert(DIGEST.test(layer.manifestRegoDigest), "Invalid manifest/Rego digest");
-    assert(["allow", "deny", "transform"].includes(layer.decision), "Invalid layer decision");
+  if (decision === "deny") return context;
+  assert(typeof result.content === "string", "Missing allowed content");
+  const textSource = request.source === "input" || request.source === "output";
+  const content = textSource ? result.content : JSON.parse(result.content);
+  validateJson(content);
+  if (decision === "allow") {
+    assert.deepEqual(content, textSource ? request.content : JSON.parse(request.content),
+      "An allow must preserve the evaluated content");
+    return context;
   }
-  assert(
-    !receipt.evaluatedPolicyLayers.some((layer) => layer.decision === "deny") ||
-      result.verdict.decision === "deny",
-    "The aggregate verdict does not preserve a policy deny",
-  );
-  assert(
-    !receipt.evaluatedPolicyLayers.some((layer) => layer.decision === "transform") ||
-      result.verdict.decision !== "allow",
-    "The aggregate verdict does not preserve a policy transform",
-  );
-  const primary = receipt.evaluatedPolicyLayers.filter((layer) => layer.kind === "namedPolicy");
-  assert(
-    primary.length === 1 && sameResource(primary[0].policyResourceId, config.policyId),
-    "The expected named policy was not evaluated",
-  );
+  assert(textSource || request.source === "pre_tool_call" || request.source === "post_tool_call",
+    "September model and lifecycle transforms are not supported");
+  const transform = result.acsVerdict.transform;
+  assert(nonempty(transform?.path) && typeof transform.value === "string", "Invalid transform metadata");
+  assert(textSource ? transform.path === "$target.content" :
+    transform.path === "$target" || transform.path.startsWith("$target.") || transform.path.startsWith("$target["),
+  "Invalid transform path");
+  const replacement = JSON.parse(transform.value);
+  validateJson(replacement);
+  validateTransformCtx(context, transform.path, replacement);
+  assert(textSource ? nonempty(content) : content !== null, "Invalid transformed content");
+  if (request.source === "pre_tool_call") assert(isObject(content), "Transformed tool arguments must be an object");
+  // September has already applied the transform; replace the target with its final content.
+  return applyTransformCtx(context, textSource ? "$target.content" : "$target", content);
 }
 
 async function readJson(response) {
@@ -147,7 +157,7 @@ async function readJson(response) {
 
 export class PolicyDenied extends Error {
   constructor(evaluation) {
-    super(`Agent Control denied the action: ${evaluation.verdict.reason ?? "policy_denied"}`);
+    super(`Agent Control denied the action: ${evaluation.reason ?? evaluation.acsVerdict.reason ?? "policy_denied"}`);
     this.name = "PolicyDenied";
     this.evaluation = evaluation;
   }
@@ -155,7 +165,7 @@ export class PolicyDenied extends Error {
 
 export class AgentControlClient {
   constructor(config) {
-    assert(nonempty(config.policyId) && nonempty(config.producerResourceId), "Policy and producer IDs are required");
+    assert(nonempty(config.policyId), "A policy ID is required");
     const endpoint = new URL(config.endpoint);
     assert(
       endpoint.protocol === "https:" && endpoint.pathname === "/" &&
@@ -172,7 +182,6 @@ export class AgentControlClient {
     this.fetch = config.fetch ?? globalThis.fetch;
     this.url = new URL("/contentsafety/content:unifiedModerate", endpoint);
     this.url.searchParams.set("api-version", API_VERSION);
-    this.url.searchParams.set("policyId", config.policyId);
   }
 
   async evaluate(context) {
@@ -183,9 +192,10 @@ export class AgentControlClient {
     assert(payload !== undefined, "Missing point-specific payload");
     assert.deepEqual(context.target, payload, "The target must equal the point-specific payload");
     contextIdentity(context);
-    const body = JSON.stringify(context);
+    const sent = JSON.parse(JSON.stringify(context));
+    const request = toRequest(sent, this.config.policyId);
+    const body = JSON.stringify(request);
     assert(Buffer.byteLength(body, "utf8") <= LIMIT, "The request exceeds 1,048,576 bytes");
-    const sent = JSON.parse(body);
     const controller = new AbortController();
     const deadline = Date.now() + this.timeoutMs;
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -216,11 +226,8 @@ export class AgentControlClient {
       if (!response.ok) {
         throw new Error(`Agent Control HTTP ${response.status}: ${result.error?.code ?? "unknown_error"}`);
       }
-      verifyEvaluation(result, sent, this.config);
+      const approved = verifyEvaluation(result, sent, request);
       assert(Date.now() < deadline, "The evaluation deadline expired");
-      const approved = result.verdict.decision === "transform"
-        ? applyTransformCtx(sent, result.verdict.transform.path, result.verdict.transform.value ?? null)
-        : sent;
       return { ...result, context: approved };
     } finally {
       clearTimeout(timer);
@@ -229,18 +236,17 @@ export class AgentControlClient {
 
   async guard(context, action) {
     const evaluation = await this.evaluate(context);
-    if (evaluation.verdict.decision === "deny") throw new PolicyDenied(evaluation);
-    return { value: await action(evaluation.context), receipt: evaluation.receipt };
+    if (evaluation.verdict === "blocked") throw new PolicyDenied(evaluation);
+    return { value: await action(evaluation.context), evaluation };
   }
 }
 
 export function clientFromEnvironment() {
-  for (const name of ["AGENT_CONTROL_ENDPOINT", "AGENT_CONTROL_ACCOUNT_ID", "AGENT_CONTROL_POLICY_ID"]) {
+  for (const name of ["AGENT_CONTROL_ENDPOINT", "AGENT_CONTROL_POLICY_ID"]) {
     assert(nonempty(process.env[name]), `Set ${name} before running the sample`);
   }
   return new AgentControlClient({
     endpoint: process.env.AGENT_CONTROL_ENDPOINT,
     policyId: process.env.AGENT_CONTROL_POLICY_ID,
-    producerResourceId: process.env.AGENT_CONTROL_PRODUCER_ID ?? process.env.AGENT_CONTROL_ACCOUNT_ID,
   });
 }

@@ -6,11 +6,10 @@ try {
   const context = JSON.parse(await readFile(process.argv[2], "utf8"));
   const result = await clientFromEnvironment().evaluate(context);
   console.log(JSON.stringify({
-    decision: result.verdict.decision,
-    reason: result.verdict.reason ?? null,
-    evaluationId: result.receipt.evaluationId,
+    decision: result.acsVerdict.decision,
+    reason: result.acsVerdict.reason ?? null,
   }, null, 2));
-  process.exitCode = result.verdict.decision === "deny" ? 2 : 0;
+  process.exitCode = result.verdict === "blocked" ? 2 : 0;
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

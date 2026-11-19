@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@azure/identity": "4.14.1",
-    "@responsibleai/agent-hooks": "0.1.0-beta.3",
-    "canonicalize": "5.1.0"
+    "@responsibleai/agent-hooks": "0.1.0-beta.3"
   }
 }

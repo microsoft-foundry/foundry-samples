@@ -6,9 +6,7 @@ import { test } from "node:test";
 import { AgentContextBuilder, InterceptionPoint } from "@responsibleai/agent-hooks";
 import {
   AgentControlClient,
-  API_VERSION,
   PolicyDenied,
-  requestDigest,
   validateJson,
 } from "./agent-control.mjs";
 
@@ -19,28 +17,11 @@ const context = () => new AgentContextBuilder({
   agentId: "test-agent", framework: "custom", sessionId: "test-session",
 }).preToolCall("test-call", "refund_order", { amount: 100 });
 
-function evaluation(ctx, verdict = { decision: "allow" }) {
+function evaluation(request, acsVerdict = { decision: "allow" }, content = request.content) {
   return {
-    verdict,
-    receipt: {
-      receiptVersion: API_VERSION,
-      profile: "namedPolicy",
-      evaluationId: "test-evaluation",
-      attempt: 1,
-      requestBinding: {
-        algorithm: "sha256", canonicalization: "rfc8785", digest: requestDigest(ctx, POLICY),
-      },
-      evaluatedPolicyLayers: [{
-        kind: "namedPolicy", policyResourceId: POLICY, policyRevision: '"test-revision"',
-        policySemanticDigest: `sha256:${"1".repeat(64)}`,
-        manifestRegoDigest: `sha256:${"2".repeat(64)}`,
-        decision: verdict.decision,
-      }],
-      evaluatedInterventionPoint: ctx.interception_point,
-      requiredInterventionPoints: [ctx.interception_point],
-      hostProfileVersion: "test-profile",
-      authenticatedProducerResourceId: ACCOUNT,
-    },
+    verdict: acsVerdict.decision === "deny" ? "blocked" : "allowed",
+    acsVerdict,
+    ...(acsVerdict.decision === "deny" ? {} : { content }),
   };
 }
 
@@ -48,25 +29,30 @@ function client(fetch, extra = {}) {
   return new AgentControlClient({
     endpoint: "https://sample.cognitiveservices.azure.com/",
     policyId: POLICY,
-    producerResourceId: ACCOUNT,
     credential,
     fetch,
     ...extra,
   });
 }
 
-test("the named-policy selector is encoded in the query, not the body", async () => {
+test("September sends the unchanged policy ID and encoded tool arguments in the body", async () => {
   let calls = 0;
   const instance = client(async (url, options) => {
     calls += 1;
     assert.equal(url.pathname, "/contentsafety/content:unifiedModerate");
-    assert.equal(url.searchParams.get("api-version"), API_VERSION);
-    assert.equal(url.searchParams.get("policyId"), POLICY);
+    assert.equal(url.searchParams.get("api-version"), "2026-09-01-preview");
+    assert.equal(url.searchParams.has("policyId"), false);
     assert.equal(options.method, "POST");
     assert.equal(options.redirect, "error");
     const sent = JSON.parse(options.body);
-    assert.equal(typeof sent.tool_call.args.amount, "number");
-    assert.equal(sent.policyId, undefined);
+    assert.deepEqual(sent, {
+      policyId: POLICY,
+      source: "pre_tool_call",
+      content: '{"amount":100}',
+      toolName: "refund_order",
+      toolCallId: "test-call",
+      context: { agentId: "test-agent", sessionId: "test-session", sequence: 0 },
+    });
     return Response.json(evaluation(sent));
   });
   let dispatched = 0;
@@ -90,12 +76,31 @@ test("HTTP 200 with deny never dispatches, including a deny with approval metada
 
 test("a transform changes the actual dispatched arguments without mutating the caller's context", async () => {
   const instance = client(async (_, options) => Response.json(evaluation(JSON.parse(options.body), {
-    decision: "transform", transform: { path: "$target.amount", value: 50 },
-  })));
+    decision: "transform", transform: { path: "$target.amount", value: "50" },
+  }, '{"amount":50}')));
   const original = context();
   const result = await instance.guard(original, (approved) => approved.tool_call.args.amount);
   assert.equal(result.value, 50);
   assert.equal(original.tool_call.args.amount, 100);
+  assert.deepEqual(result.evaluation.context.target, { amount: 50 });
+});
+
+test("text and tool-result transforms use final content rather than reapplying metadata", async () => {
+  const builder = new AgentContextBuilder({ agentId: "test", framework: "custom", sessionId: "transform" });
+  for (const ctx of [
+    builder.input("original"),
+    builder.output("original"),
+    builder.postToolCall("call", "refund_order", {}, ["original"]),
+  ]) {
+    const text = ctx.interception_point !== "post_tool_call";
+    const instance = client(async (_, options) => Response.json(evaluation(JSON.parse(options.body), {
+      decision: "transform",
+      transform: { path: text ? "$target.content" : "$target[0]", value: '"replacement"' },
+    }, text ? "replacement" : '["replacement"]')));
+    const result = await instance.guard(ctx, (approved) => approved.target);
+    assert.deepEqual(result.value, text ? { ...ctx.target, content: "replacement" } : ["replacement"]);
+    assert.deepEqual(ctx.target, text ? { ...ctx.target, content: "original" } : ["original"]);
+  }
 });
 
 test("all eight canonical lifecycle contexts are accepted", async () => {
@@ -111,8 +116,53 @@ test("all eight canonical lifecycle contexts are accepted", async () => {
     builder.agentShutdown("completed"),
   ];
   assert.deepEqual(contexts.map((value) => value.interception_point), Object.values(InterceptionPoint));
-  const instance = client(async (_, options) => Response.json(evaluation(JSON.parse(options.body))));
+  const expectedContent = [
+    { tools_registered: ["refund_order"] }, "hello",
+    { messages: [{ role: "user", content: "hello" }] },
+    { content: "hello", tool_calls: [], finish_reason: "stop" },
+    { amount: 100 }, { status: "simulated" }, "complete", { reason: "completed" },
+  ];
+  let index = 0;
+  const instance = client(async (_, options) => {
+    const request = JSON.parse(options.body);
+    const point = contexts[index].interception_point;
+    assert.equal(request.source, point);
+    assert.equal(typeof request.content, "string");
+    assert.deepEqual(
+      point === "input" || point === "output" ? request.content : JSON.parse(request.content),
+      expectedContent[index],
+    );
+    assert.deepEqual(request.context, { agentId: "test", sessionId: "all-points", sequence: index });
+    if (point === "pre_model_call" || point === "post_model_call") {
+      assert.equal(request.modelId, "simulator");
+    }
+    if (point === "post_tool_call") {
+      assert.equal(request.toolName, "refund_order");
+      assert.equal(request.toolCallId, "one");
+      assert.deepEqual(JSON.parse(request.toolArguments), { amount: 100 });
+      assert.equal(request.toolResultIsError, false);
+    }
+    index += 1;
+    return Response.json(evaluation(request));
+  });
   for (const ctx of contexts) await instance.guard(ctx, () => undefined);
+  assert.equal(index, 8);
+});
+
+test("post-tool JSON strings, false and zero retain their types and metadata", async () => {
+  for (const value of ["123", false, 0]) {
+    const builder = new AgentContextBuilder({ agentId: "test", framework: "custom", sessionId: "post-tool" });
+    const ctx = builder.postToolCall("call", "refund_order", { amount: 100 }, value, true);
+    ctx.tool_result.duration_ms = 0;
+    const instance = client(async (_, options) => {
+      const request = JSON.parse(options.body);
+      assert.equal(JSON.parse(request.content), value);
+      assert.equal(request.toolResultIsError, true);
+      assert.equal(request.toolDurationMs, 0);
+      return Response.json(evaluation(request));
+    });
+    assert.equal((await instance.guard(ctx, (approved) => approved.tool_result.value)).value, value);
+  }
 });
 
 test("HTTP failures stop execution instead of becoming policy allows", async () => {
@@ -129,26 +179,27 @@ test("HTTP failures stop execution instead of becoming policy allows", async () 
   }
 });
 
-test("invalid verdicts and mismatched receipts stop execution", async () => {
+test("invalid or inconsistent September responses stop execution", async () => {
   const changes = [
-    (result) => { result.verdict = { decision: "unknown" }; },
-    (result) => { result.verdict = {}; },
-    (result) => { delete result.receipt; },
-    (result) => { result.receipt.profile = "wrong-profile"; },
-    (result) => { result.receipt.receiptVersion = "wrong-version"; },
-    (result) => { result.receipt.requestBinding.digest = `sha256:${"0".repeat(64)}`; },
-    (result) => { result.receipt.evaluatedInterventionPoint = "input"; },
-    (result) => { result.receipt.requiredInterventionPoints = ["unsupported"]; },
-    (result) => { result.receipt.authenticatedProducerResourceId = `${ACCOUNT}-other`; },
-    (result) => { result.receipt.evaluatedPolicyLayers[0].policyResourceId = `${POLICY}-other`; },
-    (result) => { result.receipt.evaluatedPolicyLayers[0].manifestRegoDigest = "invalid"; },
+    (result) => { result.verdict = "unknown"; },
+    (result) => { result.verdict = { decision: "allow" }; },
+    (result) => { delete result.acsVerdict; },
+    (result) => { result.acsVerdict.decision = "unknown"; },
+    (result) => { result.acsVerdict.decision = "deny"; },
+    (result) => { result.verdict = "blocked"; },
+    (result) => { delete result.content; },
+    (result) => { result.content = {}; },
+    (result) => { result.content = "not-json"; },
+    (result) => { result.content = '{"amount":101}'; },
+    (result) => { result.acsVerdict = { decision: "transform" }; },
+    (result) => { result.acsVerdict = { decision: "transform", transform: { path: "$target", value: {} } }; },
+    (result) => { result.acsVerdict = { decision: "transform", transform: { path: "$other", value: "{}" } }; },
+    (result) => { result.acsVerdict = { decision: "transform", transform: { path: "$target..bad", value: "{}" } }; },
+    (result) => { result.acsVerdict = { decision: "transform", transform: { path: "$target", value: "not-json" } }; },
     (result) => {
-      const layer = result.receipt.evaluatedPolicyLayers[0];
-      layer.activatedArtifactDigest = layer.manifestRegoDigest;
-      delete layer.manifestRegoDigest;
+      result.acsVerdict = { decision: "transform", transform: { path: "$target", value: "[]" } };
+      result.content = "[]";
     },
-    (result) => { result.receipt.evaluatedPolicyLayers[0].decision = "deny"; },
-    (result) => { result.receipt.evaluatedPolicyLayers.push(structuredClone(result.receipt.evaluatedPolicyLayers[0])); },
   ];
   for (const change of changes) {
     const instance = client(async (_, options) => {
@@ -159,6 +210,19 @@ test("invalid verdicts and mismatched receipts stop execution", async () => {
     let dispatched = 0;
     await assert.rejects(instance.guard(context(), () => { dispatched += 1; }));
     assert.equal(dispatched, 0);
+  }
+});
+
+test("unrepresentable input roles and null tool results fail before sending", async () => {
+  const builder = new AgentContextBuilder({ agentId: "test", framework: "custom", sessionId: "unsupported" });
+  for (const ctx of [
+    builder.input("hello", "system"),
+    builder.postToolCall("call", "refund_order", {}, null),
+  ]) {
+    let requests = 0;
+    const instance = client(async () => { requests += 1; throw new Error("must not send"); });
+    await assert.rejects(instance.guard(ctx, () => { throw new Error("must not run"); }));
+    assert.equal(requests, 0);
   }
 });
 
@@ -215,7 +279,7 @@ test("startup transforms are rejected", async () => {
   const ctx = new AgentContextBuilder({ agentId: "test", framework: "custom", sessionId: "startup" })
     .agentStartup(["refund_order"]);
   const instance = client(async (_, options) => Response.json(evaluation(JSON.parse(options.body), {
-    decision: "transform", transform: { path: "$target", value: {} },
+    decision: "transform", transform: { path: "$target", value: "{}" },
   })));
   await assert.rejects(instance.guard(ctx, () => { throw new Error("must not run"); }));
 });
@@ -239,7 +303,7 @@ test("the operation deadline aborts an in-flight HTTP request", async () => {
   }
 });
 
-test("the shipped HTTP request examples are canonical contexts", async () => {
+test("the unchanged host fixtures are adapted to September HTTP requests", async () => {
   for (const name of [
     "input", "output", "pre-tool", "pre-tool-denied",
     "approved-tool", "approved-url", "output-commitment",

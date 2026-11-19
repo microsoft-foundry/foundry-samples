@@ -33,7 +33,7 @@ Additional role-assignment permission is required only when granting roles. Clas
 1. Open PowerShell in `samples\cli\agent-controls`, which contains `README.md` and the management scripts.
 1. Run `npm ci` to install the dependencies recorded in the lock file. Stop if installation fails.
 
-The samples use ARM API version `2026-11-15-preview`, Unified Moderate API version `2026-10-15-preview`, and hosted ACS manifest version `0.4.0-alpha.1`. Account creation alone doesn't enable the preview.
+The samples use ARM API version `2026-11-15-preview`, Unified Moderate API version `2026-09-01-preview`, and hosted ACS manifest version `0.4.0-alpha.1`. Account creation alone doesn't enable the preview.
 
 ## Configure live access
 
@@ -44,9 +44,54 @@ Set these environment variables before using the Node.js client for live evaluat
 | Setting | Required | Value |
 | --- | --- | --- |
 | `AGENT_CONTROL_ENDPOINT` | Yes | The serving account's HTTPS origin. |
-| `AGENT_CONTROL_ACCOUNT_ID` | Yes | The full ARM resource ID of the serving account. |
 | `AGENT_CONTROL_POLICY_ID` | Yes | The full ARM resource ID of the named policy. |
-| `AGENT_CONTROL_PRODUCER_ID` | No | Defaults to `AGENT_CONTROL_ACCOUNT_ID`. |
+
+### September runtime contract
+
+The JSON files in `requests` remain Agent Hooks **host contexts**, not HTTP request bodies. The client adapts them to the September contract without changing the policy, agent, session, or tool-call identifiers:
+
+- Send `policyId` in the JSON body, not the query string. Do not URL-encode the ID inside JSON.
+- For `input` and `output`, `content` is nonempty plain text. Input uses the `user` role.
+- For `pre_tool_call`, `content` is a string containing the JSON-encoded arguments object; send `toolName` and `toolCallId` separately.
+- For `post_tool_call`, `content` is the JSON-encoded result; also send the original JSON-encoded `toolArguments`, tool identifiers, error flag, and optional duration. JSON-null results are not supported.
+- For model events, send `modelId`, optional `modelRequestId`, and a JSON-encoded object containing `messages`/optional `tools` or the model response. Lifecycle content is the JSON-encoded startup or shutdown object.
+
+For example, the client sends `requests/pre-tool.json` as follows, substituting the unchanged value of `AGENT_CONTROL_POLICY_ID`:
+
+```http
+POST {endpoint}/contentsafety/content:unifiedModerate?api-version=2026-09-01-preview
+Authorization: Bearer <access-token>
+Content-Type: application/json
+
+{
+  "policyId": "<AGENT_CONTROL_POLICY_ID>",
+  "source": "pre_tool_call",
+  "content": "{\"order_id\":\"demo-001\",\"amount\":100}",
+  "toolName": "refund_order",
+  "toolCallId": "refund-1",
+  "context": {
+    "agentId": "support-agent",
+    "sessionId": "sample-tool",
+    "sequence": 2
+  }
+}
+```
+
+An illustrative allow response is:
+
+```json
+{
+  "verdict": "allowed",
+  "content": "{\"order_id\":\"demo-001\",\"amount\":100}",
+  "acsVerdict": { "decision": "allow" }
+}
+```
+
+`verdict` is `allowed` or `blocked`; `acsVerdict.decision` is `allow`, `deny`, or `transform`. A transform is already applied to the returned `content`; the client validates and uses that final value rather than applying the transform metadata again. A deny remains blocked even when it includes approval metadata.
+
+September does not return the October evaluation receipt or evaluation ID. This client therefore cannot verify receipt-based request binding, producer identity, policy revisions, or required-point coverage. The service reconstructs context rather than preserving the complete host context, including its framework and timestamp. Use policies compatible with that reconstruction.
+
+The eight-point demo and policies are unchanged. Model and lifecycle events require a serving deployment supporting those September extensions; the published September schema documents only input, output, pre-tool, and post-tool sources. Verify the complete demo on the intended account before rollout. Unsupported events fail rather than being skipped. Full ARM policy selectors also need account-specific qualification: the hierarchy-enrolled September path requires policy names. Do not silently substitute a name or policy binding for the configured selector.
 
 ## Policy templates
 
@@ -79,8 +124,6 @@ From the directory containing this README, install the client dependencies, conf
 npm ci
 if ($LASTEXITCODE -ne 0) { throw 'Sample dependency installation failed.' }
 $env:AGENT_CONTROL_ENDPOINT = $Endpoint
-$env:AGENT_CONTROL_ACCOUNT_ID = $AccountId
-$env:AGENT_CONTROL_PRODUCER_ID = $AccountId
 
 $Template = 'approved-tools'
 opa check --strict --ignore '*.json' ".\$Template"
@@ -208,7 +251,7 @@ Keep these files in the directory containing this README.
 
 | File | Purpose |
 | --- | --- |
-| [agent-control.mjs](./agent-control.mjs) | Submit an evaluation, validate its receipt, and gate an application action. |
+| [agent-control.mjs](./agent-control.mjs) | Adapt a host context to September, validate the enforced result, and gate an application action. |
 | [agent-control.test.mjs](./agent-control.test.mjs) | Test the client with synthetic responses and a local test server. |
 | [demo.mjs](./demo.mjs) | Exercise all eight intervention points and demonstrate a blocked simulated refund. |
 | [evaluate.mjs](./evaluate.mjs) | Evaluate a request file without dispatching a tool or releasing output. |

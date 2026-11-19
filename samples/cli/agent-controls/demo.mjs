@@ -16,7 +16,7 @@ export async function runDemo(client) {
     const result = await client.guard(context, action);
     console.log(JSON.stringify({
       point: context.interception_point,
-      evaluationId: result.receipt.evaluationId,
+      decision: result.evaluation.acsVerdict.decision,
       outcome: "completed",
     }));
     return result.value;
@@ -55,9 +55,8 @@ export async function runDemo(client) {
     if (!(error instanceof PolicyDenied)) throw error;
     console.log(JSON.stringify({
       point: "pre_tool_call",
-      evaluationId: error.evaluation.receipt.evaluationId,
       outcome: "blocked",
-      reason: error.evaluation.verdict.reason,
+      reason: error.evaluation.acsVerdict.reason,
     }));
   }
   await guarded(builder.output("The demonstration is complete."), (ctx) => ctx.output.content);
