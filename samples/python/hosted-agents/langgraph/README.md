@@ -7,6 +7,28 @@ This directory contains samples that demonstrate how to use [LangGraph](https://
 
 Use the configuration-driven `langchain_azure_ai.agents.hosting.run` entrypoint by default. Use a protocol-specific host class only when the agent must customize request translation, unsupported protocol options, readiness behavior, or the lifetime of async resources. The [Responses Custom Host](responses/12-custom-host/) and [Invocations Custom Host](invocations/04-custom-host/) samples demonstrate the request-translation case.
 
+## Authoring samples
+
+For new samples and updates, follow the [LangGraph authoring instructions](AGENTS.md)
+and the [shared Python hosted-agent instructions](../AGENTS.md). Use the shared
+README template while retaining each sample's supported `azd` and Foundry Toolkit
+paths.
+
+Default model calls to the Responses or Decisions API. The model API is
+independent of the hosted endpoint protocol: an Invocations host can call a
+model through the Responses API. For Responses model calls, set `store=False`
+because LangGraph supplies the message history, including tool calls and results.
+With a checkpointer, LangGraph restores state between turns; without one, the
+Responses host loads prior turns into the graph. Model-side `store=False` leaves
+Hosted Responses storage enabled for conversation history, `previous_response_id`,
+and checkpoint recovery.
+
+Enable telemetry locally and when hosted through one instrumentation owner.
+Reuse the hosting SDK's LangChain instrumentation where available in the locked
+SDK, and document exporter and content-recording defaults. See the
+[middleware sample's tracing guidance](responses/14-middleware/README.md#tracing-and-privacy)
+for a host-owned setup with content capture disabled by default.
+
 ## Samples
 
 ### Responses API

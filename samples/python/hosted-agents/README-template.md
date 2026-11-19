@@ -6,11 +6,17 @@ How to use:
   2. Replace every {{placeholder}}.
   3. Delete any section that does not apply, but keep the section order.
   4. Delete this comment block.
+
+Follow AGENTS.md in this directory and any framework-specific authoring instructions.
+Write in plain, concise English and retain this template's heading names and
+sentence case. Keep run/deploy steps self-contained. Document sample-specific
+limits, persistence, content exposure, and cleanup beside the affected steps.
+Keep review history and plans in the PR.
 -->
 
 # What this sample demonstrates
 
-{{One or two sentences: what the agent does and which framework it uses.}}
+{{What the agent demonstrates, which framework it uses, when to use it, and the expected outcome.}}
 
 ## How it works
 
@@ -32,8 +38,8 @@ What the **sample itself** needs, independent of how you run it. The tooling for
 path (`azd` or the VS Code Foundry Toolkit) is listed under its option below.
 
 1. An existing Foundry project with a deployed model (or create them during setup in Option 1).
-2. **Python 3.10 or later.**
-3. **Roles (RBAC):** {{Azure roles the identity running the sample needs on the Foundry project or other resources, e.g. `Azure AI User`. Delete if project access is sufficient.}}
+2. **Python:** {{Version required by this runtime's dependency artifact and deployment configuration.}}
+3. **Roles (RBAC):** {{Required Azure roles for the developer and deployed agent identities on the Foundry project or other resources.}}
 4. **Additional Azure resources:** {{Extra resources the sample depends on — a toolbox, connection, storage account, etc. If declared in the sample's `azure.yaml`, `azd provision` (Option 1) creates them; otherwise create them before running (Foundry portal, SDK, or `azd ai`). Delete if none.}}
 5. **Environment variables / secrets:** {{Required env vars or secrets, e.g. `GITHUB_PAT`, and how to obtain them. Delete if none.}}
 
@@ -94,6 +100,15 @@ In a separate terminal, from the project directory:
 azd ai agent invoke --local "{{prompt}}"
 ```
 
+{{Expected result that demonstrates the sample's defining behavior.}}
+
+<!--
+For a simple call, a request snippet is enough. For approval/resume, stream
+reconnection, or artifact downloads, provide a runnable client script and its
+command, inputs, and expected results. Document the complete interaction here
+or link to a sample-specific section below the two options.
+-->
+
 ### Deploy to Foundry
 
 Once tested locally, deploy to Microsoft Foundry:
@@ -152,6 +167,9 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 <!--
 Sample-specific deep-dive sections go here, AFTER the two options, so the run/deploy
 lifecycle stays consistent across samples. Give each its own `##` heading. Common kinds:
+  - Telemetry — instrumentation owner, exporter configuration, and content-recording
+                defaults for local and hosted runs. Enable telemetry by default;
+                content capture is a separate choice.
   - Customization  — swapping a dependency/endpoint (e.g. "Targeting a different MCP server",
                      "Using your own Foundry model", "Adding skills").
   - Advanced demos — behavior worth showing after deploy (e.g. "Uploading files to a hosted

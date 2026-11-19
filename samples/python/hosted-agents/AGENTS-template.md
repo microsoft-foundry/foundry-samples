@@ -10,6 +10,10 @@ How to use:
 
 # Coding Agent Instructions - {{sample name}}
 
+Follow the [shared sample authoring instructions](https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/AGENTS.md)
+and any framework-specific `AGENTS.md` before editing. The instructions below
+describe this sample's supported workflow and differences.
+
 This sample is a **Microsoft Foundry hosted agent**. {{Describe the agent, its
 framework, and the protocol or scenario it demonstrates in one sentence.}} It runs in
 [Foundry Agent Service](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents),
