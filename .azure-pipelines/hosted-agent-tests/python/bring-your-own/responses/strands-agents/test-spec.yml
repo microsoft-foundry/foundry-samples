@@ -13,11 +13,15 @@ tests:
             type: contains
             value: Azure Functions
             case_sensitive: false
-      - input: And Amazon S3?
+      - input: And Amazon S3? Also, what Azure service did you recommend for the first AWS service I asked about?
         assertions:
           - source: assistant_text
             type: contains
             value: Blob Storage
+            case_sensitive: false
+          - source: assistant_text
+            type: contains
+            value: Azure Functions
             case_sensitive: false
 
     assertions:
