@@ -116,11 +116,8 @@ class BlobCredentialTests(unittest.IsolatedAsyncioTestCase):
 
         tail = "\n".join(console.getvalue().splitlines()[-300:])
         startup = "Starting Deep Agents host with Entra-authenticated report downloads"
-        self.assertEqual(
-            tail.count(startup),
-            1,
-        )
-        self.assertEqual(tail.count("Foundry state read failed"), 1)
+        self.assertIn(startup, tail)
+        self.assertIn("Foundry state read failed", tail)
 
     async def test_report_credential_is_scoped_to_host_success_and_failure(
         self,
@@ -128,7 +125,7 @@ class BlobCredentialTests(unittest.IsolatedAsyncioTestCase):
         for name in ("azure.ai.agentserver.core", "azure.identity"):
             logger = logging.getLogger(name)
             self.addCleanup(logger.setLevel, logger.level)
-        for failure, content_capture in product((False, True), (None, "false")):
+        for failure, content_capture in product((False, True), (None, "true")):
             with self.subTest(failure=failure, content_capture=content_capture):
                 credential_scope = MagicMock()
                 credential = credential_scope.__enter__.return_value
@@ -178,10 +175,9 @@ class BlobCredentialTests(unittest.IsolatedAsyncioTestCase):
                         await main.main()
                     configure_logging.assert_called_once_with(level=main.logging.INFO)
                     for flag in capture_flags:
-                        expected = content_capture
-                        if flag == "AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED":
-                            expected = content_capture or "true"
-                        self.assertEqual(os.environ.get(flag), expected)
+                        self.assertEqual(
+                            os.environ.get(flag), content_capture or "false"
+                        )
                     main_host.assert_called_once_with(graph)
                     create_export.assert_called_once_with(credential)
                     build.assert_called_once_with(

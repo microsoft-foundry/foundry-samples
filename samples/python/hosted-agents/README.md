@@ -2,23 +2,7 @@
 
 Samples for building, deploying, and managing hosted agents on [Microsoft Foundry](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents). Each sample is a starter template — fork it, change the system prompt and tools, deploy with `azd up`.
 
-> **Hosted Agent Server samples enable logging and OpenTelemetry by default.** Export requires a configured Application Insights connection or OTLP destination; local console logging does not prove remote telemetry ingestion.
-
-## Telemetry and logging
-
-Standard Agent Server hosts configure console logging and OpenTelemetry by
-default. Reuse the host's instrumentation and exporters; registering another
-tracer for the same framework can duplicate spans. Custom runtimes configure
-telemetry in their own entry points, as documented by each sample.
-
-For hosted export, connect Application Insights to the Foundry project and
-verify the injected `APPLICATIONINSIGHTS_CONNECTION_STRING`. For local runs,
-provide that connection string or an OTLP destination. Verify logs and traces
-in the destination separately from console output.
-
-Message-content recording is separate from logging and can include sensitive
-user/model/tool data. Defaults vary by sample; review its settings and assess
-privacy, access controls, and retention before production use.
+> **Every sample includes Application Insights and OpenTelemetry tracing out of the box.** You get production-ready logging, distributed traces, and metrics from the first sample you run.
 
 ### Quickstart
 

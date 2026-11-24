@@ -200,9 +200,6 @@ class CheckOrderAgent(Agent):
 
 
 async def entrypoint(ctx: agents.JobContext) -> None:
-    from telemetry import configure_telemetry
-
-    configure_telemetry()
     await ctx.connect()
 
     session = AgentSession(
@@ -245,7 +242,7 @@ def _wire_session_events(session: AgentSession, room: rtc.Room) -> None:
 
     def publish(payload: dict) -> None:
         """Log locally + ship the event to the browser as JSON."""
-        logger.info("Voice event: %s", payload.get("type"))
+        logger.info("event: %s", payload)
         data = json.dumps(payload).encode("utf-8")
 
         async def _send() -> None:
