@@ -125,7 +125,7 @@ class BlobCredentialTests(unittest.IsolatedAsyncioTestCase):
         for name in ("azure.ai.agentserver.core", "azure.identity"):
             logger = logging.getLogger(name)
             self.addCleanup(logger.setLevel, logger.level)
-        for failure, content_capture in product((False, True), (None, "true")):
+        for failure, content_capture in product((False, True), (None, "false")):
             with self.subTest(failure=failure, content_capture=content_capture):
                 credential_scope = MagicMock()
                 credential = credential_scope.__enter__.return_value
@@ -160,24 +160,17 @@ class BlobCredentialTests(unittest.IsolatedAsyncioTestCase):
                         main, "ResponsesHostServer", return_value=host
                     ) as main_host,
                 ):
-                    capture_flags = (
-                        "AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED",
-                        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT",
-                    )
-                    for flag in capture_flags:
-                        os.environ.pop(flag, None)
-                        if content_capture is not None:
-                            os.environ[flag] = content_capture
+                    capture_flag = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
+                    os.environ.pop(capture_flag, None)
+                    if content_capture is not None:
+                        os.environ[capture_flag] = content_capture
                     if failure:
                         with self.assertRaisesRegex(RuntimeError, "host failed"):
                             await main.main()
                     else:
                         await main.main()
                     configure_logging.assert_called_once_with(level=main.logging.INFO)
-                    for flag in capture_flags:
-                        self.assertEqual(
-                            os.environ.get(flag), content_capture or "false"
-                        )
+                    self.assertEqual(os.environ.get(capture_flag), content_capture or "true")
                     main_host.assert_called_once_with(graph)
                     create_export.assert_called_once_with(credential)
                     build.assert_called_once_with(

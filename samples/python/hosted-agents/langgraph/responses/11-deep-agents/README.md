@@ -242,15 +242,16 @@ Insights to the Foundry project for hosted export; for local export, set
 `APPLICATIONINSIGHTS_CONNECTION_STRING` in your local environment. Existing OTLP
 configuration is also supported by the host.
 
-User messages, model responses, and tool inputs and outputs are not recorded by
-default. `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` and
-`AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED` both default to `false` without
-disabling telemetry. Publication logs include the report filename and byte count,
-not report bodies, credentials, or access tokens.
+By default, traces capture user messages, model responses, and tool inputs and
+outputs. For production, review the sensitivity of this data and set
+`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false` in the environment
+(`.env` locally or the service's `env` in `azure.yaml` for deployment) to omit
+content while keeping spans. Publication logs include the report filename and
+byte count, not report bodies, credentials, or access tokens.
 
-To check locally that one publication emits one business log and one tool span,
-run `uv run --frozen python tests/check_telemetry.py` from
-`src/langgraph-deep-agents`. This check uses simulated model and Blob calls and
+To check content capture, span counts, and publication logging locally, run
+`uv run --frozen python tests/check_telemetry.py` from `src/langgraph-deep-agents`.
+This runs the stock host and model adapter with simulated external services. It
 does not verify delivery to Application Insights.
 
 ## Validate Blob publication
