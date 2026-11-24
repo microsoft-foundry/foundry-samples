@@ -5,11 +5,7 @@ import {
   tool,
 } from "ai";
 import { z } from "zod";
-import {
-  maxInvocationBodyBytes,
-  parseInvocation,
-  toTokenEventStream,
-} from "@/lib/invocation";
+import { maxInvocationBodyBytes, parseInvocation } from "@/lib/invocation";
 import { getFoundryModel } from "@/lib/foundry-model";
 import { calculateQuote } from "@/lib/quote";
 
@@ -97,10 +93,5 @@ export async function POST(request: Request) {
     return result.toUIMessageStreamResponse();
   }
 
-  return new Response(toTokenEventStream(result.textStream), {
-    headers: {
-      "content-type": "text/event-stream",
-      "cache-control": "no-cache",
-    },
-  });
+  return result.toTextStreamResponse();
 }

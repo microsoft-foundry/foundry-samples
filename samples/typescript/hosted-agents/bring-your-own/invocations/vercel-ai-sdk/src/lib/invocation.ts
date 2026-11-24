@@ -88,8 +88,8 @@ const simpleMessageSchema = z
   .refine(({ message, input }) => Boolean(message || input));
 
 // "ui" requests come from the AI SDK `useChat` client and receive a UI message
-// stream; "text" requests (plain text, `message`, or `input`) receive simple
-// token events that generic Invocations clients, such as the Foundry playground, render.
+// stream; "text" requests (plain text, `message`, or `input`) receive a plain
+// text stream for generic Invocations clients.
 export type InvocationFormat = "ui" | "text";
 
 export type ParsedInvocation =
@@ -155,27 +155,4 @@ export function parseInvocation(value: unknown): ParsedInvocation {
   return text
     ? { success: true, messages: singleUserMessage(text), format: "text" }
     : { success: false, error: 'Provide a "message" or "input" string.' };
-}
-
-export function toTokenEventStream(textStream: AsyncIterable<string>) {
-  const encoder = new TextEncoder();
-  const event = (data: unknown) => encoder.encode(`data: ${JSON.stringify(data)}\n\n`);
-
-  return new ReadableStream<Uint8Array>({
-    async start(controller) {
-      let fullText = "";
-      try {
-        for await (const delta of textStream) {
-          fullText += delta;
-          controller.enqueue(event({ type: "token", content: delta }));
-        }
-        controller.enqueue(event({ type: "done", full_text: fullText }));
-      } catch (error) {
-        console.error("Invocation failed", error);
-        controller.enqueue(event({ type: "error", message: "The agent could not complete the request." }));
-      } finally {
-        controller.close();
-      }
-    },
-  });
 }

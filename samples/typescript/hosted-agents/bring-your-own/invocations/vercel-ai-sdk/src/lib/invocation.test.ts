@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { parseInvocation, toTokenEventStream } from "./invocation";
+import { parseInvocation } from "./invocation";
 import { calculateQuote } from "./quote";
 
 describe("parseInvocation", () => {
@@ -38,6 +38,7 @@ describe("parseInvocation", () => {
 
     assert.equal(result.success, true);
     if (result.success) {
+      assert.equal(result.format, "ui");
       assert.deepEqual(
         result.messages.map((message) => message.role),
         ["user", "user"],
@@ -75,40 +76,5 @@ describe("calculateQuote", () => {
       total: 220,
       note: "Illustrative sample prices; replace them with your own catalog.",
     });
-  });
-});
-
-describe("toTokenEventStream", () => {
-  it("streams token events followed by the full text", async () => {
-    async function* deltas() {
-      yield "Total: ";
-      yield "$220";
-    }
-    const text = await new Response(toTokenEventStream(deltas())).text();
-    const events = text
-      .trim()
-      .split("\n\n")
-      .map((line) => JSON.parse(line.replace(/^data: /, "")) as unknown);
-    assert.deepEqual(events, [
-      { type: "token", content: "Total: " },
-      { type: "token", content: "$220" },
-      { type: "done", full_text: "Total: $220" },
-    ]);
-  });
-
-  it("reports a generic error event when the model stream fails", async () => {
-    async function* failing(): AsyncGenerator<string> {
-      yield "partial";
-      throw new Error("DeploymentNotFound");
-    }
-    const original = console.error;
-    console.error = () => {};
-    try {
-      const text = await new Response(toTokenEventStream(failing())).text();
-      assert.match(text, /"type":"error"/);
-      assert.doesNotMatch(text, /DeploymentNotFound/);
-    } finally {
-      console.error = original;
-    }
   });
 });

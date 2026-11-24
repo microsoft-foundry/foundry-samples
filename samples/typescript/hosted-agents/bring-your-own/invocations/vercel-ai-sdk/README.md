@@ -10,7 +10,7 @@ Microsoft has no responsibility to you or others with respect to any of these sa
 
 # What this sample demonstrates
 
-A TypeScript Hosted Agent that uses the [Vercel AI SDK](https://ai-sdk.dev/) for model streaming and tool calling, then streams the reply over the Foundry **Invocations** protocol: an AI SDK UI-message stream for `useChat` clients, and simple token events for other clients such as the Foundry playground.
+A TypeScript Hosted Agent that uses the [Vercel AI SDK](https://ai-sdk.dev/) for model streaming and tool calling, then streams the reply over the Foundry **Invocations** protocol: an AI SDK UI-message stream for `useChat` clients and a plain-text stream for other clients such as the Foundry playground.
 
 The sample uses a Foundry project model through the OpenAI Responses API. A small fetch wrapper adds the `type: "message"` field that Foundry requires on input messages. Its server-side `estimateSubscription` tool calculates a deterministic example quote. A local Next.js chat UI demonstrates the AI SDK client; Foundry hosts the agent container, not a general-purpose website.
 
@@ -24,7 +24,7 @@ The Next.js app implements the hosted-agent contract:
 
 - `GET /readiness` reports container readiness.
 - `POST /invocations` accepts either a Vercel AI SDK UI-message request or a simple `message`/`input` payload.
-- The server converts the supplied message history to model messages, calls `streamText`, runs the quote tool on the server, and responds with `toUIMessageStreamResponse()` for a `useChat` `messages` body. For plain text, `message`, or `input` bodies, it streams `text/event-stream` events shaped as `{"type":"token","content":"..."}`, followed by `{"type":"done","full_text":"..."}`.
+- The server converts the supplied message history to model messages, calls `streamText`, runs the quote tool on the server, and responds with `toUIMessageStreamResponse()` for a `useChat` `messages` body. For plain text, `message`, or `input` bodies, it responds with the AI SDK's `toTextStreamResponse()`.
 - The local UI uses `useChat` and submits its full message history on each turn. Invocations does not manage conversation history.
 
 The invocation route rejects system messages, limits each request to 64 KiB, and bounds the number and text size of messages. Client-provided tool-result parts are discarded before model history is constructed; tools are executed only by the agent.
@@ -58,7 +58,7 @@ You can also invoke the local agent from another terminal:
 azd ai agent invoke --local "Our 16-person team needs 12 Standard and 4 Premium seats. Estimate monthly spend."
 ```
 
-The sample accepts a plain-text request as well as `{"message":"..."}` or `{"input":"..."}`; these return token events. To test the same UI-message stream used by `useChat`, send a JSON body containing a `messages` array to `POST http://localhost:8088/invocations`.
+The sample accepts a plain-text request as well as `{"message":"..."}` or `{"input":"..."}`; these return a plain-text stream. To test the same UI-message stream used by `useChat`, send a JSON body containing a `messages` array to `POST http://localhost:8088/invocations`.
 
 Run the local checks from the sample directory:
 
