@@ -1,0 +1,23 @@
+**/__pycache__/
+**/*.py[cod]
+**/*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Version control
+.git/
+.gitignore
+
+# Docker files
+.dockerignore
+
+# Local env files
+.env
