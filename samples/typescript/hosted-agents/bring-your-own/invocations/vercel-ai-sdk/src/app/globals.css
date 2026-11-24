@@ -61,12 +61,13 @@ h1 {
 
 form {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 input {
   min-width: 0;
-  flex: 1;
+  flex: 1 1 240px;
   padding: 12px;
   border: 1px solid #8795a3;
   border-radius: 6px;

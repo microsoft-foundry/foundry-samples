@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start --hostname 0.0.0.0 --port 8088",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/lib/invocation.test.ts src/lib/foundry-model.test.ts"
+    "test": "tsx --test src/lib/invocation.test.ts src/lib/foundry-model.test.ts src/app/page.test.tsx"
   },
   "dependencies": {
     "@ai-sdk/openai": "4.0.122",
@@ -21,6 +21,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@happy-dom/global-registrator": "21.0.4",
     "@types/node": "24.3.0",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",

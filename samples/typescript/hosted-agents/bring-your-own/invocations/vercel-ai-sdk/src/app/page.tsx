@@ -10,7 +10,8 @@ export default function Home() {
     () => new DefaultChatTransport({ api: "/invocations" }),
     [],
   );
-  const { messages, sendMessage, status, error } = useChat({ transport });
+  const { messages, sendMessage, setMessages, clearError, status, error } =
+    useChat({ transport });
   const isBusy = status === "submitted" || status === "streaming";
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -21,6 +22,12 @@ export default function Home() {
     }
     setInput("");
     sendMessage({ text });
+  }
+
+  function handleNewChat() {
+    setMessages([]);
+    clearError();
+    setInput("");
   }
 
   return (
@@ -64,6 +71,9 @@ export default function Home() {
         />
         <button disabled={isBusy || !input.trim()} type="submit">
           {isBusy ? "Thinking…" : "Send"}
+        </button>
+        <button disabled={isBusy} onClick={handleNewChat} type="button">
+          New chat
         </button>
       </form>
       {error ? <p className="error">{error.message}</p> : null}

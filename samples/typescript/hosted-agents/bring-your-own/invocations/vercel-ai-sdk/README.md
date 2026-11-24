@@ -27,7 +27,7 @@ The Next.js app implements the hosted-agent contract:
 - The server converts the supplied message history to model messages, calls `streamText`, runs the quote tool on the server, and responds with `toUIMessageStreamResponse()` for a `useChat` `messages` body. For plain text, `message`, or `input` bodies, it responds with the AI SDK's `toTextStreamResponse()`.
 - The local UI uses `useChat` and submits its full message history on each turn. Invocations does not manage conversation history.
 
-The invocation route rejects system messages, limits each request to 64 KiB, and bounds the number and text size of messages. Client-provided tool-result parts are discarded before model history is constructed; tools are executed only by the agent.
+The invocation route rejects system messages, limits each request to 64 KiB, and bounds the number and text size of messages. Use **New chat** to clear the local history if it reaches a limit. Client-provided tool-result parts are discarded before model history is constructed; tools are executed only by the agent.
 
 The model provider targets `<FOUNDRY_PROJECT_ENDPOINT>/openai/v1` and obtains an Entra token with `DefaultAzureCredential`. No API key is stored in the browser or container configuration.
 
