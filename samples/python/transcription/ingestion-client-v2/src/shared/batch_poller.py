@@ -51,24 +51,41 @@ def _collect_succeeded(job_url: str, job_json: dict, sources: list, token: str, 
     if not files_url:
         job_parts = urlparse(job_url)
         files_url = job_parts._replace(path=f"{job_parts.path.rstrip('/')}/files").geturl()
-    fr = requests.get(
-        files_url,
-        headers={"Authorization": f"Bearer {token}", "User-Agent": speech.USER_AGENT},
-        timeout=60,
-    )
-    if fr.status_code != 200:
-        logging.warning("Could not list files for job (HTTP %s); retrying next cycle", fr.status_code)
-        return False
+    files = []
+    while files_url:
+        try:
+            fr = requests.get(
+                files_url,
+                headers={"Authorization": f"Bearer {token}", "User-Agent": speech.USER_AGENT},
+                timeout=60,
+            )
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+            logging.warning("Could not list files for job; retrying next cycle", exc_info=True)
+            return False
+        if fr.status_code != 200:
+            logging.warning("Could not list files for job (HTTP %s); retrying next cycle", fr.status_code)
+            return False
+        page = fr.json()
+        files.extend(page.get("values", []))
+        files_url = page.get("@nextLink")
 
     written = set()
-    for fv in fr.json().get("values", []):
+    for fv in files:
         if fv.get("kind") != "Transcription":
             continue
         content_url = fv.get("links", {}).get("contentUrl")
         if not content_url:
             continue
-        tr = requests.get(content_url, headers={"User-Agent": speech.USER_AGENT}, timeout=600)
+        try:
+            tr = requests.get(content_url, headers={"User-Agent": speech.USER_AGENT}, timeout=600)
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+            logging.warning("Could not download transcript; retrying next cycle", exc_info=True)
+            return False
         if tr.status_code != 200:
+            if tr.status_code in speech._RETRY_STATUS:
+                logging.warning("Could not download transcript (HTTP %s); retrying next cycle", tr.status_code)
+                return False
+            logging.error("Transcript download failed permanently (HTTP %s): %s", tr.status_code, content_url.split("?", 1)[0])
             continue
         try:
             src = tr.json().get("source")

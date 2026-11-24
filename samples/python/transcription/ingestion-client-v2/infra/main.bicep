@@ -9,7 +9,8 @@ param environmentName string
 @description('Primary location for all resources.')
 param location string
 
-@description('Enable private networking (private endpoints, restricted public access). Default keeps the deployment simple.')
+@description('Private networking is not implemented in this sample; only false is supported.')
+@allowed([false])
 param enableNetworkIsolation bool = false
 
 @description('Enable storage lifecycle management (auto-tier and expire old blobs).')

@@ -52,10 +52,9 @@ def flush_pending() -> None:
         try:
             speech.submit_batch_group(audio_container, blobs, cfg)
         except speech.TransientTranscriptionError:
-            # Throttled even after backoff: leave these markers for the next cycle.
-            logging.warning("Batch submit throttled; leaving %d marker(s) for next cycle", len(chunk))
+            logging.warning("Batch submit failed temporarily; leaving %d marker(s) for next cycle", len(chunk))
             return
-        except Exception as exc:  # noqa: BLE001 - permanent failure: record and drop
+        except speech.PermanentTranscriptionError as exc:
             logging.exception("Batch submit permanently failed for %d file(s)", len(chunk))
             for _, source in chunk:
                 storage.write_error(source, f"Batch submit failed: {exc}")

@@ -12,18 +12,23 @@ from typing import Any, Dict, List
 from urllib.parse import quote, urlparse
 
 import requests
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 from shared import storage
 
 _SCOPE = "https://cognitiveservices.azure.com/.default"
 _API_VERSION = "2025-10-15"
 USER_AGENT = "IngestionClient/2.0 (Ingestion Client v2)"
-_RETRY_STATUS = {429, 500, 502, 503, 504}
+_RETRY_STATUS = {408, 429, 500, 502, 503, 504}
 _SYNC_TIMEOUT_SECONDS = 1200  # allow long fast/llm sync files (up to ~20 min audio)
 
 
 class TransientTranscriptionError(Exception):
     """Raised when retries are exhausted so the Service Bus message is retried later."""
+
+
+class PermanentTranscriptionError(RuntimeError):
+    """Raised for a non-retryable Speech response."""
 
 
 def _token() -> str:
@@ -59,16 +64,19 @@ def _post_json_with_retry(url: str, body: Dict[str, Any], timeout: int = 60, max
     backoff = 2
     last_status = None
     for attempt in range(max_attempts):
-        resp = requests.post(
-            url,
-            headers={
-                "Authorization": f"Bearer {_token()}",
-                "Content-Type": "application/json",
-                "User-Agent": USER_AGENT,
-            },
-            json=body,
-            timeout=timeout,
-        )
+        try:
+            resp = requests.post(
+                url,
+                headers={
+                    "Authorization": f"Bearer {_token()}",
+                    "Content-Type": "application/json",
+                    "User-Agent": USER_AGENT,
+                },
+                json=body,
+                timeout=timeout,
+            )
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
+            raise TransientTranscriptionError("Speech submission transport failed; job status is unknown") from exc
         if resp.status_code in (200, 201):
             return resp.json()
         last_status = resp.status_code
@@ -78,7 +86,7 @@ def _post_json_with_retry(url: str, body: Dict[str, Any], timeout: int = 60, max
             time.sleep(delay)
             backoff = min(backoff * 2, 60)
             continue
-        raise RuntimeError(f"Request failed: HTTP {resp.status_code} {resp.text[:1000]}")
+        raise PermanentTranscriptionError(f"Request failed: HTTP {resp.status_code} {resp.text[:1000]}")
     raise TransientTranscriptionError(f"Exhausted retries (last status {last_status})")
 
 
@@ -132,16 +140,23 @@ def transcribe_sync(audio, filename: str, cfg: Dict[str, Any], llm: bool) -> Dic
     for attempt in range(5):
         if hasattr(audio, "seek"):
             audio.seek(0)
-        files = {
+        encoder = MultipartEncoder(fields={
             "audio": (os.path.basename(filename), audio, "application/octet-stream"),
             "definition": (None, json.dumps(definition), "application/json"),
-        }
-        resp = requests.post(
-            url,
-            headers={"Authorization": f"Bearer {_token()}", "User-Agent": USER_AGENT},
-            files=files,
-            timeout=_SYNC_TIMEOUT_SECONDS,
-        )
+        })
+        try:
+            resp = requests.post(
+                url,
+                headers={
+                    "Authorization": f"Bearer {_token()}",
+                    "User-Agent": USER_AGENT,
+                    "Content-Type": encoder.content_type,
+                },
+                data=encoder,
+                timeout=_SYNC_TIMEOUT_SECONDS,
+            )
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
+            raise TransientTranscriptionError("Speech transcription transport failed") from exc
         if resp.status_code == 200:
             return resp.json()
         last_status = resp.status_code
@@ -151,7 +166,7 @@ def transcribe_sync(audio, filename: str, cfg: Dict[str, Any], llm: bool) -> Dic
             time.sleep(delay)
             backoff = min(backoff * 2, 32)
             continue
-        raise RuntimeError(f"Transcription failed: HTTP {resp.status_code} {resp.text[:1000]}")
+        raise PermanentTranscriptionError(f"Transcription failed: HTTP {resp.status_code} {resp.text[:1000]}")
     raise TransientTranscriptionError(f"Exhausted retries (last status {last_status})")
 
 
@@ -196,7 +211,8 @@ def submit_batch_group(container: str, blobs: List[str], cfg: Dict[str, Any]) ->
 
     ttl_hours = int(cfg.get("batch", {}).get("timeToLiveHours", 12) or 12)
     start = datetime.now(timezone.utc) - timedelta(minutes=5)
-    expiry = datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
+    # Input SAS is needed while Speech reads audio, not for result retention.
+    expiry = min(datetime.now(timezone.utc) + timedelta(hours=ttl_hours), start + timedelta(days=7))
 
     account = storage.account_name("input")
     base = storage.endpoint("input").rstrip("/")
@@ -231,11 +247,9 @@ def submit_batch_group(container: str, blobs: List[str], cfg: Dict[str, Any]) ->
     url = f"{_endpoint()}/speechtotext/transcriptions:submit?api-version={_API_VERSION}"
     job = _post_json_with_retry(url, body, timeout=120)
     job_url = job.get("self")
-    job_id = (
-        urlparse(job_url).path.rstrip("/").split("/")[-1]
-        if job_url
-        else datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
-    )
+    if not job_url:
+        raise TransientTranscriptionError("Speech accepted the batch but did not return a job URL")
+    job_id = urlparse(job_url).path.rstrip("/").split("/")[-1]
     record = {"jobUrl": job_url, "sources": blobs, "submittedAt": datetime.now(timezone.utc).isoformat()}
     storage.write_json(
         os.environ.get("BATCH_JOBS_CONTAINER", "batch-jobs"),

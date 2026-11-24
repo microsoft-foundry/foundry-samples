@@ -79,7 +79,7 @@ def process_blob_event(event: dict) -> None:
     except speech.TransientTranscriptionError:
         # Re-raise so the Service Bus message is retried after the visibility timeout.
         raise
-    except Exception as exc:  # noqa: BLE001 - permanent failure: record and move on
+    except speech.PermanentTranscriptionError as exc:
         logging.exception("Transcription failed for '%s'", blob_name)
         logging.info("INGEST status=failed engine=%s ms=%d blob=%s", engine, int((time.monotonic() - start) * 1000), blob_name)
         storage.write_error(blob_name, str(exc))

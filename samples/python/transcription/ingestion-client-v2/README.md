@@ -93,6 +93,8 @@ These checks mock HTTP and storage calls; they do not require Azure credentials 
 ## Important notes
 
 - Each engine returns its native transcript JSON format.
+- Batch submission is at least once: if Speech accepts a job but its response or the local tracking-record write is lost, pending files are retried and may create a duplicate job. Transcript output uses the same blob path on retry.
+- Batch result retention (`timeToLiveHours`) can exceed seven days, but input SAS links are limited to seven days by Azure Storage. Very delayed jobs may no longer be able to read their input.
 - Service availability and quotas vary by engine and region.
 - Private endpoints and Function VNet integration are not included. Additional networking work is needed for a fully private deployment.
 - Planned features are separate from this initial contribution.

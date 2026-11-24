@@ -3,6 +3,8 @@ import os
 import unittest
 from unittest.mock import Mock, call, patch
 
+import requests
+
 from shared import batch_poller
 
 
@@ -155,6 +157,48 @@ class BatchPollerTests(unittest.TestCase):
                     self.storage.delete_blob.assert_called_once_with(
                         "batch-jobs", "job-123.json", account="output"
                     )
+
+    def test_paginated_results_are_collected_before_marking_missing(self):
+        next_url = "https://speech.example.test/files?skip=1"
+        transcript_url = "https://results.example.test/transcript.json?sig=test-sas"
+        self.get.side_effect = [
+            response({"values": [], "@nextLink": next_url}),
+            response({"values": [{"kind": "Transcription", "links": {"contentUrl": transcript_url}}]}),
+            response({"source": "https://input.example.test/audio-input/batch/call.wav"}),
+        ]
+        self.assertTrue(batch_poller._collect_succeeded(JOB_URL, {}, ["batch/call.wav"], "test-token", 10))
+        self.assertEqual(self.get.call_args_list[1], call(next_url, headers=self.headers, timeout=60))
+        self.storage.write_error.assert_not_called()
+
+    def test_second_page_failure_leaves_job_for_retry(self):
+        self.get.side_effect = [
+            response({"values": [], "@nextLink": "https://speech.example.test/next"}),
+            response({}, status=503),
+        ]
+        self.assertFalse(batch_poller._collect_succeeded(JOB_URL, {}, ["batch/call.wav"], "test-token", 10))
+        self.storage.write_error.assert_not_called()
+
+    def test_transient_transcript_download_failure_keeps_job(self):
+        self.storage.list_blobs.return_value = ["job-123.json"]
+        self.storage.download.return_value = json.dumps(
+            {"jobUrl": JOB_URL, "sources": ["batch/call.wav"]}
+        ).encode()
+        self.get.side_effect = [
+            response({"status": "Succeeded", "links": {"files": "https://speech.example.test/files"}}),
+            response({"values": [{"kind": "Transcription", "links": {"contentUrl": "https://results.example.test/file"}}]}),
+            response({}, status=503),
+        ]
+        batch_poller.poll_batch_jobs()
+        self.storage.delete_blob.assert_not_called()
+        self.storage.write_error.assert_not_called()
+
+    def test_transcript_connection_error_keeps_job(self):
+        self.get.side_effect = [
+            response({"values": [{"kind": "Transcription", "links": {"contentUrl": "https://results.example.test/file"}}]}),
+            requests.exceptions.ConnectionError("disconnected"),
+        ]
+        self.assertFalse(batch_poller._collect_succeeded(JOB_URL, {}, ["batch/call.wav"], "test-token", 10))
+        self.storage.write_error.assert_not_called()
 
     def test_polling_keeps_headers_on_next_cycle_after_transient_failure(self):
         self.storage.list_blobs.return_value = ["job-123.json"]

@@ -75,8 +75,14 @@ def validate_config(cfg: Dict[str, Any], engine: str) -> Dict[str, Any]:
     if cfg.get("profanityFilterMode") not in VALID_PROFANITY:
         cfg["profanityFilterMode"] = "Masked"
 
-    diar = cfg.setdefault("diarization", {})
-    speakers = int(diar.get("maxSpeakers", 4) or 4)
+    diar = cfg.get("diarization")
+    if not isinstance(diar, dict):
+        diar = {}
+        cfg["diarization"] = diar
+    try:
+        speakers = int(diar.get("maxSpeakers", 4) or 4)
+    except (TypeError, ValueError, OverflowError):
+        speakers = 4
     diar["maxSpeakers"] = min(max(speakers, 2), 35)
 
     # LLM Speech uses prompting instead of phrase lists.

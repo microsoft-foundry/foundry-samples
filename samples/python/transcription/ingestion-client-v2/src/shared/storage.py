@@ -54,7 +54,11 @@ def download_to_spooled(
     """
     client = service(account).get_blob_client(container, blob)
     spooled: SpooledTemporaryFile = SpooledTemporaryFile(max_size=max_mem)
-    client.download_blob().readinto(spooled)
+    try:
+        client.download_blob().readinto(spooled)
+    except Exception:
+        spooled.close()
+        raise
     spooled.seek(0)
     return spooled
 
@@ -92,9 +96,14 @@ def write_error(blob_name: str, message: str) -> None:
 
 def quarantine(source_container: str, blob: str, reason: str) -> None:
     """Copy an unprocessable source blob into the quarantine container with a reason note."""
-    data = download(source_container, blob, account="input")
+    source_client = service("input").get_blob_client(source_container, blob)
     qcontainer = os.environ["QUARANTINE_CONTAINER"]
-    upload(qcontainer, blob, data, account="input")
+    target_client = service("input").get_blob_client(qcontainer, blob)
+    target_client.upload_blob(
+        source_client.download_blob().chunks(),
+        overwrite=True,
+        content_settings=ContentSettings(content_type="application/octet-stream"),
+    )
     note = json.dumps({"source": blob, "reason": reason}, ensure_ascii=False, indent=2).encode("utf-8")
     upload(qcontainer, f"{blob}.reason.json", note, account="input", content_type="application/json")
     logging.info("Quarantined %s (%s)", blob, reason)

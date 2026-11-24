@@ -2,7 +2,10 @@ import io
 import json
 import os
 import unittest
+from datetime import timedelta
 from unittest.mock import Mock, patch
+
+import requests
 
 from shared import speech
 
@@ -208,23 +211,22 @@ class SpeechRequestTests(unittest.TestCase):
                 self.post.assert_called_once()
                 request = self.post.call_args
                 self.assertEqual(request.args, (TRANSCRIBE_URL,))
-                self.assertEqual(request.kwargs["headers"], self.headers)
+                self.assertEqual(request.kwargs["headers"]["Authorization"], self.headers["Authorization"])
+                self.assertEqual(request.kwargs["headers"]["User-Agent"], USER_AGENT)
+                self.assertTrue(request.kwargs["headers"]["Content-Type"].startswith("multipart/form-data; boundary="))
                 self.assertEqual(request.kwargs["timeout"], 1200)
-                self.assertEqual(
-                    request.kwargs["files"]["audio"],
-                    ("call.wav", b"audio", "application/octet-stream"),
-                )
-                definition = request.kwargs["files"]["definition"]
-                self.assertEqual((definition[0], definition[2]), (None, "application/json"))
-                self.assertEqual(
-                    json.loads(definition[1]),
-                    {
+                body = request.kwargs["data"].to_string()
+                self.assertIn(b'filename="call.wav"', body)
+                self.assertIn(b"audio", body)
+                self.assertIn(
+                    json.dumps({
                         "locales": ["en-US"],
                         "diarization": {"enabled": True, "maxSpeakers": 4},
                         "channels": [0],
                         "profanityFilterMode": "Masked",
                         **extra_definition,
-                    },
+                    }).encode(),
+                    body,
                 )
 
     def test_sync_user_agent_and_auth_on_every_retry_including_exhaustion(self):
@@ -247,7 +249,45 @@ class SpeechRequestTests(unittest.TestCase):
                     self.assertEqual(self.post.call_count, 5)
                     for request in self.post.call_args_list:
                         self.assertEqual(request.args, (TRANSCRIBE_URL,))
-                        self.assertEqual(request.kwargs["headers"], self.headers)
+                        self.assertEqual(request.kwargs["headers"]["Authorization"], self.headers["Authorization"])
+                        self.assertEqual(request.kwargs["headers"]["User-Agent"], USER_AGENT)
+                        self.assertIn("Content-Type", request.kwargs["headers"])
+                        self.assertIn("data", request.kwargs)
+
+    def test_batch_transport_failure_is_retryable_without_immediate_duplicate_post(self):
+        for error in (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+            with self.subTest(error=error):
+                self.post.reset_mock()
+                self.post.side_effect = error("lost response")
+                with self.assertRaises(speech.TransientTranscriptionError):
+                    speech._post_json_with_retry(SUBMIT_URL, {})
+                self.post.assert_called_once()
+
+    def test_long_job_retention_does_not_exceed_delegation_key_lifetime(self):
+        self.post.return_value = response(201, {"self": f"{ENDPOINT}/speechtotext/transcriptions/job-456"})
+        with (
+            patch.object(speech.storage, "account_name", return_value="inputaccount"),
+            patch.object(speech.storage, "endpoint", return_value="https://input.example.test"),
+            patch.object(speech.storage, "service") as service,
+            patch.object(speech.storage, "write_json"),
+            patch("azure.storage.blob.generate_blob_sas", return_value="sas"),
+        ):
+            speech.submit_batch_group(
+                "audio-input", ["batch/file.wav"], {"batch": {"timeToLiveHours": 744}}
+            )
+        start, expiry = service.return_value.get_user_delegation_key.call_args.args
+        self.assertLessEqual(expiry - start, timedelta(days=7))
+        self.assertEqual(self.post.call_args.kwargs["json"]["properties"]["timeToLiveHours"], 744)
+
+    def test_sync_transport_failure_is_retryable(self):
+        self.post.side_effect = requests.exceptions.Timeout("lost response")
+        with self.assertRaises(speech.TransientTranscriptionError):
+            speech.transcribe_sync(io.BytesIO(b"audio"), "call.wav", {}, False)
+
+    def test_nonretryable_response_has_explicit_type(self):
+        self.post.return_value = response(400)
+        with self.assertRaises(speech.PermanentTranscriptionError):
+            speech._post_json_with_retry(SUBMIT_URL, {})
 
 
 if __name__ == "__main__":
