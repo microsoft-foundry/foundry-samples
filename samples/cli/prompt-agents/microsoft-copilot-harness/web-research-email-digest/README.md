@@ -90,7 +90,7 @@ sending when the profile result does not contain one unambiguous address.
 The pinned `azure.ai.agents` version includes the Copilot harness Conversation fix used by
 `azd ai agent invoke` and the camelCase harness-toolset authoring contract.
 
-The model deployment uses capacity 50 because a Work IQ turn can require several model/tool
+The model deployment uses capacity 250 because a Work IQ turn can require several model/tool
 continuations. The agent and Routine instructions request at most five Web Search calls per
 digest, but this is not an enforced execution budget. Monitor actual tool usage and consider
 increasing capacity if bounded requests still report `rate_limit_exceeded`.

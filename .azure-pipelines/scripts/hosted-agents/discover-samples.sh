@@ -141,9 +141,9 @@ emit_entries() {
       # point, keeping the runtime declaration in the sample manifest.
       # A manifest-defined module/argument entry point must stay a single
       # matrix value so azd can build the complete launch command.
-      runtime=$(yq -r '.services[] | select(.host == "azure.ai.agent") | .codeConfiguration.runtime // ""' "$yaml_file" | head -1)
+      runtime=$(yq -r '[.services[] | select(.host == "azure.ai.agent") | .codeConfiguration.runtime] | .[0] // ""' "$yaml_file")
       [ -n "$runtime" ] || runtime="python_3_13"
-      entry_point=$(yq -r '.services[] | select(.host == "azure.ai.agent") | .codeConfiguration.entryPoint // ""' "$yaml_file" | head -1)
+      entry_point=$(yq -r '[.services[] | select(.host == "azure.ai.agent") | .codeConfiguration.entryPoint] | .[0] // ""' "$yaml_file")
       [ -n "$entry_point" ] || entry_point="main.py"
       deploy_modes='["container","code"]'
       ;;
@@ -152,7 +152,7 @@ emit_entries() {
       runtime="dotnet_10"
       # Prefer the manifest's authoritative code entry point. Fall back to the
       # project assembly only for older manifests.
-      entry_point=$(yq -r '.services[] | select(.host == "azure.ai.agent") | .codeConfiguration.entryPoint // ""' "$yaml_file" | head -1)
+      entry_point=$(yq -r '[.services[] | select(.host == "azure.ai.agent") | .codeConfiguration.entryPoint] | .[0] // ""' "$yaml_file")
       if [ -z "$entry_point" ]; then
         local csproj asm
         csproj=$(find "$sample_dir" -name "*.csproj" | head -1)
@@ -316,7 +316,9 @@ if [ "$DISCOVERY_MODE" = "changed" ]; then
       echo "  - $sample_dir (excluded by CI skiplist)" >&2
       continue
     fi
-    if [ "$(yq '[.services[] | select(.host == "azure.ai.agent") | .protocols[]?.protocol] | any_c(. == "invocations")' "$yaml_file")" = "true" ]; then
+    if [ "$(yq '[.services[] | select(.host == "azure.ai.agent") | .protocols[]?.protocol] | any_c(. == "a2a")' "$yaml_file")" = "true" ]; then
+      protocol="a2a"
+    elif [ "$(yq '[.services[] | select(.host == "azure.ai.agent") | .protocols[]?.protocol] | any_c(. == "invocations")' "$yaml_file")" = "true" ]; then
       protocol="invocations"
     else
       protocol="responses"
@@ -341,7 +343,9 @@ else
     fi
     agent_name=$(yq '.name // ""' "$yaml_file")
     sample_id=$(echo "$sample_dir" | sed 's|samples/||' | tr '/' '-')
-    if [ "$(yq '[.services[] | select(.host == "azure.ai.agent") | .protocols[]?.protocol] | any_c(. == "invocations")' "$yaml_file")" = "true" ]; then
+    if [ "$(yq '[.services[] | select(.host == "azure.ai.agent") | .protocols[]?.protocol] | any_c(. == "a2a")' "$yaml_file")" = "true" ]; then
+      protocol="a2a"
+    elif [ "$(yq '[.services[] | select(.host == "azure.ai.agent") | .protocols[]?.protocol] | any_c(. == "invocations")' "$yaml_file")" = "true" ]; then
       protocol="invocations"
     else
       protocol="responses"

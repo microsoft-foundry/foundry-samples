@@ -1,22 +1,32 @@
 """Shared helpers for the voice-agent samples in this folder."""
 
+import asyncio
+import os
+import re
 import sys
 import time
-from typing import Final
+from collections.abc import Mapping
+from typing import Any, Final
+from uuid import UUID, uuid4
 
 from azure.ai.projects import AIProjectClient
+from azure.ai.projects.aio import AIProjectClient as AsyncAIProjectClient
 from azure.ai.projects.models import (
-    RealtimeConversationItem,
-    RealtimeConversationItemMessageAssistant,
-    RealtimeConversationItemMessageSystem,
+    PhoneNumber,
     RealtimeConversationItemMessageUser,
     RealtimeConversationItemMessageUserContent,
     RealtimeConversationItemType,
     RealtimeServerEventError,
     RealtimeServerEventResponseDone,
     RealtimeServerEventSessionCreated,
+    TeamsAddress,
+    TelephonyAddress,
+    VoiceAgentDefinition,
+    VoiceConversation,
     VoiceConversationStatus,
 )
+from azure.ai.projects.operations import RealtimeConnection
+from azure.core.exceptions import ResourceNotFoundError
 
 # Seconds to wait for the agent's reply before giving up.
 _RESPONSE_TIMEOUT: Final = 45
@@ -25,14 +35,64 @@ _RESPONSE_TIMEOUT: Final = 45
 # and how many times to poll before giving up.
 _FINALIZE_POLL_INTERVAL: Final = 1
 _FINALIZE_POLL_ATTEMPTS: Final = 15
+PROVIDERS = ("twilio", "teams_phone_extensibility", "sip")
 
-# The concrete message-item subtypes that carry displayable transcript content. Other item kinds
-# (function calls, MCP tool activity, etc.) are typed too but have no user-facing text to show.
-_MESSAGE_ITEM_TYPES = (
-    RealtimeConversationItemMessageUser,
-    RealtimeConversationItemMessageAssistant,
-    RealtimeConversationItemMessageSystem,
-)
+
+def sample_agent_name(prefix: str) -> str:
+    """Use an explicitly supplied new name, or generate a unique sample-owned name."""
+    return os.environ.get("FOUNDRY_VOICE_AGENT_NAME") or f"{prefix}-{uuid4().hex[:8]}"
+
+
+def required_env(name: str) -> str:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        raise ValueError(f"Set {name} to your own resource/configuration value.")
+    return value
+
+
+def phone_number(value: str) -> PhoneNumber:
+    if not re.fullmatch(r"\+[1-9][0-9]{1,14}", value):
+        raise ValueError(
+            "Phone numbers must use E.164, with '+' and at most 15 digits."
+        )
+    return PhoneNumber(value=value)
+
+
+def source_address(provider: str, value: str) -> TelephonyAddress:
+    if provider == "teams_phone_extensibility":
+        identifier = UUID(value)
+        if not identifier.int:
+            raise ValueError(
+                "The Teams resource-account object ID must be a nonempty GUID."
+            )
+        return TeamsAddress(value=str(identifier))
+    if provider in ("twilio", "sip"):
+        return phone_number(value)
+    raise ValueError(f"Unsupported provider: {provider}")
+
+
+def require_new_agent(client: AIProjectClient, agent_name: str) -> None:
+    """Refuse to change an agent that already exists."""
+    try:
+        client.agents.get(agent_name=agent_name)
+    except ResourceNotFoundError:
+        return
+    raise ValueError(
+        f"Agent '{agent_name}' already exists. Choose an unused sample agent name."
+    )
+
+
+async def require_new_agent_async(
+    client: AsyncAIProjectClient, agent_name: str
+) -> None:
+    """Refuse to change an agent that already exists, using the async client."""
+    try:
+        await client.agents.get(agent_name=agent_name)
+    except ResourceNotFoundError:
+        return
+    raise ValueError(
+        f"Agent '{agent_name}' already exists. Choose an unused sample agent name."
+    )
 
 
 def safe_print(text: str) -> None:
@@ -53,31 +113,80 @@ def safe_print(text: str) -> None:
         print(text.encode(encoding, errors="replace").decode(encoding))
 
 
-def format_conversation_item(item: RealtimeConversationItem) -> str:
-    """Format one persisted conversation item as a single display line.
-
-    ``RealtimeConversationItem`` is a typed, discriminated union. Only message items (user,
-    assistant, and system turns) carry displayable text, in their typed ``content`` parts; other
-    item kinds (function calls, MCP activity, etc.) show just their id and type.
-
-    :param item: One item returned by ``conversations.list_items()`` or ``conversations.get_item()``.
-    :type item: ~azure.ai.projects.models.RealtimeConversationItem
-    :return: A display line such as ``"assistant id=msg_123: Hello there"``.
-    :rtype: str
-    """
-    if not isinstance(item, _MESSAGE_ITEM_TYPES):
-        return f"{item.type} id={getattr(item, 'id', None)}"
-
-    # Audio turns carry their spoken text as ``transcript`` (system-message content has no
-    # ``transcript`` field, hence the getattr); typed-text turns carry it as ``text``.
-    parts = [getattr(part, "transcript", None) or part.text or "" for part in item.content]
-    transcript = " ".join(p.strip() for p in parts if p)
-    line = f"{item.role} id={item.id}"
+def format_conversation_item(item: Mapping[str, Any]) -> str:
+    """Format a stored open-union item, including unknown service-generated kinds."""
+    parts = []
+    for part in item.get("content") or []:
+        text = part.get("transcript") or part.get("text")
+        if isinstance(text, str) and text.strip():
+            parts.append(text.strip())
+    transcript = " ".join(parts)
+    line = f"{item.get('role') or item['type']} id={item.get('id')}"
     return f"{line}: {transcript}" if transcript else line
 
 
+def wait_for_conversation(
+    client: AIProjectClient, agent_name: str, conversation_id: str
+) -> VoiceConversation:
+    """Wait for persisted content after the WebSocket closes, failing on storage errors."""
+    for _ in range(_FINALIZE_POLL_ATTEMPTS):
+        try:
+            conversation = client.voice_agents.conversations.get(
+                agent_name, conversation_id
+            )
+        except ResourceNotFoundError:
+            # Content can briefly be absent while the closed session is being persisted.
+            pass
+        else:
+            if conversation.status == VoiceConversationStatus.COMPLETED:
+                return conversation
+            if conversation.status == VoiceConversationStatus.FAILED:
+                raise RuntimeError(f"Conversation {conversation_id} failed to persist.")
+        time.sleep(_FINALIZE_POLL_INTERVAL)
+    raise TimeoutError(f"Conversation {conversation_id} did not finish persisting.")
+
+
+async def wait_for_conversation_async(
+    client: AsyncAIProjectClient, agent_name: str, conversation_id: str
+) -> VoiceConversation:
+    """Wait for persisted content with the async client."""
+    for _ in range(_FINALIZE_POLL_ATTEMPTS):
+        try:
+            conversation = await client.voice_agents.conversations.get(
+                agent_name, conversation_id
+            )
+        except ResourceNotFoundError:
+            pass
+        else:
+            if conversation.status == VoiceConversationStatus.COMPLETED:
+                return conversation
+            if conversation.status == VoiceConversationStatus.FAILED:
+                raise RuntimeError(f"Conversation {conversation_id} failed to persist.")
+        await asyncio.sleep(_FINALIZE_POLL_INTERVAL)
+    raise TimeoutError(f"Conversation {conversation_id} did not finish persisting.")
+
+
+def _finish_response(connection: RealtimeConnection) -> None:
+    deadline = time.monotonic() + _RESPONSE_TIMEOUT
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("Timed out waiting for the voice response.")
+        event = connection.recv(timeout=remaining)
+        if isinstance(event, RealtimeServerEventError):
+            raise RuntimeError(event.error.message)
+        if isinstance(event, RealtimeServerEventResponseDone):
+            if event.response.status != "completed":
+                raise RuntimeError(
+                    f"Voice response ended with status {event.response.status}."
+                )
+            return
+
+
 def hold_sample_conversation(
-    project_client: AIProjectClient, agent_name: str, prompt: str = "Say a short, friendly hello."
+    project_client: AIProjectClient,
+    agent_name: str,
+    prompt: str = "Say a short, friendly hello.",
 ) -> str:
     """Send one short realtime text turn to an existing voice agent and return the resulting
     persisted conversation id, once it has finished finalizing.
@@ -100,46 +209,54 @@ def hold_sample_conversation(
     :raises RuntimeError: If the session ends without a persisted conversation id, the service
      reports a session error, or the conversation does not finish finalizing in time.
     """
+    definition = project_client.agents.get(
+        agent_name=agent_name
+    ).versions.latest.definition
+    if not isinstance(definition, VoiceAgentDefinition):
+        raise TypeError(
+            "Conversation readback needs a Realtime voice agent, not a GPT Live agent."
+        )
     conversation_id = None
-    with project_client.beta.voice_agents.realtime.connect(agent_name=agent_name) as conn:
-        conn.conversation.item.create(
-            item=RealtimeConversationItemMessageUser(
-                type=RealtimeConversationItemType.MESSAGE,
-                content=[RealtimeConversationItemMessageUserContent(type="input_text", text=prompt)],
+    succeeded = False
+    try:
+        with project_client.voice_agents.realtime.connect(
+            agent_name=agent_name
+        ) as conn:
+            deadline = time.monotonic() + _RESPONSE_TIMEOUT
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("Timed out waiting for session.created.")
+                event = conn.recv(timeout=remaining)
+                if isinstance(event, RealtimeServerEventError):
+                    raise RuntimeError(event.error.message)
+                if isinstance(event, RealtimeServerEventSessionCreated):
+                    conversation_id = event.conversation_id
+                    break
+            if not conversation_id:
+                raise RuntimeError(
+                    "The agent must have store=True to persist this conversation."
+                )
+            if definition.greeting is not None:
+                _finish_response(conn)
+            conn.conversation.item.create(
+                item=RealtimeConversationItemMessageUser(
+                    type=RealtimeConversationItemType.MESSAGE,
+                    content=[
+                        RealtimeConversationItemMessageUserContent(
+                            type="input_text", text=prompt
+                        )
+                    ],
+                )
             )
-        )
-        conn.response.create()
-        while True:
-            event = conn.recv(timeout=_RESPONSE_TIMEOUT)
-            if isinstance(event, RealtimeServerEventSessionCreated):
-                # The persisted conversation id (only present when conversation persistence is
-                # enabled) is set here, not on response.done.
-                conversation_id = event.conversation_id or conversation_id
-            if isinstance(event, RealtimeServerEventResponseDone):
-                break
-            if isinstance(event, RealtimeServerEventError):
-                raise RuntimeError(f"Session error while holding a sample conversation: {event.error.message}")
-
-    if not conversation_id:
-        raise RuntimeError(
-            "The realtime session ended without a persisted conversation id. Make sure the agent "
-            "was configured with `store=True`."
-        )
-
-    # `response.done` only means the model finished replying, not that the service has finished
-    # persisting the conversation -- immediately after the session closes, the conversation can
-    # still briefly report `in_progress` while that finalization completes in the background.
-    # Poll until it settles so callers can read a complete transcript right away.
-    conversations = project_client.beta.voice_agents.conversations
-    for _ in range(_FINALIZE_POLL_ATTEMPTS):
-        conversation = conversations.get(agent_name, conversation_id)
-        if conversation.status != VoiceConversationStatus.IN_PROGRESS:
-            break
-        time.sleep(_FINALIZE_POLL_INTERVAL)
-    else:
-        raise RuntimeError(
-            f"Conversation {conversation_id} did not finish finalizing within "
-            f"{_FINALIZE_POLL_ATTEMPTS * _FINALIZE_POLL_INTERVAL} seconds."
-        )
-
-    return conversation_id
+            conn.response.create()
+            _finish_response(conn)
+        wait_for_conversation(project_client, agent_name, conversation_id)
+        succeeded = True
+        return conversation_id
+    finally:
+        # A caller cannot clean an ID that was never returned after a failed turn.
+        if conversation_id and not succeeded:
+            project_client.voice_agents.conversations.delete(
+                agent_name, conversation_id
+            )

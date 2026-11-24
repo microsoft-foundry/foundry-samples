@@ -20,8 +20,11 @@ remains unchanged at its original path. This CE variant does not expose a Respon
 The Router still uses Chat Completions, and the Worker still uses the model's Responses API;
 those upstream model APIs are independent of the Hosted Agent ingress protocol.
 
-The foreground Router makes one asynchronous model request and selects one of
+The foreground Router makes one initial asynchronous routing request and selects one of
 `respond_directly`, `start_task`, `check_task_status`, `cancel_task`, or `get_task_result`.
+Successful result/status lookups add at most one tool-free presentation request, using the
+complete retrieved result and the current user request to translate, summarize, or relay it.
+This is not a general tool loop; optional progress requests are described below.
 The background Worker retains the five-round tool loop and the four original domain tools:
 `search_site_specs`, `search_work_iq`, `get_repair_procedure`, and `analyze_document`.
 These tools return mock data and simulate 6–12 seconds of service latency. They do not connect
@@ -92,6 +95,9 @@ providing a final answer, it records a sanitized failure, not a successful place
 Failed/incomplete API responses, structured model refusals, and empty or whitespace-only final
 answers also remain unsuccessful. A real final answer returned by an already-running call can
 still be saved after cooperative cancellation; refusals and blank answers cannot.
+The business `cancel_task` turn only acknowledges whether cancellation was requested. It
+does not wait for or deliver Worker outcomes, even if an in-flight call finishes during its
+acknowledgment. A successfully preserved final answer remains available for a later turn.
 
 Completed results are marked `DELIVERED` only after a successful CE `response.done` send.
 The Router identifies paraphrased/translated results explicitly through required
@@ -103,6 +109,18 @@ not the task store after model I/O. Results that finish during routing remain av
 the direct result/status or automatic Worker-result output paths. Index-only results require
 `get_task_result`; their IDs alone cannot authorize a delivery claim, even when history remains.
 Direct result/status paths also track the task ID. Text-substring matching is not used.
+Their complete successful results go back to the model as a tool result, rather than being
+spoken verbatim before the requested translation or summary can be applied. This also covers
+results becoming ready while the lookup waits. The presentation request replaces the earlier
+task-context block with one retained result (at most 8,000 characters, plus tool metadata), keeps
+the bounded conversation snapshot and current user request, and cannot call tools or start work.
+It returns a JSON object with nonblank `message` text and a boolean `result_conveyed`; only
+the text is spoken. Status-only replies set the flag to false and leave the result pending,
+even after a successful `response.done`. Summaries and translations that convey the result
+can set it to true, but still require a successful `response.done` before delivery is committed.
+Missing or incorrectly typed fields, empty text, refusals, incomplete responses, errors, or
+interruptions do not commit delivery; a later turn can retry. Failed/cancelled business tasks
+still use fixed sanitized status messages.
 Retained `COMPLETED` and `DELIVERED` IDs are both valid for repetition or translation;
 replaying a delivered result does not reset or repeat its delivery-state transition.
 This is transport-level delivery, not proof that all audio was heard. Playback corrections still
@@ -131,7 +149,8 @@ its business stream uses cancellable asynchronous calls and ordinary synchronous
 - Python 3.13 or later and [uv](https://docs.astral.sh/uv/) 0.11.7 or later.
 - Azure Developer CLI and Foundry extension versions meeting `azure.yaml`'s `requiredVersions`.
 - A Foundry project and model deployment, or permission to provision the declared
-  `gpt-5.4-mini` deployment.
+  `gpt-5.4-mini` deployment. The Router requires Chat Completions with function calling and
+  JSON-object response format for result presentation.
 - A signed-in local Azure CLI identity for model-backed tests, or the Hosted Agent's managed
   identity after deployment. The identity needs appropriate Foundry/model-inference access.
 - For deployment, matching Hosted Agent ingress and Voice Live support for

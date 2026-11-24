@@ -20,7 +20,7 @@ services:
           version: '2026-03-17'
         sku:
           name: GlobalStandard
-          capacity: 100
+          capacity: 250
 
   official-source-research:
     host: azure.ai.skill

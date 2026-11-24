@@ -13,18 +13,19 @@ USAGE:
 
     Before running the sample:
 
-    pip install "azure-ai-projects==2.7.0" python-dotenv
+    pip install "azure-ai-projects==2.11.0" python-dotenv
 
     Set these environment variables with your own values:
     1) FOUNDRY_PROJECT_ENDPOINT - The Azure AI Project endpoint, as found in the Overview
        page of your Microsoft Foundry portal.
     2) FOUNDRY_VOICE_AGENT_MODEL - Optional. The realtime model deployment name.
        Defaults to "gpt-realtime".
-    3) FOUNDRY_VOICE_AGENT_NAME - Optional. The name of the voice agent. If not
-       set, defaults to "MyVoiceAgent".
+    3) FOUNDRY_VOICE_AGENT_NAME - Optional unused name. Otherwise a unique
+       sample-owned name is generated.
 """
 
 import os
+from itertools import islice
 from dotenv import load_dotenv
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
@@ -38,16 +39,19 @@ from azure.ai.projects.models import (
     VoiceType,
 )
 
+from voice_agent_util import require_new_agent, sample_agent_name
+
 load_dotenv()
 
 endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
 model = os.environ.get("FOUNDRY_VOICE_AGENT_MODEL") or "gpt-realtime"
-agent_name = os.environ.get("FOUNDRY_VOICE_AGENT_NAME") or "MyVoiceAgent"
+agent_name = sample_agent_name("sample-voice-agent")
 
 with (
     DefaultAzureCredential() as credential,
-    AIProjectClient(endpoint=endpoint, credential=credential, allow_preview=True) as project_client,
+    AIProjectClient(endpoint=endpoint, credential=credential) as project_client,
 ):
+    require_new_agent(project_client, agent_name)
     created_versions = []
     try:
         definition = VoiceAgentDefinition(
@@ -57,7 +61,9 @@ with (
             model=model,
             instructions="You are a friendly voice assistant. Keep replies short and natural.",
             audio=VoiceAgentAudioConfig(
-                output=VoiceAgentAudioOutputConfig(voice="en-US-AvaNeural", voice_type=VoiceType.AZURE_STANDARD),
+                output=VoiceAgentAudioOutputConfig(
+                    voice="en-US-AvaNeural", voice_type=VoiceType.AZURE_STANDARD
+                ),
             ),
             output_modalities=[VoiceOutputModality.AUDIO],
             # Persist conversations so the transcript and audio can be read back later
@@ -65,15 +71,19 @@ with (
             store=True,
         )
 
-        created_version = project_client.agents.create_version(agent_name=agent_name, definition=definition)
+        created_version = project_client.agents.create_version(
+            agent_name=agent_name, definition=definition
+        )
         created_versions.append(created_version)
         print(f"Created voice agent '{agent_name}', version: {created_version.version}")
 
         agent = project_client.agents.get(agent_name=agent_name)
         print(f"Retrieved voice agent: {agent.name} (state={agent.state})")
 
-        print("Voice agents in this project:")
-        for item in project_client.agents.list(kind=AgentKind.VOICE):
+        print("Voice agents in this project (up to five):")
+        for item in islice(
+            project_client.agents.list(kind=AgentKind.VOICE, limit=5), 5
+        ):
             print(f"  - {item.name}")
 
         # Each update produces a new immutable version.
@@ -99,5 +109,7 @@ with (
         print("Enabled voice agent")
     finally:
         for version in reversed(created_versions):
-            project_client.agents.delete_version(agent_name=agent_name, agent_version=version.version)
+            project_client.agents.delete_version(
+                agent_name=agent_name, agent_version=version.version
+            )
             print(f"Deleted voice agent version: {version.version}")

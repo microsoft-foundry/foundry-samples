@@ -19,7 +19,7 @@ services:
           version: '2026-03-17'
         sku:
           name: GlobalStandard
-          capacity: 30
+          capacity: 250
   aisearch-conn:
     host: azure.ai.connection
     uses:

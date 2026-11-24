@@ -15,6 +15,7 @@ from azure.ai.agentserver.invocations.voice import (
     ResponseDone,
     ResponseOutputTextDelta,
 )
+from openai.types.chat import ChatCompletion
 from starlette.testclient import TestClient
 
 from agent_logic import Conversation, ForegroundBackgroundAgent, Turn, text_chunks
@@ -27,21 +28,41 @@ from task_store import TaskStatus
 def tool(name: str, **arguments: Any) -> Any:
     if name == "respond_directly":
         arguments.setdefault("delivered_task_ids", [])
-    return SimpleNamespace(
-        choices=[
-            SimpleNamespace(
-                message=SimpleNamespace(
-                    tool_calls=[
-                        SimpleNamespace(
-                            function=SimpleNamespace(
-                                name=name,
-                                arguments=json.dumps(arguments),
-                            )
-                        )
-                    ],
-                )
-            )
-        ]
+    return chat_reply(
+        None,
+        finish_reason="tool_calls",
+        tool_calls=[
+            {
+                "id": f"call_{uuid.uuid4().hex}",
+                "type": "function",
+                "function": {"name": name, "arguments": json.dumps(arguments)},
+            }
+        ],
+    )
+
+
+def chat_reply(text: str | None, *, finish_reason: str = "stop", **fields: Any) -> Any:
+    return ChatCompletion.model_validate(
+        {
+            "id": "chat_offline",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "test",
+            "choices": [
+                {
+                    "index": 0,
+                    "finish_reason": finish_reason,
+                    "message": {"role": "assistant", "content": text, **fields},
+                }
+            ],
+        }
+    )
+
+
+def presentation_reply(text: str, *, result_conveyed: bool = True, **fields: Any) -> Any:
+    return chat_reply(
+        json.dumps({"message": text, "result_conveyed": result_conveyed}, ensure_ascii=False),
+        **fields,
     )
 
 
@@ -645,14 +666,16 @@ async def test_result_completed_during_router_is_delivered_once(route: str) -> N
             return tool(route, message="Checking.")
         return tool(route, task_id=task.task_id, ack_message="Checking.")
 
-    chat = Chat(finish_during_routing, tool("respond_directly", message="You're welcome."))
+    chat = Chat(
+        finish_during_routing,
+        *([presentation_reply("Use OS2 on panel 1.")] if route != "respond_directly" else []),
+        tool("respond_directly", message="You're welcome."),
+    )
     agent = ForegroundBackgroundAgent(chat, Responses(), "test")
     turn = Turn("r_finished_during_router")
     chunks = [chunk async for chunk in agent.respond(conversation, turn, "Status?")]
     expected = (
-        "Checking.\n\nUse OS2 on panel 1."
-        if route == "respond_directly"
-        else "Use OS2 on panel 1."
+        "Checking.\n\nUse OS2 on panel 1." if route == "respond_directly" else "Use OS2 on panel 1."
     )
     assert "".join(chunks) == expected
     assert turn.delivered_task_ids == {task.task_id}
@@ -670,9 +693,10 @@ async def test_result_completed_during_router_is_delivered_once(route: str) -> N
     await session.send(ResponseDone(response_id=turn.response_id))
     assert task.status is TaskStatus.DELIVERED
     next_turn = Turn("r_after_delivery")
-    assert "".join(
-        [chunk async for chunk in agent.respond(conversation, next_turn, "Thanks")]
-    ) == "You're welcome."
+    assert (
+        "".join([chunk async for chunk in agent.respond(conversation, next_turn, "Thanks")])
+        == "You're welcome."
+    )
     assert not next_turn.delivered_task_ids
 
 

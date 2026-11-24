@@ -2,8 +2,8 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "location": { "value": "eastus2" },
-    "gatewayLocation": { "value": "eastus2" },
+    "location": { "value": "swedencentral" },
+    "gatewayLocation": { "value": "swedencentral" },
 
     "aiServicesName": { "value": "hub" },
     "projectName": { "value": "hub-project" },
@@ -15,8 +15,6 @@
     "modelCapacity": { "value": 1 },
 
     "gatewayName": { "value": "" },
-    "publisherEmail": { "value": "noreply@example.com" },
-    "publisherName": { "value": "AI Gateway tier hub" },
     "tokensPerMinute": { "value": 100 }
   }
 }

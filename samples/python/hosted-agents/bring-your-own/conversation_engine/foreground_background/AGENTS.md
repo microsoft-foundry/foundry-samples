@@ -19,6 +19,15 @@ This is the model-backed CE counterpart to the retained Responses sample. It use
 - Validate Router delivery claims against complete result bodies in its request snapshot,
   never task-store state after model I/O. Index-only results require explicit retrieval;
   concurrent Worker completion must still use an actual result-output path.
+- Business cancellation turns acknowledge only; do not wait for or deliver Worker results
+  in that turn, including final answers preserved from already-running model calls.
+- Successful result/status retrieval uses at most one tool-free presentation request with
+  the complete body and current user request. Preserve translation/summary intent and do not
+  commit delivery for failed, empty, incomplete, refused, or interrupted presentation.
+- Presentation returns nonblank `message` text and an explicit boolean `result_conveyed`.
+  Status-only replies must leave results pending, even after a successful `response.done`.
+  Validate both fields before recording a delivery claim; do not infer delivery from lookup
+  success, nonblank speech, or text matching.
 - Response interruption leaves business Workers running within the connection. End/disconnect
   requests cooperative cancellation; shutdown retains and drains in-flight Workers before
   closing clients. Do not cancel only an executor wrapper and call that drained cleanup.

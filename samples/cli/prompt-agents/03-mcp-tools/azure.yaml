@@ -18,7 +18,7 @@ services:
           version: '2026-03-17'
         sku:
           name: GlobalStandard
-          capacity: 50
+          capacity: 250
   prompt-agent-mcp-tools:
     host: azure.ai.agent
     project: .

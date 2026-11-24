@@ -1,0 +1,229 @@
+:root {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: #1b1f24;
+  background: #f4f6f8;
+  --accent: #0f6cbd;
+  --border: #d5dbe1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.product-context {
+  margin: 0;
+  color: #5c6670;
+  font-size: 13px;
+}
+
+h1 {
+  margin: 4px 0 0;
+  font-size: 24px;
+}
+
+h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.global-status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #8a949e;
+}
+
+body[data-state="busy"] .status-dot {
+  background: #d29200;
+}
+
+body[data-state="live"] .status-dot {
+  background: #13a10e;
+}
+
+body[data-state="error"] .status-dot {
+  background: #c50f1f;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) 1fr;
+  gap: 20px;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+label.checkbox {
+  flex-direction: row;
+  align-items: center;
+  font-weight: 400;
+}
+
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+body:has(#createAgent:not(:checked)) .create-options {
+  display: none;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  font-weight: 400;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+button {
+  font: inherit;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.actions,
+.mic-controls,
+.text-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.conversation {
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+}
+
+.conversation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.level {
+  --level: 0;
+  width: 80px;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent) calc(var(--level) * 100%), #e6e9ed 0);
+}
+
+.transcript {
+  flex: 1;
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  overflow-y: auto;
+  max-height: 420px;
+}
+
+.turn {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+}
+
+.turn::before {
+  content: attr(data-role);
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #5c6670;
+}
+
+.turn.user {
+  background: #ebf3fc;
+}
+
+.turn.agent {
+  background: #f1faf1;
+}
+
+.turn.delegation {
+  background: #fff8e6;
+}
+
+.turn.system {
+  color: #5c6670;
+  font-size: 12px;
+}
+
+.turn.system::before {
+  content: none;
+}
+
+.text-form input {
+  flex: 1;
+}
+
+.events {
+  max-height: 220px;
+  overflow: auto;
+  font-size: 11px;
+  background: #f7f8fa;
+  padding: 8px;
+}
+
+@media (max-width: 800px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}

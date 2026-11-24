@@ -1,0 +1,37 @@
+version: 1
+
+sample:
+  owner: hkunkanoor
+  experiences: [azd]
+  service: planner
+  endpoints:
+    FLIGHT_AGENT_ENDPOINT: flights
+    HOTEL_AGENT_ENDPOINT: hotels
+  toolbox: toolbox.json
+
+# Web contents vary. Assert saved research/citations, not live fares or hotel names.
+tests:
+  - name: cited-unverified-trip-research
+    turns:
+      - input: >-
+          Research and save a trip for 1 traveler from SFO to SEA, departing
+          2027-01-10 and returning 2027-01-13. Arrive before
+          2027-01-11T09:00:00-08:00. Prefer refundable flight and hotel.
+          Hotel check-in 2027-01-10, check-out 2027-01-13, within 3000 meters
+          of the public landmark Seattle Convention Center Summit, Seattle.
+          Total budget USD 1200. Use both specialists' web search, cite sources
+          and mark unavailable exact-date evidence unverified. Do not book.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: "status unverified"
+          - source: assistant_text
+            type: regex
+            value: 'https?://\S+'
+          - source: assistant_text
+            type: regex
+            value: 'plan-[a-f0-9]{32}'
+    assertions:
+      - source: console_log
+        type: regex
+        value: 'A2A_PLAN_COMPLETED successful_delegations=([2-9]|[1-9][0-9]+)\b'

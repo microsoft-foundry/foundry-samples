@@ -2,10 +2,10 @@
   "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
   "type": "QuickStart",
   "itemDisplayName": "AI Gateway tier (preview) ai-gateway-tier: hub + spoke connection for the Foundry golden path",
-  "description": "AI Gateway tier (preview) hub-and-spoke module for the Microsoft Foundry golden path. main.bicep deploys a centralized AI Gateway tier (Azure API Management AIGateway SKU, 2025-09-01-preview) that fronts a Foundry model over managed identity, with a token-limit policy and a runtime key; connection.bicep attaches a consumer (spoke) project to it with an 'Admin-connected models' ModelGateway + ApiKey connection, in the same subscription or cross-subscription. An agent then references the model as <connectionName>/<modelName> via the Responses API. Release-gated preview: deploys where the AIGateway SKU is enabled (East US 2, Sweden Central).",
-  "summary": "Hub-and-spoke AI Gateway tier module for the golden path. main.bicep = Foundry account + hub project + gpt-5.4 model + AIGateway service + managed-identity provider + token-limit policy + runtime key. connection.bicep = ModelGateway ApiKey connection on an existing spoke project pointed at the hub gateway; an agent consumes it as <connectionName>/<modelName> via the Responses API.",
+  "description": "AI Gateway tier (preview) hub-and-spoke module for the Microsoft Foundry golden path. main.bicep deploys a standalone Microsoft.ApiManagement/aigateways resource (Standard SKU, 2026-11-01 parent; 2026-09-01-preview child operations) that fronts a Foundry model over managed identity, with a callable model alias, token-limit policy, and runtime key; connection.bicep attaches a consumer (spoke) project to it with an 'Admin-connected models' ModelGateway + ApiKey connection, in the same subscription or cross-subscription. An agent then references the model as <connectionName>/<modelName> via the Responses API. Release-gated preview: deploys where AI Gateway is enabled (East US 2, Sweden Central).",
+  "summary": "Hub-and-spoke AI Gateway tier module for the golden path. main.bicep = Foundry account + hub project + gpt-5.4 model + standalone AI Gateway + managed-identity provider + callable model alias + token-limit policy + runtime key. connection.bicep = ModelGateway ApiKey connection on an existing spoke project pointed at the hub gateway; an agent consumes it as <connectionName>/<modelName> via the Responses API.",
   "githubUsername": "mohammadsheraj",
-  "dateUpdated": "2026-09-01",
+  "dateUpdated": "2026-11-11",
   "environments": [
     "AzureCloud"
   ]

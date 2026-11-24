@@ -53,6 +53,34 @@ class BicepPipelineTests(unittest.TestCase):
         self.assertNotIn("internal/tools/", PIPELINE.read_text(encoding="utf-8"))
         self.assertNotIn("internal/tools/", diagnostic.read_text(encoding="utf-8"))
 
+    def test_diagnostic_agent_name_does_not_end_with_hyphen(self):
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "Bash is required for diagnostic naming checks")
+        diagnostic = ROOT / ".azure-pipelines/scripts/bicep/run-data-plane-diagnostics.sh"
+        source = diagnostic.read_text(encoding="utf-8")
+        start = source.index('agent_name="$(printf')
+        end = source.index("\nazd_env_name=", start)
+        name_assignment = source[start:end]
+
+        for account_name in (
+            "fsci2473695581bc54d5eastusf03-custom-",
+            f"{'a' * 70}---",
+        ):
+            with self.subTest(account_name=account_name):
+                result = subprocess.run(
+                    [
+                        bash,
+                        "-c",
+                        "build_id=247369558; job_attempt=1; "
+                        f"account_name={account_name!r}; {name_assignment}; "
+                        'printf "%s" "$agent_name"',
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                self.assertRegex(result.stdout, r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
+
     def test_push_and_helper_changes_select_templates_without_azure(self):
         bash = shutil.which("bash")
         self.assertIsNotNone(bash, "Bash is required for pipeline selection checks")
@@ -144,7 +172,7 @@ class BicepPipelineTests(unittest.TestCase):
                 selection = script[start:end] + 'fi\nprintf "SELECTED %s\\n" "$sample_path"\n'
                 selection = selection.replace("$(BICEP_ROOT)", SAMPLE_ROOT)
                 if stage == "live":
-                    loop = script[script.index('for deployment_file in "${deployment_files[@]}"; do'):]
+                    loop = script[script.index("failed_deployments=()"):]
                     selection += loop.replace("$(BICEP_ROOT)", SAMPLE_ROOT)
                 for path, accepted in (
                     (canonical, True),
@@ -161,7 +189,8 @@ class BicepPipelineTests(unittest.TestCase):
                         result = subprocess.run(
                             [
                                 bash, "-c",
-                                "set -euo pipefail\n" + selection.replace("${{ parameters.samplePath }}", path),
+                                "set -euo pipefail\nprimary_location=westus\nfallback_location=eastus\n"
+                                + selection.replace("${{ parameters.samplePath }}", path),
                             ],
                             cwd=repo, capture_output=True, text=True,
                         )
@@ -286,7 +315,7 @@ bash() { :; }
         bash = shutil.which("bash")
         self.assertIsNotNone(bash, "Bash is required for pipeline deployment checks")
         script = self.pipeline["stages"][2]["jobs"][0]["steps"][1]["inputs"]["inlineScript"]
-        loop = script[script.index('for deployment_file in "${deployment_files[@]}"; do'):]
+        loop = script[script.index("failed_deployments=()"):]
         loop = loop.replace("$(BICEP_ROOT)", SAMPLE_ROOT)
         stub = """
 set -euo pipefail
@@ -330,6 +359,90 @@ bicepparam_supports_location() { return 0; }
                 if expected_exit_code:
                     self.assertIn("##vso[task.logissue type=error]", result.stdout)
                     self.assertIn(f"DEPLOY {other} eastus", result.stdout)
+
+    def test_regional_retry_counts_success_and_continues_after_failures(self):
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "Bash is required for regional retry checks")
+        script = self.pipeline["stages"][2]["jobs"][0]["steps"][1]["inputs"]["inlineScript"]
+        loop = script[script.index("failed_deployments=()"):]
+        loop = loop.replace("$(BICEP_ROOT)", SAMPLE_ROOT)
+        first = f"{SAMPLE_ROOT}/01-example/main.bicep"
+        second = f"{SAMPLE_ROOT}/02-example/main.bicep"
+        stub = """
+set -euo pipefail
+primary_location="$1"
+fallback_location="$2"
+shift 2
+deployment_files=("$@")
+deploy_with_location() {
+    printf 'DEPLOY %s %s\\n' "$1" "$2"
+    if [[ "$1" == */02-example/* ]]; then return 0; fi
+    if [ "$3" = primary ]; then return 1; fi
+    return "$FALLBACK_EXIT_CODE"
+}
+bicepparam_supports_location() { return "$LOCATION_CHECK_EXIT_CODE"; }
+"""
+        for primary, fallback, alternate, fallback_exit, location_exit, expected_exit in (
+            ("westus", "eastus", "eastus", 0, 0, 0),
+            ("westus", "eastus", "eastus", 1, 0, 1),
+            ("westus", "eastus", "eastus", 0, 1, 1),
+            ("westus", "westus", "eastus", 0, 0, 0),
+            ("eastus", "eastus", "swedencentral", 0, 0, 0),
+        ):
+            with self.subTest(primary=primary, fallback=fallback,
+                              fallback_exit=fallback_exit, location_exit=location_exit):
+                result = subprocess.run(
+                    [bash, "-c", stub + loop, "bicep-ci", primary, fallback, first, second],
+                    cwd=ROOT,
+                    env={**os.environ, "FALLBACK_EXIT_CODE": str(fallback_exit),
+                         "LOCATION_CHECK_EXIT_CODE": str(location_exit)},
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(expected_exit, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(1, result.stdout.count(f"DEPLOY {first} {primary}\n"))
+                self.assertEqual(0 if location_exit else 1,
+                                 result.stdout.count(f"DEPLOY {first} {alternate}\n"))
+                self.assertIn(f"DEPLOY {second} {primary}\n", result.stdout)
+                if expected_exit:
+                    self.assertLess(result.stdout.index(f"DEPLOY {second}"),
+                                    result.stdout.index("##vso[task.logissue type=error]"))
+                else:
+                    self.assertNotIn("##vso[task.logissue type=error]", result.stdout)
+
+    def test_diagnostic_failure_returns_to_regional_retry(self):
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "Bash is required for diagnostic retry checks")
+        script = self.pipeline["stages"][2]["jobs"][0]["steps"][1]["inputs"]["inlineScript"]
+        start = script.index('if ! AZURE_SUBSCRIPTION_ID=')
+        end = script.index("bicepparam_supports_location() {", start)
+        diagnostic = script[start:end].replace("$(AZURE_SUBSCRIPTION_ID)", "test-subscription")
+        loop = script[script.index("failed_deployments=()"):]
+        loop = loop.replace("$(BICEP_ROOT)", SAMPLE_ROOT)
+        stub = """
+set -euo pipefail
+primary_location=westus
+fallback_location=eastus
+deployment_files=(example/main.bicep)
+bash() {
+    printf 'DIAGNOSTICS %s\\n' "$3"
+    if [ "$3" = westus ]; then
+        echo '##vso[task.logissue type=error]Diagnostic failure.'
+        return 1
+    fi
+}
+bicepparam_supports_location() { return 0; }
+deploy_with_location() {
+    local deployment_file="$1" location="$2" deployment_name=example rg_name=ci-rg
+"""
+        result = subprocess.run(
+            [bash, "-c", stub + diagnostic + loop],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("DIAGNOSTICS westus\n", result.stdout)
+        self.assertIn("DIAGNOSTICS eastus\n", result.stdout)
+        self.assertIn("##vso[task.logissue type=warning]Diagnostic failure.", result.stdout)
+        self.assertNotIn("##vso[task.logissue type=error]", result.stdout)
 
 
 if __name__ == "__main__":
