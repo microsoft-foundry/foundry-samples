@@ -1,0 +1,2 @@
+build: "npm ci --registry=https://registry.npmjs.org/"
+validate: "npm run typecheck && npm test && npm run build"
