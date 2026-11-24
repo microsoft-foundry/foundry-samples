@@ -19,7 +19,25 @@ const toolPartSchema = z
   })
   .passthrough();
 
-const messagePartSchema = z.union([textPartSchema, toolPartSchema]);
+const reasoningPartSchema = z
+  .object({
+    type: z.literal("reasoning"),
+    text: z.string().max(maxInvocationBodyBytes),
+  })
+  .passthrough();
+
+const stepStartPartSchema = z
+  .object({
+    type: z.literal("step-start"),
+  })
+  .passthrough();
+
+const messagePartSchema = z.union([
+  textPartSchema,
+  toolPartSchema,
+  reasoningPartSchema,
+  stepStartPartSchema,
+]);
 
 const chatRequestSchema = z
   .object({
