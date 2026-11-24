@@ -45,6 +45,7 @@ class DefaultTelemetryTests(unittest.TestCase):
             timeout=60,
         )
         self.assertEqual(result.returncode, 0, result.stderr[-3000:])
+        self.assertEqual(result.stderr.count("Published report report-v1.md"), 1)
         summaries = [
             json.loads(line)
             for line in result.stdout.splitlines()
@@ -53,6 +54,7 @@ class DefaultTelemetryTests(unittest.TestCase):
         self.assertEqual(len(summaries), 1, result.stdout[-3000:])
         summary = summaries[0]
         self.assertTrue(summary["telemetry_enabled"])
+        self.assertEqual(summary["publication_log_count"], 1)
         self.assertEqual(summary["publication_span_count"], 1)
         self.assertEqual(summary["message_content_captured"], setting is None)
         self.assertEqual(summary["tool_content_captured"], setting is None)

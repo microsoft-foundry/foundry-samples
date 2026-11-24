@@ -115,14 +115,16 @@ def main() -> None:
         assert (marker in material) == capture_content
         assert (user_marker in material) == capture_content
         assert marker not in "\n".join(handler.messages)
-        assert any(
+        publication_log_count = sum(
             "Published report report-v1.md" in message for message in handler.messages
         )
+        assert publication_log_count == 1, publication_log_count
         assert sum(span.name.endswith("publish_report") for span in spans) == 1
         print(
             json.dumps(
                 {
                     "telemetry_enabled": True,
+                    "publication_log_count": publication_log_count,
                     "publication_span_count": 1,
                     "message_content_captured": user_marker in material,
                     "tool_content_captured": marker in material,

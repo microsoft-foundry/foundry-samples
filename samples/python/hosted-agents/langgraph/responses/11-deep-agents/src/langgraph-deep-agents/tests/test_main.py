@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import io
+import logging
 import os
 import sys
 import unittest
+from contextlib import ExitStack
 from itertools import product
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -71,9 +74,60 @@ class BlobToolWiringTests(unittest.TestCase):
 
 
 class BlobCredentialTests(unittest.IsolatedAsyncioTestCase):
+    async def test_startup_info_survives_a_full_hosted_console_tail(self) -> None:
+        console = io.StringIO()
+        root = logging.getLogger()
+        core = logging.getLogger("azure.ai.agentserver.core")
+        identity = logging.getLogger("azure.identity")
+        token = logging.getLogger("azure.identity.aio._internal.get_token_mixin")
+
+        async def run_host(**_kwargs: int) -> None:
+            for _ in range(150):
+                core.info("Foundry state read succeeded")
+                token.info("Managed identity token acquired")
+            core.warning("Foundry state read failed")
+
+        with ExitStack() as stack:
+            for logger in (root, core, identity, token):
+                stack.callback(logger.setLevel, logger.level)
+                logger.setLevel(logging.NOTSET)
+            stack.enter_context(patch.object(root, "handlers", []))
+            stack.enter_context(patch("sys.stderr", console))
+            checkpoint = MagicMock()
+            checkpoint.__aenter__ = AsyncMock()
+            checkpoint.__aexit__ = AsyncMock()
+            stack.enter_context(
+                patch.object(main, "FoundryCheckpointSaver", return_value=checkpoint)
+            )
+            for name in (
+                "DefaultAzureCredential",
+                "build_chat_model",
+                "build_agent",
+                "create_report_export_tool",
+            ):
+                stack.enter_context(patch.object(main, name))
+            stack.enter_context(
+                patch.object(main, "load_tools", new=AsyncMock(return_value=[]))
+            )
+            host = stack.enter_context(patch.object(main, "ResponsesHostServer"))
+            host.return_value.run_async = run_host
+            stack.enter_context(patch.dict(os.environ))
+            await main.main()
+
+        tail = "\n".join(console.getvalue().splitlines()[-300:])
+        startup = "Starting Deep Agents host with Entra-authenticated report downloads"
+        self.assertEqual(
+            tail.count(startup),
+            1,
+        )
+        self.assertEqual(tail.count("Foundry state read failed"), 1)
+
     async def test_report_credential_is_scoped_to_host_success_and_failure(
         self,
     ) -> None:
+        for name in ("azure.ai.agentserver.core", "azure.identity"):
+            logger = logging.getLogger(name)
+            self.addCleanup(logger.setLevel, logger.level)
         for failure, content_capture in product((False, True), (None, "false")):
             with self.subTest(failure=failure, content_capture=content_capture):
                 credential_scope = MagicMock()
