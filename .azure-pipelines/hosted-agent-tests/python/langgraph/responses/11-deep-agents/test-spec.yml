@@ -29,6 +29,9 @@ tests:
           - source: assistant_text
             type: regex
             value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/report-v1\.md'
+          - source: assistant_text
+            type: regex
+            value: '\b[0-9a-fA-F]{64}\b'
       - input: Read the saved /report-v1.md and wait for its contents. In a separate tool round, use write_file with that full unchanged report text as content to create /report-v2.md; do not create an empty file. After the copy succeeds, use edit_file to add a section headed 'Recovery Limitations' only to /report-v2.md while preserving its findings and citations. Do not repeat the research or modify /report-v1.md. Call publish_report with report_name='report-v2.md'. In your final reply, mention 'Recovery Limitations' and give me its unsigned Blob URL and SHA256 returned by that tool. Explain that downloading requires my own Microsoft Entra identity and Blob read permission. Do not construct a URL or issue a SAS.
         assertions:
           - source: assistant_text
@@ -51,6 +54,9 @@ tests:
           - source: assistant_text
             type: regex
             value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/report-v2\.md'
+          - source: assistant_text
+            type: regex
+            value: '\b[0-9a-fA-F]{64}\b'
       - input: Read both /report-v1.md and /report-v2.md using read_file, and confirm that only report-v2.md includes the added 'Recovery Limitations' section. Return the two existing Blob URLs and SHA256 digests labeled report-v1.md and report-v2.md. Do not edit the files or publish them again.
         assertions:
           - source: raw
@@ -68,6 +74,10 @@ tests:
           - source: assistant_text
             type: regex
             value: 'https://[a-z0-9]+\.blob\.core\.windows\.net/[^\s]+/report-v2\.md'
+          - source: assistant_text
+            type: regex
+            value: '\b[0-9a-fA-F]{64}\b'
+            min_matches: 2
     assertions:
       - source: console_log
         type: contains
