@@ -12,7 +12,7 @@ Microsoft has no responsibility to you or others with respect to any of these sa
 
 A TypeScript Hosted Agent that uses the [Vercel AI SDK](https://ai-sdk.dev/) for model streaming and tool calling, then returns the AI SDK UI-message stream over the Foundry **Invocations** protocol.
 
-The sample uses a Foundry project model through the OpenAI Chat Completions API. Its server-side `estimateSubscription` tool calculates a deterministic example quote. A local Next.js chat UI demonstrates the AI SDK client; Foundry hosts the agent container, not a general-purpose website.
+The sample uses a Foundry project model through the OpenAI Responses API. A small fetch wrapper adds the `type: "message"` field that Foundry requires on input messages. Its server-side `estimateSubscription` tool calculates a deterministic example quote. A local Next.js chat UI demonstrates the AI SDK client; Foundry hosts the agent container, not a general-purpose website.
 
 ## Scenario
 

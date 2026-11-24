@@ -4,26 +4,47 @@ import { createOpenAI } from "@ai-sdk/openai";
 const tokenScope = "https://ai.azure.com/.default";
 let credential: DefaultAzureCredential | undefined;
 
-type FoundryChatModelOptions = {
+type FoundryModelOptions = {
   endpoint: string;
   deployment: string;
   apiKey: string | (() => Promise<string>);
   fetch?: typeof globalThis.fetch;
 };
 
-export function createFoundryChatModel({
+// Foundry Responses requires `type` on every input item, but the AI SDK omits
+// `type: "message"` on role-based messages.
+export function withMessageTypes(
+  baseFetch: typeof globalThis.fetch = globalThis.fetch,
+): typeof globalThis.fetch {
+  return async (input, init) => {
+    if (typeof init?.body === "string") {
+      const body = JSON.parse(init.body) as { input?: unknown };
+      if (Array.isArray(body.input)) {
+        body.input = body.input.map((item: unknown) =>
+          item && typeof item === "object" && "role" in item && !("type" in item)
+            ? { type: "message", ...item }
+            : item,
+        );
+        init = { ...init, body: JSON.stringify(body) };
+      }
+    }
+    return baseFetch(input, init);
+  };
+}
+
+export function createFoundryResponsesModel({
   endpoint,
   deployment,
   apiKey,
   fetch,
-}: FoundryChatModelOptions) {
+}: FoundryModelOptions) {
   const provider = createOpenAI({
     baseURL: `${endpoint.replace(/\/+$/, "")}/openai/v1`,
     apiKey,
-    fetch,
+    fetch: withMessageTypes(fetch),
   });
 
-  return provider.chat(deployment);
+  return provider.responses(deployment);
 }
 
 export function getFoundryModel() {
@@ -37,7 +58,7 @@ export function getFoundryModel() {
   }
 
   const tokenCredential = (credential ??= new DefaultAzureCredential());
-  return createFoundryChatModel({
+  return createFoundryResponsesModel({
     endpoint,
     deployment,
     apiKey: async () => {
