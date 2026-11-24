@@ -87,8 +87,13 @@ const simpleMessageSchema = z
   .passthrough()
   .refine(({ message, input }) => Boolean(message || input));
 
+// "ui" requests come from the AI SDK `useChat` client and receive a UI message
+// stream; "text" requests (plain text, `message`, or `input`) receive simple
+// token events that generic Invocations clients, such as the Foundry playground, render.
+export type InvocationFormat = "ui" | "text";
+
 export type ParsedInvocation =
-  | { success: true; messages: UIMessage[] }
+  | { success: true; messages: UIMessage[]; format: InvocationFormat }
   | { success: false; error: string };
 
 function isTextPart(
@@ -116,7 +121,7 @@ export function parseInvocation(value: unknown): ParsedInvocation {
       .max(maxMessageCharacters)
       .safeParse(value);
     return parsedText.success
-      ? { success: true, messages: singleUserMessage(parsedText.data) }
+      ? { success: true, messages: singleUserMessage(parsedText.data), format: "text" }
       : { success: false, error: "Provide a non-empty message of at most 8000 characters." };
   }
 
@@ -138,7 +143,7 @@ export function parseInvocation(value: unknown): ParsedInvocation {
       }))
       .filter((message) => message.parts.length > 0);
 
-    return { success: true, messages };
+    return { success: true, messages, format: "ui" };
   }
 
   const parsed = simpleMessageSchema.safeParse(value);
@@ -148,6 +153,29 @@ export function parseInvocation(value: unknown): ParsedInvocation {
 
   const text = parsed.data.message ?? parsed.data.input;
   return text
-    ? { success: true, messages: singleUserMessage(text) }
+    ? { success: true, messages: singleUserMessage(text), format: "text" }
     : { success: false, error: 'Provide a "message" or "input" string.' };
+}
+
+export function toTokenEventStream(textStream: AsyncIterable<string>) {
+  const encoder = new TextEncoder();
+  const event = (data: unknown) => encoder.encode(`data: ${JSON.stringify(data)}\n\n`);
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let fullText = "";
+      try {
+        for await (const delta of textStream) {
+          fullText += delta;
+          controller.enqueue(event({ type: "token", content: delta }));
+        }
+        controller.enqueue(event({ type: "done", full_text: fullText }));
+      } catch (error) {
+        console.error("Invocation failed", error);
+        controller.enqueue(event({ type: "error", message: "The agent could not complete the request." }));
+      } finally {
+        controller.close();
+      }
+    },
+  });
 }

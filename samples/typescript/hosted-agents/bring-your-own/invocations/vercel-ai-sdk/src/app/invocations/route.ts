@@ -8,6 +8,7 @@ import { z } from "zod";
 import {
   maxInvocationBodyBytes,
   parseInvocation,
+  toTokenEventStream,
 } from "@/lib/invocation";
 import { getFoundryModel } from "@/lib/foundry-model";
 import { calculateQuote } from "@/lib/quote";
@@ -92,5 +93,14 @@ export async function POST(request: Request) {
     stopWhen: stepCountIs(3),
   });
 
-  return result.toUIMessageStreamResponse();
+  if (invocation.format === "ui") {
+    return result.toUIMessageStreamResponse();
+  }
+
+  return new Response(toTokenEventStream(result.textStream), {
+    headers: {
+      "content-type": "text/event-stream",
+      "cache-control": "no-cache",
+    },
+  });
 }
