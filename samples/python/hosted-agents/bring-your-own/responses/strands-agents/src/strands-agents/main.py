@@ -105,7 +105,8 @@ async def handle_response(
     _cancellation_signal: asyncio.Event,
 ):
     user_message = (await context.get_input_text() or "").strip() or "What can you help me with?"
-    agent = _build_agent(await context.get_history())
+    history = await context.get_history()
+    agent = await asyncio.to_thread(_build_agent, history)
 
     async def stream_text():
         logged_tool_uses: set[str] = set()
@@ -122,7 +123,7 @@ async def handle_response(
             logger.exception("Strands agent run failed")
             yield "Sorry, the agent hit an error while answering. Check the agent logs for details."
         finally:
-            agent.cleanup()
+            await asyncio.to_thread(agent.cleanup)
 
     return TextResponse(context, request, text=stream_text())
 
