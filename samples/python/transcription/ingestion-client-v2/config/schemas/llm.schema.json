@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Ingestion Client v2 - LLM Speech config",
+  "description": "Config for files uploaded to audio-input/llm/. LLM Speech (enhanced) transcription/translation.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "locales": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional locale hints. Empty [] = multilingual auto-detect (recommended for LLM Speech)."
+    },
+    "diarization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "maxSpeakers": { "type": "integer", "minimum": 2, "maximum": 35 }
+      }
+    },
+    "profanityFilterMode": {
+      "enum": ["None", "Masked", "Removed", "Tags"]
+    },
+    "channels": {
+      "type": "array",
+      "items": { "type": "integer", "enum": [0, 1] }
+    },
+    "llm": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "LLM Speech (enhancedMode) options.",
+      "properties": {
+        "task": {
+          "description": "transcribe (same language) or translate (to targetLanguage).",
+          "enum": ["transcribe", "translate"]
+        },
+        "targetLanguage": {
+          "description": "Target language code for translate.",
+          "enum": ["", "de", "en", "es", "fr", "it", "ja", "ko", "pt", "zh"]
+        },
+        "prompt": {
+          "type": "array",
+          "description": "Prompt lines to guide output style (max 4096 chars total). e.g. 'Output must be in lexical format.'",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}
