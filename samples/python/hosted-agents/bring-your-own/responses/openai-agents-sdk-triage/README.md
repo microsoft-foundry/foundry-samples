@@ -66,8 +66,15 @@ mkdir support-triage && cd support-triage
 azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/bring-your-own/responses/openai-agents-sdk-triage/azure.yaml
 ```
 
-Follow the prompts to select a project and model deployment. If reusing an
-existing deployment with a different name from the manifest, set it explicitly:
+Follow the prompts to select a project and model deployment. Always set the
+deployment name explicitly: provisioning does not necessarily populate this
+environment value. For a new project using the manifest's default deployment:
+
+```bash
+azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME gpt-5.4-mini
+```
+
+For an existing deployment or a custom deployment name, use its name instead:
 
 ```bash
 azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME "<deployment-name>"
