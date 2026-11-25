@@ -101,7 +101,8 @@ export async function runWorker(
   const agent = dependencies.runAgent ?? runOpenCode;
   const existing = await github.findPullRequest(issueNumber, signal);
   if (existing) {
-    if ((await github.getBranchCommit(issueNumber, signal))?.sha !== existing.headSha) {
+    const branch = await github.getBranchCommit(issueNumber, signal);
+    if (branch ? branch.sha !== existing.headSha : existing.state !== "closed") {
       throw new Error(`The branch for ${existing.url} differs from its PR head; review it before retrying.`);
     }
     return { status: "existing", pullRequest: existing };

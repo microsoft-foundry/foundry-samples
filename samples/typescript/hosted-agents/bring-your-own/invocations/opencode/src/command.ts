@@ -39,7 +39,7 @@ export async function runCommand(
         process.kill(-child.pid, "SIGKILL");
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ESRCH") {
-          console.error("Could not terminate child process group:", error);
+          reject(new Error(`Could not terminate the ${command} process group.`, { cause: error }));
         }
       }
     };
@@ -65,6 +65,7 @@ export async function runCommand(
 
     let spawnError: Error | undefined;
     child.on("error", (error) => { spawnError = error; });
+    child.on("exit", terminate);
     child.on("close", (code, signal) => {
       options.signal.removeEventListener("abort", terminate);
       stdout += stdoutDecoder.end();

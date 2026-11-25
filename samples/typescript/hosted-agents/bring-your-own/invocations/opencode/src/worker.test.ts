@@ -230,6 +230,57 @@ test("recovers a pushed branch after PR creation fails without rerunning OpenCod
   assert.equal(fixture.github.createCalls, 2);
 });
 
+test("returns a closed PR when its head branch has been deleted", async (t) => {
+  const fixture = await setup(t);
+  fixture.github.pullRequest = {
+    number: 42,
+    state: "closed",
+    draft: false,
+    headSha: "a".repeat(40),
+    url: "https://github.com/example/seat-billing/pull/42",
+  };
+  const result = await runWorker(settings, 7, new AbortController().signal, () => {}, {
+    github: fixture.github,
+    runAgent: async () => { throw new Error("OpenCode should not run for an existing PR"); },
+  });
+  assert.deepEqual(result, { status: "existing", pullRequest: fixture.github.pullRequest });
+  assert.equal(fixture.github.createCalls, 0);
+});
+
+test("rejects an open PR whose head branch is missing", async (t) => {
+  const fixture = await setup(t);
+  fixture.github.pullRequest = {
+    number: 42,
+    state: "open",
+    draft: true,
+    headSha: "a".repeat(40),
+    url: "https://github.com/example/seat-billing/pull/42",
+  };
+  await assert.rejects(runWorker(settings, 7, new AbortController().signal, () => {}, {
+    github: fixture.github,
+  }), /differs from its PR head/);
+  assert.equal(fixture.github.createCalls, 0);
+});
+
+test("rejects a closed PR whose existing head branch has moved", async (t) => {
+  const fixture = await setup(t);
+  await fixture.git(["push", fixture.remote, `HEAD:refs/heads/${issueBranch(7)}`], fixture.work);
+  const commit = await fixture.github.getBranchCommit(7);
+  assert.ok(commit);
+  fixture.github.pullRequest = {
+    number: 42,
+    state: "closed",
+    draft: false,
+    headSha: commit.sha,
+    url: "https://github.com/example/seat-billing/pull/42",
+  };
+  fixture.github.moved = true;
+  await assert.rejects(runWorker(settings, 7, new AbortController().signal, () => {}, {
+    github: fixture.github,
+  }), /differs from its PR head/);
+  assert.equal(fixture.github.createCalls, 0);
+});
+
 test("retests a changed recovery branch before opening a PR", async (t) => {
   const fixture = await setup(t);
   fixture.github.failCreate = true;

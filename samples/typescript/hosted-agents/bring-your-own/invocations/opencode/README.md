@@ -27,7 +27,7 @@ headlessly; model shell, web, and interactive approval tools are disabled.
 
 ## Prerequisites
 
-- Node.js 26.4.0 or later, Git, and npm.
+- A Linux or macOS shell (or WSL on Windows), Node.js 26.4.0 or later, Git, and npm.
 - A Foundry project with a tool-capable model deployment and an identity authorized to use it.
 - The [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
   and its Foundry agents extension for deployment.
@@ -132,6 +132,9 @@ demonstration. Clearing the local azd value does not remove it from an existing 
   HTTP 429. Jobs time out after 10 minutes and are canceled when the client disconnects.
 - Each job uses a fresh temporary clone and deletes it afterward; workspace changes and OpenCode
   session history do **not** persist between invocations, including within a client session.
+- Subprocesses run in separate process groups. Remaining group members are terminated when a
+  command exits, is canceled, or exceeds its output limit. A process that creates a new session
+  can escape that cleanup; this is not a security sandbox.
 - The sample stages the candidate tree, applies it to a clean clone for testing, and rejects a
   changed `npm test` script or tracked changes that remain after testing. It applies the patch to
   another clean clone and checks the tree hash before committing and pushing. It does not
@@ -140,8 +143,9 @@ demonstration. Clearing the local azd value does not remove it from an existing 
   branch bearing this sample's commit marker can be retested to finish opening a PR after an
   interrupted push; a branch without the marker is rejected. A create-only Git lease prevents
   overwriting a concurrently created branch, and the branch and PR head are checked around PR
-  creation and when returning an existing PR. External writers can still change a branch
-  afterward; this is not an exactly-once guarantee.
+  creation and when returning an existing PR. A closed PR is returned even if its branch was
+  deleted; an existing branch must still match the PR head. External writers can still change a
+  branch afterward; this is not an exactly-once guarantee.
 - OpenCode project-configuration discovery is disabled, a policy denies configured plugins, and
   the model is restricted to workspace file tools. The SDK can still load system-managed
   configuration and policies; review those before deployment. These controls do not isolate a

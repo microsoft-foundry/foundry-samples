@@ -74,7 +74,13 @@ function sendEvent(response: ServerResponse, event: string, value: object): void
 export function createApp(settings: Settings, worker: typeof runWorker = runWorker) {
   let busy = false;
   const server = createServer(async (request, response) => {
-    const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
+    let pathname: string;
+    try {
+      pathname = new URL(request.url ?? "/", "http://localhost").pathname;
+    } catch {
+      respond(response, 400, "Invalid request URL.");
+      return;
+    }
     if (request.method === "GET" && pathname === "/readiness") {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(JSON.stringify({ status: "ready" }));

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { request } from "node:http";
 import type { AddressInfo } from "node:net";
 import test from "node:test";
 import { loadSettings, type Settings } from "./config.js";
@@ -64,6 +65,48 @@ test("validates the request and streams a bounded one-at-a-time invocation", asy
   assert.match(events, /event: started/);
   assert.match(events, /event: progress/);
   assert.match(events, /event: complete\ndata: {"status":"no_changes"}/);
+});
+
+test("rejects a malformed request URL without interrupting an active invocation", { timeout: 10_000 }, async (t) => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  t.after(() => release());
+  let started!: () => void;
+  const running = new Promise<void>((resolve) => { started = resolve; });
+  const url = await listen(t, async () => {
+    started();
+    await gate;
+    return { status: "no_changes" };
+  });
+  const invocation = await fetch(`${url}/invocations`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: '{"issue":7}',
+  });
+  await running;
+
+  const endpoint = new URL(url);
+  const malformed = await new Promise<{ status: number | undefined; body: string }>((resolve, reject) => {
+    const req = request({
+      hostname: endpoint.hostname,
+      port: endpoint.port,
+      path: "//[",
+      signal: AbortSignal.timeout(5_000),
+    }, (response) => {
+      let body = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk: string) => { body += chunk; });
+      response.on("end", () => resolve({ status: response.statusCode, body }));
+      response.on("error", reject);
+    });
+    req.on("error", reject);
+    req.end();
+  });
+  assert.equal(malformed.status, 400);
+  assert.match(malformed.body, /Invalid request URL/);
+  assert.equal((await fetch(`${url}/readiness`)).status, 200);
+  release();
+  assert.match(await invocation.text(), /event: complete\ndata: {"status":"no_changes"}/);
 });
 
 test("emits an error event instead of a completion event on worker failure", async (t) => {
