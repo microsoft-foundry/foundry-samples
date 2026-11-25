@@ -1,0 +1,4 @@
+name: OpenCode repository-maintenance hosted agent
+description: Fix a GitHub issue with OpenCode and open a tested draft pull request.
+build: "npm ci --no-audit --no-fund"
+validate: "npx --yes --package=node@26.4.0 -c 'npm run typecheck && npm test && npm run build'"
