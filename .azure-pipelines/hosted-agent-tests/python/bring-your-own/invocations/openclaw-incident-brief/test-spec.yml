@@ -1,0 +1,36 @@
+version: 1
+
+sample:
+  owner: pranavp
+  experiences: [azd]
+
+tests:
+  - name: incident-brief-returns-handoff
+    turns:
+      - input:
+          request_id: INC-2026-42-rev1
+          updates: |
+            12:01 UTC: Checkout failures rose after release 42.
+            12:06 UTC: The team is investigating; impact and rollback ownership are unknown.
+        assertions:
+          # azd polls the Invocations GET endpoint and prints the final result.
+          - source: raw
+            type: regex
+            value: '"status"\s*:\s*"completed"'
+            min_matches: 1
+          - source: raw
+            type: regex
+            value: '"job_id"\s*:\s*"brief-[a-f0-9]+"'
+            min_matches: 1
+          - source: raw
+            type: regex
+            value: '"invocation_id"\s*:\s*"[^"]+"'
+            min_matches: 1
+          - source: raw
+            type: regex
+            value: '(?i)"brief"\s*:\s*".*checkout'
+            min_matches: 1
+          - source: raw
+            type: regex
+            value: '(?i)"brief"\s*:\s*".*(unknown|unconfirmed|not (yet )?known)'
+            min_matches: 1
