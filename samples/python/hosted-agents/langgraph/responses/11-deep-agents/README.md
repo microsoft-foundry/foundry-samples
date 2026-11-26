@@ -79,6 +79,12 @@ below. Select the Storage subscription explicitly; it can differ from Foundry's
 subscription in the same tenant. The resource creator needs Contributor, and an
 administrator needs Owner or Role Based Access Control Administrator to assign roles.
 
+| Identity | Role | Scope |
+| --- | --- | --- |
+| Local developer (the identity used by `DefaultAzureCredential`) | `Storage Blob Data Contributor` | Report container |
+| Deployed agent instance identity | `Storage Blob Data Contributor` | Report container |
+| Download-only report reader | `Storage Blob Data Reader` | Report container |
+
 ```bash
 SUBSCRIPTION_ID="<storage-subscription-id>"
 LOCATION="<azure-region>"
@@ -97,14 +103,10 @@ REPORT_CONTAINER_SCOPE="$REPORT_STORAGE_ID/blobServices/default/containers/$REPO
 az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$DEVELOPER_PRINCIPAL_ID" --assignee-principal-type User --role "Storage Blob Data Contributor" --scope "$REPORT_CONTAINER_SCOPE"
 ```
 
-With existing Storage, skip the three resource-creation commands. Grant the
-identity actually used by `DefaultAzureCredential`, not necessarily the
-administrator running the commands. For an interactive developer, find its ID
-with `az ad signed-in-user show --query id -o tsv`; for a service principal, use
-its object ID and change `--assignee-principal-type` to `ServicePrincipal`.
-The uploading identity needs only container-scoped data access; no
-`Storage Blob Delegator` role is required. Give download-only users
-`Storage Blob Data Reader` on the report container. Allow time for RBAC propagation.
+With existing Storage, skip the three resource-creation commands. For an
+interactive developer, find the object ID with `az ad signed-in-user show --query
+id -o tsv`; for a service principal, use its object ID and change
+`--assignee-principal-type` to `ServicePrincipal`. Allow time for RBAC propagation.
 For a separate download-only user, have the Storage administrator run:
 
 ```bash
@@ -131,6 +133,13 @@ $REPORT_CONTAINER_SCOPE = "$REPORT_STORAGE_ID/blobServices/default/containers/$R
 az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $DEVELOPER_PRINCIPAL_ID --assignee-principal-type User --role "Storage Blob Data Contributor" --scope $REPORT_CONTAINER_SCOPE
 ```
 
+For a separate download-only user:
+
+```powershell
+$REPORT_READER_PRINCIPAL_ID = "<download-user-object-id>"
+az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $REPORT_READER_PRINCIPAL_ID --assignee-principal-type User --role "Storage Blob Data Reader" --scope $REPORT_CONTAINER_SCOPE
+```
+
 Then provision and deploy the existing Foundry services:
 
 ```bash
@@ -148,7 +157,7 @@ azd ai agent run --no-client
 In another terminal:
 
 ```bash
-azd ai agent invoke --local "Compare the latest approaches to small language models on consumer devices and give me a download link for the report."
+azd ai agent invoke --local "Compare the latest approaches to small language models on consumer devices, publish the report, and return its Blob URL and SHA256 for Entra-authenticated download."
 ```
 
 The local server also accepts Responses requests at `http://localhost:8088/responses`.
@@ -183,7 +192,7 @@ configure these external grants. Recheck the instance principal after deployment
 wait for propagation, and then invoke:
 
 ```bash
-azd ai agent invoke "Research recent advances in small language models and give me a download link for the report."
+azd ai agent invoke "Research recent advances in small language models, publish the report, and return its Blob URL and SHA256 for Entra-authenticated download."
 ```
 
 See [Microsoft Foundry hosted agents](https://learn.microsoft.com/azure/foundry/agents/how-to/deploy-hosted-agent) for the complete deployment workflow.
@@ -197,11 +206,9 @@ before F5. The Toolkit does not grant external Storage permissions.
 
 ## Download and update reports
 
-Publication checks that the report container is private and refuses anonymous
-container access. The returned `blob_url` contains no SAS token. Opening it directly
-in a browser does not automatically authenticate. Sign in with `az login` as a
-user with `Storage Blob Data Reader` on the report container, then run the
-included downloader from `src/langgraph-deep-agents`:
+Sign in with `az login` as an authorized report reader, then run the included
+downloader from `src/langgraph-deep-agents`. Opening the Blob URL directly in a
+browser does not automatically authenticate.
 
 ```bash
 uv run --frozen python download_report.py --blob-url "<blob_url>" --sha256 "<sha256>" --output "/path/outside/repository/report-v1.md"
@@ -216,7 +223,7 @@ az storage blob download --account-name "$REPORT_STORAGE_ACCOUNT" --container-na
 ```
 
 Unlike the included downloader, the Azure CLI command does not compare SHA256;
-check the downloaded digest separately. Do not supply account keys or SAS tokens.
+check the downloaded digest separately.
 
 In the same conversation, ask the agent to read `/report-v1.md`, copy it to
 `/report-v2.md`, and make the requested edits only to that copy. Ask it to read
@@ -229,55 +236,13 @@ Publication failures leave the saved report editable and return no URL. Download
 access is evaluated using the downloader's Entra identity and current Blob RBAC,
 not possession of a link. Reports have no automatic expiry: delete your test
 exports explicitly, and remove separately created Storage resources when no
-longer needed. `azd down` does not own those resources. Do not remove shared CI
-grants just because this sample no longer requires the delegation role.
+longer needed. `azd down` does not remove those resources.
 
 ## Telemetry and logging
 
-Application diagnostics are enabled at INFO by default, including startup and
-successful report publication events. The stock `ResponsesHostServer` owns
-OpenTelemetry instrumentation and export; do not add a second LangChain
-instrumentor or Azure Monitor configuration to this host. Connect Application
-Insights to the Foundry project for hosted export; for local export, set
-`APPLICATIONINSIGHTS_CONNECTION_STRING` in your local environment. Existing OTLP
-configuration is also supported by the host.
-
-By default, traces capture user messages, model responses, and tool inputs and
-outputs. For production, review the sensitivity of this data and set
-`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false` in the environment
-(`.env` locally or the service's `env` in `azure.yaml` for deployment) to omit
-content while keeping spans. Publication logs include the report filename and
-byte count, not report bodies, credentials, or access tokens.
-
-To check content capture, span counts, and publication logging locally, run
-`uv run --frozen python tests/check_telemetry.py` from `src/langgraph-deep-agents`.
-This runs the stock host and model adapter with simulated external services. It
-does not verify delivery to Application Insights.
-
-## Validate Blob publication
-
-From `src/langgraph-deep-agents`:
-
-```bash
-uv sync --frozen
-uv run --frozen python -m unittest discover -s tests -v
-```
-
-The tests cover Entra-only downloads and digest checks, the publication tool,
-credential lifetime, unchanged researcher tools,
-report preservation, and native JSON/SSE publication success/failure. They use
-the real `FoundryCheckpointSaver` with its local filesystem State Store backend,
-including checkpoints created in the same second. SDK 1.2.12 or later is required
-for checkpoint-ID ordering; `uv.lock` includes this fix. External model and Blob
-boundaries are simulated; the original model helper and research tools are unchanged.
-
-The cloud contract checks research, publication, revision of a separate saved copy,
-and reading both versions, plus sample-owned INFO log events and absence of SAS
-parameters, using the existing test-spec schema. It does not download the files.
-For full acceptance, download both snapshots with a Blob-authorized Entra user,
-compare their digests and saved-file contents, and re-download the original Blob.
-Also verify unauthenticated requests and an Entra user without Blob data access
-are denied and create no local output. Schema/offline success is not cloud acceptance.
-CI's deployed instance needs the Blob data role; missing permission must fail,
-not be bypassed with account keys. Retain shared CI grants until the identity is
-retired and no other version or run needs them.
+Connect Application Insights to your Foundry project to view hosted traces; for
+local export, optionally set `APPLICATIONINSIGHTS_CONNECTION_STRING`. The host
+captures message and tool content in traces by default, while the sample's INFO
+logs omit report contents. For sensitive production workloads, set
+`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false` to keep spans without
+capturing content.

@@ -28,8 +28,6 @@ async def main() -> None:
     logging.basicConfig(level=logging.INFO)
     logging.getLogger("azure.ai.agentserver.core").setLevel(logging.WARNING)
     logging.getLogger("azure.identity").setLevel(logging.WARNING)
-    # In production, disable trace content capture if messages or tool data are sensitive.
-    os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true")
     async with FoundryCheckpointSaver() as checkpointer:
         tools = await load_tools()
         with DefaultAzureCredential() as credential:
