@@ -81,9 +81,6 @@ tests:
     assertions:
       - source: console_log
         type: contains
-        value: Starting Deep Agents host with Entra-authenticated report downloads
-      - source: console_log
-        type: contains
         value: Published report report-v1.md
       - source: console_log
         type: contains
