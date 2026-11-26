@@ -1,0 +1,45 @@
+# OAuth2 client credentials, with custom headers.
+# Same inputs as the Bicep sample infrastructure-setup-bicep/01-connections/model-gateway/samples/parameters-oauth2.json.
+#
+# Copy this file to terraform.tfvars and replace the YOUR-... values.
+# Set the client secret in the TF_VAR_client_secret environment variable, not in this file.
+
+project_resource_id = "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-RG/providers/Microsoft.CognitiveServices/accounts/YOUR-AI-FOUNDRY-ACCOUNT/projects/YOUR-PROJECT"
+target_url          = "YOUR-MODEL-GATEWAY-URL"
+gateway_name        = "YOUR-GATEWAY-NAME"
+connection_name     = "YOUR-CONNECTION-NAME"
+auth_type           = "OAuth2"
+is_shared_to_all    = false
+client_id           = "YOUR-CLIENT-ID"
+token_url           = "YOUR-TOKEN-URL"
+scopes              = ["YOUR-SCOPE-1", "YOUR-SCOPE-2"]
+deployment_in_path  = false
+
+static_models = [
+  {
+    name = "YOUR-DEPLOYMENT-NAME-1"
+    properties = {
+      model = {
+        name    = "YOUR-MODEL-NAME-1"
+        version = "YOUR-MODEL-VERSION-1"
+        format  = "OpenAI"
+      }
+    }
+  },
+  {
+    name = "YOUR-DEPLOYMENT-NAME-2"
+    properties = {
+      model = {
+        name    = "YOUR-MODEL-NAME-2"
+        version = "YOUR-MODEL-VERSION-2"
+        format  = "OpenAI"
+      }
+    }
+  },
+]
+
+custom_headers = {
+  "X-Environment"  = "production"
+  "X-Route-Policy" = "premium"
+  "X-Client-App"   = "foundry-agents"
+}

@@ -1,0 +1,46 @@
+# Project managed identity authentication instead of a subscription key.
+# Same inputs as the Bicep sample infrastructure-setup-bicep/01-connections/apim/samples/parameters-managed-identity-static-models.json.
+#
+# Copy this file to terraform.tfvars and replace the YOUR-... values.
+
+project_resource_id   = "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-RG/providers/Microsoft.CognitiveServices/accounts/YOUR-AI-FOUNDRY-ACCOUNT/projects/YOUR-PROJECT"
+apim_resource_id      = "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-APIM-RG/providers/Microsoft.ApiManagement/service/YOUR-APIM-SERVICE"
+api_name              = "inference"
+connection_name       = "ai-gateway"
+auth_type             = "ProjectManagedIdentity"
+is_shared_to_all      = true
+deployment_in_path    = true
+inference_api_version = "2024-10-21"
+
+static_models = [
+  {
+    name = "gpt-4o"
+    properties = {
+      model = {
+        name    = "gpt-4o"
+        version = "2024-11-20"
+        format  = "OpenAI"
+      }
+    }
+  },
+  {
+    name = "gpt-5"
+    properties = {
+      model = {
+        name    = "gpt-5"
+        version = "2025-08-07"
+        format  = "OpenAI"
+      }
+    }
+  },
+  {
+    name = "gpt-5.1"
+    properties = {
+      model = {
+        name    = "gpt-5.1"
+        version = "2025-11-13"
+        format  = "OpenAI"
+      }
+    }
+  },
+]

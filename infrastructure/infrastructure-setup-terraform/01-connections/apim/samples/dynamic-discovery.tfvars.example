@@ -1,0 +1,19 @@
+# Dynamic model discovery through the API's list and get deployment operations.
+# Same inputs as the Bicep sample infrastructure-setup-bicep/01-connections/apim/samples/parameters-dynamic-discovery.json.
+#
+# Copy this file to terraform.tfvars and replace the YOUR-... values.
+# The connection reads the API Management subscription key at apply time.
+
+project_resource_id = "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-RG/providers/Microsoft.CognitiveServices/accounts/YOUR-AI-FOUNDRY-ACCOUNT/projects/YOUR-PROJECT"
+apim_resource_id    = "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-APIM-RG/providers/Microsoft.ApiManagement/service/YOUR-APIM-SERVICE"
+api_name            = "YOUR-API-NAME"
+connection_name     = "YOUR-CONNECTION-NAME"
+auth_type           = "ApiKey"
+is_shared_to_all    = false
+deployment_in_path  = false
+
+model_discovery = {
+  list_models_endpoint = "/deployments"
+  get_model_endpoint   = "/deployments/{deploymentName}"
+  deployment_provider  = "AzureOpenAI"
+}
