@@ -601,7 +601,9 @@ class TaskCheckpointTests(unittest.IsolatedAsyncioTestCase):
         snapshot = SimpleNamespace(
             save=AsyncMock(), restore=AsyncMock(return_value=False)
         )
-        invocation_store = SimpleNamespace(put=AsyncMock())
+        invocation_store = SimpleNamespace(
+            get=AsyncMock(return_value=None), put=AsyncMock()
+        )
         expected_exception = None
         if detection_failure is not None:
             expected_exception = type(detection_failure)

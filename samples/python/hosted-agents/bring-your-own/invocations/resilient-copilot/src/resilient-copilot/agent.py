@@ -18,7 +18,11 @@ from azure.ai.agentserver.core.storage import (
     FoundryStateStore,
     FoundryStorageNotFoundError,
 )
-from azure.ai.agentserver.core.streaming import streams
+from azure.ai.agentserver.core.streaming import (
+    EventStreamClosedError,
+    EventStreamNotFoundError,
+    streams,
+)
 from azure.ai.agentserver.core.tasks import TaskContext, multi_turn_task
 
 try:
@@ -133,6 +137,27 @@ def _confirm_submitted_elicitations(state: dict[str, Any]) -> None:
     ]:
         del markers[elicitation_id]
     _sync_pending_elicitation(state)
+
+
+# Invocation status -> terminal stream frame for an already-finished turn.
+_TERMINAL_FRAMES = {"completed": "turn_complete", "cancelled": "cancelled"}
+
+
+def _finalize_controls(state: dict[str, Any], status: str) -> None:
+    """Idempotently retire the controls a terminal turn has consumed."""
+    if status == "cancelled":
+        state["input_journal"] = []
+        state["elicitations"] = {}
+        state["pending_elicitation"] = None
+        return
+    journal = _input_journal(state)
+    for record in journal:
+        if record.get("status") == "delivered":
+            record["status"] = "covered"
+    state["input_journal"] = [
+        record for record in journal if record.get("status") != "covered"
+    ]
+    _confirm_submitted_elicitations(state)
 
 
 async def _get_legacy_state_item(session_id: str) -> Any:
@@ -344,6 +369,25 @@ async def copilot_agent(ctx: TaskContext[dict]) -> None:
         if legacy_state_migrated:
             await state_store.set_item("state", state)
 
+        # A crash after the terminal record but before the framework commits
+        # the handler return re-enters this invocation. Finish it again
+        # instead of journaling and replaying an already-finished prompt.
+        prior = await _INVOCATION_STORE.get(inv_id)
+        terminal_status = (prior or {}).get("status")
+        if terminal_status in _TERMINAL_FRAMES:
+            _finalize_controls(state, terminal_status)
+            await state_store.set_item("state", state)
+            stream = await streams.get_or_create(inv_id)
+            seq = (await stream.last_cursor() or 0) + 1
+            try:
+                await stream.emit(
+                    {"sequence_number": seq, "type": _TERMINAL_FRAMES[terminal_status]}
+                )
+            except (EventStreamClosedError, EventStreamNotFoundError):
+                pass
+            await stream.close()
+            return
+
         incoming_input_id = ctx.input.get("input_id")
         incoming_mode = ctx.input.get("mode") or "enqueue"
         if incoming_input_id is not None:
@@ -433,6 +477,8 @@ async def copilot_agent(ctx: TaskContext[dict]) -> None:
             record["receipt"] = {
                 "status": "delivered",
                 "input_id": record["input_id"],
+                "invocation_id": inv_id,
+                "task_id": task_id,
             }
             await persist_state()
 
@@ -493,7 +539,12 @@ async def copilot_agent(ctx: TaskContext[dict]) -> None:
                             "status": "delivered",
                             "input_id": request.input_id,
                         }
-                    result = {**receipt, "deduplicated": True}
+                    result = {
+                        "invocation_id": inv_id,
+                        "task_id": task_id,
+                        **receipt,
+                        "deduplicated": True,
+                    }
                 else:
                     if record is None:
                         unfinished = [
@@ -784,39 +835,19 @@ async def copilot_agent(ctx: TaskContext[dict]) -> None:
         if shutting_down:
             return await ctx.exit_for_recovery()
 
-        if cancelled:
-            state["input_journal"] = []
-            state["elicitations"] = {}
-            state["pending_elicitation"] = None
-            await persist_state()
-            await _INVOCATION_STORE.put(
-                inv_id,
-                task_id=task_id,
-                framework_input_id=framework_input_id,
-                status="cancelled",
-                task_status="cancelled",
-            )
-            await emit({"type": "cancelled"})
-            await stream.close()
-            return
-
-        journal = _input_journal(state)
-        for record in journal:
-            if record.get("status") == "delivered":
-                record["status"] = "covered"
-        state["input_journal"] = [
-            record for record in journal if record.get("status") != "covered"
-        ]
-        _confirm_submitted_elicitations(state)
-        await persist_state()
+        # Record the terminal status before retiring controls: re-entry after a
+        # crash in between repeats the idempotent finalization, not the prompt.
+        terminal_status = "cancelled" if cancelled else "completed"
         await _INVOCATION_STORE.put(
             inv_id,
             task_id=task_id,
             framework_input_id=framework_input_id,
-            status="completed",
-            task_status="suspended",
+            status=terminal_status,
+            task_status="cancelled" if cancelled else "suspended",
         )
-        await emit({"type": "turn_complete"})
+        _finalize_controls(state, terminal_status)
+        await persist_state()
+        await emit({"type": _TERMINAL_FRAMES[terminal_status]})
         await stream.close()
     except Exception as exc:  # pylint: disable=broad-except
         logger.exception("copilot_agent turn failed; emitting terminal frame")

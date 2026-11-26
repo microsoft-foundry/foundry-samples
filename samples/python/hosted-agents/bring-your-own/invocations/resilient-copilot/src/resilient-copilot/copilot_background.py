@@ -83,6 +83,8 @@ class BackgroundWork:
             self.subagents.discard(str(key))
             self.refresh_required = True
         elif kind == SessionEventType.SESSION_BACKGROUND_TASKS_CHANGED:
+            # A task can start and finish between refreshes; keep the grace.
+            self.observed = True
             self.inventory_required = True
             self.refresh_required = True
         elif top and kind == SessionEventType.SESSION_IDLE:

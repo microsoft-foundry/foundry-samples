@@ -90,6 +90,15 @@ class BackgroundWorkTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(work.session_idle)
         self.assertEqual({"call"}, work.subagents)
 
+    async def test_short_lived_task_notification_keeps_idle_grace(self):
+        work = copilot_background.BackgroundWork()
+        harness, _tasks = _harness_with_tasks()
+        work.observe(_event(SessionEventType.SESSION_BACKGROUND_TASKS_CHANGED))
+        work.observe(_event(SessionEventType.SESSION_IDLE))
+        await work.refresh(harness.session)
+        self.assertFalse(work.completed())
+        self.assertIsNotNone(work.poll_delay())
+
 
 class HarnessDrainTests(unittest.IsolatedAsyncioTestCase):
     async def test_child_idle_and_error_do_not_end_the_turn(self):

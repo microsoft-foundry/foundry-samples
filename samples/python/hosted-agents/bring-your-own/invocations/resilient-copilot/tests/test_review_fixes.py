@@ -1088,6 +1088,58 @@ class AgentTaskTests(unittest.IsolatedAsyncioTestCase):
             self.invocation_store.records["invocation"]["status"], "cancelled"
         )
 
+    async def test_recovered_terminal_invocation_finalizes_without_replay(self):
+        for status, frame in (("completed", "turn_complete"), ("cancelled", "cancelled")):
+            with self.subTest(status=status):
+                QueueHarness.instances.clear()
+                invocation_store = FakeInvocationStore()
+                await invocation_store.put(
+                    "invocation",
+                    task_id="copilot-session",
+                    framework_input_id="framework-input",
+                    status=status,
+                    task_status="suspended" if status == "completed" else "cancelled",
+                )
+                state = {
+                    "input_journal": [
+                        {
+                            "input_id": "initial-input",
+                            "prompt": "initial",
+                            "mode": "enqueue",
+                            "status": "delivered",
+                        },
+                        {
+                            "input_id": "later",
+                            "prompt": "later",
+                            "mode": "enqueue",
+                            "status": "accepted",
+                        },
+                    ]
+                }
+                _, stream, state_store, _ = await asyncio.wait_for(
+                    self.run_task(
+                        context=self.context(
+                            entry_mode="recovered", native_input_id="initial-input"
+                        ),
+                        state=state,
+                        harness=QueueHarness,
+                        invocation_store=invocation_store,
+                    ),
+                    5,
+                )
+                harness = QueueHarness.instances[-1]
+                harness.start.assert_not_awaited()
+                self.assertEqual(harness.sent, [])
+                self.assertEqual(invocation_store.records["invocation"]["status"], status)
+                expected = (
+                    []
+                    if status == "cancelled"
+                    else [state["input_journal"][1]]
+                )
+                self.assertEqual(state_store.value["input_journal"], expected)
+                self.assertEqual(stream.frames[-1]["type"], frame)
+                stream.close.assert_awaited()
+
     async def test_native_input_waits_for_ready_and_is_durable_before_202(self):
         log = []
         QueueHarness.start_gate = asyncio.Event()
@@ -1128,6 +1180,8 @@ class AgentTaskTests(unittest.IsolatedAsyncioTestCase):
             QueueHarness.start_gate.set()
             result = await asyncio.wait_for(submit, 2)
             self.assertEqual(result["status"], "delivered")
+            self.assertEqual(result["invocation_id"], "invocation")
+            self.assertEqual(result["task_id"], "copilot-session")
             harness = QueueHarness.instances[-1]
             self.assertLess(log.index("state:accepted"), log.index("send:follow up"))
             self.assertLess(log.index("send:follow up"), log.index("snapshot"))
@@ -1135,6 +1189,8 @@ class AgentTaskTests(unittest.IsolatedAsyncioTestCase):
                 "session", "input-1", "follow up", "immediate"
             )
             self.assertTrue(duplicate["deduplicated"])
+            self.assertEqual(duplicate["invocation_id"], "invocation")
+            self.assertEqual(duplicate["task_id"], "copilot-session")
             with self.assertRaisesRegex(ValueError, "different prompt"):
                 await agent.submit_native_input(
                     "session", "input-1", "different", "immediate"
@@ -1212,6 +1268,8 @@ class AgentTaskTests(unittest.IsolatedAsyncioTestCase):
                 {
                     "status": "delivered",
                     "input_id": "initial-id",
+                    "invocation_id": "invocation",
+                    "task_id": "copilot-session",
                     "deduplicated": True,
                 },
             )
@@ -1936,7 +1994,11 @@ class AgentTaskTests(unittest.IsolatedAsyncioTestCase):
                     "get_or_create",
                     AsyncMock(return_value=state_store),
                 ):
-                    task = asyncio.create_task(agent.copilot_agent._fn(self.context()))
+                    task = asyncio.create_task(
+                        agent.copilot_agent._fn(
+                            self.context(invocation_id=f"invocation-{action}")
+                        )
+                    )
                     while not QueueHarness.instances:
                         await asyncio.sleep(0)
                     harness = QueueHarness.instances[-1]

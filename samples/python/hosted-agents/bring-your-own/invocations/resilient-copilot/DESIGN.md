@@ -262,6 +262,15 @@ Recovering an accepted input can repeat a delivery. Completed external actions
 need a destination idempotency key or another application-level deduplication
 mechanism. Neither a stable task ID nor a snapshot supplies exactly-once effects.
 
+A turn records its terminal `completed` or `cancelled` invocation status before
+retiring its input journal. If the process dies before the framework commits the
+handler return, re-entry sees the terminal status, repeats that idempotent
+cleanup, closes the replay stream and returns without starting Copilot or
+replaying the prompt.
+
+Native follow-up receipts carry the owning turn's `invocation_id` and `task_id`,
+so clients can poll, reconnect to or cancel the turn that received the input.
+
 ## Cancellation, shutdown and errors
 
 Explicit client cancellation winds down the current work without requesting
