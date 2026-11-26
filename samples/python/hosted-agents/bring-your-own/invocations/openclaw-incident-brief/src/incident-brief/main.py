@@ -11,10 +11,16 @@ import re
 import sys
 from contextlib import asynccontextmanager
 from datetime import timedelta
+from time import time
 from typing import Any, AsyncIterator
 
 from azure.ai.agentserver.core import get_request_context
-from azure.ai.agentserver.core.storage import FoundryStateStore, FoundryStorageConflictError
+from azure.ai.agentserver.core.storage import (
+    FoundryStateStore,
+    FoundryStorageConflictError,
+    FoundryStoragePreconditionError,
+    StateStoreItem,
+)
 from azure.ai.agentserver.core.tasks import (
     TaskCancelled,
     TaskConflictError,
@@ -37,6 +43,7 @@ set_resilient_tasks_enabled(True)
 STORE_NAME = "openclaw-incident-brief-v1"
 MAX_INPUT_LENGTH = 16_000
 MODEL_CALL_TIMEOUT_SECONDS = 60
+JOB_TIMEOUT_SECONDS = 180
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 _observers: set[asyncio.Task[None]] = set()
 
@@ -106,6 +113,8 @@ async def call_model(
         if model_call not in done:
             raise TimeoutError("The model call timed out")
         response = await model_call
+        if response.status != "completed":
+            raise ValueError(f"The model response did not complete: {response.status}")
         if not response.output_text.strip():
             raise ValueError("The model returned no text")
         return response.output_text.strip()
@@ -150,31 +159,52 @@ async def make_brief(ctx: TaskContext[dict]) -> str:
 async def set_terminal(
     store: FoundryStateStore, key: str, status: str, *, brief: str | None = None
 ) -> None:
-    current = await store.get_item(key)
-    if current is None:
-        raise RuntimeError("The incident brief reservation is missing")
-    if current.value["status"] in ("completed", "failed"):
+    while True:
+        current = await store.get_item(key)
+        if current is None:
+            raise RuntimeError("The incident brief reservation is missing")
+        if current.value["status"] in ("completed", "failed"):
+            return
+        if status == "completed" and time() >= current.created_at + JOB_TIMEOUT_SECONDS:
+            logger.warning("Incident brief exceeded its job deadline")
+            status, brief = "failed", None
+        value = {**current.value, "status": status}
+        if brief is not None:
+            value["brief"] = brief
+        elif status == "failed":
+            value["error"] = "The brief could not be prepared. Check the hosted agent logs."
+        try:
+            await store.set_item(key, value, if_match=current.etag)
+        except FoundryStoragePreconditionError:
+            continue
         return
-    value = {**current.value, "status": status}
-    if brief is not None:
-        value["brief"] = brief
-    elif status == "failed":
-        value["error"] = "The brief could not be prepared. Check the hosted agent logs."
-    await store.set_item(key, value, if_match=current.etag)
+
+
+async def get_job(store: FoundryStateStore, key: str) -> StateStoreItem | None:
+    record = await store.get_item(key)
+    if (
+        record is not None
+        and record.value["status"] == "pending"
+        and time() >= record.created_at + JOB_TIMEOUT_SECONDS
+    ):
+        logger.warning("Reconciling an expired incident brief")
+        await set_terminal(store, key, "failed")
+        record = await store.get_item(key)
+    return record
 
 
 @task(name="openclaw_incident_brief", timeout=timedelta(seconds=150))
 async def prepare_brief(ctx: TaskContext[dict]) -> None:
     key = job_key(ctx.input["session_id"], ctx.input["job_id"])
-    async with open_store() as store:
-        record = await store.get_item(key)
-        if record is None:
-            raise RuntimeError("The incident brief reservation is missing")
-        if record.value["status"] in ("completed", "failed"):
-            return
-
-        finished = False
-        try:
+    finished = False
+    try:
+        async with open_store() as store:
+            record = await get_job(store, key)
+            if record is None:
+                raise RuntimeError("The incident brief reservation is missing")
+            if record.value["status"] in ("completed", "failed"):
+                finished = True
+                return
             try:
                 brief = await make_brief(ctx)
             except TaskInterrupted:
@@ -183,9 +213,10 @@ async def prepare_brief(ctx: TaskContext[dict]) -> None:
                 raise TimeoutError("The incident brief was cancelled or timed out")
             await set_terminal(store, key, "completed", brief=brief)
             finished = True
-        finally:
-            if not finished and not ctx.shutdown.is_set():
-                logger.error("Incident brief task failed", exc_info=sys.exc_info())
+    finally:
+        if not finished and not ctx.shutdown.is_set():
+            logger.error("Incident brief task failed", exc_info=sys.exc_info())
+            async with open_store() as store:
                 await set_terminal(store, key, "failed")
 
 
@@ -238,7 +269,7 @@ async def invoke(request: Request) -> Response:
             await store.create_item(key, {"fingerprint": fingerprint, "status": "pending"})
         except FoundryStorageConflictError:
             pass
-        record = await store.get_item(key)
+        record = await get_job(store, key)
         if record is None:
             raise RuntimeError("The incident brief reservation disappeared")
         if record.value["fingerprint"] != fingerprint:
@@ -269,7 +300,7 @@ async def invoke(request: Request) -> Response:
             except TaskConflictError:
                 pass
 
-        record = await store.get_item(key)
+        record = await get_job(store, key)
         if record is None:
             raise RuntimeError("The incident brief reservation disappeared")
         return JSONResponse(
@@ -294,7 +325,7 @@ async def get_invocation(request: Request) -> Response:
         if mapping is None:
             return JSONResponse({"error": "Invocation not found"}, status_code=404)
         brief_id = mapping.value["job_id"]
-        record = await store.get_item(job_key(session_id, brief_id))
+        record = await get_job(store, job_key(session_id, brief_id))
         if record is None:
             return JSONResponse({"error": "Incident brief not found"}, status_code=404)
         response = {

@@ -148,6 +148,12 @@ an error instead of a brief.
 - State is stored with user isolation enabled and includes the hosted session.
   Recovery can repeat an interrupted model call, so this is not an
   exactly-once execution guarantee.
+- A job has a three-minute budget from its durable reservation time, including
+  recovery. If a task cannot persist its failure, the next successful status
+  check or repeated submission after that deadline marks the pending job
+  failed. This is lazy reconciliation, not an automatic notification or a
+  guarantee that storage remains available. Late model output is not accepted
+  as a completed brief.
 - A shared OpenClaw credential and session represent the same Foundry
   identity. They do **not** isolate individual OpenClaw users. Restrict who
   can use these tools and do not use this sample as a multi-tenant boundary.
