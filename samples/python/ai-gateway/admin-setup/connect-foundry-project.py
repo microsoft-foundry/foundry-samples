@@ -12,12 +12,14 @@ from azure.core.exceptions import ResourceNotFoundError
 
 from common import (
     AI_GATEWAY_MODELS_USER_ROLE_ID,
+    CONNECTION_MARKER,
     authorization_client,
     credential,
     foundry_client,
     gateway_client,
     get_gateway,
     grant_role,
+    is_sample_connection,
     runtime_base_url,
     setting,
 )
@@ -53,8 +55,11 @@ def main() -> None:
     target = runtime_base_url(gateway)
     try:
         existing = foundry.project_connections.get(resource_group, account_name, project_name, connection_name)
-        if existing.properties.target != target:
-            raise SystemExit(f"Connection '{connection_name}' already exists for another target. Choose another name.")
+        if not is_sample_connection(existing, gateway):
+            raise SystemExit(
+                f"Connection '{connection_name}' already exists and this sample didn't create it for this gateway. "
+                "Choose another name."
+            )
     except ResourceNotFoundError:
         pass
 
@@ -82,6 +87,7 @@ def main() -> None:
                 ),
                 "deploymentInPath": "false",
                 "inferenceAPIVersion": "",
+                **CONNECTION_MARKER,
                 "models": json.dumps(
                     [
                         {

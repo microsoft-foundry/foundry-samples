@@ -1,8 +1,8 @@
 """Delete what the admin-setup scripts created, and nothing else.
 
-Removes the project connection if it points at this gateway, the role assignments these scripts granted, and the
-runtime key, alias, model registration, and model provider that this sample created. Deletes the gateway itself only
-if create-gateway.py created it.
+Removes the project connection if this sample created it for this gateway, the role assignments these scripts granted,
+and the runtime key, alias, model registration, and model provider that this sample created. Deletes the gateway itself
+only if create-gateway.py created it.
 """
 
 import argparse
@@ -20,9 +20,9 @@ from common import (
     credential,
     foundry_client,
     gateway_client,
+    is_sample_connection,
     optional_setting,
     revoke_role,
-    runtime_base_url,
     setting,
 )
 
@@ -48,7 +48,7 @@ def main() -> None:
 
     print("This deletes:")
     if project_name:
-        print(f"- The project connection in '{project_name}', if it points at this gateway, and the project's gateway role")
+        print(f"- The project connection in '{project_name}', if this sample created it, and the project's gateway role")
     print(f"- The gateway identity's Foundry User role on '{account_name}', if this sample granted it")
     if owns_gateway:
         print(f"- Gateway '{gateway_name}' and everything in it")
@@ -65,11 +65,11 @@ def main() -> None:
         connection_name = setting("AI_GATEWAY_CONNECTION_NAME", "ai-gateway")
         try:
             connection = foundry.project_connections.get(resource_group, account_name, project_name, connection_name)
-            if connection.properties.target == runtime_base_url(gateway):
+            if is_sample_connection(connection, gateway):
                 foundry.project_connections.delete(resource_group, account_name, project_name, connection_name)
                 print(f"Deleted connection '{connection_name}'.")
             else:
-                print(f"Skipped connection '{connection_name}': it points at another target.")
+                print(f"Skipped connection '{connection_name}': this sample didn't create it for this gateway.")
         except ResourceNotFoundError:
             print(f"Connection '{connection_name}' wasn't found.")
         project = foundry.projects.get(resource_group, account_name, project_name)

@@ -24,6 +24,8 @@ load_dotenv(Path(__file__).with_name(".env"), override=False)
 SAMPLE_MARKER = "AI Gateway admin-setup sample"
 SAMPLE_DESCRIPTION = f"Created by the {SAMPLE_MARKER}."
 SAMPLE_TAGS = {"created-by": "foundry-samples-ai-gateway-admin-setup"}
+# The project connection carries the marker in its metadata.
+CONNECTION_MARKER = {"createdBy": SAMPLE_TAGS["created-by"]}
 
 # Built-in role definition IDs.
 FOUNDRY_USER_ROLE_ID = "53ca6127-db72-4b80-b1b0-d745d6d5456d"
@@ -79,6 +81,13 @@ def get_gateway(client: AIGatewayMgmtClient) -> AiGatewayResource:
 def runtime_base_url(gateway: AiGatewayResource) -> str:
     # Use the hostname the service assigned; don't build it from the gateway name.
     return f"https://{gateway.properties.frontend.default_hostname}/default/models/openai/v1"
+
+
+def is_sample_connection(connection, gateway: AiGatewayResource) -> bool:
+    """Whether this sample created the project connection, for this gateway."""
+    metadata = connection.properties.metadata or {}
+    owned = all(metadata.get(key) == value for key, value in CONNECTION_MARKER.items())
+    return owned and connection.properties.target == runtime_base_url(gateway)
 
 
 def role_assignment_name(scope: str, principal_id: str, role_id: str) -> str:

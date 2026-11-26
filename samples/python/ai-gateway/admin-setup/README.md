@@ -135,7 +135,8 @@ python connect-foundry-project.py
 
 The script grants the project's managed identity the **AI Gateway Models User** role on the gateway's default
 workspace. It then creates a project connection that signs in to the gateway with that identity. No gateway key is
-stored in Foundry, and the connection isn't shared with other projects.
+stored in Foundry, and the connection isn't shared with other projects. If a connection with the same name exists but
+this sample didn't create it for this gateway, the script stops instead of changing it.
 
 ```text
 Granted AI Gateway Models User to project '<project>'.
@@ -172,9 +173,9 @@ or 404, the script retries for a few minutes.
 
 You can rerun every script. The scripts check for an existing role assignment before they grant a role, so reruns
 don't need permission to grant roles after the first run. The scripts also mark the resources they create: a tag on the
-gateway, and a description or display name on the gateway's child resources. They update only marked resources. If a
-model provider, model, or alias with the same name exists but this sample didn't create it, the script stops instead of
-changing it.
+gateway, a description or display name on the gateway's child resources, and a `createdBy` metadata entry on the
+project connection. They update only marked resources. If a model provider, model, alias, or connection with the same
+name exists but this sample didn't create it, the script stops instead of changing it.
 
 ## Clean up
 
@@ -182,10 +183,10 @@ changing it.
 python cleanup.py
 ```
 
-The script lists what it deletes and asks for confirmation. It removes the project connection if it points at this
-gateway, the role assignments that these scripts granted, and the runtime key, alias, model registration, and model
-provider that this sample created. It deletes the gateway only if `create-gateway.py` created it. It doesn't delete your
-Foundry account, deployment, or project.
+The script lists what it deletes and asks for confirmation. It removes the project connection if this sample created it
+for this gateway, the role assignments that these scripts granted, and the runtime key, alias, model registration, and
+model provider that this sample created. It deletes the gateway only if `create-gateway.py` created it. It doesn't
+delete your Foundry account, deployment, or project.
 
 ## Troubleshooting
 
