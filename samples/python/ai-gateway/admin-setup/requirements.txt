@@ -1,0 +1,6 @@
+azure-identity
+azure-mgmt-aigateway==1.0.0b1
+azure-mgmt-authorization==4.0.0
+azure-mgmt-cognitiveservices==15.0.0
+openai
+python-dotenv
