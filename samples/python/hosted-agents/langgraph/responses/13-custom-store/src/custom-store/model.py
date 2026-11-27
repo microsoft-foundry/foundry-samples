@@ -34,4 +34,6 @@ def build_chat_model() -> ChatOpenAI:
         api_key=api_key,
         use_responses_api=True,
         output_version="responses/v1",
+        # LangGraph manages message history instead of the model service.
+        store=False,
     )
