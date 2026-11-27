@@ -1,0 +1,5 @@
+name: AI Gateway Admin Setup
+description: Create an AI Gateway with the Azure management SDK, publish an existing Foundry model with a token limit, and give a Foundry project keyless access.
+
+build: "pip install -r requirements.txt"
+validate: "python -m py_compile *.py"
