@@ -1,0 +1,21 @@
+{
+  "name": "foundry-blueprint-signin-on-behalf-of-user-client",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/agent-client.js"
+  },
+  "dependencies": {
+    "@azure/identity": "4.13.1",
+    "openai": "6.36.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.17",
+    "typescript": "5.9.3"
+  }
+}

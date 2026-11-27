@@ -1,0 +1,6 @@
+name: Agent blueprint sign-in and AgentOnBehalfOfUser (TypeScript)
+description: A TypeScript client calls a prompt agent through its blueprint, which calls a protected greeting MCP tool on behalf of the user.
+build: >-
+  npm --prefix client ci && npm --prefix mcp-server ci
+validate: >-
+  npm --prefix client run build && npm --prefix mcp-server run build

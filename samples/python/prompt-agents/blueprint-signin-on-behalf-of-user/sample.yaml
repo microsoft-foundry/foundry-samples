@@ -1,0 +1,6 @@
+name: Agent blueprint sign-in and AgentOnBehalfOfUser (Python)
+description: A Python client calls a prompt agent through its blueprint, which calls a protected greeting MCP tool on behalf of the user.
+build: >-
+  python -m pip install -r client/requirements.txt -r mcp-server/requirements.txt
+validate: >-
+  python -m py_compile client/agent_client.py mcp-server/function_app.py
