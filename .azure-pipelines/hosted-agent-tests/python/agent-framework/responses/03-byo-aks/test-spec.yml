@@ -1,0 +1,19 @@
+version: 1
+
+sample:
+  owner: seanli1988
+  experiences: [azd]
+
+tests:
+  - name: byo-aks-multi-turn-response
+    turns:
+      - input: For this conversation, remember the code word QUARTZ. Reply with the word QUARTZ.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: QUARTZ
+      - input: What code word did I ask you to remember? Reply with only that word.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: QUARTZ

@@ -1,0 +1,5 @@
+.env*
+.azure
+.git
+.venv
+__pycache__

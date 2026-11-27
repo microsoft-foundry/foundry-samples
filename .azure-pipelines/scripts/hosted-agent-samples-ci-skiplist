@@ -37,3 +37,7 @@ samples/python/hosted-agents/bring-your-own/voicelive/github-copilot-responses-v
 # Requires a dedicated Claude deployment and account-scope Foundry User role;
 # the shared toolbox matrix supplies neither prerequisite.
 samples/python/hosted-agents/agent-framework/responses/25-claude-foundry-toolbox
+
+# Requires a preview-enabled Foundry project connected to a customer-managed
+# AKS cluster and a GPT-OSS model; the shared cloud matrix supplies neither.
+samples/python/hosted-agents/agent-framework/responses/03-byo-aks
