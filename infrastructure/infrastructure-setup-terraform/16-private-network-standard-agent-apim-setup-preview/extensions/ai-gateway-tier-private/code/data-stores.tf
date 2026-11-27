@@ -1,5 +1,6 @@
-## Agent data stores (Storage, Cosmos DB, AI Search): private, Entra-only.
-## Same shapes as ../../../../15a-private-network-standard-agent-setup.
+## Agent data stores (Storage, Cosmos DB, AI Search): reachable only through private
+## endpoints, and Entra ID only (shared keys and local auth disabled on every store).
+## Based on ../../../../15a-private-network-standard-agent-setup.
 ##
 resource "azurerm_storage_account" "storage" {
   name                = local.storage_account_name
@@ -11,6 +12,7 @@ resource "azurerm_storage_account" "storage" {
   account_replication_type = "ZRS"
 
   shared_access_key_enabled       = false
+  public_network_access_enabled   = false
   min_tls_version                 = "TLS1_2"
   allow_nested_items_to_be_public = false
 
@@ -61,16 +63,15 @@ resource "azapi_resource" "ai_search" {
       type = "SystemAssigned"
     }
     properties = {
-      replicaCount     = 1
-      partitionCount   = 1
-      hostingMode      = "Default"
-      semanticSearch   = "disabled"
-      disableLocalAuth = false
-      authOptions = {
-        aadOrApiKey = {
-          aadAuthFailureMode = "http401WithBearerChallenge"
-        }
-      }
+      replicaCount   = 1
+      partitionCount = 1
+      hostingMode    = "Default"
+      semanticSearch = "disabled"
+
+      # Entra ID only: no admin/query keys, so access is governed by the project
+      # identity's Search RBAC roles (foundry.tf).
+      disableLocalAuth = true
+
       publicNetworkAccess = "Disabled"
       networkRuleSet = {
         bypass = "None"

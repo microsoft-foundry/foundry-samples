@@ -54,7 +54,8 @@ classic Assistants API fails with `invalid_engine_error: Failed to resolve model
 from the Bicep samples (it's networking- and IaC-agnostic):
 
 ```powershell
-pip install "azure-ai-projects>=2.0.0" azure-identity
+# In a Python virtual environment; versions pinned to the ones these samples were tested with.
+pip install azure-ai-projects==2.11.0 azure-identity==1.27.0
 python ../../infrastructure-setup-bicep/01-connections/public-byom-apim/samples/create-agent.py `
   --endpoint https://<account>.services.ai.azure.com/api/projects/<project> `
   --model    ai-gateway/gpt-5.4

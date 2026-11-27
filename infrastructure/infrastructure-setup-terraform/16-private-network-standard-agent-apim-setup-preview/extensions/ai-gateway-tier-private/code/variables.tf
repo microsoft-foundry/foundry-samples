@@ -53,16 +53,23 @@ variable "gateway_subnet_address_prefix" {
 }
 
 variable "foundry_allowed_ip_ranges" {
-  description = "Testing convenience: public IPv4 addresses/CIDRs (for example your client egress IP) allowed to reach the agent's Foundry account, so you can run the agent script without a jumpbox. Empty (default) keeps the account fully private."
+  description = "Testing convenience: public IPv4 addresses/CIDRs (for example your client egress IP) allowed to reach the agent's Foundry account, so you can run the agent script without a jumpbox. Entra ID auth is still required. Empty (default) keeps the account fully private. Can't be combined with foundry_public_network_access_enabled."
   type        = list(string)
   default     = []
   nullable    = false
 }
 
 variable "foundry_public_network_access_enabled" {
-  description = "Testing convenience: open the agent's Foundry account to all networks (Entra ID auth still required). Use when foundry_allowed_ip_ranges doesn't match the source IP the Agents API sees (common from Azure-hosted machines). The model path stays private either way."
+  description = "Testing convenience: open the agent's Foundry account to all networks (Entra ID auth is still required; API keys are disabled). Use it instead of foundry_allowed_ip_ranges when the IP list doesn't match the source IP the Agents API sees (common from Azure-hosted machines). The model path stays private either way."
   type        = bool
   default     = false
+
+  # One or the other: an IP list plus the all-networks flag is ambiguous, so fail fast
+  # instead of silently widening or ignoring either setting.
+  validation {
+    condition     = !(var.foundry_public_network_access_enabled && length(var.foundry_allowed_ip_ranges) > 0)
+    error_message = "Set either foundry_allowed_ip_ranges (only those IPs) or foundry_public_network_access_enabled (all networks), not both."
+  }
 }
 
 # ============================================================================

@@ -23,10 +23,13 @@ resource "azapi_resource" "foundry" {
     properties = {
       allowProjectManagement = true
       customSubDomainName    = local.account_name
-      disableLocalAuth       = false
 
-      # Private by default. foundry_allowed_ip_ranges / foundry_public_network_access_enabled
-      # open the account (Entra auth still required) for testing without a jumpbox.
+      # Entra ID only (no account API keys), like the private hub account.
+      disableLocalAuth = true
+
+      # Private by default. For testing without a jumpbox, foundry_allowed_ip_ranges opens
+      # the account to specific IPs, or foundry_public_network_access_enabled to all networks
+      # (one or the other; see variables.tf). Entra ID auth is required either way.
       publicNetworkAccess = local.public_access ? "Enabled" : "Disabled"
       networkAcls = {
         defaultAction = local.allow_client_ips ? "Deny" : "Allow"

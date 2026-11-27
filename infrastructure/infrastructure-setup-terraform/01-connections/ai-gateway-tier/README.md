@@ -57,7 +57,8 @@ it reuses the same two modules.
    resources, the hub **creates a role assignment** (gateway identity → Foundry User on the account), so you
    need Owner, User Access Administrator, Role Based Access Control Administrator, or Foundry Account Owner.
    **Contributor alone isn't enough** — see [No role-assignment rights?](#no-role-assignment-rights).
-5. For the agent step: `pip install "azure-ai-projects>=2.0.0" azure-identity`.
+5. For the agent step, in a Python virtual environment: `pip install azure-ai-projects==2.11.0 azure-identity==1.27.0`
+   (the versions this sample was tested with; pinning avoids silently pulling a newer, unreviewed release).
 
 ## 1. Deploy the hub (once)
 

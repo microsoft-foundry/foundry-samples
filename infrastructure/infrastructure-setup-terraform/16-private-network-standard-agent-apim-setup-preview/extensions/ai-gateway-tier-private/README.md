@@ -38,13 +38,14 @@ sample and the VNet (Path B) counterpart of [`01-connections/ai-gateway-tier`](.
 |------|-----------|
 | [`main.tf`](./code/main.tf) | Resource group, naming |
 | [`network.tf`](./code/network.tf) | VNet, agent subnet (delegated), private-endpoint subnet |
-| [`data-stores.tf`](./code/data-stores.tf) | Storage, Cosmos DB, AI Search — private, Entra-only |
+| [`data-stores.tf`](./code/data-stores.tf) | Storage, Cosmos DB, AI Search — private endpoints only (public network access disabled), Entra ID only (shared keys / local auth disabled) |
 | [`dns.tf`](./code/dns.tf) | Private DNS zones + VNet links, private endpoints for the data stores and the agent's account |
-| [`foundry.tf`](./code/foundry.tf) | The agent's private, VNet-injected Foundry account + project + connections + roles + capability host |
+| [`foundry.tf`](./code/foundry.tf) | The agent's private, VNet-injected, Entra-ID-only Foundry account + project + connections + roles + capability host |
 | [`gateway.tf`](./code/gateway.tf) | Gateway subnet + NSG, private hub account + model + private endpoint, **AI Gateway** (shared [`ai-gateway`](../../../01-connections/ai-gateway-tier/modules/ai-gateway/) module), and the **connection** (shared [`ai-gateway-connection`](../../../01-connections/ai-gateway-tier/modules/ai-gateway-connection/) module) |
 | [`purge.tf`](./code/purge.tf) | Destroy-time purge of both soft-deleted Foundry accounts (with the agent-subnet cooldown from 15a) |
 
-The foundation follows [`15a-private-network-standard-agent-setup`](../../../15a-private-network-standard-agent-setup/).
+The foundation follows [`15a-private-network-standard-agent-setup`](../../../15a-private-network-standard-agent-setup/),
+hardened so that no account in the sample accepts API keys and no data store has a public endpoint.
 The agent's account has **no model deployment of its own** — the agent's model comes through the gateway.
 
 ## Prerequisites
@@ -55,7 +56,8 @@ The agent's account has **no model deployment of its own** — the agent's model
 4. Rights to create resources **and role assignments** (the foundation grants the project identity data-store
    roles, and the gateway identity Foundry User) — for example Owner, or Contributor + Role Based Access Control
    Administrator.
-5. For the agent step: `pip install "azure-ai-projects>=2.0.0" azure-identity`.
+5. For the agent step, in a Python virtual environment: `pip install azure-ai-projects==2.11.0 azure-identity==1.27.0`
+   (the versions this sample was tested with; pinning avoids silently pulling a newer, unreviewed release).
 
 ## Deploy
 
@@ -72,13 +74,16 @@ state), so there's no manual key step.
 ## Create an agent
 
 The project is private, so run the agent script from a machine inside the VNet (for example a jumpbox). For
-testing from your workstation instead, open the agent's account (Entra ID auth is still required; the model
-path stays private):
+testing from your workstation instead, open the agent's account with **one** of these (Entra ID auth is still
+required because the account has API keys disabled; the model path stays private):
 
 - `foundry_allowed_ip_ranges = ["<your public IP>"]` — only your IP, **or**
-- `foundry_public_network_access_enabled = true` — all networks. Use this if the IP list still returns
-  `403 Access denied due to Virtual Network/Firewall rules` (the Agents API can see a different source IP than
-  `api.ipify.org`, especially from Azure-hosted machines).
+- `foundry_public_network_access_enabled = true` — all networks. Use this **instead of** the IP list if the
+  list still returns `403 Access denied due to Virtual Network/Firewall rules` (the Agents API can see a
+  different source IP than `api.ipify.org`, especially from Azure-hosted machines). Setting both fails at
+  `plan` so the account is never opened wider, or narrower, than you intended.
+
+Turn the setting back off (and re-apply) when you finish testing.
 
 Your identity also needs **Foundry User** on the project. Then, from the `code` folder:
 
@@ -112,8 +117,8 @@ the gateway subnet (300 s), then purges both soft-deleted Foundry accounts.
 | `virtual_network_address_space` | `192.168.0.0/16` | VNet address space. |
 | `agent_subnet_address_prefix` / `private_endpoint_subnet_address_prefix` | `192.168.0.0/24` / `192.168.1.0/24` | Agent and private-endpoint subnets. |
 | `gateway_subnet_address_prefix` | `192.168.2.0/24` | Gateway subnet (`/27` minimum). Can't change after the gateway is created. |
-| `foundry_allowed_ip_ranges` | `[]` | Testing convenience: client IPs allowed to reach the agent's account. |
-| `foundry_public_network_access_enabled` | `false` | Testing convenience: open the agent's account to all networks (Entra auth still required). |
+| `foundry_allowed_ip_ranges` | `[]` | Testing convenience: client IPs allowed to reach the agent's account (Entra auth still required). Not with the flag below. |
+| `foundry_public_network_access_enabled` | `false` | Testing convenience: open the agent's account to all networks (Entra auth still required). Not with the IP list above. |
 | `model_name` / `model_version` | `gpt-5.4` / `2026-03-05` | Model on the private hub, published through the gateway. |
 | `model_sku_name` / `model_capacity` | `GlobalStandard` / `1` | Deployment SKU and capacity. |
 | `tokens_per_minute` | `100` | Token limit per caller identity per minute. |
