@@ -42,3 +42,5 @@ If you are new to template deployment, see:
 - [Azure AI services quickstart article](https://learn.microsoft.com/azure/cognitive-services/resource-manager-template)
 
 `Tags: Microsoft.CognitiveServices/accounts/projects`
+
+<!-- ci baseline check: touch only, do not merge -->
