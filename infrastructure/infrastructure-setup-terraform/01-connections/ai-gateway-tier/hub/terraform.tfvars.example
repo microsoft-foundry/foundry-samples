@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars. Only subscription_id is required.
+
+subscription_id = "00000000-0000-0000-0000-000000000000"
+
+# Optional overrides (defaults shown):
+# location                     = "eastus2"        # account + model region (any region with quota)
+# gateway_location             = "eastus2"        # eastus2 or swedencentral
+# existing_resource_group_name = ""               # reuse a group instead of creating one
+# name_prefix                  = "aigwhub"
+# project_name                 = "hub-project"
+# model_name                   = "gpt-5.4"
+# model_version                = "2026-03-05"
+# model_capacity               = 1                # thousands of TPM
+# gateway_name                 = ""               # auto: <name_prefix>-<suffix>
+# alias_name                   = null             # defaults to model_name
+# tokens_per_minute            = 100              # low so a burst shows HTTP 429
+# api_key_name                 = "foundry-connection"
+# purge_on_destroy             = true
+# assign_foundry_user_role     = true             # false if an admin grants Foundry User separately

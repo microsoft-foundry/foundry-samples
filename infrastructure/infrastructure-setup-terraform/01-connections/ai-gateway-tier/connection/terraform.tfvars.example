@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars and fill in from the hub outputs (cd ../hub; terraform output).
+
+subscription_id     = "00000000-0000-0000-0000-000000000000"  # spoke project's subscription
+project_resource_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/<spoke-rg>/providers/Microsoft.CognitiveServices/accounts/<account>/projects/<project>"
+gateway_id          = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/<hub-rg>/providers/Microsoft.ApiManagement/aigateways/<gateway>"
+
+# Optional overrides (defaults shown):
+# api_key_name       = "foundry-connection"
+# model_name         = "gpt-5.4"
+# model_version      = "2026-03-05"
+# connection_name    = "ai-gateway"
+# is_shared_to_all   = true
+# credential_version = "1"   # bump after rotating the gateway key
+# auth_header_name   = "Authorization"
+# auth_header_format = "Bearer {api_key}"
