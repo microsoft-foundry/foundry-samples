@@ -1,0 +1,36 @@
+version: 1
+
+sample:
+  owner: pranavp
+  experiences: [azd, vscode]
+
+tests:
+  - name: maps-aws-services-with-history
+    turns:
+      - input: What is the Azure equivalent of AWS Lambda? Answer briefly.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: Azure Functions
+            case_sensitive: false
+      - input: And Amazon S3? Also, what Azure service did you recommend for the first AWS service I asked about?
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: Blob Storage
+            case_sensitive: false
+          - source: assistant_text
+            type: contains
+            value: Azure Functions
+            case_sensitive: false
+
+    assertions:
+      - source: console_log
+        type: contains
+        value: "strands tool call: service_mapper"
+
+      - source: console_log
+        type: contains
+        value: "Strands agent run failed"
+        min_matches: 0
+        max_matches: 0
