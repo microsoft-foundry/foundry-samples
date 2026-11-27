@@ -14,7 +14,7 @@ See [main.py](src/agent-framework-agent-with-skills-responses/main.py) for the f
 
 ### Skills
 
-The sample creates a `SkillsProvider` pointed at the local [skills](skills/) directory:
+The sample creates a `SkillsProvider` pointed at the local [skills](src/agent-framework-agent-with-skills-responses/skills/) directory:
 
 ```python
 skills_provider = SkillsProvider(
@@ -23,7 +23,7 @@ skills_provider = SkillsProvider(
 )
 ```
 
-Agent Framework discovers the [travel-guide](skills/travel-guide/) skill from its `SKILL.md` file and advertises it to the model. When the user asks for a travel guide, the model can load the skill instructions and run `scripts/create_travel_guide.py` through the configured script runner.
+Agent Framework discovers the [travel-guide](src/agent-framework-agent-with-skills-responses/skills/travel-guide/) skill from its `SKILL.md` file and advertises it to the model. When the user asks for a travel guide, the model can load the skill instructions and run `scripts/create_travel_guide.py` through the configured script runner.
 
 ### Agent Hosting
 

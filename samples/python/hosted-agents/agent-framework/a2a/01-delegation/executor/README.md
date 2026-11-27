@@ -10,7 +10,7 @@ The agent uses `FoundryChatClient` for the model (Responses API on the project e
 
 By default a Responses-protocol agent is reachable only through Responses. **Enabling incoming A2A** is a per-agent PATCH (REST API or Python SDK only — no portal UI yet) that publishes an `agent_card` for client discovery and adds `a2a` to `agent_endpoint.protocols`. After that, the agent answers both Responses **and** A2A requests at the same endpoint.
 
-The PATCH is performed by [`scripts/setup-a2a`](scripts/). This is the **only** step that has to happen out-of-band — `agent_card` and multi-protocol endpoints aren't AgentSchema concepts, so the manifest can't express them yet. The caller-side `RemoteA2A` connection and `a2a_preview` toolbox live in the [caller's manifest](../caller/azure.yaml) and are created by `azd provision` on the caller.
+The PATCH is performed by [`scripts/setup-a2a`](src/agent-framework-a2a-executor-responses/scripts/). This is the **only** step that has to happen out-of-band — `agent_card` and multi-protocol endpoints aren't AgentSchema concepts, so the manifest can't express them yet. The caller-side `RemoteA2A` connection and `a2a_preview` toolbox live in the [caller's manifest](../caller/azure.yaml) and are created by `azd provision` on the caller.
 
 The script's hard-coded `agent_card` (skills, description, version) describes this math-expert specifically; edit it if you adapt the executor for a different task, since the caller's tool routing depends on the advertised skill descriptions.
 
@@ -26,4 +26,4 @@ azd ai agent invoke --local "What is 15 multiplied by 23?"
 
 ## Deploying
 
-See the [parent README](https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/a2a/01-delegation/README.md) — `azd provision` + `azd deploy` to deploy the agent, then run [`scripts/setup-a2a`](scripts/) to enable incoming A2A. Copy the A2A endpoint URL it prints; you'll paste it into the caller's `azd ai agent init` prompt.
+See the [parent README](https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/a2a/01-delegation/README.md) — `azd provision` + `azd deploy` to deploy the agent, then run [`scripts/setup-a2a`](src/agent-framework-a2a-executor-responses/scripts/) to enable incoming A2A. Copy the A2A endpoint URL it prints; you'll paste it into the caller's `azd ai agent init` prompt.

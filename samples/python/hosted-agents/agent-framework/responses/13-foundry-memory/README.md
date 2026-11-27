@@ -73,7 +73,7 @@ existing Foundry project, `azd ai agent init` will guide you through creating
 one. Initializing also sets the selected project as the active project and
 copies this sample's files into a new service directory `src/<agent-name>/`,
 including [`provision_memory_store.py`](src/agent-framework-agent-foundry-memory-responses/provision_memory_store.py)
-and the [`hooks/`](hooks/) scripts.
+and the [`hooks/`](src/agent-framework-agent-foundry-memory-responses/hooks/) scripts.
 
 ### 3. Provision
 
