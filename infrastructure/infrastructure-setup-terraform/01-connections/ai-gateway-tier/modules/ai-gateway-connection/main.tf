@@ -8,7 +8,7 @@
 # ============================================================================
 
 locals {
-  account_id   = split("/projects/", var.project_id)[0]
+  account_id   = regex("(?i)^(.+)/projects/[^/]+$", var.project_id)[0]
   project_name = split("/", var.project_id)[10]
 
   # Static model list: lets the runtime resolve <connection>/<model> without a
