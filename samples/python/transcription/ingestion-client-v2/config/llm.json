@@ -1,0 +1,26 @@
+{
+  // Config for files uploaded to  audio-input/llm/  (LLM Speech, highest quality).
+  "$schema": "./schemas/llm.schema.json",
+
+  // Language hint(s). LLM Speech is multilingual, so [] (auto-detect) is recommended.
+  "locales": [],
+
+  // Separate speakers on mono audio (transcribe task only).
+  "diarization": {
+    "enabled": false,
+    "maxSpeakers": 4    // 2-35
+  },
+
+  // Profanity handling: "None" | "Masked" | "Removed" | "Tags"
+  "profanityFilterMode": "Masked",
+
+  // Stereo channels to transcribe separately, e.g. [0, 1]. [] merges to mono.
+  "channels": [],
+
+  // LLM Speech (enhanced mode) options.
+  "llm": {
+    "task": "transcribe",   // "transcribe" (same language) | "translate" (to targetLanguage)
+    "targetLanguage": "",   // translate only: "de","en","es","fr","it","ja","ko","pt","zh"
+    "prompt": []            // guide output, e.g. ["Output must be in lexical format."] (<= 4096 chars)
+  }
+}

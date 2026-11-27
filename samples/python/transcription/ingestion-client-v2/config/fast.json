@@ -1,0 +1,26 @@
+{
+  // Config for files uploaded to  audio-input/fast/  (fast, synchronous transcription).
+  "$schema": "./schemas/fast.schema.json",
+
+  // Language(s) of the audio. Examples: "en-US", "el-GR", "es-ES".
+  //   []                 -> auto-detect (multilingual)
+  //   ["en-US"]           -> force a single locale
+  //   ["en-US", "es-ES"]  -> language identification (best match per file)
+  "locales": ["en-US"],
+
+  // Separate speakers on mono audio.
+  "diarization": {
+    "enabled": false,   // true to label who spoke each phrase
+    "maxSpeakers": 4    // 2-35 (upper-bound hint)
+  },
+
+  // Profanity handling: "None" | "Masked" | "Removed" | "Tags"
+  "profanityFilterMode": "Masked",
+
+  // Stereo channels to transcribe separately, e.g. [0, 1]. [] merges to mono.
+  // Cannot be combined with diarization.
+  "channels": [],
+
+  // Boost recognition of names/jargon, e.g. ["Contoso", "Foundry"].
+  "phraseList": []
+}
