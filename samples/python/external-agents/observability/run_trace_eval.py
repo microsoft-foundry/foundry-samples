@@ -2,7 +2,7 @@
 weather agent and print the per-criterion scores.
 
 The trace-eval surface is exposed via the OpenAI-compatible ``evals`` API
-(``azure_ai_source`` eval group + ``azure_ai_trace_data_source_preview``
+(``azure_ai_source`` eval group + ``azure_ai_trace_data_source``
 ``agent_filter`` data source), so we go through
 ``project_client.get_openai_client()`` per the spec.
 """
@@ -31,7 +31,6 @@ def main() -> None:
     project_client = AIProjectClient(
         endpoint=os.environ["FOUNDRY_PROJECT_ENDPOINT"],
         credential=DefaultAzureCredential(),
-        allow_preview=True,
     )
 
     print(f"Evaluating traces for agent {AGENT_NAME!r} (last {LOOKBACK_HOURS}h)")
@@ -43,23 +42,24 @@ def main() -> None:
         name=f"{AGENT_NAME}-trace-eval",
         data_source_config={"type": "azure_ai_source", "scenario": "traces"},
         testing_criteria=[
+            # The two recommended agent evaluators: answer quality and tool use. Mapping
+            # messages (not query/response) passes the tool calls and results they check.
             {
                 "type": "azure_ai_evaluator",
-                "name": "intent_resolution",
-                "evaluator_name": "builtin.intent_resolution",
+                "name": name,
+                "evaluator_name": f"builtin.{name}",
                 "data_mapping": {
-                    "query": "{{item.query}}",
-                    "response": "{{item.response}}",
+                    "messages": "{{item.messages}}",
                     "tool_definitions": "{{item.tool_definitions}}",
                 },
                 "initialization_parameters": {"deployment_name": EVAL_DEPLOYMENT},
-            },
+            }
+            for name in ("output_quality", "tool_use_quality")
         ],
     )
 
-    # Eval run: score this agent's recent traces. Uses the
-    # azure_ai_trace_data_source_preview agent_filter shape (agent_name +
-    # Unix window); the older azure_ai_traces data source is being deprecated.
+    # Eval run: score this agent's recent traces with the
+    # azure_ai_trace_data_source agent_filter shape (agent_name + Unix window).
     now = datetime.now(tz=timezone.utc)
     start_unix = int((now - timedelta(hours=LOOKBACK_HOURS)).timestamp())
     end_unix = int(now.timestamp()) + 600  # pad for ingestion lag
@@ -67,7 +67,7 @@ def main() -> None:
         eval_id=eval_group.id,
         name=f"{AGENT_NAME}-trace-run",
         data_source={
-            "type": "azure_ai_trace_data_source_preview",
+            "type": "azure_ai_trace_data_source",
             "trace_source": {
                 "type": "agent_filter",
                 "agent_name": AGENT_NAME,

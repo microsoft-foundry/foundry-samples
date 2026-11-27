@@ -3,7 +3,7 @@
 Based on two azure-ai-projects SDK samples:
 
 * ``sample_multiturn_trace_evaluation_agent_filter.py`` — conversation-level
-  scoring via the ``azure_ai_trace_data_source_preview`` ``agent_filter`` data
+  scoring via the ``azure_ai_trace_data_source`` ``agent_filter`` data
   source (default mode here) and ``extra_body={"evaluation_level": "conversation"}``
 * ``sample_multiturn_trace_evaluation_by_id.py`` — the ``trace_id_source`` shape
   used by ``--trace-id-mode``
@@ -13,14 +13,11 @@ opens one root span per conversation and propagates its traceparent to every
 turn, so **one trace == one conversation**.
 
 By default the run filters by the registered agent using the
-``azure_ai_trace_data_source_preview`` ``agent_filter`` shape (``agent_name`` +
+``azure_ai_trace_data_source`` ``agent_filter`` shape (``agent_name`` +
 a time window). ``--trace-id-mode`` switches to the ``trace_id_source`` shape
 from ``sample_multiturn_trace_evaluation_by_id.py``, resolving trace ids
 client-side from Application Insights and passing them explicitly. Both produce
 the same conversation-level scores; only trace selection differs.
-
-Note: the older ``azure_ai_traces`` data source is being deprecated in favor of
-``azure_ai_trace_data_source_preview``, so both modes use the preview shape.
 
 Usage:
     python run_multiturn_trace_eval.py
@@ -133,7 +130,7 @@ def main() -> None:
         end_unix = int(end_time.timestamp()) + 600
         metadata = {"agent_name": AGENT_NAME}
         data_source = {
-            "type": "azure_ai_trace_data_source_preview",
+            "type": "azure_ai_trace_data_source",
             "trace_source": {
                 "type": "agent_filter",
                 "agent_name": AGENT_NAME,
@@ -161,7 +158,7 @@ def main() -> None:
         # This request carries no agent_id (neither the data source nor the
         # metadata), so the run is not associated with the registered agent.
         data_source = {
-            "type": "azure_ai_trace_data_source_preview",
+            "type": "azure_ai_trace_data_source",
             "trace_source": {
                 "type": "trace_id_source",
                 "trace_ids": [c[0] for c in conversations],
@@ -175,7 +172,7 @@ def main() -> None:
     with (
         DefaultAzureCredential() as credential,
         AIProjectClient(
-            endpoint=ENDPOINT, credential=credential, allow_preview=True
+            endpoint=ENDPOINT, credential=credential
         ) as project_client,
         project_client.get_openai_client() as client,
     ):
