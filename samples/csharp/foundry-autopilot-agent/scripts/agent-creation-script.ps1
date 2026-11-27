@@ -8,7 +8,10 @@ $AzureContainerRegistryEndpoint = $env:AZURE_CONTAINER_REGISTRY_ENDPOINT
 $authorityEndpoint = "https://login.microsoftonline.com/$($env:TENANT_ID)"
 $azureOpenAIEndpoint = "https://$($env:ACCOUNT_NAME).openai.azure.com/"
 $modelDeployment = $env:MODEL_NAME
-
+# Message content stays off unless the azd environment opts in.
+$azdEnvironmentArgs = if ($env:AZURE_ENV_NAME) { @("-e", $env:AZURE_ENV_NAME) } else { @() }
+$captureMessageContent = & azd env get-value OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT @azdEnvironmentArgs 2>$null
+$captureMessageContent = if ($LASTEXITCODE -eq 0 -and "$captureMessageContent".Trim() -eq "true") { "true" } else { "false" }
 
 $agentUrl = "$($AzureAIProjectEndpoint)/agents/$($AgentName)/versions?api-version=2025-11-15-preview"
 
@@ -22,6 +25,7 @@ $agentCreationBody = @{
             "Connections__ServiceConnection__Settings__AuthorityEndpoint" = $authorityEndpoint
             "AzureOpenAIEndpoint"                                         = $azureOpenAIEndpoint
             "ModelDeployment"                                             = $modelDeployment
+            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"          = $captureMessageContent
         }
         container_protocol_versions = @(
             @{
