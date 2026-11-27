@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/PromptAgent.yaml
+
+kind: prompt
+name: prompt-agent-mcp-tools
+description: A prompt agent that calls tools on a remote MCP server.
+model: gpt-5.4-mini
+tool_choice: auto
+
+tools:
+  - type: mcp
+    server_label: microsoft-learn
+    server_url: https://learn.microsoft.com/api/mcp
+    require_approval: always
+    project_connection_id: microsoft-learn-mcp-conn
+
+connections:
+  - name: microsoft-learn-mcp-conn
+    category: RemoteTool
+    target: https://learn.microsoft.com/api/mcp
+    authType: Entra
