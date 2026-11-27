@@ -1,0 +1,24 @@
+[project]
+name = "openclaw-incident-brief"
+version = "0.1.0"
+description = "A resilient Foundry Hosted Agent for OpenClaw incident briefings."
+requires-python = ">=3.12"
+dependencies = [
+    "azure-ai-agentserver-core==2.1.0",
+    "azure-ai-agentserver-invocations==1.1.0",
+    "azure-ai-projects==2.0.1",
+    "azure-identity==1.25.3",
+    "httpx<1",
+    "openai<3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<10",
+    "pytest-asyncio>=0.25,<2",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]

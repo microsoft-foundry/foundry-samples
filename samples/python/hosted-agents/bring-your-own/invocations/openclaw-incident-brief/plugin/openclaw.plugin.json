@@ -1,0 +1,39 @@
+{
+  "id": "foundry-incident-brief",
+  "name": "Foundry incident brief",
+  "description": "Submit incident updates to a Foundry Hosted Agent and retrieve the brief.",
+  "categories": ["agent-orchestration"],
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": ["foundry_incident_brief_start", "foundry_incident_brief_status"]
+  },
+  "toolMetadata": {
+    "foundry_incident_brief_start": {
+      "optional": true
+    },
+    "foundry_incident_brief_status": {
+      "optional": true
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "projectEndpoint": {
+        "type": "string",
+        "minLength": 1
+      },
+      "agentName": {
+        "type": "string",
+        "minLength": 1
+      },
+      "sessionId": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required": ["projectEndpoint", "agentName", "sessionId"],
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,4 @@
+name: OpenClaw incident brief
+description: Delegate an incident briefing to a resilient Foundry Hosted Agent from OpenClaw.
+build: "(cd src/incident-brief && uv sync --frozen) && (cd plugin && npm ci)"
+validate: "(cd src/incident-brief && uv run --no-sync python -m pytest -q) && (cd plugin && npm test)"

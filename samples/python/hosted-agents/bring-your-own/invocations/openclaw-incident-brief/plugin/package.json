@@ -1,0 +1,20 @@
+{
+  "name": "openclaw-foundry-incident-brief",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenClaw tools for a Foundry-hosted incident briefing agent.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.22.1"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@azure/identity": "4.14.1",
+    "typebox": "1.4.3"
+  },
+  "openclaw": {
+    "extensions": ["./index.js"]
+  }
+}
