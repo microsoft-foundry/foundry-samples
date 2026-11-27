@@ -52,12 +52,14 @@ resource "azapi_resource" "gateway" {
 }
 
 ## Keyless backend: the gateway's managed identity calls Foundry as Foundry User.
+## The name includes the principal ID: if the gateway (and so its identity) is recreated,
+## the grant is replaced instead of updated in place, which Azure doesn't allow.
 ##
 resource "azapi_resource" "foundry_user" {
   count = var.assign_foundry_user_role ? 1 : 0
 
   type      = "Microsoft.Authorization/roleAssignments@2022-04-01"
-  name      = uuidv5("url", "${var.foundry_account_id}/${azapi_resource.gateway.id}/${local.foundry_user_role_id}")
+  name      = uuidv5("url", "${var.foundry_account_id}/${azapi_resource.gateway.identity[0].principal_id}/${local.foundry_user_role_id}")
   parent_id = var.foundry_account_id
 
   body = {

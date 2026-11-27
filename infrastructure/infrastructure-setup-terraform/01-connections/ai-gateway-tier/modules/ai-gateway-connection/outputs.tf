@@ -15,5 +15,5 @@ output "model_reference" {
 
 output "project_endpoint" {
   description = "Project endpoint for the Foundry SDK."
-  value       = "https://${local.account_name}.services.ai.azure.com/api/projects/${local.project_name}"
+  value       = "https://${data.azapi_resource.account.output.properties.customSubDomainName}.services.ai.azure.com/api/projects/${local.project_name}"
 }

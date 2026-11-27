@@ -8,7 +8,7 @@
 # ============================================================================
 
 locals {
-  account_name = split("/", var.project_id)[8]
+  account_id   = split("/projects/", var.project_id)[0]
   project_name = split("/", var.project_id)[10]
 
   # Static model list: lets the runtime resolve <connection>/<model> without a
@@ -25,6 +25,14 @@ locals {
       }
     }
   ]
+}
+
+# The project endpoint uses the account's custom subdomain, which can differ from its
+# ARM name (some samples add a random suffix to the subdomain only), so read it.
+data "azapi_resource" "account" {
+  type                   = "Microsoft.CognitiveServices/accounts@2025-04-01-preview"
+  resource_id            = local.account_id
+  response_export_values = ["properties.customSubDomainName"]
 }
 
 resource "azapi_resource" "connection" {
