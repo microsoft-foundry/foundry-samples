@@ -36,8 +36,8 @@ collide with shared toolboxes in the Foundry project.
 4. The async graph factory uses `AzureAIProjectToolbox` to resolve
    `TOOLBOX_NAME` and load the toolbox tools as LangChain tools.
 5. `langchain.agents.create_agent` builds the LangGraph ReAct agent.
-6. If a connection requires consent, the tool error handler recognizes MCP
-   error `-32006` and returns the validated consent URL to the caller.
+6. The SDK handles tool errors and sanitizes tool schemas. If consent is required
+   while loading tools, it returns a fallback tool with authorization instructions.
 
 When a code interpreter is available in the configured toolbox, the agent is
 instructed to use it for calculations and answer from its result rather than
@@ -129,10 +129,10 @@ The WorkIQ connections use the calling user's Microsoft Entra identity. The
 GitHub connection uses Foundry-managed OAuth2. A user may need to grant consent
 before a tool can access their data.
 
-When the Foundry MCP gateway returns consent error `-32006`, the agent responds
-with a URL on `consent.azure-apim.net` or a regional
-`*.consent.azure-apihub.net` host. Open that URL, complete the consent flow, and
-retry the request.
+Follow the consent URL returned in the tool output. If consent was required
+while loading tools, restart the agent after authorization so the SDK can load
+the actual tools. If it was required during a tool call, retry the request after
+authorization. Tool invocation errors use the SDK's default error text.
 
 ## Configuration
 
@@ -147,8 +147,9 @@ retry the request.
 
 ### The agent reports that consent is required
 
-Open the returned consent URL, authorize the connection, and retry the same
-request in a fresh session:
+Open the returned consent URL and authorize the connection. If the SDK returned
+an `oauth_consent_required` fallback tool during startup, restart the agent to
+reload its tools. Then retry the same request in a fresh session:
 
 ```bash
 azd ai agent invoke --new-session --new-conversation \
@@ -163,5 +164,5 @@ three MCP tools is the default version.
 
 ### A tool schema is rejected
 
-The sample repairs the common case where an object schema omits `properties`.
+The SDK repairs the common case where an object schema omits `properties`.
 For other schema errors, inspect the schema returned by the upstream MCP server.

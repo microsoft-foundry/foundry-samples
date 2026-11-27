@@ -20,9 +20,8 @@ serves responses over the Foundry Responses Protocol.
 3. Incoming requests are handled by `ResponsesAgentServerHost` on port `8088`.
 4. The agent is initialized **lazily** (once, on the first request) and reused for all
    subsequent turns — the MCP client is kept alive to prevent session garbage-collection.
-5. If a toolbox tool requires OAuth consent, the MCP server returns error code `-32006`.
-   The agent detects this, logs the consent URL, and surfaces it to the caller via a
-   fallback tool instead of crashing.
+5. The SDK handles tool errors and sanitizes tool schemas. If consent is required
+   while loading tools, it returns a fallback tool with authorization instructions.
 
 ## Prerequisites
 
@@ -346,21 +345,19 @@ that `TOOLBOX_ENDPOINT` is set to a valid URL containing `?api-version=v1`.
 
 ### OAuth consent required
 
-If a toolbox connection requires OAuth, the agent logs:
-```
-OAuth consent required. Open the following URL in a browser to authorize...
-```
-Open the URL, complete the OAuth flow, then restart the agent. Until consent is granted,
-the agent returns a `oauth_consent_required` tool message to callers.
+For a toolbox connection that requires OAuth, follow the consent URL returned in
+the tool output. If the SDK returned an `oauth_consent_required` fallback tool
+during tool loading, restart the agent after authorization to reload its tools.
+If consent was required during a tool call, retry the request after authorization.
 
 ### Tool call failures don't crash the agent
 
-`handle_tool_error = True` is set on all loaded tools, so MCP tool errors are returned
-as tool messages rather than raising exceptions that would break conversation state.
+The SDK sets `handle_tool_error = True` on loaded tools, so MCP tool errors are
+returned as tool messages using the SDK's default error text.
 
 ### Tool schemas rejected by OpenAI
 
-The agent sanitizes malformed schemas from MCP servers (missing `properties` on
+The SDK sanitizes malformed schemas from MCP servers (missing `properties` on
 `object`-type schemas). If you see `400 Invalid tool schema` errors, check the raw
 tool schema returned by your MCP server.
 
