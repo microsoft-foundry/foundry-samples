@@ -1,0 +1,24 @@
+{
+  "provenance": "Selected fields from recorded U1 invocation; no tokens or call identifiers",
+  "timestamp": "2026-11-09T16:08:50Z",
+  "task_id": "f60005dd-d5f6-484b-9795-bd8383d8e925",
+  "receipt": {
+    "agent": "A",
+    "user_fingerprint": "3fa479bce41fc1b2a75d",
+    "hosted_session_id": "0eb75b045150f73300XkKgbN8xBbheAvWe29iSvcuTB9sbHYB2",
+    "downstream": {
+      "receipt": {
+        "agent": "C",
+        "task_id": "203fe03e-2ec8-4cec-b775-7ad760cfabb4",
+        "context_id": "two-real-users-nov9-test01",
+        "hosted_session_id": "48b40392d95634cce5818562c55536b8596fd2f5f6df2d34bf73de3368c0145",
+        "user_fingerprint": "3fa479bce41fc1b2a75d",
+        "marker": "U1-via-A-nov9-test01",
+        "sequence": 1,
+        "prior_session_messages": [],
+        "prior_context_messages": [],
+        "caller_agent": "A"
+      }
+    }
+  }
+}

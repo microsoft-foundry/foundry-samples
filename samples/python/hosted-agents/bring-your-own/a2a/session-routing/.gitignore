@@ -1,0 +1,8 @@
+.azure/
+.venv/
+__pycache__/
+*.sqlite*
+src/agent/packages/
+src/agent/wheelhouse/
+results/
+deployment/
