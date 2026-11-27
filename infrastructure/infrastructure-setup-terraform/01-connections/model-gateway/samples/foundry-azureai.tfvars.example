@@ -1,0 +1,37 @@
+# Models in another Foundry account, through its Azure AI model inference endpoint.
+# Same inputs as the Bicep sample infrastructure-setup-bicep/01-connections/model-gateway/samples/parameters-foundryazureai.json.
+#
+# Copy this file to terraform.tfvars and replace the YOUR-... values.
+# Set the API key in the TF_VAR_api_key environment variable, not in this file.
+
+project_resource_id = "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-RG/providers/Microsoft.CognitiveServices/accounts/YOUR-AI-FOUNDRY-ACCOUNT/projects/YOUR-PROJECT"
+target_url          = "https://<your-foundry-resource>.services.ai.azure.com/models"
+gateway_name        = "YOUR-GATEWAY-NAME"
+connection_name     = "YOUR-CONNECTION-NAME"
+auth_type           = "ApiKey"
+deployment_in_path  = false
+
+static_models = [
+  {
+    name = "YOUR-DEPLOYMENT-NAME-1"
+    properties = {
+      model = {
+        name    = "YOUR-MODEL-NAME-1"
+        version = "YOUR-MODEL-VERSION-1"
+        format  = "OpenAI"
+      }
+    }
+  },
+  {
+    name = "YOUR-DEPLOYMENT-NAME-2"
+    properties = {
+      model = {
+        name    = "YOUR-MODEL-NAME-2"
+        version = "YOUR-MODEL-VERSION-2"
+        format  = "OpenAI"
+      }
+    }
+  },
+]
+
+is_shared_to_all = false

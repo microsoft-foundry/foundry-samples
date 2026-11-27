@@ -1,0 +1,25 @@
+# Dynamic model discovery, with custom headers.
+# Same inputs as the Bicep sample infrastructure-setup-bicep/01-connections/model-gateway/samples/parameters-dynamic.json.
+#
+# Copy this file to terraform.tfvars and replace the YOUR-... values.
+# Set the API key in the TF_VAR_api_key environment variable, not in this file.
+
+project_resource_id = "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-RG/providers/Microsoft.CognitiveServices/accounts/YOUR-AI-FOUNDRY-ACCOUNT/projects/YOUR-PROJECT"
+target_url          = "YOUR-MODEL-GATEWAY-URL"
+gateway_name        = "YOUR-GATEWAY-NAME"
+connection_name     = "YOUR-CONNECTION-NAME"
+auth_type           = "ApiKey"
+is_shared_to_all    = false
+
+model_discovery = {
+  list_models_endpoint = "/deployments"
+  get_model_endpoint   = "/deployments/{deploymentName}"
+  deployment_provider  = "AzureOpenAI"
+}
+
+deployment_in_path = false
+
+custom_headers = {
+  "YOUR-HEADER-NAME-1" = "YOUR-HEADER-VALUE-1"
+  "YOUR-HEADER-NAME-2" = "YOUR-HEADER-VALUE-2"
+}

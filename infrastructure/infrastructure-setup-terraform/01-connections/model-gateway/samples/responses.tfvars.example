@@ -1,0 +1,31 @@
+# Responses API requests sent upstream to an Azure OpenAI v1 endpoint.
+# Same inputs as the Bicep sample infrastructure-setup-bicep/01-connections/model-gateway/samples/parameters-responses.json.
+#
+# Copy this file to terraform.tfvars and replace the YOUR-... values.
+# Set the API key in the TF_VAR_api_key environment variable, not in this file.
+
+project_resource_id = "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-RG/providers/Microsoft.CognitiveServices/accounts/YOUR-AI-FOUNDRY-ACCOUNT/projects/YOUR-PROJECT"
+target_url          = "https://<upstream-resource-name>.openai.azure.com/openai/v1"
+connection_name     = "my-model-connection"
+auth_type           = "ApiKey"
+is_shared_to_all    = false
+upstream_surface    = "responses"
+deployment_in_path  = false
+
+static_models = [
+  {
+    name = "gpt-5-mini"
+    properties = {
+      model = {
+        name   = "gpt-5-mini"
+        format = "OpenAI"
+      }
+    }
+  },
+]
+
+auth_config = {
+  type   = "api_key"
+  name   = "api-key"
+  format = "{api_key}"
+}

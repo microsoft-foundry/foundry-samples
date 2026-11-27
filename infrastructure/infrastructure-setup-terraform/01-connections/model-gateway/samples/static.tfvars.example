@@ -1,0 +1,36 @@
+# A static list of models.
+# Same inputs as the Bicep sample infrastructure-setup-bicep/01-connections/model-gateway/samples/parameters-static.json.
+#
+# Copy this file to terraform.tfvars and replace the YOUR-... values.
+# Set the API key in the TF_VAR_api_key environment variable, not in this file.
+
+project_resource_id = "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-RG/providers/Microsoft.CognitiveServices/accounts/YOUR-AI-FOUNDRY-ACCOUNT/projects/YOUR-PROJECT"
+target_url          = "YOUR-MODEL-GATEWAY-URL"
+gateway_name        = "YOUR-GATEWAY-NAME"
+connection_name     = "YOUR-CONNECTION-NAME"
+auth_type           = "ApiKey"
+is_shared_to_all    = false
+deployment_in_path  = false
+
+static_models = [
+  {
+    name = "YOUR-DEPLOYMENT-NAME-1"
+    properties = {
+      model = {
+        name    = "YOUR-MODEL-NAME-1"
+        version = "YOUR-MODEL-VERSION-1"
+        format  = "OpenAI"
+      }
+    }
+  },
+  {
+    name = "YOUR-DEPLOYMENT-NAME-2"
+    properties = {
+      model = {
+        name    = "YOUR-MODEL-NAME-2"
+        version = "YOUR-MODEL-VERSION-2"
+        format  = "OpenAI"
+      }
+    }
+  },
+]

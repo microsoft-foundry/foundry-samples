@@ -1,0 +1,27 @@
+# OpenAI, with dynamic model discovery and the key sent as a bearer token.
+# Same inputs as the Bicep sample infrastructure-setup-bicep/01-connections/model-gateway/samples/parameters-openai.json.
+#
+# Copy this file to terraform.tfvars and replace the YOUR-... values.
+# Set the API key in the TF_VAR_api_key environment variable, not in this file.
+
+project_resource_id = "/subscriptions/YOUR-SUBSCRIPTION-ID/resourceGroups/YOUR-RG/providers/Microsoft.CognitiveServices/accounts/YOUR-AI-FOUNDRY-ACCOUNT/projects/YOUR-PROJECT"
+target_url          = "https://api.openai.com"
+gateway_name        = "YOUR-GATEWAY-NAME"
+connection_name     = "YOUR-CONNECTION-NAME"
+auth_type           = "ApiKey"
+
+model_discovery = {
+  list_models_endpoint = "v1/models"
+  get_model_endpoint   = "v1/models/{deploymentName}"
+  deployment_provider  = "OpenAI"
+}
+
+deployment_in_path = false
+
+auth_config = {
+  type   = "api_key"
+  name   = "Authorization"
+  format = "Bearer {api_key}"
+}
+
+is_shared_to_all = false
