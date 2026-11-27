@@ -1,0 +1,8 @@
+agent-framework-core==1.25.0
+agent-framework-openai==1.18.1
+microsoft-opentelemetry==1.6.0
+azure-ai-projects==2.11.0
+azure-identity==1.27.0
+azure-storage-blob==12.31.1
+python-dotenv==1.2.4
+requests==2.34.2

@@ -1,0 +1,7 @@
+.venv/
+.env
+__pycache__/
+traffic_log.jsonl
+.tutorial_state.json
+golden_dataset.generated.jsonl
+skills/
