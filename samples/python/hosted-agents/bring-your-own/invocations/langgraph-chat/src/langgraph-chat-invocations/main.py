@@ -118,6 +118,8 @@ def _build_graph() -> StateGraph:
         credential=DefaultAzureCredential(),
         model=AZURE_AI_MODEL_DEPLOYMENT_NAME,
         streaming=True,
+        # LangGraph manages message history instead of the model service.
+        store=False,
     )
     llm_with_tools = llm.bind_tools(TOOLS)
 
