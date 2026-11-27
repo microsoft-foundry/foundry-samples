@@ -1,0 +1,85 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.14'
+name: autopilot-basic
+hooks:
+  preprovision:
+    shell: pwsh
+    run: ./scripts/validate-model-configuration.ps1
+  postdeploy:
+    shell: pwsh
+    interactive: true
+    run: ./scripts/configure-agent-model-access.ps1 -ServiceName autopilot-basic
+services:
+  ai-project:
+    host: azure.ai.project
+  autopilot-basic:
+    host: azure.ai.agent
+    metadata:
+      tags:
+        - AI Agent Hosting
+        - Activity Protocol
+        - Bring Your Own
+        - Python
+    project: src/foundry_m365_autopilot
+    language: python
+    uses:
+      - ai-project
+    kind: hosted
+    name: autopilot-basic
+    displayName: Foundry Autopilot Basic
+    description: >
+      A basic Microsoft 365 Digital Worker that uses the Activity Protocol,
+      Azure OpenAI Responses API, and remote Microsoft 365 MCP servers.
+    protocols:
+      - protocol: activity
+        version: 2.0.0
+    agentEndpoint:
+      protocols:
+        - activity
+      authorizationSchemes:
+        # M365 Digital Workers are tenant-scoped. Keep this explicit because
+        # omitting the scheme lets the service fall back to BotServiceRbac.
+        - type: BotServiceTenant
+
+    environmentVariables:
+      # Values are resolved from the active azd environment during deploy and
+      # become definition.environment_variables in the hosted-agent request.
+      - name: CONNECTIONS__SERVICE_CONNECTION__SETTINGS__AUTHORITY
+        value: https://login.microsoftonline.com/${AZURE_TENANT_ID}
+      - name: CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID
+        value: ${AZURE_TENANT_ID}
+      - name: AzureOpenAIResponsesEndpoint
+        value: ${azureOpenAIResponsesEndpoint}
+      - name: ModelDeployment
+        value: ${modelDeploymentName}
+    activity:
+      digitalWorkerType: m365
+      publish:
+        publishScope: tenant
+        canRespondWithoutMention: true
+        appVersion: 1.0.0
+        agentDisplayName: Foundry Autopilot Basic
+        shortDescription: Basic Microsoft 365 Digital Worker using remote MCP tools
+        fullDescription: A basic Foundry hosted Digital Worker that demonstrates remote Microsoft 365 Mail, Teams, and Calendar MCP tool calls.
+        developerName: Azure Developer
+        developerWebsiteUrl: https://azure.microsoft.com
+        privacyUrl: https://privacy.microsoft.com
+        termsOfUseUrl: https://www.microsoft.com/legal/terms-of-use
+        optionalPermissionScopes:
+          - resourceAppId: ea9ffc3e-8a23-4a7d-836d-234d7c7565c1
+            scopes:
+              - McpServers.Mail.All
+              - McpServers.Teams.All
+              - McpServers.Calendar.All
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1.0Gi
+    docker:
+      path: foundry-infra/Dockerfile
+      remoteBuild: true
+infra:
+  provider: microsoft.foundry
