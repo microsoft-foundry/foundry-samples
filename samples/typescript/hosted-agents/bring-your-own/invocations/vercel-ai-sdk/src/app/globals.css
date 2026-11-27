@@ -1,0 +1,94 @@
+:root {
+  color-scheme: light;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f5f7fa;
+  color: #17212b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  width: min(760px, calc(100% - 32px));
+  margin: 48px auto;
+}
+
+h1 {
+  margin-bottom: 8px;
+}
+
+.intro {
+  color: #526170;
+  line-height: 1.5;
+}
+
+.messages {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.message {
+  padding: 14px 16px;
+  border: 1px solid #d5dce3;
+  border-radius: 10px;
+  background: white;
+}
+
+.message[data-role="user"] {
+  background: #eaf3ff;
+}
+
+.message strong {
+  display: block;
+  margin-bottom: 8px;
+  text-transform: capitalize;
+}
+
+.message p {
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+}
+
+.message p:last-child {
+  margin-bottom: 0;
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+input {
+  min-width: 0;
+  flex: 1 1 240px;
+  padding: 12px;
+  border: 1px solid #8795a3;
+  border-radius: 6px;
+  font: inherit;
+}
+
+button {
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 6px;
+  background: #0067b8;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.error {
+  color: #a4262c;
+}

@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.27.1'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.9'
+name: vercel-ai-sdk-hosted-agent
+services:
+  ai-project:
+    host: azure.ai.project
+    deployments:
+      - name: gpt-5.4-mini
+        model:
+          format: OpenAI
+          name: gpt-5.4-mini
+          version: '2026-03-17'
+        sku:
+          name: GlobalStandard
+          capacity: 10
+  vercel-ai-sdk-hosted-agent:
+    host: azure.ai.agent
+    metadata:
+      tags:
+        - AI Agent Hosting
+        - Invocations Protocol
+        - Bring Your Own
+        - TypeScript
+        - Vercel AI SDK
+    project: .
+    docker:
+      path: Dockerfile
+      remoteBuild: true
+    uses:
+      - ai-project
+    kind: hosted
+    name: vercel-ai-sdk-hosted-agent
+    displayName: Vercel AI SDK Hosted Agent
+    description: A TypeScript hosted agent using the Vercel AI SDK for tool calling and UI-message streaming over the Invocations protocol.
+    protocols:
+      - protocol: invocations
+        version: 2.0.0
+    env:
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1Gi
+infra:
+  provider: microsoft.foundry
