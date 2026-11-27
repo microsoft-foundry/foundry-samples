@@ -42,6 +42,12 @@ This directory contains samples that demonstrate how to use the [Agent Framework
 | 24  | [Steering](responses/24-steering/)                                         | A regular Agent Framework agent that accepts new input on the same conversation while an earlier stored background response remains active.                                                                                                   |
 | 25  | [Claude + Foundry Toolbox](responses/25-claude-foundry-toolbox/)           | An agent using an Anthropic Claude model through Azure AI Foundry (`AnthropicFoundryClient`) with tools discovered and invoked from an existing Foundry Toolbox MCP connection.                                                               |
 
+### Governance walkthrough
+
+[Egress governance](responses/26-egress-governance/) assigns the published network
+guardrail built-ins and demonstrates guardrail-save versus hosted-agent admission
+checks with a model-free Agent Framework host.
+
 ### Invocations API
 
 | #   | Sample                         | Description                                                                                                   |

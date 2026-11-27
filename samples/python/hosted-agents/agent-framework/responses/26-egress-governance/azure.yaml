@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+requiredVersions:
+  azd: '>=1.27.1'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.16'
+name: python-egress-governance
+services:
+  ai-project:
+    host: azure.ai.project
+  egress-governance:
+    host: azure.ai.agent
+    project: src/egress-governance
+    language: python
+    codeConfiguration:
+      runtime: python_3_13
+      entryPoint: main.py
+    uses:
+      - ai-project
+    kind: hosted
+    name: python-egress-governance
+    displayName: Egress governance probe (Python)
+    description: Model-free Agent Framework host for the built-in Azure Policy governance walkthrough.
+    protocols:
+      - protocol: responses
+        version: 2.0.0
+    env:
+      PYTHONNOUSERSITE: "1"
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1Gi
+infra:
+  provider: microsoft.foundry
