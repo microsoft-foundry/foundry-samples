@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.32.0'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.16'
+name: routines-autopilot
+hooks:
+  preprovision:
+    shell: pwsh
+    run: ./scripts/prepare-provision.ps1
+    interactive: true
+services:
+  routines-autopilot:
+    host: azure.ai.agent
+    metadata:
+      tags:
+        - Autopilot
+        - Activity Protocol
+        - Microsoft 365
+        - Python
+    project: .
+    language: python
+    codeConfiguration:
+      runtime: python_3_13
+      entryPoint: main.py
+    kind: hosted
+    name: routines-autopilot
+    displayName: Routines Autopilot
+    description: >
+      Microsoft 365 Autopilot for reminders, timers, and
+      recurring schedules in a personal Teams chat.
+    protocols:
+      - protocol: activity
+        version: 2.0.0
+    activity:
+      digitalWorkerType: m365
+      publish:
+        publishScope: tenant
+        canRespondWithoutMention: true
+        appVersion: 1.0.0
+        agentDisplayName: Routines Autopilot
+        shortDescription: Schedule reminders in your personal Teams chat.
+        fullDescription: >
+          A Microsoft Foundry agent for timers and recurring reminders in a
+          personal Teams chat. Check status or stop a reminder before starting
+          a different one. Supply reminder text or let the model choose it when
+          scheduling. Delivery sends the stored text without another model call.
+        developerName: Microsoft
+        developerWebsiteUrl: https://www.microsoft.com
+        privacyUrl: https://privacy.microsoft.com
+        termsOfUseUrl: https://www.microsoft.com/legal/terms-of-use
+    env:
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+      FOUNDRY_AGENT365_TRACING_ENABLED: "true"
+      OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "false"
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1Gi
+infra:
+  provider: bicep
+  path: infra
+  module: main

@@ -12,6 +12,7 @@ participate in Microsoft Teams conversations.
 | [Hello World](hello-world/README.md) | A minimal agent that responds to Teams direct messages, group chats, and channel messages that mention it. Interactively create or reuse its Foundry project and model deployment. |
 | [Foundry Toolbox](foundry-toolbox/README.md) | Combine Microsoft Learn and Bing-backed Web Search in one Foundry Toolbox to answer questions about Microsoft guidance and current public web information. |
 | [Meeting Assistant](meeting-assistant/README.md) | Post meeting agenda reminders and transcript-grounded closure reports. |
+| [Routines](routines/README.md) | Create timers and recurring reminders, inspect their stored schedule, and disable them from a personal Teams chat. |
 
 Start with the [Hello World walkthrough](hello-world/README.md#step-1-install-the-prerequisites).
 It contains the complete sequence: prerequisites, permissions, sign-in,
