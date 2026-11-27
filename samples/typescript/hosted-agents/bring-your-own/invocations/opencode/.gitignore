@@ -1,0 +1,4 @@
+.azure/
+.env
+dist/
+node_modules/

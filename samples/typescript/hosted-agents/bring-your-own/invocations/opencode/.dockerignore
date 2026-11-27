@@ -1,0 +1,7 @@
+.azure
+.env
+.git
+AGENTS.md
+dist
+node_modules
+src/*.test.ts
