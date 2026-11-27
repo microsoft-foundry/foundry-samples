@@ -1,0 +1,82 @@
+version: 1
+
+sample:
+  owner: pranavp
+  experiences: [azd, vscode]
+
+tests:
+  - name: billing-case-and-follow-up
+    turns:
+      - input: Investigate case BILL-1042. Why does the invoice list 12 seats when only 8 remain? Cite the knowledge article ID.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: BILL-1042
+            case_sensitive: false
+          - source: assistant_text
+            type: contains
+            value: BILL-RENEWAL
+            case_sensitive: false
+          - source: assistant_text
+            type: contains
+            value: "12"
+          - source: assistant_text
+            type: contains
+            value: "8"
+          - source: assistant_text
+            type: contains
+            value: renewal
+            case_sensitive: false
+      - input: When does the reduction for the case we just discussed take effect? Cite the article ID again.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: renewal
+            case_sensitive: false
+          - source: assistant_text
+            type: contains
+            value: BILL-RENEWAL
+            case_sensitive: false
+    assertions:
+      - source: console_log
+        type: contains
+        value: "support triage tool: lookup_case (Triage)"
+      - source: console_log
+        type: contains
+        value: "support triage handoff: Triage -> Billing Specialist"
+      - source: console_log
+        type: contains
+        value: "support triage tool: get_knowledge_article (Billing Specialist)"
+
+  - name: technical-case
+    turns:
+      - input: Investigate case TECH-2048. Explain the sign-in problem and next steps, citing the knowledge article ID.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: TECH-2048
+            case_sensitive: false
+          - source: assistant_text
+            type: contains
+            value: TECH-SSO-CERT
+            case_sensitive: false
+          - source: assistant_text
+            type: contains
+            value: certificate
+            case_sensitive: false
+    assertions:
+      - source: console_log
+        type: contains
+        value: "support triage handoff: Triage -> Technical Specialist"
+      - source: console_log
+        type: contains
+        value: "support triage tool: get_knowledge_article (Technical Specialist)"
+
+  - name: missing-case
+    turns:
+      - input: Look up case MISSING-1. If it does not exist, say case not found.
+        assertions:
+          - source: assistant_text
+            type: contains
+            value: case not found
+            case_sensitive: false

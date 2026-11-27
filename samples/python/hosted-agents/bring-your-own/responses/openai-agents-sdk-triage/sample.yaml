@@ -1,0 +1,4 @@
+name: OpenAI Agents SDK support triage
+description: Route fictional support cases to specialists using handoffs and MCP.
+build: "cd src/openai-agents-sdk-triage && uv sync --frozen"
+validate: "cd src/openai-agents-sdk-triage && uv run --no-sync python -m unittest discover -s tests -v"

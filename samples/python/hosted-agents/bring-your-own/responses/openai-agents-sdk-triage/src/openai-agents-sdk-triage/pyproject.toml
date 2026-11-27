@@ -1,0 +1,17 @@
+[project]
+name = "openai-agents-sdk-triage"
+version = "0.1.0"
+description = "Multi-agent support triage with OpenAI Agents SDK and MCP on Microsoft Foundry."
+requires-python = ">=3.12"
+dependencies = [
+    "aiohttp==3.14.5",
+    "azure-ai-agentserver-responses==2.1.0",
+    "azure-identity==1.27.0",
+    # The agent server's OpenAI telemetry instrumentation imports httpx.
+    "httpx==0.28.1",
+    "mcp==2.2.0",
+    "openai-agents==0.22.3",
+]
+
+[tool.uv]
+package = false
