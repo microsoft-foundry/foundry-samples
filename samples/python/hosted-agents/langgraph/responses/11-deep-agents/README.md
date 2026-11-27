@@ -10,7 +10,7 @@ This sample adapts LangChain's official [Build a deep research agent](https://do
 - Producing a structured report with consolidated inline citations.
 - Hosting the compiled Deep Agents graph through `ResponsesHostServer`.
 - Persisting LangGraph checkpoints with `FoundryCheckpointSaver`.
-- Publishing saved reports as private Azure Blob snapshots with read-only download links.
+- Publishing saved reports as private Azure Blob snapshots downloaded with Microsoft Entra ID.
 
 ## How it works
 
@@ -21,7 +21,8 @@ The agent uses a model deployed in the Foundry project. Its coordinator and rese
 The coordinator also has `publish_report(report_name)`, adapted from the
 [SDK sample's Blob publication tool](https://github.com/langchain-ai/langchain-azure/blob/c480d810ca96e77860db64ba3403c3bf13d5dfcf/samples/hosting/langgraph-hosted-agents/responses/12_deep_agents/report_export.py).
 It reads the selected saved virtual file, uploads a separate private Blob, and
-returns its SHA256 and a one-hour, read-only HTTPS user-delegation SAS. Working
+returns its SHA256, Blob name, and unsigned HTTPS Blob URL. Both uploads and
+downloads use Microsoft Entra ID; it never generates a SAS or uses account keys. Working
 files remain in the existing checkpoint-backed state for later edits; Blob is
 an export destination, not a new filesystem or checkpointer.
 
@@ -35,6 +36,7 @@ src/langgraph-deep-agents/
 ├── agent.py
 ├── utils.py
 ├── report_export.py
+├── download_report.py
 └── research_agent/
     ├── __init__.py
     ├── prompts.py
@@ -45,6 +47,7 @@ src/langgraph-deep-agents/
 - `agent.py` composes the coordinator, research subagent, and planning middleware.
 - `utils.py` constructs the Foundry-backed chat model.
 - `report_export.py` publishes a saved report without changing its working copy.
+- `download_report.py` downloads with the caller's Entra identity and verifies SHA256 before saving.
 - `research_agent/prompts.py` contains the research workflow and delegation instructions.
 - `research_agent/tools.py` loads the tools exposed by the Foundry Toolbox.
 
@@ -76,6 +79,12 @@ below. Select the Storage subscription explicitly; it can differ from Foundry's
 subscription in the same tenant. The resource creator needs Contributor, and an
 administrator needs Owner or Role Based Access Control Administrator to assign roles.
 
+| Identity | Role | Scope |
+| --- | --- | --- |
+| Local developer (the identity used by `DefaultAzureCredential`) | `Storage Blob Data Contributor` | Report container |
+| Deployed agent instance identity | `Storage Blob Data Contributor` | Report container |
+| Download-only report reader | `Storage Blob Data Reader` | Report container |
+
 ```bash
 SUBSCRIPTION_ID="<storage-subscription-id>"
 LOCATION="<azure-region>"
@@ -92,16 +101,22 @@ azd env set AZURE_STORAGE_CONTAINER_NAME "$REPORT_STORAGE_CONTAINER"
 REPORT_STORAGE_ID=$(az storage account show --subscription "$SUBSCRIPTION_ID" --resource-group "$REPORT_RESOURCE_GROUP" --name "$REPORT_STORAGE_ACCOUNT" --query id -o tsv)
 REPORT_CONTAINER_SCOPE="$REPORT_STORAGE_ID/blobServices/default/containers/$REPORT_STORAGE_CONTAINER"
 az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$DEVELOPER_PRINCIPAL_ID" --assignee-principal-type User --role "Storage Blob Data Contributor" --scope "$REPORT_CONTAINER_SCOPE"
-az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$DEVELOPER_PRINCIPAL_ID" --assignee-principal-type User --role "Storage Blob Delegator" --scope "$REPORT_STORAGE_ID"
 ```
 
-With existing Storage, skip the three resource-creation commands. Grant the
-identity actually used by `DefaultAzureCredential`, not necessarily the
-administrator running the commands. For an interactive developer, find its ID
-with `az ad signed-in-user show --query id -o tsv`; for a service principal, use
-its object ID and change `--assignee-principal-type` to `ServicePrincipal`.
-The account-level delegation role is required to sign links; container-only data
-access is insufficient. Allow time for RBAC propagation.
+With existing Storage, skip the three resource-creation commands. For an
+interactive developer, find the object ID with `az ad signed-in-user show --query
+id -o tsv`; for a service principal, use its object ID and change
+`--assignee-principal-type` to `ServicePrincipal`. Allow time for RBAC propagation.
+For a separate download-only user, have the Storage administrator run:
+
+```bash
+REPORT_READER_PRINCIPAL_ID="<download-user-object-id>"
+az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$REPORT_READER_PRINCIPAL_ID" --assignee-principal-type User --role "Storage Blob Data Reader" --scope "$REPORT_CONTAINER_SCOPE"
+```
+
+This grants access to all reports in that container, not per-user report isolation;
+use separate containers or an independently authorized download service if users
+must be isolated from one another.
 
 PowerShell equivalent for existing private Storage:
 
@@ -116,7 +131,13 @@ azd env set AZURE_STORAGE_CONTAINER_NAME $REPORT_STORAGE_CONTAINER
 $REPORT_STORAGE_ID = az storage account show --subscription $SUBSCRIPTION_ID --resource-group $REPORT_RESOURCE_GROUP --name $REPORT_STORAGE_ACCOUNT --query id -o tsv
 $REPORT_CONTAINER_SCOPE = "$REPORT_STORAGE_ID/blobServices/default/containers/$REPORT_STORAGE_CONTAINER"
 az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $DEVELOPER_PRINCIPAL_ID --assignee-principal-type User --role "Storage Blob Data Contributor" --scope $REPORT_CONTAINER_SCOPE
-az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $DEVELOPER_PRINCIPAL_ID --assignee-principal-type User --role "Storage Blob Delegator" --scope $REPORT_STORAGE_ID
+```
+
+For a separate download-only user:
+
+```powershell
+$REPORT_READER_PRINCIPAL_ID = "<download-user-object-id>"
+az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $REPORT_READER_PRINCIPAL_ID --assignee-principal-type User --role "Storage Blob Data Reader" --scope $REPORT_CONTAINER_SCOPE
 ```
 
 Then provision and deploy the existing Foundry services:
@@ -136,7 +157,7 @@ azd ai agent run --no-client
 In another terminal:
 
 ```bash
-azd ai agent invoke --local "Compare the latest approaches to small language models on consumer devices and give me a download link for the report."
+azd ai agent invoke --local "Compare the latest approaches to small language models on consumer devices, publish the report, and return its Blob URL and SHA256 for Entra-authenticated download."
 ```
 
 The local server also accepts Responses requests at `http://localhost:8088/responses`.
@@ -153,19 +174,17 @@ the developer's separate Blob permissions.
 azd deploy
 ```
 
-Before hosted invocation, have the Storage administrator assign the same two
-roles to the deployed agent's **instance identity**, separately from the developer:
+Before hosted invocation, have the Storage administrator assign the data role
+to the deployed agent's **instance identity**, separately from the developer:
 
 ```bash
 AGENT_PRINCIPAL_ID=$(azd ai agent show langgraph-deep-agents -o json | python -c 'import json,sys; print(json.load(sys.stdin)["instance_identity"]["principal_id"])')
 az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$AGENT_PRINCIPAL_ID" --assignee-principal-type ServicePrincipal --role "Storage Blob Data Contributor" --scope "$REPORT_CONTAINER_SCOPE"
-az role assignment create --subscription "$SUBSCRIPTION_ID" --assignee-object-id "$AGENT_PRINCIPAL_ID" --assignee-principal-type ServicePrincipal --role "Storage Blob Delegator" --scope "$REPORT_STORAGE_ID"
 ```
 
 ```powershell
 $AGENT_PRINCIPAL_ID = (azd ai agent show langgraph-deep-agents -o json | ConvertFrom-Json).instance_identity.principal_id
 az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $AGENT_PRINCIPAL_ID --assignee-principal-type ServicePrincipal --role "Storage Blob Data Contributor" --scope $REPORT_CONTAINER_SCOPE
-az role assignment create --subscription $SUBSCRIPTION_ID --assignee-object-id $AGENT_PRINCIPAL_ID --assignee-principal-type ServicePrincipal --role "Storage Blob Delegator" --scope $REPORT_STORAGE_ID
 ```
 
 Do not grant the project's identity or blueprint instead. `azd deploy` does not
@@ -173,7 +192,7 @@ configure these external grants. Recheck the instance principal after deployment
 wait for propagation, and then invoke:
 
 ```bash
-azd ai agent invoke "Research recent advances in small language models and give me a download link for the report."
+azd ai agent invoke "Research recent advances in small language models, publish the report, and return its Blob URL and SHA256 for Entra-authenticated download."
 ```
 
 See [Microsoft Foundry hosted agents](https://learn.microsoft.com/azure/foundry/agents/how-to/deploy-hosted-agent) for the complete deployment workflow.
@@ -187,52 +206,43 @@ before F5. The Toolkit does not grant external Storage permissions.
 
 ## Download and update reports
 
-Open the returned URL in a browser, or download outside this checkout:
+Sign in with `az login` as an authorized report reader, then run the included
+downloader from `src/langgraph-deep-agents`. Opening the Blob URL directly in a
+browser does not automatically authenticate.
 
 ```bash
-curl --fail --location "<download_url>" --output "/path/outside/repository/report.md"
+uv run --frozen python download_report.py --blob-url "<blob_url>" --sha256 "<sha256>" --output "/path/outside/repository/report-v1.md"
 ```
 
-Compare the downloaded file's SHA256 with the value returned by `publish_report`.
+The downloader uses `DefaultAzureCredential` and your own Entra identity. It
+rejects SAS URLs and verifies the returned SHA256 before writing a file. For an
+Azure CLI download, use the `blob_name` returned by `publish_report`:
+
+```bash
+az storage blob download --account-name "$REPORT_STORAGE_ACCOUNT" --container-name "$REPORT_STORAGE_CONTAINER" --name "<blob_name>" --file "/path/outside/repository/report-v1.md" --auth-mode login
+```
+
+Unlike the included downloader, the Azure CLI command does not compare SHA256;
+check the downloaded digest separately.
+
 In the same conversation, ask the agent to read `/report-v1.md`, copy it to
 `/report-v2.md`, and make the requested edits only to that copy. Ask it to read
-both saved files and return clearly labeled download links for both versions.
-Download both, compare each SHA256, and confirm the original file and its earlier
-download remain unchanged. When calling the Responses API directly, carry the
-latest response ID and the hosted session ID. Each publication creates a new
-Blob; neither revising the copy nor publishing it overwrites the original.
+both saved files and return clearly labeled Blob URLs and digests for both.
+Download both with your own Entra identity and confirm the original saved file
+and earlier Blob remain unchanged. When calling the Responses API directly,
+carry the latest response ID and the hosted session ID.
 
-Publication failures return no link and leave the saved report editable. Anyone
-holding a valid SAS URL can read its snapshot until expiry. Expiry does **not**
-delete the Blob; delete your test exports explicitly, and remove separately created
-Storage resources when no longer needed. `azd down` does not own those resources.
+Publication failures leave the saved report editable and return no URL. Download
+access is evaluated using the downloader's Entra identity and current Blob RBAC,
+not possession of a link. Reports have no automatic expiry: delete your test
+exports explicitly, and remove separately created Storage resources when no
+longer needed. `azd down` does not remove those resources.
 
-Tool results now contain bearer download URLs. The sample therefore defaults both
-telemetry content-capture flags to `false` before hosting. Keep URLs, transcripts,
-and downloaded reports private; opting in to content capture can record them.
+## Telemetry and logging
 
-## Validate Blob publication
-
-From `src/langgraph-deep-agents`:
-
-```bash
-uv sync --frozen
-uv run --frozen python -m unittest discover -s tests -v
-```
-
-The tests cover the added tool, credential lifetime, unchanged researcher tools,
-report preservation, and native JSON/SSE publication success/failure. They use
-the real `FoundryCheckpointSaver` with its local filesystem State Store backend,
-including checkpoints created in the same second. SDK 1.2.12 or later is required
-for checkpoint-ID ordering; `uv.lock` includes this fix. External model and Blob
-boundaries are simulated; the original model helper and research tools are unchanged.
-
-The cloud contract checks research, publication, revision of a separate saved copy,
-and reading both versions using the existing test-spec schema. It does not download
-the files. For full
-acceptance, run against the deployed agent, download the original and revised
-snapshots, compare their returned digests and contents, and re-download the old
-URL to confirm it is unchanged. Schema/offline success is not cloud acceptance.
-CI's deployed instance needs the same Blob roles; missing permission must fail,
-not be bypassed with account keys. Retain shared CI grants until the identity is
-retired and no other version or run needs them.
+Connect Application Insights to your Foundry project to view hosted traces; for
+local export, optionally set `APPLICATIONINSIGHTS_CONNECTION_STRING`. The host
+captures message and tool content in traces by default, while the sample's INFO
+logs omit report contents. For sensitive production workloads, set
+`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false` to keep spans without
+capturing content.

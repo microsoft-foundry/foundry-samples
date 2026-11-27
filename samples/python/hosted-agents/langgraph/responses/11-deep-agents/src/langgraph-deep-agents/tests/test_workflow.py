@@ -120,6 +120,7 @@ class PublicationFailureWorkflowTests(unittest.TestCase):
                 storage = MagicMock()
                 storage.__enter__.return_value = storage
                 storage.account_name = "reports"
+                storage.get_container_client.return_value.get_container_properties.return_value.public_access = None
                 blobs: list[MagicMock] = []
 
                 def create_blob(
@@ -134,9 +135,6 @@ class PublicationFailureWorkflowTests(unittest.TestCase):
                 storage.get_blob_client.side_effect = create_blob
                 with (
                     patch("report_export.BlobServiceClient", return_value=storage),
-                    patch(
-                        "report_export.generate_blob_sas", return_value="sp=r&sig=test"
-                    ),
                 ):
                     model = ScriptedModel(
                         disable_streaming=True,
@@ -276,7 +274,8 @@ class PublicationFailureWorkflowTests(unittest.TestCase):
                     storage = MagicMock()
                     storage.__enter__.return_value = storage
                     storage.account_name = "reports"
-                    storage.get_user_delegation_key.side_effect = error
+                    storage.get_container_client.return_value.get_container_properties.return_value.public_access = None
+                    storage.get_blob_client.return_value.upload_blob.side_effect = error
                     with patch("report_export.BlobServiceClient", return_value=storage):
                         model = ScriptedModel(
                             disable_streaming=True,
@@ -369,7 +368,8 @@ class PublicationFailureWorkflowTests(unittest.TestCase):
                             self.assertEqual(len(errors), 1)
                             self.assertEqual(errors[0].status, "error")
                             self.assertIn("No download link", errors[0].content)
-                    storage.get_blob_client.assert_not_called()
+                    storage.get_blob_client.assert_called_once()
+                    storage.get_user_delegation_key.assert_not_called()
                     storage.__exit__.assert_called_once()
 
 
