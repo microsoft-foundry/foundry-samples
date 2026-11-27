@@ -20,6 +20,7 @@ Usage:
   python model-router-foundry-responses-sdk.py
 """
 
+# <doc_responses_model_routing_call_models_through_the_responses_api>
 import os
 from pathlib import Path
 
@@ -51,3 +52,4 @@ with (
     print(
         f"\nUsage: {response.usage.input_tokens} input + {response.usage.output_tokens} output = {response.usage.total_tokens} total tokens"
     )
+# </doc_responses_model_routing_call_models_through_the_responses_api>

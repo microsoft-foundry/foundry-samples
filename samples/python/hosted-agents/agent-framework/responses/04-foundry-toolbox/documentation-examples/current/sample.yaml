@@ -1,0 +1,4 @@
+name: AIProjectClient 04 foundry toolbox (current)
+description: Isolated current SDK examples for 04 foundry toolbox.
+build: "python -m pip install -r requirements.txt"
+validate: "python -m unittest discover -p 'test_*.py'"

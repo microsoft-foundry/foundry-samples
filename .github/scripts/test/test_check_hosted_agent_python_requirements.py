@@ -333,6 +333,51 @@ class RepositoryCheckTests(unittest.TestCase):
         self.assertEqual(["PYREQ002"], [finding.code for finding in findings])
         self.assertEqual(PurePosixPath(nested), findings[0].root)
 
+    def test_sibling_client_uses_its_own_artifact_not_the_runtime_lock(self) -> None:
+        root = self.add_uv_service()
+        self.repo.commit("add existing uv sample")
+        self.base = self.repo.run("rev-parse", "HEAD")
+        client = f"{PurePosixPath(root).parent.parent}/documentation-examples/current"
+        self.repo.write(f"{client}/requirements.in", "six==1.16.0\n")
+        self.repo.write(f"{client}/requirements.txt", "six==1.16.0\n")
+        self.repo.commit("add separately installable client")
+        self.assertEqual([], self.findings())
+
+    def test_sibling_client_floating_dependencies_are_still_rejected(self) -> None:
+        root = self.add_uv_service()
+        self.repo.commit("add existing uv sample")
+        self.base = self.repo.run("rev-parse", "HEAD")
+        client = f"{PurePosixPath(root).parent.parent}/documentation-examples/current"
+        self.repo.write(f"{client}/requirements.in", "httpx>=0.28\n")
+        self.repo.write(f"{client}/requirements.txt", "httpx>=0.28\n")
+        self.repo.commit("add unpinned sibling client")
+        findings = self.findings()
+        self.assertEqual(["PYREQ002"], [finding.code for finding in findings])
+        self.assertEqual(PurePosixPath(client), findings[0].root)
+
+    def test_sibling_input_without_an_artifact_still_belongs_to_the_service(self) -> None:
+        root = self.add_uv_service()
+        self.repo.commit("add existing uv sample")
+        self.base = self.repo.run("rev-parse", "HEAD")
+        client = f"{PurePosixPath(root).parent.parent}/documentation-examples/current"
+        self.repo.write(f"{client}/requirements.in", "six==1.16.0\n")
+        self.repo.commit("add input without a client artifact")
+        findings = self.findings()
+        self.assertEqual(["PYREQ006"], [finding.code for finding in findings])
+        self.assertEqual(PurePosixPath(root), findings[0].root)
+
+    def test_sample_level_inputs_still_require_the_runtime_lock_update(self) -> None:
+        root = self.add_uv_service()
+        self.repo.commit("add existing uv sample")
+        self.base = self.repo.run("rev-parse", "HEAD")
+        sample = PurePosixPath(root).parent.parent
+        self.repo.write(f"{sample}/requirements.in", "six==1.16.0\n")
+        self.repo.write(f"{sample}/requirements.txt", "six==1.16.0\n")
+        self.repo.commit("add sample level dependency inputs")
+        findings = self.findings()
+        self.assertEqual(["PYREQ006"], [finding.code for finding in findings])
+        self.assertEqual(PurePosixPath(root), findings[0].root)
+
     def test_nested_pyproject_without_nested_artifact_belongs_to_service(self) -> None:
         root = self.add_service()
         self.repo.commit("add existing sample")

@@ -1,0 +1,4 @@
+name: AIProjectClient 14 browser automation agent (framework)
+description: Isolated framework SDK examples for 14 browser automation agent.
+build: "python -m pip install -r requirements.txt"
+validate: "python -m unittest discover -p 'test_*.py'"

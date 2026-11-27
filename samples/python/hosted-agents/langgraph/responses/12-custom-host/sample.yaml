@@ -1,0 +1,11 @@
+name: LangChain Responses hosts
+description: Minimal and location-aware LangChain hosts using the Responses protocol.
+build: >-
+  uv sync --frozen --project src/langgraph-custom-host-responses
+validate: >-
+  uv run --frozen --project src/langgraph-custom-host-responses python -m py_compile
+  src/langgraph-custom-host-responses/main.py
+  src/langgraph-custom-host-responses/minimal-responses.py
+test: >-
+  uv run --frozen --project src/langgraph-custom-host-responses python -m unittest discover
+  -s src/langgraph-custom-host-responses -p test_minimal_responses.py

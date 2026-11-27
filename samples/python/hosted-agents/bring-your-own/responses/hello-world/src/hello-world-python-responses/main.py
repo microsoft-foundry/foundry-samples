@@ -1,5 +1,7 @@
 # Copyright (c) Microsoft. All rights reserved.
 
+# <doc_hosted_agent_contract_responses_protocol_example>
+# <doc_add_protocol_adapter_responses_protocol>
 """Hello World — Bring Your Own Responses agent.
 
 Forwards user input to a Foundry model via the Responses API and streams
@@ -75,3 +77,5 @@ async def handler(
 
 
 app.run()
+# </doc_add_protocol_adapter_responses_protocol>
+# </doc_hosted_agent_contract_responses_protocol_example>

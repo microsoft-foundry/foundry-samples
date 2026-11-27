@@ -1,0 +1,5 @@
+agent-framework-core==1.22.0
+agent-framework-foundry==1.15.0
+azure-ai-projects==2.7.0
+azure-identity==1.27.0
+openai==3.35.1

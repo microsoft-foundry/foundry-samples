@@ -1,0 +1,4 @@
+name: AIProjectClient red teaming (red-team-preview)
+description: Isolated red-team-preview SDK examples for red teaming.
+build: "python -m pip install -r requirements.txt"
+validate: "python -m unittest discover -p 'test_*.py'"

@@ -1,0 +1,4 @@
+name: AIProjectClient 11 azure search rag (framework)
+description: Isolated framework SDK examples for 11 azure search rag.
+build: "python -m pip install -r requirements.txt"
+validate: "python -m unittest discover -p 'test_*.py'"

@@ -1,0 +1,4 @@
+name: AIProjectClient evaluate agent (classic)
+description: Isolated classic SDK examples for evaluate agent.
+build: "python -m pip install -r requirements.txt"
+validate: "python -m unittest discover -p 'test_*.py'"
