@@ -6,12 +6,12 @@ An [Agent Framework](https://github.com/microsoft/agent-framework) agent that lo
 
 ### Authoring skills
 
-Each skill is a Markdown file with a YAML front matter block. This sample ships two source skills under [`skills/`](skills/):
+Each skill is a Markdown file with a YAML front matter block. This sample ships two source skills under [`skills/`](src/agent-framework-agent-foundry-skills-responses/skills/):
 
 | Skill | Purpose |
 |---|---|
-| [`support-style`](skills/support-style/SKILL.md) | Voice, formatting, and signature rules for Contoso Outdoors support replies. |
-| [`escalation-policy`](skills/escalation-policy/SKILL.md) | When and how to escalate a customer ticket. |
+| [`support-style`](src/agent-framework-agent-foundry-skills-responses/skills/support-style/SKILL.md) | Voice, formatting, and signature rules for Contoso Outdoors support replies. |
+| [`escalation-policy`](src/agent-framework-agent-foundry-skills-responses/skills/escalation-policy/SKILL.md) | When and how to escalate a customer ticket. |
 
 Each `SKILL.md` includes a unique `*-CANARY-*` token that the model is asked to echo, so you can prove the skill was loaded from Foundry (not hallucinated) by checking the response.
 
@@ -45,7 +45,7 @@ deployment, but does not apply the skill service.
 
 [`main.py`](src/agent-framework-agent-foundry-skills-responses/main.py) reads the comma-separated `SKILL_NAMES` env var, opens an `AIProjectClient` (also with `allow_preview=True`), and for each skill name streams the ZIP archive from `beta.skills.download(name)` and unpacks it into a **separate runtime directory** at `downloaded_skills/<name>/` (kept distinct from the static `skills/` source folder so the two never get confused — `skills/` is the input to `provision_skills.py`, `downloaded_skills/` is the output of `main.py`'s bootstrap step).
 
-A [`SkillsProvider`](../../../../../packages/core/agent_framework/_skills.py) is then built over `downloaded_skills/` and attached to the `Agent` as a context provider. The provider follows the [Agent Skills](https://agentskills.io/) progressive-disclosure pattern:
+A [`SkillsProvider`](https://github.com/microsoft/agent-framework/blob/python-1.14.0/python/packages/core/agent_framework/_skills.py#L1829) is then built over `downloaded_skills/` and attached to the `Agent` as a context provider. The provider follows the [Agent Skills](https://agentskills.io/) progressive-disclosure pattern:
 
 1. **Advertise** — skill names and descriptions are injected into the system prompt at session start (~100 tokens per skill).
 2. **Load** — the model calls the `load_skill` tool when it decides a skill is relevant to the user's turn, and the full `SKILL.md` body is returned.

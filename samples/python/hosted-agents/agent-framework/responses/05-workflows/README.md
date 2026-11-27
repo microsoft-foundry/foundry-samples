@@ -116,4 +116,4 @@ Press **F5** to start the agent. The agent starts and the **Agent Inspector** op
 - [Workflow as an agent](https://learn.microsoft.com/en-us/agent-framework/workflows/as-agents?pivots=programming-language-python) — serving workflows via the Responses protocol
 - [Manage hosted agents](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/manage-hosted-agent) — monitor and manage deployed agents
 - [Basic agent](../01-basic/) — minimal agent with no tools
-- [Declarative workflows](../06-declarative-customer-support/) — YAML-defined workflow with multi-turn routing
+- [Declarative workflows](../09-declarative-customer-support/) — YAML-defined workflow with multi-turn routing

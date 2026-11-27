@@ -66,7 +66,7 @@ mkdir my-foundry-iq-agent && cd my-foundry-iq-agent
 azd ai agent init -m https://github.com/microsoft-foundry/foundry-samples/blob/main/samples/python/hosted-agents/agent-framework/responses/17-foundry-iq-toolbox/azure.yaml
 ```
 
-Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one. Initializing also sets the selected project as the active project, and copies this sample's files into a new service directory `src/<agent-name>/` — including [`provision_kb.py`](src/agent-framework-foundry-iq-knowledge-base-responses/provision_kb.py), [`toolbox.yaml`](src/agent-framework-foundry-iq-knowledge-base-responses/toolbox.yaml), and the [`hooks/`](hooks/) scripts.
+Follow the prompts to configure your Foundry project and model deployment. If you don't have an existing Foundry project, `azd ai agent init` will guide you through creating one. Initializing also sets the selected project as the active project, and copies this sample's files into a new service directory `src/<agent-name>/` — including [`provision_kb.py`](src/agent-framework-foundry-iq-knowledge-base-responses/provision_kb.py), [`toolbox.yaml`](src/agent-framework-foundry-iq-knowledge-base-responses/toolbox.yaml), and the [`hooks/`](src/agent-framework-foundry-iq-knowledge-base-responses/hooks/) scripts.
 
 #### 3. Enable one-command provisioning (`postprovision` hook)
 
@@ -83,7 +83,7 @@ hooks:
       run: ./src/<agent-name>/hooks/postprovision.ps1
 ```
 
-The hook ([`hooks/postprovision.sh`](hooks/postprovision.sh) / [`hooks/postprovision.ps1`](hooks/postprovision.ps1)) runs everything the [manual steps](#provision-manually-without-the-hook) below would, in one shot. It locates its own directory, so it works no matter where `azd` runs it from.
+The hook ([`hooks/postprovision.sh`](src/agent-framework-foundry-iq-knowledge-base-responses/hooks/postprovision.sh) / [`hooks/postprovision.ps1`](src/agent-framework-foundry-iq-knowledge-base-responses/hooks/postprovision.ps1)) runs everything the [manual steps](#provision-manually-without-the-hook) below would, in one shot. It locates its own directory, so it works no matter where `azd` runs it from.
 
 #### 4. Provision
 
