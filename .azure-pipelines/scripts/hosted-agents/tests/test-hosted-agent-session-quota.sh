@@ -61,41 +61,6 @@ assert_throttle_error "$work/responses-deployment-throttle"
 assert_not_throttle_error "$work/server-error"
 assert_not_throttle_error "$work/assistant-prose-about-throttling"
 
-printf '%s\n' 'A2A Task failed: Model deployment rate limit exceeded' \
-  > "$work/a2a-throttle"
-printf '%s\n' 'A2A Task failed: The model is currently experiencing high demand that exceeds the maximum usage size allowed during peak load.' \
-  > "$work/a2a-high-demand"
-printf '%s\n' 'A2A Task failed: Error calling model: Error code: 503 - server_error' \
-  > "$work/a2a-transient"
-printf '%s\n' 'A2A Task failed: No cited search results' \
-  > "$work/a2a-permanent"
-# Successful A2A invocations produce empty diagnostics; raw artifacts are evidence only.
-printf '' \
-  > "$work/a2a-prose"
-
-assert_throttle_error "$work/a2a-throttle"
-assert_throttle_error "$work/a2a-high-demand"
-for diagnostic in \
-  'A2A Task failed: HTTP 429 Too Many Requests' \
-  'A2A JSON-RPC error: {"code":-32603,"message":"HTTP 429"}'; do
-  printf '%s\n' "$diagnostic" > "$work/a2a-http-429"
-  assert_throttle_error "$work/a2a-http-429"
-done
-for diagnostic in \
-  'Echo: HTTP 429 Too Many Requests' \
-  'A2A Task failed: HTTP 4290' \
-  'A2A Task failed: HTTP 429abc' \
-  'A2A Task failed: HTTP 403 Forbidden'; do
-  printf '%s\n' "$diagnostic" > "$work/not-a2a-http-429"
-  assert_not_throttle_error "$work/not-a2a-http-429"
-done
-assert_not_throttle_error "$work/a2a-prose"
-assert_not_throttle_error "$work/a2a-permanent"
-hosted_agent_is_transient_error "$work/a2a-transient" || fail "A2A model 503 must be transient"
-if hosted_agent_is_transient_error "$work/a2a-permanent" "$work/a2a-prose"; then
-  fail "permanent A2A failures and artifact prose must not be transient"
-fi
-
 delays=()
 for _ in $(seq 1 100); do
   delay=$(hosted_agent_quota_retry_delay)
@@ -162,19 +127,10 @@ response_session_uses=$((
   || fail "Responses invocation, approval continuation, and guardrails must use the cell session"
 grep -Fq 'azd ai agent sessions create' "$runner" \
   || fail "pipeline does not explicitly create the cell session"
-[ "$(grep -Fc -- '--session-id "$CI_AGENT_SESSION_ID"' "$runner")" -eq 3 ] \
-  || fail "session create, invocation, and files must use the cell session"
-grep -Fq 'log_sessions=("$CI_AGENT_SESSION_ID")' "$runner" \
-  || fail "evidence must start from the cell session"
-[ "$(grep -Fc -- '--session-id "$session"' "$runner")" -eq 2 ] \
-  || fail "both monitoring calls must cover every evidence session"
-grep -Fq -- '--session-id "$trace_session"' "$runner" \
-  || fail "trace collection must use the served evidence session"
+[ "$(grep -Fc -- '--session-id "$CI_AGENT_SESSION_ID"' "$runner")" -eq 6 ] \
+  || fail "session create, invocation, files, traces, and both monitoring calls must use the cell session"
 grep -Fq 'azd ai agent sessions delete "$CI_AGENT_SESSION_ID"' "$runner" \
   || fail "cleanup does not delete the cell session"
-grep -Fq 'a2a-served-sessions.txt' "$runner" \
-  && grep -Fq 'azd ai agent sessions delete "$served_session"' "$runner" \
-  || fail "cleanup does not delete platform-served A2A sessions"
 
 # Agent names must match the GitHub scheme exactly. Foundry mints one
 # AgentIdentity per distinct agent name and grants it a role, and the
