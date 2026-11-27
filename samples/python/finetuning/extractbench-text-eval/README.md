@@ -157,9 +157,9 @@ Reported numbers here use `beta=1`.
 ## What this does not include
 
 No training loop. The study behind this sample trained with the Microsoft Foundry
-Interactive Post-Training API, which is in private preview; the dataset this
-sample produces is in the chat format those jobs take, but the training code is
-not reproducible outside the preview and is therefore not shipped here.
+Interactive Post-Training API, now in public preview. The dataset this sample
+produces is in the chat format those jobs take. This sample covers data
+preparation and evaluation only; training code is not included.
 
 No processed data either — only the code that builds it. The corpus belongs to
 its authors, and a rebuild script keeps the document selection auditable rather
@@ -173,3 +173,17 @@ Microsoft Foundry blog.
 
 ExtractBench is published by LlamaIndex under its own license; this sample
 downloads it at runtime and redistributes none of it.
+
+## Citation
+
+To cite the blog accompanying this sample, use:
+
+```bibtex
+@misc{lin2026informationextraction,
+  title        = {Information Extraction with Low-Inference-Cost Models: 85\% {F1} Gain via {Foundry Interactive Training}},
+  author       = {Lin, Shih-Yao and Saksena, Apurva},
+  year         = {2026},
+  howpublished = {Microsoft Azure AI Foundry Blog},
+  url          = {https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/information-extraction-with-low-inference-cost-models-85-f1-gain-via-foundry-int/4563661}
+}
+```
