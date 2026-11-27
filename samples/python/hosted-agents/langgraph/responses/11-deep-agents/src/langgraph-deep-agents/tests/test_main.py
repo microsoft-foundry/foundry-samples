@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import os
 import sys
 import unittest
@@ -74,9 +73,6 @@ class BlobCredentialTests(unittest.IsolatedAsyncioTestCase):
     async def test_report_credential_is_scoped_to_host_success_and_failure(
         self,
     ) -> None:
-        for name in ("azure.ai.agentserver.core", "azure.identity"):
-            logger = logging.getLogger(name)
-            self.addCleanup(logger.setLevel, logger.level)
         for failure in (False, True):
             with self.subTest(failure=failure):
                 credential_scope = MagicMock()

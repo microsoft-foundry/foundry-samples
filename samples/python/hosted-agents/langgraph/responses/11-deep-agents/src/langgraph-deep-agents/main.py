@@ -26,8 +26,6 @@ logger = logging.getLogger(__name__)
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
-    logging.getLogger("azure.ai.agentserver.core").setLevel(logging.WARNING)
-    logging.getLogger("azure.identity").setLevel(logging.WARNING)
     async with FoundryCheckpointSaver() as checkpointer:
         tools = await load_tools()
         with DefaultAzureCredential() as credential:
